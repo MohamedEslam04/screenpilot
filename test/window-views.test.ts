@@ -48,6 +48,16 @@ describe("suggestWindowViews", () => {
     expect(views[0]!.label).toBe("browser");
   });
 
+  it("keeps only the final shape of a window fitted before recording (maximized → normal → 16:9)", () => {
+    const views = suggestWindowViews([
+      rep(0, "dolphin", 0.5, 0.046, 0.5, 0.954),
+      rep(0, "dolphin", 0.57, 0.1, 0.23, 0.8),
+      rep(0, "dolphin", 0.522, 0.066, 0.457, 0.915),
+    ]);
+    expect(views).toHaveLength(1);
+    expect(views[0]!.rect).toMatchObject({ x: 0.522, w: 0.457 });
+  });
+
   it("lets a window that is moved right after opening settle into one view", () => {
     const views = suggestWindowViews([rep(1, "kate", 0.3, 0.3, 0.3, 0.3), rep(1.2, "kate", 0.05, 0.05, 0.9, 0.9)]);
     expect(views).toHaveLength(1);
