@@ -23,7 +23,7 @@ import { type PerformResult, performTake, resolveTarget, TakeError } from "./tak
 import { TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider } from "./voice/index.js";
-import { APP, APP_TITLE, named, OUTPUT_ENV } from "./brand.js";
+import { APP, APP_TITLE, named, OUTPUT_ENV, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { findWindow, getDesktop } from "./platform/index.js";
 import { defaultOutputDir } from "./setup/folders.js";
@@ -118,7 +118,7 @@ const INSTRUCTIONS = `${APP_TITLE} makes screen videos. Typical loops:
 2. You perform it: screenshot to see the monitors, windows to see apps, browser_open for websites; try the flow live with pointer_move/click/type_text; then write a take.json (take_schema) and call perform (it records, logs clicks/windows and writes a storyboard), add intro/outro/zooms, render.
 Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). The camera frames the window in use by default. Ask the user not to touch mouse/keyboard while you drive; touching them aborts. Run doctor first on a new machine.`;
 
-const server = new McpServer({ name: APP, title: APP_TITLE, version: "0.1.0" }, { instructions: INSTRUCTIONS });
+const server = new McpServer({ name: APP, title: APP_TITLE, version: VERSION }, { instructions: INSTRUCTIONS });
 
 server.registerTool(
   "record_start",

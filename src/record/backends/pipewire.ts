@@ -101,7 +101,14 @@ export class PipewireBackend implements RecorderBackend {
     this.portal = await this.open(log);
     const streamOf = mapStreams(this.portal.streams, screens);
     const missing = screens.filter((s) => !streamOf.has(s.name));
-    if (missing.length) throw new Error(`No screen stream for ${missing.map((s) => s.name).join(", ")} (allow all monitors in the screen-sharing dialog)`);
+    if (missing.length) {
+      // wlroots' portal (sway, Hyprland) shares a single monitor per session.
+      const one = this.portal.streams.length === 1 && screens.length > 1;
+      throw new Error(
+        `No screen stream for ${missing.map((s) => s.name).join(", ")}: ` +
+          (one ? "this desktop shares one monitor at a time; record a single monitor (--screen <name>) instead of several" : "allow all monitors in the screen-sharing dialog"),
+      );
+    }
     const capture = canvasFor(screens, FPS, `pipewire+${enc}`, screens.map((s) => s.name).join(" + "));
     const x0 = Math.min(...screens.map((s) => s.x));
     const y0 = Math.min(...screens.map((s) => s.y));
