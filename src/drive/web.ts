@@ -2,11 +2,11 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, posix, win32 } from "node:path";
 import { type Browser, chromium, type Page } from "playwright-core";
 import type { ScreenInfo } from "../record/input/types.js";
 import { getDesktop, type WindowInfo } from "../platform/index.js";
-import { configDir } from "../brand.js";
+import { APP, configDir } from "../brand.js";
 
 // A clean demo browser (own profile: no personal tabs, bookmarks or logins)
 // that we can inspect over CDP to find where page elements are on screen.
@@ -16,12 +16,26 @@ const CDP_URL = `http://127.0.0.1:${CDP_PORT}`;
 const CANDIDATES = ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "brave-browser", "microsoft-edge"];
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function findBrowser(): string {
-  if (process.env.DEMOREEL_BROWSER) return process.env.DEMOREEL_BROWSER;
-  for (const dir of (process.env.PATH ?? "").split(":")) {
-    for (const c of CANDIDATES) if (existsSync(join(dir, c))) return join(dir, c);
+/** Where a Chromium-based browser may live, best first (the `<APP>_BROWSER` override is handled by findBrowser). */
+export function browserCandidates(env: Record<string, string | undefined>, platform: NodeJS.Platform): string[] {
+  if (platform === "win32") {
+    const roots = [env.ProgramFiles, env["ProgramFiles(x86)"], env.LOCALAPPDATA].filter((r): r is string => !!r);
+    const rels = [
+      "Google\\Chrome\\Application\\chrome.exe",
+      "Microsoft\\Edge\\Application\\msedge.exe",
+      "BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+    ];
+    return rels.flatMap((rel) => roots.map((r) => win32.join(r, rel)));
   }
-  throw new Error(`No Chromium-based browser found (tried ${CANDIDATES.join(", ")}); set DEMOREEL_BROWSER.`);
+  return (env.PATH ?? "").split(posix.delimiter).filter(Boolean).flatMap((dir) => CANDIDATES.map((c) => posix.join(dir, c)));
+}
+
+export function findBrowser(): string {
+  const envName = `${APP.toUpperCase()}_BROWSER`;
+  if (process.env[envName]) return process.env[envName];
+  const hit = browserCandidates(process.env, process.platform).find((p) => existsSync(p));
+  if (hit) return hit;
+  throw new Error(`No Chromium-based browser found (Chrome, Edge, Brave, Chromium); set ${envName}.`);
 }
 
 async function cdpUp(): Promise<boolean> {
