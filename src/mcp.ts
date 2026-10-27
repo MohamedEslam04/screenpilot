@@ -23,12 +23,16 @@ import { type PerformResult, performTake, resolveTarget, TakeError } from "./tak
 import { TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider } from "./voice/index.js";
-import { APP, APP_TITLE, named } from "./brand.js";
+import { APP, APP_TITLE, named, OUTPUT_ENV } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { findWindow, getDesktop } from "./platform/index.js";
+import { defaultOutputDir } from "./setup/folders.js";
 
 // stdout is the protocol channel: log to stderr only.
 useBundledTools(import.meta.url);
+// A hand-written client config may not set the output folder; the client's working
+// directory can be anywhere (even read-only), so default to the Videos folder.
+process.env[OUTPUT_ENV] ||= defaultOutputDir();
 const log = (msg: string) => process.stderr.write(`${APP}: ${msg}\n`);
 
 const MAX_IMAGES = 12;

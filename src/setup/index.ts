@@ -1,10 +1,12 @@
 import { spawnSync } from "node:child_process";
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { APP, APP_TITLE, OUTPUT_ENV } from "../brand.js";
-import { CLIENTS, type ClientSpec, type PathEnv, type ServerLaunch, stillValid } from "./clients.js";
+import { CLIENTS, type ClientSpec, NEVER, type PathEnv, type ServerLaunch, stillValid } from "./clients.js";
+import { defaultOutputDir } from "./folders.js";
+import { type PrepareResult, prepareRenderer } from "./prepare.js";
 
 // One-step install for people who never open a terminal: put the app in a
 // stable place and register its MCP server with every AI tool on this
@@ -18,6 +20,8 @@ export interface SetupOptions {
   outputDir?: string;
   /** Use the package where it is instead of copying it to the app folder. */
   inPlace?: boolean;
+  /** Skip downloading the render browser and the test render. */
+  skipPrepare?: boolean;
   log?: (m: string) => void;
 }
 
@@ -31,6 +35,8 @@ export interface SetupReport {
   appDir: string;
   outputDir: string;
   rows: SetupRow[];
+  /** Render browser + test render (absent when removing or skipped). */
+  renderer?: PrepareResult;
 }
 
 /** The package folder this code runs from (dist/ is one level down). */
@@ -40,18 +46,47 @@ export function packageRoot(): string {
 
 export function pathEnv(): PathEnv {
   const home = homedir();
-  const appData = process.platform === "win32" ? (process.env.APPDATA ?? join(home, "AppData", "Roaming")) : (process.env.XDG_CONFIG_HOME ?? join(home, ".config"));
-  return { home, platform: process.platform, appData, codexHome: process.env.CODEX_HOME || undefined };
+  const appData =
+    process.platform === "win32"
+      ? (process.env.APPDATA ?? join(home, "AppData", "Roaming"))
+      : process.platform === "darwin"
+        ? join(home, "Library", "Application Support")
+        : process.env.XDG_CONFIG_HOME || join(home, ".config");
+  return {
+    home,
+    platform: process.platform,
+    appData,
+    codexHome: process.env.CODEX_HOME || undefined,
+    copilotHome: process.env.COPILOT_HOME || undefined,
+    claudeStoreDir: claudeStoreDir(),
+  };
+}
+
+/** Settings folder of Claude Desktop installed from the Microsoft Store (MSIX), if any. */
+function claudeStoreDir(): string | undefined {
+  if (process.platform !== "win32") return undefined;
+  const packages = join(process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"), "Packages");
+  try {
+    const pkg = readdirSync(packages).find((d) => /^Claude_/i.test(d));
+    return pkg ? join(packages, pkg, "LocalCache", "Roaming", "Claude") : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Where the app lives once installed. */
 export function appHome(): string {
   if (process.platform === "win32") return join(process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"), APP_TITLE);
+  if (process.platform === "darwin") return join(homedir(), "Library", "Application Support", APP_TITLE);
   return join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share"), APP);
 }
 
 export async function setup(opts: SetupOptions = {}): Promise<SetupReport> {
   const log = opts.log ?? (() => {});
+  // `sudo ./install.sh` would set it up for root, not for the person at the desktop.
+  if (process.platform !== "win32" && process.getuid?.() === 0 && process.env.SUDO_USER) {
+    throw new Error(`Run setup without sudo (as ${process.env.SUDO_USER}): it installs for your user only and needs no admin rights.`);
+  }
   const src = packageRoot();
   const devCheckout = existsSync(join(src, ".git")) || existsSync(join(src, "src"));
   let dir = src;
@@ -70,14 +105,9 @@ export async function setup(opts: SetupOptions = {}): Promise<SetupReport> {
     }
   }
 
-  const outputDir = opts.outputDir ?? join(homedir(), "Videos", APP_TITLE);
+  const outputDir = resolve(opts.outputDir ?? defaultOutputDir());
   if (!opts.remove) mkdirSync(outputDir, { recursive: true });
-  const bundledNode = join(dir, "bin", process.platform === "win32" ? "node.exe" : "node");
-  const launch: ServerLaunch = {
-    command: existsSync(bundledNode) ? bundledNode : process.execPath,
-    args: [join(dir, "dist", "mcp.js")],
-    env: { [OUTPUT_ENV]: outputDir },
-  };
+  const launch = serverLaunch(dir, outputDir);
 
   const env = pathEnv();
   const rows: SetupRow[] = [];
@@ -86,13 +116,40 @@ export async function setup(opts: SetupOptions = {}): Promise<SetupReport> {
     rows.push(configure(spec, env, launch, !!opts.remove, !!opts.clients));
   }
   if (!opts.clients || opts.clients.includes("claude-code")) rows.push(claudeCode(launch, dir, !!opts.remove));
-  return { appDir: dir, outputDir, rows };
+  const renderer = opts.remove || opts.skipPrepare ? undefined : await prepareRenderer(log);
+  return { appDir: dir, outputDir, rows, renderer };
+}
+
+/** Every client setup can configure, with its config file and whether it's installed here. */
+export function knownClients(): { id: string; title: string; installed: boolean; file: string }[] {
+  const env = pathEnv();
+  return [
+    ...CLIENTS.map((c) => ({ id: c.id, title: c.title, installed: existsSync(c.marker(env)), file: c.file(env) })),
+    { id: "claude-code", title: "Claude Code", installed: claudeAvailable(), file: "claude mcp (user scope)" },
+  ];
+}
+
+/** How an AI client starts the server installed in `dir`. */
+export function serverLaunch(dir: string, outputDir: string): ServerLaunch {
+  const bundledNode = join(dir, "bin", process.platform === "win32" ? "node.exe" : "node");
+  return {
+    command: existsSync(bundledNode) ? bundledNode : process.execPath,
+    args: [join(dir, "dist", "mcp.js")],
+    env: { [OUTPUT_ENV]: outputDir },
+  };
+}
+
+/** Config to paste by hand into an AI tool setup doesn't know (the common `mcpServers` shape). */
+export function manualConfig(outputDir = defaultOutputDir()): { mcpServers: Record<string, ServerLaunch> } {
+  const dir = existsSync(appHome()) ? appHome() : packageRoot();
+  return { mcpServers: { [APP]: serverLaunch(dir, resolve(outputDir)) } };
 }
 
 function configure(spec: ClientSpec, env: PathEnv, launch: ServerLaunch, remove: boolean, asked: boolean): SetupRow {
   const primary = spec.file(env);
   const file = existsSync(primary) ? primary : (spec.alternates?.(env).find((f) => existsSync(f)) ?? primary);
-  if (!existsSync(spec.marker(env)) && !asked) return { client: spec.title, status: "not installed", detail: "" };
+  const marker = spec.marker(env);
+  if (!existsSync(marker) && (!asked || marker === NEVER)) return { client: spec.title, status: "not installed", detail: "" };
   try {
     const before = existsSync(file) ? readFileSync(file, "utf8") : "";
     if (remove && !before.includes(APP)) return { client: spec.title, status: "not configured", detail: file };
@@ -107,11 +164,14 @@ function configure(spec: ClientSpec, env: PathEnv, launch: ServerLaunch, remove:
   }
 }
 
+function claudeAvailable(): boolean {
+  return spawnSync("claude", ["--version"], { shell: process.platform === "win32", stdio: "ignore" }).status === 0;
+}
+
 /** Claude Code keeps MCP servers in its own store: use its CLI when it is installed. */
 function claudeCode(launch: ServerLaunch, dir: string, remove: boolean): SetupRow {
   const shell = process.platform === "win32";
-  const has = spawnSync("claude", ["--version"], { shell, stdio: "ignore" }).status === 0;
-  if (!has) return { client: "Claude Code", status: "not installed", detail: "" };
+  if (!claudeAvailable()) return { client: "Claude Code", status: "not installed", detail: "" };
   spawnSync("claude", ["mcp", "remove", "--scope", "user", APP], { shell, stdio: "ignore" });
   if (remove) {
     rmSync(join(homedir(), ".claude", "skills", APP), { recursive: true, force: true });

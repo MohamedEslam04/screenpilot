@@ -1,3 +1,7 @@
+import { existsSync, readdirSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { APP } from "./brand.js";
 import { Driver } from "./drive/index.js";
 import { findBrowser } from "./drive/web.js";
 import { getDesktop } from "./platform/index.js";
@@ -100,6 +104,16 @@ export async function doctor(opts: { input?: boolean } = {}): Promise<DoctorRepo
   await add("edge tts", async () => {
     const voices = await withTimeout(getProvider("edge").listVoices(), 10_000, "Edge TTS");
     return { ok: voices.length > 0, detail: `${voices.length} voices` };
+  });
+  await add("render browser", async () => {
+    // Don't call `hyperframes browser path`: it downloads Chrome when missing.
+    const cache = join(homedir(), ".cache", "hyperframes", "chrome");
+    const found =
+      process.env.HYPERFRAMES_BROWSER_PATH ||
+      (existsSync(cache) && readdirSync(cache).some((d) => d.includes("headless-shell")) ? cache : undefined);
+    return found
+      ? { ok: true, detail: found }
+      : { ok: false, detail: `not downloaded yet; run "${APP} setup" (or the first render downloads ~100 MB)` };
   });
   await add("gstreamer", async () => {
     if (process.platform !== "linux") return skip("Linux only");
