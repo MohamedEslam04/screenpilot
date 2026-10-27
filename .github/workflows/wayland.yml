@@ -1,0 +1,58 @@
+name: Wayland
+
+# The generic Wayland "portal" backend on a real wlroots compositor: headless
+# sway + xdg-desktop-portal-wlr + PipeWire + GStreamer. GNOME's portal shows a
+# permission dialog and can't be automated, so only wlroots is covered here.
+on:
+  workflow_dispatch:
+  push:
+    branches: [ci/wayland-sway]
+
+concurrency:
+  group: wayland-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sway:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6 # version from package.json "packageManager"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install sway, portals, PipeWire, GStreamer and ffmpeg
+        timeout-minutes: 5
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            sway xdg-desktop-portal xdg-desktop-portal-wlr \
+            pipewire wireplumber \
+            gstreamer1.0-tools gstreamer1.0-pipewire gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly \
+            dbus-user-session dbus-x11 ffmpeg
+      - name: Virtual GPU (xdg-desktop-portal-wlr needs a dmabuf screencopy format)
+        continue-on-error: true
+        run: |
+          sudo apt-get install -y --no-install-recommends libgl1-mesa-dri mesa-vulkan-drivers
+          uname -r
+          ls /dev/dri || true
+          ls /lib/modules/$(uname -r)/kernel/drivers/gpu/drm 2>&1 | head -30 || true
+          sudo modprobe vgem 2>&1 || sudo modprobe vkms 2>&1 || true
+          ls -la /dev/dri || true
+          sudo chmod a+rw /dev/dri/* || true
+      - run: pnpm install --frozen-lockfile
+      - name: Wayland smoke test (headless sway)
+        timeout-minutes: 6
+        env:
+          LANG: C.UTF-8
+          WAYLAND_LOGS: ${{ github.workspace }}/wayland-smoke-report/logs
+        run: scripts/wayland-session.sh pnpm smoke:wayland
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: wayland-smoke-report
+          path: wayland-smoke-report/
+          if-no-files-found: warn
