@@ -23,6 +23,9 @@ importers:
       hyperframes:
         specifier: ^0.8.207
         version: 0.8.207(@types/node@26.6.5)
+      jsonc-parser:
+        specifier: ^3.3.1
+        version: 3.3.1
       koffi:
         specifier: ^3.3.4
         version: 3.3.4
@@ -1381,6 +1384,9 @@ packages:
 
   json-stringify-safe@5.0.1:
     resolution: {integrity: sha512-ZClg6AaYvamvYEE82d3Iyd3vSSIjQ+odgjaTzRuO3s7toCdFKczob2i0zCh7JE8kWn17yvAWhUVxvqGwUalsRA==}
+
+  jsonc-parser@3.3.1:
+    resolution: {integrity: sha512-HUgH65KyejrUFPvHFPbqOY0rsFip3Bo5wb4ngvdi1EpCYWUQDC5V+Y7mZws+DLkr4M//zQJoanu1SP+87Dv1oQ==}
 
   jsprim@1.4.2:
     resolution: {integrity: sha512-P2bSOMAc/ciLz6DzgjVlGJP9+BrJWu5UDGK70C2iweC5QBIeFf0ZXRvGjEj2uYgrY2MkAAhsSWHDWlFtEroZWw==}
@@ -3221,6 +3227,8 @@ snapshots:
 
   json-stringify-safe@5.0.1:
     optional: true
+
+  jsonc-parser@3.3.1: {}
 
   jsprim@1.4.2:
     dependencies:
