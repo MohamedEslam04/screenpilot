@@ -27,7 +27,7 @@ describe("Win32 struct layout (x64)", () => {
   it("parses every function prototype against these types", () => {
     // koffi.proto uses the same parser as lib.func, so typos in names/types fail here, not on Windows.
     const protos = Object.values(PROTOTYPES).flatMap((p) => Object.values(p) as string[]);
-    expect(protos.length).toBe(32);
+    expect(protos.length).toBe(33);
     for (const p of protos) expect(() => koffi.proto(p.replace(/(\w+)\(/, "Check_$1(")), p).not.toThrow();
   });
 

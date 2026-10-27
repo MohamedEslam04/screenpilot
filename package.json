@@ -24,6 +24,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke:windows": "tsx scripts/windows-smoke.ts",
+    "smoke:windows-multimon": "tsx scripts/windows-multimon-smoke.ts",
     "smoke:macos": "tsx scripts/macos-smoke.ts",
     "smoke:macos-multidisplay": "tsx scripts/macos-multidisplay-smoke.ts",
     "smoke:x11": "tsx scripts/x11-smoke.ts",
