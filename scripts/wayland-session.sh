@@ -32,6 +32,12 @@ unset DISPLAY
 
 PIDS=()
 cleanup() {
+  local rc=$?
+  if [ "$rc" -ne 0 ]; then
+    for f in "$LOGS"/sway.log "$LOGS"/xdpw.log "$LOGS"/xdg-desktop-portal.log; do
+      [ -s "$f" ] && { echo "--- tail of $f" >&2; grep -v "interface to register\|registered to" "$f" | tail -25 >&2; }
+    done
+  fi
   for pid in "${PIDS[@]}"; do kill "$pid" 2>/dev/null || true; done
 }
 trap cleanup EXIT
@@ -66,6 +72,7 @@ export WLR_LIBINPUT_NO_DEVICES=1
 # vkms (virtual KMS) has only a card node, which wlroots can render on when told so.
 VKMS_CARD=""
 for d in /sys/class/drm/card[0-9]*; do
+  case "$(basename "$d")" in *-*) continue ;; esac # connectors (card0-Virtual-1, ...)
   case "$(readlink -f "$d")" in
     */vkms/*) VKMS_CARD="/dev/dri/$(basename "$d")" ;;
   esac
