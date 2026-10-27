@@ -11,8 +11,10 @@ Your AI pilot for screen videos: it records anything on your screen (or drives t
 
 ScreenPilot is a tool for the AI app you already use. It needs no API key and no account. Your AI app does the thinking, and ScreenPilot gives it the screen, the recorder and the video editor. Download from [Releases](https://github.com/MohamedEslam04/screenpilot/releases):
 
-- **Windows:** unzip `ScreenPilot-<version>-windows.zip`, then double-click `ScreenPilot Setup.cmd`. Only use Claude Desktop? `ScreenPilot-<version>-windows.mcpb` installs it there with one double-click.
-- **Linux:** extract `ScreenPilot-<version>-linux.tar.gz`, then run `install.sh`.
+- **Windows:** download and run `ScreenPilot-<version>-windows-setup.exe`. It installs for your user only (no administrator password) and adds ScreenPilot to your AI apps, then shows you what it did. Windows will probably say "Windows protected your PC" because the installer is not signed yet: click **More info**, then **Run anyway**. Your antivirus may also ask about it, because ScreenPilot watches mouse clicks to make good zooms; allow it. If you are updating and an AI app is open, the installer asks you to close it first. To remove it, use Windows Settings -> Apps -> ScreenPilot -> Uninstall.
+  - Prefer a zip? Extract `ScreenPilot-<version>-windows.zip` first (right-click -> Extract All; do not run it from inside the zip), then double-click `ScreenPilot Setup.cmd`.
+  - Only use Claude Desktop? `ScreenPilot-<version>-windows.mcpb` installs it there with one double-click.
+- **Linux:** extract `ScreenPilot-<version>-linux.tar.gz`, then double-click `install.sh` (choose "Run" if your file manager asks; it opens a terminal to show the result) or run `./install.sh`. It also checks that built-in screen recording has what it needs (GStreamer with PipeWire and an H.264 encoder) and, if not, prints the exact command for your distro (Fedora, Ubuntu/Debian, Arch, openSUSE) and offers to run it. This is optional: recording with OBS and editing existing videos work without it.
 
 Setup copies the app to `%LOCALAPPDATA%\ScreenPilot` or `~/.local/share/screenpilot`, and adds it to every AI app it finds on the computer:
 
@@ -25,7 +27,7 @@ Setup copies the app to `%LOCALAPPDATA%\ScreenPilot` or `~/.local/share/screenpi
 - Windsurf
 - VS Code
 
-Each config file is backed up first (`<file>.screenpilot-backup`), and your other entries and comments are kept. Videos are saved to `~/Videos/ScreenPilot`. Restart your AI app and ask it something like "record my screen while I show the signup flow, then make a video with Arabic voiceover". To remove it, run `Uninstall ScreenPilot.cmd` or `uninstall.sh`.
+Each config file is backed up first (`<file>.screenpilot-backup`), and your other entries and comments are kept. Videos are saved to `~/Videos/ScreenPilot`. Restart your AI app and ask it something like "record my screen while I show the signup flow, then make a video with Arabic voiceover". To remove it, use the Windows uninstaller above (or `Uninstall ScreenPilot.cmd` from the zip), or run `uninstall.sh` on Linux.
 
 The packages include Node, ffmpeg and ffprobe. Install another AI app later? Run setup again.
 
