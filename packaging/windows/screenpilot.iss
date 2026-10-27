@@ -138,8 +138,9 @@ begin
               'Close your AI apps and run this installer again.' + #13#10 + #13#10 + 'Details:' + #13#10 + Raw
   else
     Result := 'ScreenPilot is installed.' + #13#10 + #13#10 +
-              'What happened (each line is one AI app: "added" means ScreenPilot is now available in it, "not installed" means that app was not found on this computer):' +
-              #13#10 + Raw + #13#10 + #13#10 +
+              { A line may not start with "#": the preprocessor would read it as a directive. }
+              'What happened ("added" means ScreenPilot is now available in that AI app):' + #13#10 +
+              Raw + #13#10 + #13#10 +
               'Next: restart your AI app, then ask it something like "record my screen while I show the signup flow, then make a video".';
   StringChangeEx(Result, #10, #13#10, True);
   StringChangeEx(Result, #13#13#10, #13#10, True);

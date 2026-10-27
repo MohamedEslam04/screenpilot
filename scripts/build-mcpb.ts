@@ -20,7 +20,8 @@ import { bundleVcRuntime } from "./vcruntime.js";
 const root = resolve(import.meta.dirname, "..");
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { version: string; description: string };
 // PACKAGE_AS=windows lets a Linux box check the .mcpb manifest/packing (its native modules would be Linux ones: test only).
-const platform = process.env.PACKAGE_AS ?? (process.platform === "win32" ? "windows" : process.platform === "linux" ? "linux" : process.platform);
+const platform =
+  process.env.PACKAGE_AS ?? (process.platform === "win32" ? "windows" : process.platform === "darwin" ? "macos" : process.platform);
 const ffmpegDir = argValue("--ffmpeg-dir");
 const out = join(root, "release");
 // The archive's top folder is the stage folder itself.
@@ -99,49 +100,7 @@ async function main(): Promise<void> {
   mkdirSync(out, { recursive: true });
 
   if (platform === "windows") {
-    const manifest = {
-      manifest_version: "0.3",
-      name: APP,
-      display_name: APP_TITLE,
-      version: pkg.version,
-      description: pkg.description,
-      long_description:
-        `${APP_TITLE} lets Claude make screen videos for you. Ask it to record your screen while you work, or to operate ` +
-        "your apps and websites itself, then it edits the footage into a polished MP4 with zooms, captions and an AI voiceover " +
-        "(English, Arabic and more). Everything runs on your computer; no OBS or other recorder needed.",
-      author: { name: "Mohamed Eslam", url: "https://github.com/MohamedEslam04" },
-      repository: { type: "git", url: "https://github.com/MohamedEslam04/screenpilot" },
-      homepage: "https://github.com/MohamedEslam04/screenpilot",
-      icon: "icon.png",
-      license: "MIT",
-      keywords: ["screen recording", "video", "demo", "tutorial", "voiceover", "captions"],
-      server: {
-        type: "node",
-        entry_point: "dist/mcp.js",
-        mcp_config: {
-          command: "node",
-          args: ["${__dirname}/dist/mcp.js"],
-          env: { [OUTPUT_ENV]: "${user_config.output_dir}" },
-        },
-      },
-      user_config: {
-        output_dir: {
-          type: "directory",
-          title: "Save videos to",
-          description: "Folder for your recordings and finished videos.",
-          default: "${HOME}/Videos/ScreenPilot",
-          required: false,
-        },
-      },
-      tools,
-      compatibility: { platforms: ["win32"], runtimes: { node: ">=22.0.0" } },
-    };
-    writeFileSync(join(stage, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-    const file = join(out, `${APP_TITLE}-${pkg.version}-windows.mcpb`);
-    await sh("npx", ["--yes", "@anthropic-ai/mcpb@2.1.2", "validate", join(stage, "manifest.json")]);
-    await sh("npx", ["--yes", "@anthropic-ai/mcpb@2.1.2", "pack", stage, file]);
-    log(`→ ${file}`);
-    rmSync(join(stage, "manifest.json"));
+    await packMcpb("windows", "win32", "${HOME}/Videos/ScreenPilot", tools);
 
     // Claude Desktop brings its own Node for the .mcpb; the zip is for every other tool.
     bundleNode();
@@ -175,6 +134,20 @@ async function main(): Promise<void> {
       await sh("zip", ["-qr", zip, APP_TITLE], dirname(stage));
     }
     log(`→ ${zip}`);
+  } else if (platform === "macos") {
+    const arch = process.arch;
+    await packMcpb(`macos-${arch}`, "darwin", "${HOME}/Movies/ScreenPilot", tools);
+    bundleNode();
+    for (const f of [`Install ${APP_TITLE}.command`, `Uninstall ${APP_TITLE}.command`]) {
+      copyFileSync(join(root, "packaging", "macos", f), join(stage, f));
+      chmodSync(join(stage, f), 0o755);
+    }
+    const zip = join(out, `${APP_TITLE}-${pkg.version}-macos-${arch}.zip`);
+    rmSync(zip, { force: true });
+    // ditto keeps permissions and is what Finder's "Compress" uses; zip -y keeps symlinks elsewhere.
+    if (process.platform === "darwin") await sh("ditto", ["-c", "-k", "--keepParent", stage, zip]);
+    else await sh("zip", ["-qry", zip, APP_TITLE], dirname(stage));
+    log(`→ ${zip}`);
   } else {
     bundleNode();
     for (const f of ["install.sh", "uninstall.sh"]) copyFileSync(join(root, "packaging", "linux", f), join(stage, f));
@@ -183,6 +156,53 @@ async function main(): Promise<void> {
     await sh("tar", ["-czf", file, "-C", dirname(stage), APP_TITLE]);
     log(`→ ${file}`);
   }
+}
+
+/** Claude Desktop extension (.mcpb) for one OS; it runs on Claude Desktop's own Node. */
+async function packMcpb(name: string, os: "win32" | "darwin", videos: string, tools: { name: string; description: string }[]): Promise<void> {
+  const manifest = {
+    manifest_version: "0.3",
+    name: APP,
+    display_name: APP_TITLE,
+    version: pkg.version,
+    description: pkg.description,
+    long_description:
+      `${APP_TITLE} lets Claude make screen videos for you. Ask it to record your screen while you work, or to operate ` +
+      "your apps and websites itself, then it edits the footage into a polished MP4 with zooms, captions and an AI voiceover " +
+      "(English, Arabic and more). Everything runs on your computer; no OBS or other recorder needed.",
+    author: { name: "Mohamed Eslam", url: "https://github.com/MohamedEslam04" },
+    repository: { type: "git", url: "https://github.com/MohamedEslam04/screenpilot" },
+    homepage: "https://github.com/MohamedEslam04/screenpilot",
+    icon: "icon.png",
+    license: "MIT",
+    keywords: ["screen recording", "video", "demo", "tutorial", "voiceover", "captions"],
+    server: {
+      type: "node",
+      entry_point: "dist/mcp.js",
+      mcp_config: {
+        command: "node",
+        args: ["${__dirname}/dist/mcp.js"],
+        env: { [OUTPUT_ENV]: "${user_config.output_dir}" },
+      },
+    },
+    user_config: {
+      output_dir: {
+        type: "directory",
+        title: "Save videos to",
+        description: "Folder for your recordings and finished videos.",
+        default: videos,
+        required: false,
+      },
+    },
+    tools,
+    compatibility: { platforms: [os], runtimes: { node: ">=22.0.0" } },
+  };
+  writeFileSync(join(stage, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+  const file = join(out, `${APP_TITLE}-${pkg.version}-${name}.mcpb`);
+  await sh("npx", ["--yes", "@anthropic-ai/mcpb@2.1.2", "validate", join(stage, "manifest.json")]);
+  await sh("npx", ["--yes", "@anthropic-ai/mcpb@2.1.2", "pack", stage, file]);
+  log(`→ ${file}`);
+  rmSync(join(stage, "manifest.json"));
 }
 
 /** The Windows installer (.exe) from packaging/windows/screenpilot.iss; Inno Setup only exists on Windows. */
