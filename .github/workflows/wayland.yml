@@ -32,23 +32,6 @@ jobs:
             pipewire wireplumber \
             gstreamer1.0-tools gstreamer1.0-pipewire gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly \
             dbus-user-session dbus-x11 ffmpeg
-      - name: Virtual GPU (xdg-desktop-portal-wlr needs a dmabuf screencopy format)
-        continue-on-error: true
-        timeout-minutes: 3
-        run: |
-          uname -r
-          cd "$(mktemp -d)"
-          apt-get download "linux-modules-extra-$(uname -r)" 2>&1 | tail -2
-          ls -la
-          dpkg-deb -c ./*.deb | grep -E 'vgem|vkms|udmabuf' || echo "no vgem/vkms/udmabuf in modules-extra"
-          sudo dpkg --unpack ./*.deb 2>&1 | tail -2
-          sudo depmod -a
-          sudo modprobe vkms 2>&1 || true
-          ls -la /dev/dri; ls -la /sys/class/drm/
-          sudo udevadm settle || true
-          sleep 2
-          sudo chmod a+rw /dev/dri/card* || true
-          ls -la /dev/dri
       - run: pnpm install --frozen-lockfile
       - name: Wayland smoke test (headless sway)
         timeout-minutes: 6
