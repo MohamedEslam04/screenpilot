@@ -35,11 +35,11 @@ jobs:
       - name: Virtual GPU (xdg-desktop-portal-wlr needs a dmabuf screencopy format)
         continue-on-error: true
         run: |
-          sudo apt-get install -y --no-install-recommends libgl1-mesa-dri mesa-vulkan-drivers
           uname -r
-          ls /dev/dri || true
-          ls /lib/modules/$(uname -r)/kernel/drivers/gpu/drm 2>&1 | head -30 || true
-          sudo modprobe vgem 2>&1 || sudo modprobe vkms 2>&1 || true
+          sudo apt-get install -y --no-install-recommends libgl1-mesa-dri "linux-modules-extra-$(uname -r)" || true
+          find /lib/modules/$(uname -r) -name 'vgem*' -o -name 'vkms*' -o -name 'udmabuf*' | head
+          sudo modprobe vgem 2>&1 || true
+          sudo modprobe vkms 2>&1 || true
           ls -la /dev/dri || true
           sudo chmod a+rw /dev/dri/* || true
       - run: pnpm install --frozen-lockfile
