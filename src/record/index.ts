@@ -149,7 +149,8 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
       unfit = fitted.restore;
       log(`fitted "${fitted.window.caption}" to 16:9 (restored after recording)`);
     }
-    const unquiet = opts.quiet === false || !desktop ? async () => {} : await desktop.quietNotifications();
+    // Best effort: a desktop without a notification service must not stop the recording.
+    const unquiet = opts.quiet === false || !desktop ? async () => {} : await desktop.quietNotifications().catch(() => async () => {});
     if (opts.quiet !== false && desktop) {
       const closed = await desktop.closeNotificationPopups().catch(() => 0);
       if (closed) log(`closed ${closed} notification popup(s) before recording`);
