@@ -54,6 +54,7 @@ export const PROTOTYPES = {
     CGRectMakeWithDictionaryRepresentation: "bool CGRectMakeWithDictionaryRepresentation(void *dict, _Out_ CGRect *rect)",
     CGPreflightScreenCaptureAccess: "bool CGPreflightScreenCaptureAccess()",
     CGRequestScreenCaptureAccess: "bool CGRequestScreenCaptureAccess()",
+    CGPreflightPostEventAccess: "bool CGPreflightPostEventAccess()",
   },
   ApplicationServices: {
     AXIsProcessTrusted: "bool AXIsProcessTrusted()",
@@ -79,6 +80,9 @@ const kCFNumberSInt64Type = 4;
 const kCFNumberDoubleType = 13;
 const kCGEventSourceStateHIDSystemState = 1;
 const kCGHIDEventTap = 0;
+const kCGSessionEventTap = 1;
+/** Where synthetic events enter: "hid" (default) or "session" (SCREENPILOT_MAC_TAP, for diagnosing filtered events). */
+const eventTap = () => (process.env.SCREENPILOT_MAC_TAP === "session" ? kCGSessionEventTap : kCGHIDEventTap);
 const kCGMouseEventClickState = 1;
 const kCGScrollEventUnitLine = 1;
 const kCGWindowListOptionOnScreenOnly = 1;
@@ -309,7 +313,7 @@ function bind(koffi: Koffi) {
       }
       if (!e) throw new Error(`Quartz could not create a ${ev.kind} event`);
       try {
-        fn.CGEventPost(kCGHIDEventTap, e);
+        fn.CGEventPost(eventTap(), e);
       } finally {
         release(e);
       }
@@ -345,6 +349,15 @@ function bind(koffi: Koffi) {
     },
 
     /** Accessibility permission for this process (really: for the app that launched it). */
+    /** Whether macOS lets this process post keyboard/mouse events (10.15+; part of the Accessibility grant). */
+    postEventAllowed(): boolean | undefined {
+      try {
+        return fn.CGPreflightPostEventAccess() as boolean;
+      } catch {
+        return undefined;
+      }
+    },
+
     axTrusted(): boolean {
       return !!fn.AXIsProcessTrusted();
     },
