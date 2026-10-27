@@ -86,3 +86,5 @@ Take tips: put `say` with `wait: true` before an important click so the viewer h
 - HyperFrames telemetry is disabled through env vars in `src/render/index.ts` (`hyperframesEnv()`); keep it that way for every HyperFrames subprocess.
 - The MCP server must never write to stdout except protocol messages; log to stderr.
 - Renaming the project: the name lives only in `src/brand.ts` (`APP`). Change it, add the old name to `PREVIOUS_NAMES` (users' config folder is moved over on first run), then update `package.json` (`name`, `bin`), the docs, and rename the GitHub repo.
+- Platforms: everything OS-specific is behind `src/platform` (`Desktop`, `Injector`, `Watcher`): `kde.ts` (portal + KWin) and `windows/` (Win32 via koffi). Recording backends are in `src/record/backends` (native: KDE PipeWire/GStreamer, Windows ffmpeg gdigrab; or OBS).
+- Windows is verified in CI by `pnpm smoke:windows` on a real runner; on a real PC run `pnpm windows:live` (doctor, smoke, a narrated take across monitors + render into `windows-live-report/`). `demoreel doctor [--input]` checks any machine.
