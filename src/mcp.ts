@@ -24,9 +24,11 @@ import { TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider } from "./voice/index.js";
 import { APP, named } from "./brand.js";
+import { useBundledTools } from "./bundle.js";
 import { findWindow, getDesktop } from "./platform/index.js";
 
 // stdout is the protocol channel: log to stderr only.
+useBundledTools(import.meta.url);
 const log = (msg: string) => process.stderr.write(`${APP}: ${msg}\n`);
 
 const MAX_IMAGES = 12;

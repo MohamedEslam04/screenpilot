@@ -20,8 +20,10 @@ import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider } from "./voice/index.js";
 import { APP } from "./brand.js";
+import { useBundledTools } from "./bundle.js";
 import { getDesktop } from "./platform/index.js";
 
+useBundledTools(import.meta.url);
 const log = (msg: string) => process.stderr.write(`${APP}: ${msg}\n`);
 const print = (data: unknown) => process.stdout.write(`${typeof data === "string" ? data : JSON.stringify(data, null, 2)}\n`);
 async function withDriver(fn: (d: Driver) => Promise<void>): Promise<void> {

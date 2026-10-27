@@ -39,3 +39,11 @@ export function configDir(app = APP, previous = PREVIOUS_NAMES): string {
   }
   return dir;
 }
+
+/** Env var naming where sessions go (the desktop extension sets it from its settings). */
+export const OUTPUT_ENV = `${APP.toUpperCase()}_OUTPUT`;
+
+/** Folder for new recording sessions: $SCREENPILOT_OUTPUT, else ./sessions. */
+export function sessionsRoot(): string {
+  return process.env[OUTPUT_ENV] || "sessions";
+}
