@@ -123,6 +123,21 @@
       "Tajawal:wght@500;700;800"
     ],
     "font": "'Inter', 'Tajawal', system-ui, sans-serif",
-    "css": "#frame { box-shadow: 0 40px 120px rgba(34,211,238,.16), 0 0 0 1px rgba(255,255,255,.08); }\n.text.pill > span { background: rgba(11,16,32,.82); border: 1px solid rgba(139,155,255,.45); border-radius: 20px; padding: 18px 36px 16px; box-shadow: 0 24px 70px rgba(0,0,0,.5); }\n.text .ln:first-child { font-size: 40px; font-weight: 800; color: #fff; letter-spacing: -0.01em; }\n.text .ln + .ln { font-family: 'Tajawal', sans-serif; font-size: 36px; font-weight: 700; color: #67e8f9; margin-top: 4px; }\n.card-inner { padding: 0 10%; }\n.card h1 { font-size: 128px; background: linear-gradient(90deg, #8b9bff, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }\n.card p { color: #c7d2fe; font-size: 42px; }\n.ripple { border-color: #22d3ee; box-shadow: 0 0 18px #22d3ee; }"
+    "css": "#frame { box-shadow: 0 40px 120px rgba(34,211,238,.16), 0 0 0 1px rgba(255,255,255,.08); }\n.text.pill > span { background: rgba(11,16,32,.82); border: 1px solid rgba(139,155,255,.45); border-radius: 20px; padding: 18px 36px 16px; box-shadow: 0 24px 70px rgba(0,0,0,.5); }\n.text .ln:first-child { font-size: 40px; font-weight: 800; color: #fff; letter-spacing: -0.01em; }\n.text .ln + .ln { font-family: 'Tajawal', sans-serif; font-size: 36px; font-weight: 700; color: #67e8f9; margin-top: 4px; }\n.card-inner { padding: 0 10%; }\n.card h1 { font-size: 128px; background: linear-gradient(90deg, #8b9bff, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }\n.card p { color: #c7d2fe; font-size: 42px; }\n.ripple { border-color: #22d3ee; box-shadow: 0 0 18px #22d3ee; }",
+    "motion": {
+      "captions": {
+        "in": "lines",
+        "out": "fade",
+        "duration": 0.45,
+        "ease": "expo.out",
+        "stagger": 0.22
+      },
+      "cards": {
+        "in": "words",
+        "duration": 0.6,
+        "ease": "expo.out",
+        "stagger": 0.12
+      }
+    }
   }
 }

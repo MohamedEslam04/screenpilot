@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderHtml } from "../src/render/html.js";
+import { motionJs, renderHtml, textMarkup } from "../src/render/html.js";
 import { buildPlan, frameBox } from "../src/render/plan.js";
 import { StoryboardSchema } from "../src/storyboard/schema.js";
 import { buildTimeline } from "../src/storyboard/timeline.js";
@@ -124,5 +124,40 @@ describe("styling chosen by the agent", () => {
   it("splits a caption into lines with their own direction", () => {
     const html = styled({}, [{ at: 0, text: "Hello\nمرحبا" }]);
     expect(html).toContain('<span class="ln" dir="auto">Hello</span><span class="ln" dir="auto">مرحبا</span>');
+  });
+});
+
+describe("text motion chosen by the agent", () => {
+  it("keeps the original look without a motion", () => {
+    const js = motionJs("#t", {}, 1, 4, "text", "Hi");
+    expect(js[0]).toContain("{ opacity: 0, y: 18 }");
+    expect(js[1]).toContain("opacity: 0, duration: 0.25");
+  });
+
+  it("uses the chosen presets, ease and duration", () => {
+    const js = motionJs("#t", { in: "pop", out: "slide-left", duration: 0.5 }, 1, 4, "text", "Hi");
+    expect(js[0]).toContain("scale: 0.6");
+    expect(js[0]).toContain('ease: "back.out(1.7)"');
+    expect(js[0]).toContain("duration: 0.5");
+    expect(js[1]).toContain("x: -90");
+    expect(motionJs("#t", { in: "none", out: "none" }, 1, 4, "text", "Hi")).toEqual([]);
+  });
+
+  it("reveals words one by one with a stagger", () => {
+    const js = motionJs("#t", { in: "words", stagger: 0.12 }, 1, 4, "text", "a b");
+    expect(js[0]).toContain('"#t .w"');
+    expect(js[0]).toContain("stagger: 0.12");
+  });
+
+  it("wipes in reading direction", () => {
+    expect(motionJs("#t", { in: "wipe" }, 0, 3, "text", "Hello")[0]).toContain("inset(0 100% 0 0)");
+    expect(motionJs("#t", { in: "wipe" }, 0, 3, "text", "مرحبا")[0]).toContain("inset(0 0 0 100%)");
+  });
+
+  it("keeps an English run inside Arabic as one word block (its order survives)", () => {
+    const html = textMarkup("بيشتغل من غير API key خالص", true);
+    expect(html).toContain('<span class="w">API key</span>');
+    expect(html).toContain('<span class="w">بيشتغل</span>');
+    expect(textMarkup("Hello world", true)).toBe('<span dir="auto"><span class="w">Hello</span> <span class="w">world</span></span>');
   });
 });

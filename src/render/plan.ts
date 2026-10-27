@@ -1,4 +1,4 @@
-import type { Storyboard, Theme, View } from "../storyboard/schema.js";
+import type { Motion, Storyboard, Theme, View } from "../storyboard/schema.js";
 import type { Timeline } from "../storyboard/timeline.js";
 import type { VoiceClip } from "../voice/index.js";
 import { type CamTween, FULL, planCamera, planViewCamera, type Rect, type ViewSpan, type ZoomSpan } from "./zoom.js";
@@ -20,6 +20,7 @@ export interface TextItem {
   style: "pill" | "title" | "callout" | "subtitle";
   x?: number;
   y?: number;
+  motion?: Motion;
 }
 
 export interface HighlightItem {
@@ -149,7 +150,7 @@ export function buildPlan(input: PlanInput): RenderPlan {
   for (const c of sb.captions) {
     const m = tl.mapSpan(c.at, c.dur);
     if (!m) continue;
-    texts.push({ start: m.start, end: m.end, text: c.text, position: c.position, style: c.style, x: c.x, y: c.y });
+    texts.push({ start: m.start, end: m.end, text: c.text, position: c.position, style: c.style, x: c.x, y: c.y, motion: c.motion });
   }
 
   const audio: AudioItem[] = [];

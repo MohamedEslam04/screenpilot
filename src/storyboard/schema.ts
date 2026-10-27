@@ -49,12 +49,25 @@ export const ViewSchema = z
   })
   .refine((v) => (v.screen === undefined) !== (v.rect === undefined), { message: "a view needs exactly one of screen or rect" });
 
+export const MOTION_PRESETS = ["none", "fade", "rise", "drop", "slide-left", "slide-right", "pop", "zoom", "blur", "wipe", "words", "lines"] as const;
+
+export const MotionSchema = z
+  .object({
+    in: z.enum(MOTION_PRESETS).optional().describe("Entrance: words/lines reveal one word/line at a time (any script, Arabic too); wipe uncovers in reading direction"),
+    out: z.enum(MOTION_PRESETS).optional().describe("Exit (words/lines exit like fade)"),
+    duration: z.number().min(0).max(3).optional().describe("Seconds per entrance (default 0.3)"),
+    ease: z.string().optional().describe('GSAP ease, e.g. "power3.out", "back.out(1.7)", "expo.out", "elastic.out(1,0.5)"'),
+    stagger: z.number().min(0).max(1).optional().describe("Seconds between words/lines for words/lines (default 0.08)"),
+  })
+  .describe("How text moves in and out; the agent picks it to fit the video");
+
 export const CaptionSchema = z.object({
   at: time,
   dur: z.number().positive().default(3),
   text: z.string().min(1),
   position: z.enum(["bottom", "top", "center"]).default("bottom"),
   style: z.enum(["pill", "title", "callout"]).default("pill"),
+  motion: MotionSchema.optional().describe("Overrides theme.motion.captions for this caption"),
   // Only for style "callout": anchor point the bubble points at.
   x: norm.optional(),
   y: norm.optional(),
@@ -93,6 +106,12 @@ export const ThemeSchema = z.object({
   captionColor: z.string().default("#ffffff"),
   captionBackground: z.string().default("rgba(15, 23, 42, 0.82)"),
   clickRipples: z.boolean().default(true).describe("Draw a ripple on every recorded click (needs events.jsonl)"),
+  motion: z
+    .object({
+      captions: MotionSchema.optional().describe("Default for captions and subtitles"),
+      cards: MotionSchema.optional().describe("Intro/outro title and subtitle"),
+    })
+    .default({}),
   fonts: z
     .array(z.string().min(1))
     .default([])
@@ -157,6 +176,7 @@ export type Zoom = z.output<typeof ZoomSchema>;
 export type Screen = z.output<typeof ScreenSchema>;
 export type View = z.output<typeof ViewSchema>;
 export type Caption = z.output<typeof CaptionSchema>;
+export type Motion = z.output<typeof MotionSchema>;
 export type Narration = z.output<typeof NarrationSchema>;
 export type Highlight = z.output<typeof HighlightSchema>;
 export type Theme = z.output<typeof ThemeSchema>;
