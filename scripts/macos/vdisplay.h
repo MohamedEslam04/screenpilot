@@ -9,13 +9,13 @@
 @property(readonly, nonatomic) unsigned int width;
 @property(readonly, nonatomic) unsigned int height;
 @property(readonly, nonatomic) double refreshRate;
-- (instancetype)initWithWidth:(unsigned int)width height:(unsigned int)height refreshRate:(double)refreshRate;
+- (nonnull instancetype)initWithWidth:(unsigned int)width height:(unsigned int)height refreshRate:(double)refreshRate;
 @end
 
 @interface CGVirtualDisplaySettings : NSObject
 @property(nonatomic) unsigned int hiDPI;
 @property(retain, nonatomic) NSArray<CGVirtualDisplayMode *> *modes;
-- (instancetype)init;
+- (nonnull instancetype)init;
 @end
 
 @interface CGVirtualDisplayDescriptor : NSObject
@@ -27,7 +27,7 @@
 @property(nonatomic) unsigned int vendorID;
 @property(nonatomic) unsigned int productID;
 @property(nonatomic) unsigned int serialNum;
-- (instancetype)init;
+- (nonnull instancetype)init;
 @end
 
 @interface CGVirtualDisplay : NSObject
