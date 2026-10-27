@@ -24,6 +24,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke:windows": "tsx scripts/windows-smoke.ts",
+    "smoke:macos": "tsx scripts/macos-smoke.ts",
     "deps:latest": "pnpm update --latest && pnpm outdated",
     "windows:live": "tsx scripts/windows-live.ts",
     "package": "tsx scripts/build-mcpb.ts"

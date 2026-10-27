@@ -11,7 +11,7 @@ Turn a screen recording of any desktop app into a polished demo MP4. You write `
 
 ## Workflow
 
-1. Record (or use an existing video): `screenpilot record` -> session dir with video, `events.jsonl` and `windows.jsonl`. Records natively by default (KDE PipeWire/GStreamer, Windows ffmpeg); `--recorder obs` uses OBS instead. `screenpilot doctor` checks the setup.
+1. Record (or use an existing video): `screenpilot record` -> session dir with video, `events.jsonl` and `windows.jsonl`. Records natively by default (KDE PipeWire/GStreamer, Windows and macOS ffmpeg); `--recorder obs` uses OBS instead. `screenpilot doctor` checks the setup.
    `--fit-window <class or title>` resizes that window to 16:9 for the recording (restored after) so window framing shows it whole.
    If `record` warns it assumed which monitor OBS records and that was wrong: `screenpilot remap <session> --screen <name>` (names in meta.json `screens`).
 2. Analyze: `screenpilot analyze <session-dir|video>` -> idle spans, clicks, suggested segments/zooms, contact sheet image. View the contact sheet.
@@ -68,6 +68,8 @@ The real mouse and keyboard are used: tell the user to keep their hands off (tou
 }
 ```
 
+On macOS, shortcuts use `cmd` (`cmd+l`, `cmd+c`), not `ctrl`, and the AI app needs Accessibility and Screen Recording permission (errors name the app and the settings pane).
+
 Take tips: put `say` with `wait: true` before an important click so the viewer hears it first; keep 0.3-1 s `wait`s after navigation; use `waitFor` instead of long waits; keep takes under ~90 s. `say` lines default to `voice.name`; override per line with `voice`.
 
 ## Style
@@ -86,6 +88,7 @@ Take tips: put `say` with `wait: true` before an important click so the viewer h
 - HyperFrames telemetry is disabled through env vars in `src/render/index.ts` (`hyperframesEnv()`); keep it that way for every HyperFrames subprocess.
 - The MCP server must never write to stdout except protocol messages; log to stderr.
 - Renaming the project: the name lives only in `src/brand.ts` (`APP`). Change it, add the old name to `PREVIOUS_NAMES` (users' config folder is moved over on first run), then update `package.json` (`name`, `bin`), the docs, and rename the GitHub repo.
-- Platforms: everything OS-specific is behind `src/platform` (`Desktop`, `Injector`, `Watcher`): `kde.ts` (portal + KWin) and `windows/` (Win32 via koffi). Recording backends are in `src/record/backends` (native: KDE PipeWire/GStreamer, Windows ffmpeg gdigrab; or OBS).
+- Platforms: everything OS-specific is behind `src/platform` (`Desktop`, `Injector`, `Watcher`): `kde.ts` (portal + KWin), `windows/` (Win32 via koffi) and `macos/` (Quartz + Accessibility API via koffi, JXA for NSScreen names). Recording backends are in `src/record/backends` (native: KDE PipeWire/GStreamer, Windows ffmpeg gdigrab, macOS ffmpeg avfoundation; or OBS).
+- macOS coordinates are points (Quartz global space), never pixels; only the avfoundation recorder and screenshots deal with Retina pixels (`src/platform/macos/geometry.ts` explains). Permission errors name the host app (`src/platform/macos/permissions.ts`). Verified in CI by `pnpm smoke:macos` (`.github/workflows/macos.yml`); checks blocked by missing permissions are reported, not failed.
 - End users are not developers: they get a release package and run `screenpilot setup` (`src/setup`). It registers the server with every AI client it finds (`src/setup/clients.ts`: one entry per client with its config path and format). Config edits must keep the user's comments and other entries (jsonc-parser for JSON, a table rewrite for Codex TOML), and the file is backed up first. Test setup only with a fake `HOME`/`APPDATA`, never against real configs. Adding a client = one `CLIENTS` entry + a test. The MCP server's `instructions` (in `src/mcp.ts`) carry the workflow for clients without the skill.
 - Windows is verified in CI by `pnpm smoke:windows` on a real runner; on a real PC run `pnpm windows:live` (doctor, smoke, a narrated take across monitors + render into `windows-live-report/`). `screenpilot doctor [--input]` checks any machine.

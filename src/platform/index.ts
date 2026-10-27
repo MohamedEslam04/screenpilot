@@ -10,11 +10,13 @@ export async function getDesktop(): Promise<Desktop> {
   if (cached) return cached;
   if (process.platform === "win32") {
     cached = (await import("./windows/desktop.js")).windowsDesktop;
+  } else if (process.platform === "darwin") {
+    cached = (await import("./macos/desktop.js")).macosDesktop;
   } else if (process.platform === "linux" && isKde()) {
     cached = (await import("./kde.js")).kdeDesktop;
   } else {
     throw new Error(
-      `Desktop control is supported on KDE Plasma and Windows (this is ${process.platform}${process.env.XDG_CURRENT_DESKTOP ? ` / ${process.env.XDG_CURRENT_DESKTOP}` : ""}).`,
+      `Desktop control is supported on KDE Plasma, Windows and macOS (this is ${process.platform}${process.env.XDG_CURRENT_DESKTOP ? ` / ${process.env.XDG_CURRENT_DESKTOP}` : ""}).`,
     );
   }
   return cached;

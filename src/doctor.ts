@@ -36,8 +36,13 @@ function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
 const firstLine = (s: string) => s.split("\n")[0]?.trim() ?? "";
 
 async function tool(bin: string): Promise<{ ok: boolean; detail: string }> {
-  const { stdout } = await run(bin, ["-version"]);
-  return { ok: true, detail: firstLine(stdout) };
+  try {
+    const { stdout } = await run(bin, ["-version"]);
+    return { ok: true, detail: firstLine(stdout) };
+  } catch (err) {
+    if (process.platform !== "darwin") throw err;
+    return { ok: false, detail: `${bin} not found. Install it with Homebrew: \`brew install ffmpeg\` (see https://brew.sh), then restart the AI app.` };
+  }
 }
 
 /** Moves the real pointer: only runs when asked. */
@@ -76,6 +81,34 @@ async function obsCheck(): Promise<Omit<Check, "name">> {
   }
 }
 
+type Add = (name: string, fn: () => Promise<Omit<Check, "name"> | { ok: boolean; detail: string }>) => Promise<void>;
+
+/** macOS privacy permissions (granted to the app that starts us) and avfoundation, with exact fix steps. */
+async function macChecks(add: Add): Promise<void> {
+  const { quartz } = await import("./platform/macos/quartz.js");
+  const { hostApp, permissionHelp } = await import("./platform/macos/permissions.js");
+  const { listAvfoundationScreens } = await import("./record/backends/macos-avfoundation.js");
+  const app = await hostApp();
+  await add("accessibility", async () => {
+    const ok = (await quartz()).axTrusted();
+    return { ok, detail: ok ? `allowed for ${app} (mouse, keyboard, windows)` : permissionHelp("accessibility", app) };
+  });
+  await add("screen recording", async () => {
+    const ok = (await quartz()).screenCaptureAllowed();
+    return { ok, detail: ok ? `allowed for ${app} (recording, screenshots, window titles)` : permissionHelp("screen", app) };
+  });
+  await add("input monitoring", async () => {
+    const access = (await quartz()).inputMonitoring();
+    if (access === "granted") return { ok: true, detail: `allowed for ${app} (click logging)` };
+    // Optional: without it recordings simply have no click ripples/zooms from real clicks.
+    return { ok: true, skipped: true, detail: `${access} (optional). ${permissionHelp("input", app)}` };
+  });
+  await add("avfoundation", async () => {
+    const screens = await listAvfoundationScreens();
+    return { ok: screens.length > 0, detail: screens.length ? `${screens.length} capture screen(s)` : "ffmpeg lists no \"Capture screen\" devices (is ffmpeg built with avfoundation?)" };
+  });
+}
+
 export async function doctor(opts: { input?: boolean } = {}): Promise<DoctorReport> {
   const checks: Check[] = [];
   const add = async (name: string, fn: () => Promise<Omit<Check, "name"> | { ok: boolean; detail: string }>) => {
@@ -100,7 +133,14 @@ export async function doctor(opts: { input?: boolean } = {}): Promise<DoctorRepo
   await add("windows", async () => ({ ok: true, detail: `${(await (await getDesktop()).listWindows()).length} windows listed` }));
   await add("input injection", async () => (opts.input ? inputCheck() : skip("pass --input to test (it moves the real pointer)")));
   await add("obs", obsCheck);
-  await add("demo browser", async () => ({ ok: true, detail: findBrowser() }));
+  await add("demo browser", async () => {
+    try {
+      return { ok: true, detail: findBrowser() };
+    } catch (err) {
+      if (process.platform !== "darwin") throw err;
+      return { ok: false, detail: `${(err as Error).message} Install Google Chrome (https://www.google.com/chrome) into /Applications.` };
+    }
+  });
   await add("edge tts", async () => {
     const voices = await withTimeout(getProvider("edge").listVoices(), 10_000, "Edge TTS");
     return { ok: voices.length > 0, detail: `${voices.length} voices` };
@@ -123,6 +163,8 @@ export async function doctor(opts: { input?: boolean } = {}): Promise<DoctorRepo
       return { ok: true, skipped: true, detail: "gst-launch-1.0 not found (informational)" };
     }
   });
+
+  if (process.platform === "darwin") await macChecks(add);
 
   const skipped = checks.filter((c) => c.skipped).length;
   const failed = checks.filter((c) => !c.ok).length;
