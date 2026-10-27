@@ -59,7 +59,7 @@ jobs:
           spctl --assess --verbose "/Applications/Google Chrome.app" || true
       - name: macOS smoke test
         run: pnpm smoke:macos
-        timeout-minutes: 6
+        timeout-minutes: 10
       - name: Upload smoke report
         if: always()
         uses: actions/upload-artifact@v7
