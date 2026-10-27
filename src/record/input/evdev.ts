@@ -47,6 +47,21 @@ export function parseEvents(buf: Buffer): ButtonEvent[] {
   return out;
 }
 
+const canRead = (path: string) => {
+  try {
+    accessSync(path, constants.R_OK);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/** Mouse event devices, and how many of them we may read (needs the `input` group). */
+export async function mouseAccess(): Promise<{ devices: string[]; readable: string[] }> {
+  const devices = parseMouseDevices(await readFile("/proc/bus/input/devices", "utf8"));
+  return { devices, readable: devices.filter(canRead) };
+}
+
 export class EvdevButtons {
   private children: ChildProcess[] = [];
   readonly warnings: string[] = [];
@@ -58,15 +73,7 @@ export class EvdevButtons {
    * through fs streams would pin libuv's small thread pool; pipes do not.
    */
   async start(): Promise<number> {
-    const devices = parseMouseDevices(await readFile("/proc/bus/input/devices", "utf8"));
-    const readable = devices.filter((d) => {
-      try {
-        accessSync(d, constants.R_OK);
-        return true;
-      } catch {
-        return false;
-      }
-    });
+    const { devices, readable } = await mouseAccess();
     for (const dev of readable) {
       const child = spawn("cat", [dev], { stdio: ["ignore", "pipe", "ignore"] });
       let pending = Buffer.alloc(0);

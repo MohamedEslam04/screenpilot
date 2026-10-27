@@ -28,3 +28,36 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+
+  # The X11 backend end to end on a real X server: Xvfb + openbox (EWMH),
+  # XTest input, a Tk window as the typing target, ffmpeg x11grab recording.
+  x11:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6 # version from package.json "packageManager"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install Xvfb, openbox, Tk and ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb xauth openbox python3-tk ffmpeg fonts-dejavu-core
+      - run: pnpm install --frozen-lockfile
+      - name: X11 smoke test
+        env:
+          LANG: C.UTF-8
+        run: |
+          xvfb-run -a -s "-screen 0 1280x800x24" sh -c '
+            openbox & sleep 1
+            unset WAYLAND_DISPLAY
+            XDG_SESSION_TYPE=x11 pnpm smoke:x11'
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: x11-smoke-report
+          path: x11-smoke-report/
+          if-no-files-found: warn

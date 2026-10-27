@@ -131,6 +131,7 @@ async function fitWindow(match: string, aspect = 16 / 9): Promise<{ window: Wind
 
 export const macosDesktop: Desktop = {
   id: "macos",
+  windowControl: true,
 
   async screens() {
     return (await displays()).map((d) => d.screen);

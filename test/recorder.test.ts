@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { canvasFor } from "../src/record/backend.js";
-import { buildPipeline } from "../src/record/backends/kde-pipewire.js";
+import { buildPipeline } from "../src/record/backends/pipewire.js";
 import { chooseScreens } from "../src/record/index.js";
 
 const screens = [

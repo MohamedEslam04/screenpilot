@@ -20,7 +20,7 @@ Each step has an MCP tool and a CLI form (`screenpilot ...`, or `node /abs/path/
 
 1. **Record** (skip if the user gave a video).
    MCP `record_start` (dir?, input?, screen?, obsUrl?, obsPassword?) -> user performs the demo -> `record_stop`.
-   CLI `screenpilot record` (Enter or Ctrl+C to finish, or `--duration <s>`; `--screen eDP-1` on multi-monitor setups). Records natively by default (no OBS needed: KDE PipeWire/GStreamer, Windows ffmpeg); `recorder: "obs"` / `--recorder obs` uses OBS. Run `doctor` first if anything is off.
+   CLI `screenpilot record` (Enter or Ctrl+C to finish, or `--duration <s>`; `--screen eDP-1` on multi-monitor setups). Records natively by default (no OBS needed: Wayland portal PipeWire/GStreamer, X11 and Windows ffmpeg); `recorder: "obs"` / `--recorder obs` uses OBS. Run `doctor` first if anything is off.
    Result: a session dir with the video, `events.jsonl` (pointer and clicks) and meta.
    To frame one window cleanly, pass `fitWindow` (MCP) / `--fit-window <class or title>` (CLI): it is resized to 16:9 during the recording and put back after.
    (OBS only) If record_stop warns that it assumed which monitor OBS records, check the frames; if the pointer does not line up, MCP `remap` (dir, screen) / CLI `screenpilot remap <session> --screen <name>`.
@@ -37,11 +37,11 @@ Each step has an MCP tool and a CLI form (`screenpilot ...`, or `node /abs/path/
 9. **Iterate** steps 5-8. Change one kind of thing at a time (timing, then zooms, then wording).
 10. **Final render** with quality `delivery`: `screenpilot render <storyboard> -q delivery -o demo.mp4`. Tell the user the output path, duration and any warnings.
 
-## Optional: you perform the demo (KDE Wayland)
+## Optional: you perform the demo (KDE Wayland, X11, GNOME Wayland, Windows)
 
 Instead of asking the user to perform the demo, drive the desktop yourself and let screenpilot record it. Loop: **explore -> rehearse -> perform -> review storyboard -> render** (then the normal loop above, from step 2).
 
-Requirements: KDE Wayland; the user approves the KDE "remote control" dialog once (select all monitors; token saved in `~/.config/screenpilot/state.json`); recording is native (OBS optional, with one capture source per monitor and `--map "Source=MONITOR"` if names don't match). On Windows driving works via SendInput (elevated apps need an elevated tool).
+Requirements: KDE Wayland; the user approves the KDE "remote control" dialog once (select all monitors; token saved in `~/.config/screenpilot/state.json`); recording is native (OBS optional, with one capture source per monitor and `--map "Source=MONITOR"` if names don't match). On Windows driving works via SendInput (elevated apps need an elevated tool). X11 sessions (any desktop) use XTest with no dialog. GNOME and other Wayland desktops use the same portal dialog as KDE but have no window control: use `{screen, x, y}` targets only (no focus, waitForWindow, window or web targets). sway/Hyprland cannot be driven (recording works).
 
 Rules for every drive tool: coordinates are normalized 0..1 per monitor; take a screenshot first, act, then screenshot again to verify; the real mouse and keyboard are used, so ask the user not to touch them (touching the mouse aborts); prefer `{web: selector}` targets inside the demo browser; secrets only as `{env: NAME}`, never as literal text.
 
@@ -145,6 +145,6 @@ What each part does:
 - Start with a rough pass (segments + narration), review a draft, then add zooms and captions.
 
 ## Platform notes
-- Works on KDE Plasma (Wayland) and Windows 10/11. Run MCP `doctor` / CLI `screenpilot doctor` first on a new machine.
+- Works on KDE Plasma (Wayland), any X11 desktop, GNOME and other Wayland desktops (recording + screen-target driving; no window control), and Windows 10/11. Run MCP `doctor` / CLI `screenpilot doctor` first on a new machine.
 - Take step `{ "open": "<file or URL>" }` opens it with the default app on any OS (prefer it over `run` with xdg-open/start).
 - On Windows, apps running as administrator cannot be driven from a non-admin process.
