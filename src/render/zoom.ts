@@ -78,16 +78,21 @@ export interface ViewSpan {
   start: number; // output seconds; the first view is the initial one, its start is ignored
   rect: Rect; // normalized to the full source video
   cut: boolean;
+  /** Fill the frame with the rect, trimming its edges (windows), instead of showing all of it (monitors). */
+  cover?: boolean;
 }
 
 export const FULL: Rect = { x: 0, y: 0, w: 1, h: 1 };
 
 /**
  * Transform that fits normalized `rect` of the full video (drawn `cam` px big
- * in its own box) inside `frame`, centered. Letterboxes when aspects differ.
+ * in its own box) inside `frame`, centered. Letterboxes when aspects differ,
+ * or with `cover` fills the frame and trims the rect's longer side instead.
  */
-export function camForRect(rect: Rect, frame: { w: number; h: number }, cam: { w: number; h: number }): CamState {
-  const scale = Math.min(frame.w / (rect.w * cam.w), frame.h / (rect.h * cam.h));
+export function camForRect(rect: Rect, frame: { w: number; h: number }, cam: { w: number; h: number }, cover = false): CamState {
+  const sx = frame.w / (rect.w * cam.w);
+  const sy = frame.h / (rect.h * cam.h);
+  const scale = cover ? Math.max(sx, sy) : Math.min(sx, sy);
   const x = frame.w / 2 - scale * (rect.x + rect.w / 2) * cam.w;
   const y = frame.h / 2 - scale * (rect.y + rect.h / 2) * cam.h;
   return { x: round(x), y: round(y), scale: round(scale) };
@@ -123,7 +128,8 @@ export function planViewCamera(
   const [first, ...rest] = [...views].sort((a, b) => a.start - b.start);
   if (!first) return [];
   let view = first.rect;
-  const tweens: CamTween[] = [{ t: 0, dur: 0, ...camForRect(view, frame, cam) }];
+  let cover = first.cover ?? false;
+  const tweens: CamTween[] = [{ t: 0, dur: 0, ...camForRect(view, frame, cam, cover) }];
   type Ev = { at: number; view: ViewSpan } | { at: number; zoom: ZoomSpan };
   const events: Ev[] = [
     ...rest.map((v) => ({ at: v.start, view: v })),
@@ -134,7 +140,8 @@ export function planViewCamera(
   events.forEach((ev, i) => {
     if ("view" in ev) {
       view = ev.view.rect;
-      const target = camForRect(view, frame, cam);
+      cover = ev.view.cover ?? false;
+      const target = camForRect(view, frame, cam, cover);
       if (ev.view.cut) {
         const t = ev.view.start;
         // A running tween must not fight the instant set.
@@ -153,7 +160,7 @@ export function planViewCamera(
       return;
     }
     const z = ev.zoom;
-    const target = camForRect(zoomRect(view, z.x, z.y, z.scale), frame, cam);
+    const target = camForRect(zoomRect(view, z.x, z.y, z.scale), frame, cam, cover);
     const t = Math.max(busyUntil, z.start - tr, 0);
     const dur = Math.max(0.2, Math.min(tr, z.end - t));
     tweens.push({ t: round(t), dur: round(dur), ...target });
@@ -164,7 +171,7 @@ export function planViewCamera(
     const nextIsView = next !== undefined && "view" in next;
     if (!next || (nextIsView ? next.at - z.end > panGap : gap > panGap)) {
       const outT = Math.max(z.end, busyUntil);
-      tweens.push({ t: round(outT), dur: tr, ...camForRect(view, frame, cam) });
+      tweens.push({ t: round(outT), dur: tr, ...camForRect(view, frame, cam, cover) });
       busyUntil = outT + tr;
     } else {
       busyUntil = Math.max(busyUntil, z.end);

@@ -367,8 +367,7 @@ server.registerTool(
     if (!w) throw new Error(`No window matching "${match}"`);
     const s = screen ? d.screens().find((x) => x.name === screen) : undefined;
     if (screen && !s) throw new Error(`Unknown monitor "${screen}" (have: ${d.screens().map((x) => x.name).join(", ")})`);
-    const m = s ? Math.round(Math.min(s.w, s.h) * 0.03) : 0;
-    await focusWindow(w.id, s ? { x: s.x + m, y: s.y + m, w: s.w - 2 * m, h: s.h - 2 * m } : undefined);
+    await focusWindow(w.id, s ? { screen: s.name } : undefined);
     await new Promise((r) => setTimeout(r, 350));
     return { focused: w.caption };
   }),

@@ -154,7 +154,11 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
   const a = await analyze(recResult.dir);
   const sb = JSON.parse(await readFile(storyboard, "utf8")) as Record<string, unknown>;
   sb.zooms = a.suggestedZooms;
-  if (Array.isArray(sb.screens) && (sb.screens as unknown[]).length) sb.views = views.length ? views : (a.suggestedViews ?? []);
+  const hasScreens = Array.isArray(sb.screens) && (sb.screens as unknown[]).length > 0;
+  if (views.length && hasScreens) sb.views = views;
+  else if (take.camera === "window" && a.suggestedWindowViews?.length) sb.views = a.suggestedWindowViews;
+  else if (take.camera !== "all" && hasScreens) sb.views = a.suggestedViews ?? [];
+  else sb.views = [];
   sb.narration = narration;
   sb.captions = captions;
   sb.voice = { name: take.voice.name, rate: take.voice.rate, gap: take.voice.gap };
@@ -243,8 +247,7 @@ async function runStep(step: Step, { driver: d, log, baseDir }: StepContext): Pr
     const w = findWindow(await listWindows(), step.focus.match);
     if (!w) throw new Error(`No window matching "${step.focus.match}"`);
     const s = step.focus.screen ? d.screens().find((x) => x.name === step.focus.screen) : undefined;
-    const m = s ? Math.round(Math.min(s.w, s.h) * 0.03) : 0;
-    await focusWindow(w.id, s ? { x: s.x + m, y: s.y + m, w: s.w - 2 * m, h: s.h - 2 * m } : undefined);
+    await focusWindow(w.id, s ? { screen: s.name } : undefined);
     await sleep(350);
   } else if ("run" in step) {
     const [cmd, ...args] = step.run.map(expandHome);

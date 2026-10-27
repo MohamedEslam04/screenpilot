@@ -3,7 +3,8 @@ import { basename, join, resolve } from "node:path";
 import { probeVideo } from "../util/media.js";
 import { startAdapter } from "./input/index.js";
 import { type Rect, type ScreenInfo, screenAt, screenForSourceName } from "./input/types.js";
-import { normalizeEvents } from "./normalize.js";
+import { KwinAdapter } from "./input/kwin.js";
+import { normalizeEvents, normalizeWindows } from "./normalize.js";
 import { quietNotifications } from "./quiet.js";
 import { closeNotificationPopups } from "../drive/kwinscript.js";
 import { detectLayout } from "../drive/see.js";
@@ -161,6 +162,9 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
           await writeJsonl(eventsPath, events);
           await writeJsonl(join(dir, "pointer.raw.jsonl"), raw);
         }
+        // Active window over time, in recording coordinates (for window-framed views).
+        const focus = a instanceof KwinAdapter ? normalizeWindows(a.focus, obs.startedAt, screen, capture.contentRect) : [];
+        if (focus.length) await writeJsonl(join(dir, "windows.jsonl"), focus);
         const info = await probeVideo(output);
         const metaPath = join(dir, "meta.json");
         await writeFile(
@@ -170,6 +174,7 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
               version: 1,
               video: basename(output),
               events: eventsPath ? "events.jsonl" : null,
+              windows: focus.length ? "windows.jsonl" : null,
               recordedAt: new Date(Date.now() - info.duration * 1000).toISOString(),
               inputAdapter: a.id,
               screen,

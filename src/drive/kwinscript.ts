@@ -82,11 +82,30 @@ export function findWindow(windows: WindowInfo[], match: string): WindowInfo | u
   return windows.find((w) => w.resourceClass.toLowerCase().includes(m)) ?? windows.find((w) => w.caption.toLowerCase().includes(m));
 }
 
-/** Raise + focus a window; optionally move/resize its frame onto a monitor rect. */
-export async function focusWindow(id: string, place?: { x: number; y: number; w: number; h: number }): Promise<void> {
-  const geo = place
-    ? `w.frameGeometry = { x: ${Math.round(place.x)}, y: ${Math.round(place.y)}, width: ${Math.round(place.w)}, height: ${Math.round(place.h)} };`
-    : "";
+/**
+ * Raise + focus a window. `place` either gives an exact frame rect, or a
+ * monitor whose usable area (without panels) the window should fill, inset by
+ * `margin` (fraction of the shorter side) so it never sits under a panel.
+ */
+export async function focusWindow(
+  id: string,
+  place?: { x: number; y: number; w: number; h: number } | { screen: string; margin?: number; aspect?: number },
+): Promise<void> {
+  let geo = "";
+  if (place && "screen" in place) {
+    // Default 16:9 so a window-framed camera shows it whole with nothing cropped.
+    geo = `
+var out = workspace.screens.filter(function (o) { return o.name === ${JSON.stringify(place.screen)}; })[0];
+if (out) {
+  var a = workspace.clientArea(KWin.MaximizeArea, out, workspace.currentDesktop);
+  var m = Math.round(Math.min(a.width, a.height) * ${place.margin ?? 0.02});
+  var bw = a.width - 2 * m, bh = a.height - 2 * m, r = ${place.aspect ?? 16 / 9};
+  var ww = Math.min(bw, Math.round(bh * r)), hh = Math.min(bh, Math.round(ww / r));
+  w.frameGeometry = { x: a.x + Math.round((a.width - ww) / 2), y: a.y + Math.round((a.height - hh) / 2), width: ww, height: hh };
+}`;
+  } else if (place) {
+    geo = `w.frameGeometry = { x: ${Math.round(place.x)}, y: ${Math.round(place.y)}, width: ${Math.round(place.w)}, height: ${Math.round(place.h)} };`;
+  }
   await runKwinScript(`
 var w = workspace.windowList().filter(function (x) { return String(x.internalId) === ${JSON.stringify(id)}; })[0];
 if (w) { if (w.minimized) w.minimized = false; ${geo} workspace.activeWindow = w; }

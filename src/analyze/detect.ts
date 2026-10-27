@@ -171,3 +171,78 @@ function round(n: number, d = 2): number {
   const f = 10 ** d;
   return Math.round(n * f) / f;
 }
+
+export interface WindowReport {
+  t: number;
+  id: string;
+  cls: string;
+  title: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface WindowView {
+  at: number;
+  rect: { x: number; y: number; w: number; h: number };
+  label: string;
+  transition: "pan";
+}
+
+const SHELL = /plasmashell|krunner|kwin|xdg-desktop-portal|polkit|spectacle/i;
+
+/**
+ * Camera views that frame the window being used: one view per stretch of
+ * time a window stays active (≥ minDwell), with a small margin, kept inside
+ * its monitor. Desktop shell surfaces and tiny windows are ignored.
+ */
+export function suggestWindowViews(
+  reports: WindowReport[],
+  opts: { minDwell?: number; margin?: number; screens?: ScreenRect[] } = {},
+): WindowView[] {
+  const minDwell = opts.minDwell ?? 0.6;
+  // No margin by default: anything around the window (panel, other apps) would show.
+  const margin = opts.margin ?? 0;
+  const usable = [...reports].filter((r) => !SHELL.test(r.cls) && r.w * r.h >= 0.03).sort((a, b) => a.t - b.t);
+
+  // Stretches: a new one when the window changes or moves/resizes noticeably.
+  type Stretch = { t: number; r: WindowReport };
+  const stretches: Stretch[] = [];
+  for (const r of usable) {
+    const last = stretches.at(-1);
+    const moved = last && Math.max(Math.abs(last.r.x - r.x), Math.abs(last.r.y - r.y), Math.abs(last.r.w - r.w), Math.abs(last.r.h - r.h)) > 0.02;
+    if (!last || last.r.id !== r.id || moved) {
+      // A window that settles quickly (e.g. placed right after opening) replaces itself.
+      if (last && last.r.id === r.id && r.t - last.t < minDwell) last.r = r;
+      else stretches.push({ t: r.t, r });
+    } else {
+      last.r = r;
+    }
+  }
+  // Drop flickers shorter than minDwell (but keep the last stretch).
+  const kept = stretches.filter((s, i) => i === stretches.length - 1 || stretches[i + 1]!.t - s.t >= minDwell);
+  const views: WindowView[] = [];
+  for (const s of kept) {
+    const prev = views.at(-1);
+    const rect = frameRect(s.r, margin, opts.screens);
+    if (prev && sameRect(prev.rect, rect)) continue;
+    views.push({ at: views.length === 0 ? 0 : round(s.t), rect, label: s.r.title, transition: "pan" });
+  }
+  return views;
+}
+
+function frameRect(r: WindowReport, margin: number, screens?: ScreenRect[]): { x: number; y: number; w: number; h: number } {
+  const cx = r.x + r.w / 2;
+  const cy = r.y + r.h / 2;
+  const b = screens?.find((s) => cx >= s.x && cx <= s.x + s.w && cy >= s.y && cy <= s.y + s.h) ?? { x: 0, y: 0, w: 1, h: 1 };
+  const x0 = Math.max(b.x, r.x - margin);
+  const y0 = Math.max(b.y, r.y - margin);
+  const x1 = Math.min(b.x + b.w, r.x + r.w + margin);
+  const y1 = Math.min(b.y + b.h, r.y + r.h + margin);
+  return { x: round(x0, 4), y: round(y0, 4), w: round(x1 - x0, 4), h: round(y1 - y0, 4) };
+}
+
+function sameRect(a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }): boolean {
+  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y), Math.abs(a.w - b.w), Math.abs(a.h - b.h)) < 0.005;
+}

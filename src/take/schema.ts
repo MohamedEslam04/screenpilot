@@ -50,6 +50,12 @@ export const TakeSchema = z.object({
   steps: z.array(StepSchema).min(1),
   /** Seconds kept after the last step / line. */
   tail: z.number().min(0).default(1),
+  /**
+   * Camera in the generated storyboard: "window" frames the window in use
+   * (no panel/tray), "screen" follows the monitor, "all" shows everything.
+   * Explicit `view` steps always win.
+   */
+  camera: z.enum(["window", "screen", "all"]).default("window"),
 });
 
 export type Take = z.output<typeof TakeSchema>;

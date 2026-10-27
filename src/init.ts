@@ -8,8 +8,14 @@ export interface InitOptions {
   out?: string;
   voice?: string;
   force?: boolean;
-  /** Pre-fill segments (idle cut) and zooms (from clicks) using `analyze`. */
+  /** Pre-fill segments (idle cut), zooms (from clicks) and camera views using `analyze`. */
   suggest?: boolean;
+  /**
+   * Camera framing for suggested views: "window" follows the window in use
+   * (hides the panel, tray and other windows), "screen" follows the monitor,
+   * "all" shows everything. Default "window".
+   */
+  frame?: "window" | "screen" | "all";
 }
 
 /** Write a starter storyboard.json for a video or a `demoreel record` session. */
@@ -28,7 +34,9 @@ export async function initStoryboard(target: string, o: InitOptions = {}): Promi
     const a = await analyze(target);
     segments = a.suggestedSegments;
     zooms = a.suggestedZooms;
-    if (screens.length) views = a.suggestedViews ?? [];
+    const frame = o.frame ?? "window";
+    if (frame === "window" && a.suggestedWindowViews?.length) views = a.suggestedWindowViews;
+    else if (frame !== "all" && screens.length) views = a.suggestedViews ?? [];
   }
 
   const sb = {
@@ -38,7 +46,8 @@ export async function initStoryboard(target: string, o: InitOptions = {}): Promi
     voice: { name: o.voice ?? "en-US-AndrewNeural" },
     segments,
     zooms,
-    ...(screens.length ? { screens: screens.map(({ name, x, y, w, h }) => ({ name, x, y, w, h })), views } : {}),
+    ...(screens.length ? { screens: screens.map(({ name, x, y, w, h }) => ({ name, x, y, w, h })) } : {}),
+    ...(views.length || screens.length ? { views } : {}),
     captions: [],
     narration: [],
   };
