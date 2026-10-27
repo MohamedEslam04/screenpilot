@@ -275,7 +275,7 @@ and look at (or send) `windows-live-report/`. `screenpilot doctor` alone reports
 
 ## macOS
 
-macOS 12+ on Apple Silicon and Intel. Recording, screenshots, driving (pointer, clicks, typing incl. Arabic and emoji, shortcuts), the window list, focusing/placing windows and the demo browser all work without OBS. You need ffmpeg (`brew install ffmpeg`) and Chrome, Edge or Brave in `/Applications` for web demos.
+macOS 12+ on Apple Silicon and Intel. Recording, screenshots, driving (pointer, clicks, typing incl. Arabic and emoji, shortcuts), the window list, focusing/placing windows and the demo browser all work without OBS. The macOS download includes ffmpeg; from source you need it yourself (`brew install ffmpeg`). Web demos need Chrome, Edge or Brave in `/Applications`.
 
 macOS asks for privacy permissions, and grants them to the app that starts ScreenPilot (Claude, Cursor, VS Code, Terminal...), not to ScreenPilot itself. Open System Settings > Privacy & Security and turn that app on under:
 

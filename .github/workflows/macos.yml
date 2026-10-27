@@ -27,7 +27,9 @@ concurrency:
 jobs:
   macos:
     runs-on: macos-latest # Apple Silicon
-    timeout-minutes: 15
+    # The job timeout also counts time spent queued for an Apple Silicon runner
+    # (often 10+ minutes); billed time is bounded by the step timeouts below.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6 # version from package.json "packageManager"
@@ -35,17 +37,16 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      # Homebrew's build is native arm64 with avfoundation, VideoToolbox and x264 (what we tell users to install).
+      # The same static ffmpeg build the macOS package bundles.
       - name: Install ffmpeg
-        run: brew install ffmpeg
-        env:
-          HOMEBREW_NO_AUTO_UPDATE: "1"
-          HOMEBREW_NO_INSTALL_CLEANUP: "1"
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
-        timeout-minutes: 6
+        uses: AnimMouse/setup-ffmpeg@v1
+        timeout-minutes: 5
       - run: pnpm install --frozen-lockfile
+        timeout-minutes: 5
       - run: pnpm typecheck
+        timeout-minutes: 3
       - run: pnpm test
+        timeout-minutes: 5
       # Real desktop session on the runner: displays, CGEvent pointer, windows,
       # TextEdit, the demo browser, screencapture/avfoundation. Checks that need
       # a privacy permission the runner lacks are reported as "blocked", not failed.
