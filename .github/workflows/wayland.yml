@@ -34,10 +34,15 @@ jobs:
             dbus-user-session dbus-x11 ffmpeg
       - name: Virtual GPU (xdg-desktop-portal-wlr needs a dmabuf screencopy format)
         continue-on-error: true
+        timeout-minutes: 3
         run: |
           uname -r
-          sudo apt-get install -y --no-install-recommends libgl1-mesa-dri "linux-modules-extra-$(uname -r)" || true
-          find /lib/modules/$(uname -r) -name 'vgem*' -o -name 'vkms*' -o -name 'udmabuf*' | head
+          cd "$(mktemp -d)"
+          apt-get download "linux-modules-extra-$(uname -r)" 2>&1 | tail -2
+          ls -la
+          dpkg-deb -c ./*.deb | grep -E 'vgem|vkms|udmabuf' || echo "no vgem/vkms/udmabuf in modules-extra"
+          sudo dpkg --unpack ./*.deb 2>&1 | tail -2
+          sudo depmod -a
           sudo modprobe vgem 2>&1 || true
           sudo modprobe vkms 2>&1 || true
           ls -la /dev/dri || true
