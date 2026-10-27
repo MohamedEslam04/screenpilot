@@ -232,4 +232,4 @@ CI: GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull requ
 
 ---
 
-Docs synced to commit 6d2be88 ("feat: record --fit-window resizes one window to 16:9 while recording", 2026-10-27).
+Docs synced to commit 532f18f ("docs: platforms, doctor, open step, windows:live", 2026-10-27).
