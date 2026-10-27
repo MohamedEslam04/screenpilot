@@ -18,7 +18,7 @@ export interface InitOptions {
   frame?: "window" | "screen" | "all";
 }
 
-/** Write a starter storyboard.json for a video or a `demoreel record` session. */
+/** Write a starter storyboard.json for a video or a `screenpilot record` session. */
 export async function initStoryboard(target: string, o: InitOptions = {}): Promise<{ storyboard: string; source: VideoInfo }> {
   const { video, events, dir, canvasScreens } = await resolveTarget(target);
   const info = await probeVideo(video);

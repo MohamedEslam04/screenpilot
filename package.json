@@ -1,12 +1,12 @@
 {
-  "name": "demoreel",
+  "name": "screenpilot",
   "version": "0.1.0",
-  "description": "Record any desktop app, let an AI agent write the storyboard, render a polished demo video (zooms, captions, voiceover).",
+  "description": "AI pilot for screen videos: records any desktop app (or drives it), then edits it into a polished video with zooms, captions and voiceover.",
   "type": "module",
   "license": "MIT",
   "bin": {
-    "demoreel": "dist/cli.js",
-    "demoreel-mcp": "dist/mcp.js"
+    "screenpilot": "dist/cli.js",
+    "screenpilot-mcp": "dist/mcp.js"
   },
   "files": [
     "dist",
