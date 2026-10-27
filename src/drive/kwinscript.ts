@@ -122,3 +122,42 @@ reply(n);
 `);
   return Number(n);
 }
+
+/**
+ * Resize a window to 16:9 inside its monitor's usable area so a
+ * window-framed camera shows it whole; returns a function that puts the
+ * window back where it was.
+ */
+export async function fitWindow(match: string, aspect = 16 / 9): Promise<{ window: WindowInfo; restore: () => Promise<void> }> {
+  const win = findWindow(await listWindows(), match);
+  if (!win) throw new Error(`No window matching "${match}" to fit`);
+  const before = JSON.parse(
+    await runKwinScript(`
+var w = workspace.windowList().filter(function (x) { return String(x.internalId) === ${JSON.stringify(win.id)}; })[0];
+var g = w.frameGeometry;
+reply(JSON.stringify({ x: g.x, y: g.y, w: g.width, h: g.height, max: w.maximizeMode !== undefined ? w.maximizeMode : 0 }));
+`),
+  ) as { x: number; y: number; w: number; h: number; max: number };
+  if (before.max) {
+    // A maximized window ignores geometry changes; un-maximize first.
+    await runKwinScript(`
+var w = workspace.windowList().filter(function (x) { return String(x.internalId) === ${JSON.stringify(win.id)}; })[0];
+if (w) w.setMaximize(false, false);
+reply("ok");
+`);
+  }
+  await focusWindow(win.id, { screen: win.output, aspect });
+  return {
+    window: win,
+    restore: async () => {
+      await runKwinScript(`
+var w = workspace.windowList().filter(function (x) { return String(x.internalId) === ${JSON.stringify(win.id)}; })[0];
+if (w) {
+  w.frameGeometry = { x: ${before.x}, y: ${before.y}, width: ${before.w}, height: ${before.h} };
+  if (${before.max} === 3) w.setMaximize(true, true);
+}
+reply("ok");
+`).catch(() => {});
+    },
+  };
+}

@@ -22,6 +22,7 @@ Each step has an MCP tool and a CLI form (`demoreel ...`, or `node /abs/path/dis
    MCP `record_start` (dir?, input?, screen?, obsUrl?, obsPassword?) -> user performs the demo -> `record_stop`.
    CLI `demoreel record` (Enter or Ctrl+C to finish, or `--duration <s>`; `--screen eDP-1` on multi-monitor setups). Needs OBS Studio running with its WebSocket server enabled.
    Result: a session dir with the video, `events.jsonl` (pointer and clicks) and meta.
+   To frame one window cleanly, pass `fitWindow` (MCP) / `--fit-window <class or title>` (CLI): it is resized to 16:9 during the recording and put back after.
    If record_stop warns that it assumed which monitor OBS records, check the frames; if the pointer does not line up, MCP `remap` (dir, screen) / CLI `demoreel remap <session> --screen <name>`.
 
 2. **Analyze.** MCP `analyze` (target = session dir or video). CLI `demoreel analyze <target>`.
