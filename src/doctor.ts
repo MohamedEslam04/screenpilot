@@ -77,7 +77,7 @@ async function obsCheck(): Promise<Omit<Check, "name">> {
   try {
     await withTimeout(obs.connect(cfg), 5000, "OBS connect");
   } catch (err) {
-    return skip(`OBS not reachable at ${cfg.url} (optional, needed to record): ${(err as Error).message}`);
+    return skip(`OBS not reachable at ${cfg.url} (optional: only for --recorder obs): ${(err as Error).message}`);
   }
   try {
     const v = await obs.client.call("GetVersion");
