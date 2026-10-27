@@ -81,17 +81,8 @@ const kCFNumberDoubleType = 13;
 const kCGEventSourceStateHIDSystemState = 1;
 const kCGHIDEventTap = 0;
 const kCGSessionEventTap = 1;
-/**
- * Where synthetic events enter. Key events go in at the session tap: on macOS 15
- * (seen on GitHub's runners) keys posted at the HID tap never reach the app, while
- * mouse events work there. SCREENPILOT_MAC_TAP=hid|session forces one for all events.
- */
-const eventTap = (kind: string) => {
-  const forced = process.env.SCREENPILOT_MAC_TAP;
-  if (forced === "hid") return kCGHIDEventTap;
-  if (forced === "session") return kCGSessionEventTap;
-  return kind === "key" ? kCGSessionEventTap : kCGHIDEventTap;
-};
+/** Where synthetic events enter: the HID tap, or the session tap with SCREENPILOT_MAC_TAP=session (diagnostics). */
+const eventTap = (_kind: string) => (process.env.SCREENPILOT_MAC_TAP === "session" ? kCGSessionEventTap : kCGHIDEventTap);
 const kCGMouseEventClickState = 1;
 const kCGScrollEventUnitLine = 1;
 const kCGWindowListOptionOnScreenOnly = 1;

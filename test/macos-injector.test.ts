@@ -14,17 +14,29 @@ const screens = [
   { name: "DELL U2720Q", x: -1920, y: 0, w: 1920, h: 1080 },
 ];
 
-function fake() {
+function fake(warmUpMs = 0) {
   const posted: MacEvent[] = [];
   let t = 0;
   const q = { post: (e: MacEvent) => void posted.push(e), cursor: () => ({ x: 7, y: 8 }) };
-  const inj = new MacInjector(q, screens, () => t);
+  const inj = new MacInjector(q, screens, () => t, warmUpMs);
   return { posted, inj, tick: (ms: number) => (t += ms) };
 }
 
 const mouse = (e: MacEvent) => (e.kind === "mouse" ? [e.type, e.x, e.y, e.clickState] : e.kind);
 
 describe("MacInjector", () => {
+  it("taps Shift once before the first key event (macOS drops the very first ones)", async () => {
+    const { posted, inj } = fake(1);
+    await inj.typeText("a", { before: () => {}, gap: () => 0 });
+    await inj.pressCombo("cmd+c");
+    const keys = posted.filter((e) => e.kind === "key").map((e) => (e.kind === "key" ? [e.keycode, e.down] : []));
+    expect(keys.slice(0, 2)).toEqual([
+      [0x38, true],
+      [0x38, false],
+    ]);
+    expect(keys.filter(([k]) => k === 0x38)).toHaveLength(2);
+  });
+
   it("moves on displays (points) and refuses gaps between them", async () => {
     const { posted, inj } = fake();
     expect(await inj.moveTo(-1000, 500.5)).toBe(true);

@@ -242,8 +242,8 @@ async function main(): Promise<void> {
     if (!driver || !textEdit) throw new Error("needs driver + TextEdit window");
     const q = await quartz();
     const notes = [`post-event access ${q.postEventAllowed()}`];
-    // The default (keys at the session tap) must work; the HID tap is tried after it for the report.
-    for (const tap of ["default", "hid"]) {
+    // The default must work on the first try (the injector warms the keyboard up); the session tap is a diagnostic fallback.
+    for (const tap of ["default", "session"]) {
       if (tap === "default") delete process.env.SCREENPILOT_MAC_TAP;
       else process.env.SCREENPILOT_MAC_TAP = tap;
       const w = await refresh(textEdit.id);

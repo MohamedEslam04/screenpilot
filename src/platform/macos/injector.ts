@@ -18,11 +18,14 @@ export class MacInjector implements Injector {
   private pos?: { x: number; y: number };
   private held = new Set<MouseButton>();
   private clicks = new ClickCounter();
+  private keysReady = false;
 
   constructor(
     private q: PostApi,
     private screens: ScreenInfo[],
     private now: () => number = () => performance.now(),
+    /** Wait after the warm-up Shift tap (0 skips the warm-up, e.g. in tests). */
+    private warmUpMs = 600,
   ) {}
 
   async moveTo(x: number, y: number): Promise<boolean> {
@@ -45,7 +48,20 @@ export class MacInjector implements Injector {
     this.q.post(scrollEvent(horizontal, step));
   }
 
+  /**
+   * The first synthetic key events after we start are dropped on macOS (seen on
+   * CI: the first typed text never arrives, the same text a moment later does).
+   * A Shift tap and a short wait absorb that before anything that matters.
+   */
+  private async warmUpKeys(): Promise<void> {
+    if (this.keysReady || this.warmUpMs <= 0) return;
+    this.keysReady = true;
+    for (const e of comboEvents("shift")) this.q.post(e);
+    await sleep(this.warmUpMs);
+  }
+
   async pressCombo(combo: string): Promise<void> {
+    await this.warmUpKeys();
     for (const e of comboEvents(combo)) {
       this.q.post(e);
       await sleep(15);
@@ -53,6 +69,7 @@ export class MacInjector implements Injector {
   }
 
   async typeText(text: string, hooks: { before: () => void; gap: () => number }): Promise<void> {
+    await this.warmUpKeys();
     for (const ch of text.replace(/\r\n?/g, "\n")) {
       hooks.before();
       for (const e of charEvents(ch)) this.q.post(e);
