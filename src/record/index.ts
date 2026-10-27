@@ -10,6 +10,7 @@ import { closeNotificationPopups, fitWindow } from "../drive/kwinscript.js";
 import { detectLayout } from "../drive/see.js";
 import { loadState, saveState } from "../drive/state.js";
 import { type CaptureInfo, ObsRecorder, resolveObsConfig, unionRect } from "./obs.js";
+import { APP } from "../brand.js";
 
 // Public recording API (used by the CLI and the MCP server).
 
@@ -78,7 +79,7 @@ export function chooseScreen(
   if (!under) return { warning: "Could not tell which monitor OBS records; pointer events may be off. Pass screen." };
   return {
     screen: under,
-    warning: `Assuming OBS source "${sourceName}" is ${under.name} (monitor under the cursor). If not, run \`demoreel remap <session> --screen <name>\` (have: ${screens.map((x) => x.name).join(", ")}).`,
+    warning: `Assuming OBS source "${sourceName}" is ${under.name} (monitor under the cursor). If not, run \`${APP} remap <session> --screen <name>\` (have: ${screens.map((x) => x.name).join(", ")}).`,
   };
 }
 

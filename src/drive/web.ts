@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { type Browser, chromium, type Page } from "playwright-core";
 import type { ScreenInfo } from "../record/input/types.js";
 import { focusWindow, listWindows, type WindowInfo } from "./kwinscript.js";
+import { configDir } from "../brand.js";
 
 // A clean demo browser (own profile: no personal tabs, bookmarks or logins)
 // that we can inspect over CDP to find where page elements are on screen.
@@ -38,7 +39,7 @@ export interface BrowserWindow {
 /** Start (or reuse) the demo browser and place its window on `screen`. */
 export async function openBrowser(opts: { screen?: ScreenInfo; url?: string; log?: (m: string) => void } = {}): Promise<WindowInfo> {
   if (!(await cdpUp())) {
-    const profile = join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "demoreel", "browser");
+    const profile = join(configDir(), "browser");
     await mkdir(join(profile, "Default"), { recursive: true });
     await quietDownloads(join(profile, "Default", "Preferences"));
     const bin = findBrowser();

@@ -1,4 +1,5 @@
 import dbus from "dbus-next";
+import { APP } from "../brand.js";
 
 // Do Not Disturb while recording: notification popups would land in the video.
 // KDE (and other freedesktop servers) tie the inhibition to our D-Bus
@@ -12,7 +13,7 @@ export async function quietNotifications(reason = "Recording a demo"): Promise<(
   let cookie: number;
   try {
     const reply = await bus.call(
-      new dbus.Message({ destination: DEST, path: PATH, interface: DEST, member: "Inhibit", signature: "ssa{sv}", body: ["demoreel", reason, {}] }),
+      new dbus.Message({ destination: DEST, path: PATH, interface: DEST, member: "Inhibit", signature: "ssa{sv}", body: [APP, reason, {}] }),
     );
     cookie = Number(reply?.body?.[0]);
   } catch {

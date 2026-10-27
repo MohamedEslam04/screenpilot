@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { APP } from "../brand.js";
 
 // All times are in SOURCE seconds (the raw recording), so the agent can reason
 // about what it sees in extracted frames. Positions are normalized 0..1 of the
@@ -117,7 +118,7 @@ export const MusicSchema = z.object({
 export const StoryboardSchema = z.object({
   version: z.literal(1).default(1),
   source: z.string().describe("Path to the raw recording, relative to the storyboard file"),
-  events: z.string().optional().describe("events.jsonl from `demoreel record`, relative path"),
+  events: z.string().optional().describe(`events.jsonl from \`${APP} record\`, relative path`),
   keepSourceAudio: z.boolean().default(false),
   output: OutputSchema.prefault({}),
   theme: ThemeSchema.prefault({}),

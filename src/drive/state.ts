@@ -1,6 +1,6 @@
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { configDir } from "../brand.js";
 
 // Small per-user state: portal restore token, confirmed OBS source → monitor map.
 
@@ -21,8 +21,7 @@ export interface State {
 }
 
 export function statePath(): string {
-  const base = process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
-  return join(base, "demoreel", "state.json");
+  return join(configDir(), "state.json");
 }
 
 export async function loadState(): Promise<State> {

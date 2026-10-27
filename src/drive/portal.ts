@@ -1,4 +1,5 @@
 import dbus from "dbus-next";
+import { APP } from "../brand.js";
 
 // xdg-desktop-portal RemoteDesktop session: the official Wayland way to inject
 // pointer and keyboard input. Paired with a ScreenCast source selection so we
@@ -90,7 +91,7 @@ export class RemoteDesktopSession {
   }
 
   private token(prefix: string): string {
-    return `demoreel_${prefix}${process.pid}_${++this.tokenSeq}`;
+    return `${APP.replace(/\W/g, "_")}_${prefix}${process.pid}_${++this.tokenSeq}`;
   }
 
   private async notify(member: string, signature: string, body: unknown[]): Promise<void> {

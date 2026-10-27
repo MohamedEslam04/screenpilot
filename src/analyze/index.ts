@@ -6,6 +6,7 @@ import { clicksOf, readEvents } from "../record/events.js";
 import { run } from "../util/exec.js";
 import { probeVideo } from "../util/media.js";
 import { dwellPoints, idleSpans, parseFreezes, type ScreenRect, suggestSegments, suggestViews, suggestZooms, suggestWindowViews, type WindowReport, type WindowView } from "./detect.js";
+import { APP } from "../brand.js";
 
 // Public analysis API: what is in a recording, so an agent can write a storyboard.
 
@@ -44,7 +45,7 @@ export async function resolveTarget(target: string): Promise<{
   const abs = resolve(target);
   if (statSync(abs).isDirectory()) {
     const metaPath = join(abs, "meta.json");
-    if (!existsSync(metaPath)) throw new Error(`${abs} has no meta.json (not a demoreel session)`);
+    if (!existsSync(metaPath)) throw new Error(`${abs} has no meta.json (not a ${APP} session)`);
     const meta = JSON.parse(await readFile(metaPath, "utf8")) as {
       video: string;
       events: string | null;

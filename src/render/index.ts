@@ -13,6 +13,7 @@ import { synthesizeLines } from "../voice/index.js";
 import { buildCutArgs, buildCutFilter } from "./cut.js";
 import { renderHtml } from "./html.js";
 import { buildPlan, type RenderPlan } from "./plan.js";
+import { CACHE_DIR } from "../brand.js";
 
 const require = createRequire(import.meta.url);
 
@@ -47,7 +48,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   const clips = await synthesizeLines(
     sb.voice.provider,
     sb.narration.map((l) => ({ text: l.text, voice: l.voice ?? sb.voice.name, rate: sb.voice.rate })),
-    join(baseDir, ".demoreel-cache", "voice"),
+    join(baseDir, CACHE_DIR, "voice"),
   );
   const narration = await Promise.all(
     sb.narration.map(async (l, i) => {
