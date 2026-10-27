@@ -2,7 +2,7 @@
 
 Record any desktop app, let an AI agent write the storyboard, get a polished demo video.
 
-1. **Record** the screen (OBS) plus pointer and click events.
+1. **Record** the screen (built in, or through OBS) plus pointer, click and active-window events.
 2. **Analyze**: the agent looks at a contact sheet and frames with a coordinate grid.
 3. The agent writes `storyboard.json`: cuts, speed-ups, zooms, captions, highlights, voiceover lines.
 4. **Render** an MP4 with [HyperFrames](https://github.com/heygen-com/hyperframes) (HTML + GSAP) and Edge TTS voiceover.
@@ -15,12 +15,14 @@ Playwright can only record a browser. demoreel records anything on screen (nativ
 
 - Node 22+ and pnpm
 - ffmpeg and ffprobe on `PATH`
-- OBS Studio 28+ with the WebSocket server enabled (Tools -> WebSocket Server Settings). OBS must be running while recording.
+- A screen recorder, one of:
+  - **native (default, nothing extra to install):** on KDE Plasma it records the PipeWire monitor streams with GStreamer (`gst-launch-1.0` with `pipewiresrc` and an H.264 encoder such as `openh264enc` or `x264enc`; it reuses the remote-control approval, so no extra dialog); on Windows it records with ffmpeg.
+  - **OBS Studio 28+** (`--recorder obs`) with the WebSocket server enabled (Tools -> WebSocket Server Settings), if you prefer OBS's encoders and settings.
 - Network access for Edge TTS (voiceover and `voices`)
 - KDE Wayland: pointer position comes from a KWin script. Click capture needs your user to be in the `input` group (see below).
 - Windows, macOS and X11: pointer and clicks come from a global hook (uiohook). Other Wayland compositors: no pointer logging yet (zooms come from the storyboard only).
 
-The first recording creates a `demoreel` scene in OBS with one screen-capture source; on Wayland the system asks once which screen to share. With several monitors, pass `--screen <name>` (e.g. `eDP-1`) so pointer coordinates are matched to the monitor OBS records; demoreel first matches the OBS source name against monitor models reported by KWin (e.g. "Lenovo R24e | Monitor" → HDMI-A-5), then falls back to the monitor under the cursor. If it guessed wrong, fix the session afterwards with `demoreel remap <session> --screen <name>` (the raw pointer log is kept in `pointer.raw.jsonl`). demoreel reuses a screen-capture source you already have in OBS when one is showing pixels, so the portal picker does not reappear.
+With `--recorder obs`, the first recording creates a `demoreel` scene in OBS with one screen-capture source; on Wayland the system asks once which screen to share. With several monitors, pass `--screen <name>` (e.g. `eDP-1`) so pointer coordinates are matched to the monitor OBS records; demoreel first matches the OBS source name against monitor models reported by KWin (e.g. "Lenovo R24e | Monitor" → HDMI-A-5), then falls back to the monitor under the cursor. If it guessed wrong, fix the session afterwards with `demoreel remap <session> --screen <name>` (the raw pointer log is kept in `pointer.raw.jsonl`). demoreel reuses a screen-capture source you already have in OBS when one is showing pixels, so the portal picker does not reappear.
 
 ### KDE Wayland: the `input` group trade-off
 
@@ -110,12 +112,12 @@ Copy or symlink `skill/` to `~/.claude/skills/demoreel` to give Claude Code the 
 
 ## Let the agent drive
 
-The agent can operate the desktop itself while OBS records: it looks (`screenshot`, `windows`), acts (move, click, type, drag, scroll, keys, a clean demo browser), then writes a `take.json` and performs it. Each take produces a recording, `events.jsonl` and a starter `storyboard.json` (zooms, narration, captions, monitor switches) ready for the normal edit and render loop.
+The agent can operate the desktop itself while it records: it looks (`screenshot`, `windows`), acts (move, click, type, drag, scroll, keys, a clean demo browser), then writes a `take.json` and performs it. Each take produces a recording, `events.jsonl` and a starter `storyboard.json` (zooms, narration, captions, monitor switches) ready for the normal edit and render loop.
 
 Requirements
 
 - KDE Plasma on Wayland. Driving uses the RemoteDesktop portal; approve the KDE "remote control" dialog once and select all monitors. The token is saved in `~/.config/demoreel/state.json` (chmod 600), so later runs are silent.
-- OBS with one capture source per monitor. Names usually match the monitors; otherwise pass `--map "Source Name=HDMI-A-1"` (saved for next time). Screenshots and `record --screens all` use these sources.
+- Recording uses the native recorder by default. With `--recorder obs`, OBS needs one capture source per monitor (or one for the whole desktop); names usually match the monitors, otherwise pass `--map "Source Name=HDMI-A-1"` (saved for next time). `screenshot` reads the OBS sources.
 - The demo browser (`demoreel browser`) uses its own profile at `~/.config/demoreel/browser`, with downloads going to `~/Downloads` without prompts. Your normal browser is untouched.
 
 Commands
@@ -206,8 +208,9 @@ Windows support is new. It is verified by CI (typecheck, tests, build and an end
 - Driving uses `SendInput`. Windows you run elevated (as administrator) cannot be controlled from a non-elevated process: run demoreel elevated too.
 - Coordinates are physical pixels.
 - Holding notification popups and closing them are no-ops on Windows.
+- Recording is native by default (ffmpeg `gdigrab`, mouse pointer included); `--recorder obs` maps OBS display-capture sources to monitors by their `monitor_id`.
 - The demo browser is Chrome, Edge or Brave (first found); set `DEMOREEL_BROWSER` to pick another.
-- The `open` take step opens a file or URL with the default app (`start` on Windows, `xdg-open` on Linux, `open` on macOS).
+- The `open` take step opens a file or URL with the default app (the URL protocol handler on Windows, `xdg-open` on Linux, `open` on macOS).
 
 CI: GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request to `main`, on Linux and Windows.
 
@@ -215,7 +218,7 @@ CI: GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull requ
 
 - Driving the desktop (`perform`, `drive`, `screenshot`) works on KDE Wayland; the Windows backend is new (see above).
 - Voiceover uses Edge TTS only (needs network; unofficial service, may change).
-- Recording requires OBS; demoreel does not bundle a capture backend.
+- Native recording covers KDE Plasma and Windows; elsewhere use `--recorder obs`.
 - Click capture on Wayland needs the `input` group; macOS will likely need Input Monitoring permission for the host app (untested).
 - Rendering is not fast: use `draft` while iterating.
 - Narration in cut regions is dropped; the agent must keep lines inside kept segments.

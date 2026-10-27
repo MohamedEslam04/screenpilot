@@ -20,10 +20,10 @@ Each step has an MCP tool and a CLI form (`demoreel ...`, or `node /abs/path/dis
 
 1. **Record** (skip if the user gave a video).
    MCP `record_start` (dir?, input?, screen?, obsUrl?, obsPassword?) -> user performs the demo -> `record_stop`.
-   CLI `demoreel record` (Enter or Ctrl+C to finish, or `--duration <s>`; `--screen eDP-1` on multi-monitor setups). Needs OBS Studio running with its WebSocket server enabled.
+   CLI `demoreel record` (Enter or Ctrl+C to finish, or `--duration <s>`; `--screen eDP-1` on multi-monitor setups). Records natively by default (no OBS needed: KDE PipeWire/GStreamer, Windows ffmpeg); `recorder: "obs"` / `--recorder obs` uses OBS. Run `doctor` first if anything is off.
    Result: a session dir with the video, `events.jsonl` (pointer and clicks) and meta.
    To frame one window cleanly, pass `fitWindow` (MCP) / `--fit-window <class or title>` (CLI): it is resized to 16:9 during the recording and put back after.
-   If record_stop warns that it assumed which monitor OBS records, check the frames; if the pointer does not line up, MCP `remap` (dir, screen) / CLI `demoreel remap <session> --screen <name>`.
+   (OBS only) If record_stop warns that it assumed which monitor OBS records, check the frames; if the pointer does not line up, MCP `remap` (dir, screen) / CLI `demoreel remap <session> --screen <name>`.
 
 2. **Analyze.** MCP `analyze` (target = session dir or video). CLI `demoreel analyze <target>`.
    Gives duration, `idle` spans (cut or speed these up), `clicks` (zoom targets), `suggestedSegments`, `suggestedZooms`, and a contact sheet image. Look at the contact sheet first to understand the story.
@@ -41,7 +41,7 @@ Each step has an MCP tool and a CLI form (`demoreel ...`, or `node /abs/path/dis
 
 Instead of asking the user to perform the demo, drive the desktop yourself and let demoreel record it. Loop: **explore -> rehearse -> perform -> review storyboard -> render** (then the normal loop above, from step 2).
 
-Requirements: KDE Wayland; the user approves the KDE "remote control" dialog once (select all monitors; token saved in `~/.config/demoreel/state.json`); OBS running with one capture source per monitor (`--map "Source=MONITOR"` if names don't match).
+Requirements: KDE Wayland; the user approves the KDE "remote control" dialog once (select all monitors; token saved in `~/.config/demoreel/state.json`); recording is native (OBS optional, with one capture source per monitor and `--map "Source=MONITOR"` if names don't match). On Windows driving works via SendInput (elevated apps need an elevated tool).
 
 Rules for every drive tool: coordinates are normalized 0..1 per monitor; take a screenshot first, act, then screenshot again to verify; the real mouse and keyboard are used, so ask the user not to touch them (touching the mouse aborts); prefer `{web: selector}` targets inside the demo browser; secrets only as `{env: NAME}`, never as literal text.
 

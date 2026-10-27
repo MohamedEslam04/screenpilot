@@ -11,7 +11,7 @@ Turn a screen recording of any desktop app into a polished demo MP4. You write `
 
 ## Workflow
 
-1. Record (or use an existing video): `demoreel record` -> session dir with video + `events.jsonl`. Needs OBS Studio with WebSocket server enabled.
+1. Record (or use an existing video): `demoreel record` -> session dir with video, `events.jsonl` and `windows.jsonl`. Records natively by default (KDE PipeWire/GStreamer, Windows ffmpeg); `--recorder obs` uses OBS instead. `demoreel doctor` checks the setup.
    `--fit-window <class or title>` resizes that window to 16:9 for the recording (restored after) so window framing shows it whole.
    If `record` warns it assumed which monitor OBS records and that was wrong: `demoreel remap <session> --screen <name>` (names in meta.json `screens`).
 2. Analyze: `demoreel analyze <session-dir|video>` -> idle spans, clicks, suggested segments/zooms, contact sheet image. View the contact sheet.
