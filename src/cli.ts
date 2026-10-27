@@ -67,7 +67,7 @@ program
   .option("--obs-password <pw>", "obs-websocket password (default: from OBS config)")
   .option("--duration <s>", "Stop automatically after this many seconds")
   .option("--screens <list>", 'Record several monitors side by side: "all" or names, e.g. HDMI-A-5,eDP-1')
-  .option("--recorder <how>", "native (no OBS: PipeWire on KDE, ffmpeg on Windows) | obs. Default: native when available")
+  .option("--recorder <how>", "native (no OBS: PipeWire on KDE, ffmpeg on Windows and macOS) | obs. Default: native when available")
   .option("--map <pairs>", 'OBS source → monitor, e.g. "PC Screen=eDP-1" (remembered)')
   .option("--fit-window <match>", "Resize this window (class or title contains) to 16:9 while recording; restored after")
   .action(

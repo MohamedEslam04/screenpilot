@@ -1,0 +1,61 @@
+name: macOS
+
+# macOS minutes cost 10x Linux minutes on private repos, so this runs only
+# when macOS-specific code changes (or by hand from the Actions tab), and the
+# job is kept short.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/platform/macos/**"
+      - "src/record/backends/macos*"
+      - "scripts/macos-smoke.ts"
+      - ".github/workflows/macos.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/platform/macos/**"
+      - "src/record/backends/macos*"
+      - "scripts/macos-smoke.ts"
+      - ".github/workflows/macos.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    runs-on: macos-latest # Apple Silicon
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6 # version from package.json "packageManager"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      # Homebrew's build is native arm64 with avfoundation, VideoToolbox and x264 (what we tell users to install).
+      - name: Install ffmpeg
+        run: brew install ffmpeg
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
+        timeout-minutes: 6
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      # Real desktop session on the runner: displays, CGEvent pointer, windows,
+      # TextEdit, the demo browser, screencapture/avfoundation. Checks that need
+      # a privacy permission the runner lacks are reported as "blocked", not failed.
+      - name: macOS smoke test
+        run: pnpm smoke:macos
+        timeout-minutes: 6
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-smoke-report
+          path: smoke-report/
+          if-no-files-found: warn

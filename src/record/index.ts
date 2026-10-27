@@ -34,7 +34,7 @@ export interface RecordOptions {
   map?: Record<string, string>;
   /** Resize the window matching this (class or title) to 16:9 for the recording; put back after. */
   fitWindow?: string;
-  /** "native" (no OBS: PipeWire on KDE, ffmpeg on Windows) or "obs". Default: native when available. */
+  /** "native" (no OBS: PipeWire on KDE, ffmpeg on Windows and macOS) or "obs". Default: native when available. */
   recorder?: RecorderId;
   /** Close notification popups on screen and hold new ones while recording (default true). */
   quiet?: boolean;
@@ -143,7 +143,7 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
     const desktop = await getDesktop().catch(() => undefined);
     let unfit = async () => {};
     if (opts.fitWindow) {
-      if (!desktop) throw new Error("--fit-window needs KDE Plasma or Windows");
+      if (!desktop) throw new Error("--fit-window needs KDE Plasma, Windows or macOS");
       const fitted = await desktop.fitWindow(opts.fitWindow);
       unfit = fitted.restore;
       log(`fitted "${fitted.window.caption}" to 16:9 (restored after recording)`);
@@ -236,7 +236,7 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
 
 /** Native capture when this OS has it (no OBS needed), else OBS. */
 export async function defaultRecorder(): Promise<RecorderId> {
-  if (process.platform === "win32") return "native";
+  if (process.platform === "win32" || process.platform === "darwin") return "native";
   if (process.platform === "linux" && isKde() && (await gstAvailable())) return "native";
   return "obs";
 }
@@ -244,6 +244,10 @@ export async function defaultRecorder(): Promise<RecorderId> {
 async function nativeBackend(): Promise<RecorderBackend> {
   if (process.platform === "linux") return new KdePipewireBackend();
   if (process.platform === "win32") return (await import("./backends/windows-ffmpeg.js")).windowsFfmpegBackend();
+  if (process.platform === "darwin") {
+    const { displays, ensureScreenCapture } = await import("../platform/macos/desktop.js");
+    return (await import("./backends/macos-avfoundation.js")).macAvfoundationBackend({ displays, ensureScreenCapture });
+  }
   throw new Error(`Native recording is not available on ${process.platform}; use --recorder obs`);
 }
 

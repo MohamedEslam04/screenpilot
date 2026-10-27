@@ -30,7 +30,7 @@ export const StepSchema = z.union([
     .strict(),
   z.object({ drag: z.object({ from: TargetSchema, to: TargetSchema }).strict(), dur: z.number().positive().optional() }).strict(),
   z.object({ type: TextSchema, cps: z.number().positive().optional() }).strict(),
-  z.object({ key: z.string().describe('Combo like "ctrl+l", "enter", "alt+tab"') }).strict(),
+  z.object({ key: z.string().describe('Combo like "ctrl+l", "enter", "alt+tab" (macOS: "cmd+l")') }).strict(),
   z.object({ scroll: z.number().int(), at: TargetSchema.optional(), horizontal: z.boolean().optional() }).strict(),
   z.object({ wait: z.number().min(0) }).strict(),
   z.object({ waitFor: z.object({ web: z.string(), timeout: z.number().positive().optional() }).strict() }).strict(),
