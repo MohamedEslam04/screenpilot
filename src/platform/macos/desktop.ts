@@ -1,7 +1,7 @@
 import type { Rect } from "../../record/input/types.js";
 import { findWindow, type Desktop, type Placement, type WindowInfo } from "../types.js";
 import { placeInArea } from "../windows/geometry.js";
-import { clipRect, displayOf, isListable, matchAxWindow, mergeDisplays, type Display } from "./geometry.js";
+import { activeWindow, clipRect, displayOf, isListable, matchAxWindow, mergeDisplays, type Display } from "./geometry.js";
 import { MacInjector } from "./injector.js";
 import { nsScreens } from "./nsscreen.js";
 import { permissionError } from "./permissions.js";
@@ -162,12 +162,19 @@ export const macosDesktop: Desktop = {
   },
 };
 
+/**
+ * Whether `pid` is the front app. The AX focused application is not enough on
+ * its own: Chrome was in front (menu bar and window) on CI while it reported
+ * another app, so the front-most normal window's owner counts too.
+ */
+const isFront = (q: Quartz, pid: number) => q.focusedPid() === pid || activeWindow(q.windows())?.pid === pid;
+
 async function frontWithin(q: Quartz, pid: number, ms: number): Promise<boolean> {
   for (let t = 0; t < ms; t += 50) {
-    if (q.focusedPid() === pid) return true;
+    if (isFront(q, pid)) return true;
     await sleep(50);
   }
-  return q.focusedPid() === pid;
+  return isFront(q, pid);
 }
 
 /** NSRunningApplication.activate (all windows, ignoring other apps) through JXA; needs no extra permission. */
