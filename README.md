@@ -151,7 +151,7 @@ Four ways to frame what was recorded (all tested on KDE Wayland with two 1920x10
 | Both recorded, the video shows one at a time and pans to where the action is | `"screens": "all"` | `views` (filled from the pointer by `perform` / `init --suggest`; edit or add `{at, screen, transition: "pan"\|"cut"}`) |
 | Both side by side the whole time | `"screens": "all"` | `"views": []` and an ultrawide `"output": {"width": 2560, "height": 720}` |
 
-With window framing, KWin reports the active window over time (`windows.jsonl`, the part not covered by panels), and takes place windows at 16:9 inside the monitor's usable area so the camera shows them whole. A window view fills the frame (its longer side is trimmed if it is not 16:9); monitor views show the whole monitor.
+With window framing, KWin reports the active window over time (`windows.jsonl`, the part not covered by panels), and takes place windows at 16:9 inside the monitor's usable area so the camera shows them whole. For your own recordings, `demoreel record --fit-window <class or title>` does the same for one window and puts it back afterwards (MCP `record_start` `fitWindow`). A window view fills the frame (its longer side is trimmed if it is not 16:9); monitor views show the whole monitor.
 
 Zooms, highlights and callouts use coordinates normalized to the whole recording (both monitors), so they work in all three. If OBS has one source that shows the whole desktop, demoreel uses it (cropped for a single monitor); otherwise it places one source per monitor. Which source shows which monitor is worked out by comparing the pictures.
 

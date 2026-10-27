@@ -6,7 +6,7 @@ import { type Rect, type ScreenInfo, screenAt, screenForSourceName } from "./inp
 import { KwinAdapter } from "./input/kwin.js";
 import { normalizeEvents, normalizeWindows } from "./normalize.js";
 import { quietNotifications } from "./quiet.js";
-import { closeNotificationPopups } from "../drive/kwinscript.js";
+import { closeNotificationPopups, fitWindow } from "../drive/kwinscript.js";
 import { detectLayout } from "../drive/see.js";
 import { loadState, saveState } from "../drive/state.js";
 import { type CaptureInfo, ObsRecorder, resolveObsConfig, unionRect } from "./obs.js";
@@ -29,6 +29,8 @@ export interface RecordOptions {
   screens?: "all" | string[];
   /** OBS source name → monitor name, when names don't make it obvious (saved for next time). */
   map?: Record<string, string>;
+  /** Resize the window matching this (class or title) to 16:9 for the recording; put back after. */
+  fitWindow?: string;
   /** Close notification popups on screen and hold new ones while recording (default true). */
   quiet?: boolean;
   log?: (msg: string) => void;
@@ -125,6 +127,12 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
       log(`OBS source "${capture.sourceName}"${pick.screen ? ` → pointer mapped to ${pick.screen.name}` : ""}`);
     }
 
+    let unfit = async () => {};
+    if (opts.fitWindow) {
+      const fitted = await fitWindow(opts.fitWindow);
+      unfit = fitted.restore;
+      log(`fitted "${fitted.window.caption}" to 16:9 (restored after recording)`);
+    }
     const unquiet = opts.quiet === false ? async () => {} : await quietNotifications();
     if (opts.quiet !== false && adapter.id === "kwin") {
       const closed = await closeNotificationPopups().catch(() => 0);
@@ -134,6 +142,7 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
       await obs.start(dir);
     } catch (err) {
       await unquiet();
+      await unfit();
       throw err;
     }
     log(`recording → ${dir}`);
@@ -149,6 +158,7 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
           output = await obs.stop();
         } finally {
           await unquiet(); // a long-lived MCP server must not keep notifications held
+          await unfit();
         }
         await a.stop();
         await obs.disconnect();
