@@ -96,7 +96,7 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
 
     if (!opts.dryRun) {
       log("starting recording");
-      rec = await startRecording({ dir: opts.dir, screens: take.screens, input: "kwin", log });
+      rec = await startRecording({ dir: opts.dir, screens: take.screens, input: "auto", log });
       t0 = rec.startedAt;
     } else {
       t0 = performance.now();
