@@ -38,11 +38,11 @@ Playwright can only record a browser. screenpilot records anything on screen (na
 - Node 22+ and pnpm
 - ffmpeg and ffprobe on `PATH`
 - A screen recorder, one of:
-  - **native (default, nothing extra to install):** on KDE Plasma it records the PipeWire monitor streams with GStreamer (`gst-launch-1.0` with `pipewiresrc` and an H.264 encoder such as `openh264enc` or `x264enc`; it reuses the remote-control approval, so no extra dialog); on Windows it records with ffmpeg.
+  - **native (default, nothing extra to install):** on KDE Plasma it records the PipeWire monitor streams with GStreamer (`gst-launch-1.0` with `pipewiresrc` and an H.264 encoder such as `openh264enc` or `x264enc`; it reuses the remote-control approval, so no extra dialog); on Windows it records with ffmpeg; on macOS with ffmpeg's avfoundation (see [macOS](#macos)).
   - **OBS Studio 28+** (`--recorder obs`) with the WebSocket server enabled (Tools -> WebSocket Server Settings), if you prefer OBS's encoders and settings.
 - Network access for Edge TTS (voiceover and `voices`)
 - KDE Wayland: pointer position comes from a KWin script. Click capture needs your user to be in the `input` group (see below).
-- Windows, macOS and X11: pointer and clicks come from a global hook (uiohook). Other Wayland compositors: no pointer logging yet (zooms come from the storyboard only).
+- Windows and macOS: the pointer and the active window are polled from the OS; clicks come from a global hook (uiohook). X11: pointer and clicks from uiohook. Other Wayland compositors: no pointer logging yet (zooms come from the storyboard only).
 
 With `--recorder obs`, the first recording creates a `screenpilot` scene in OBS with one screen-capture source; on Wayland the system asks once which screen to share. With several monitors, pass `--screen <name>` (e.g. `eDP-1`) so pointer coordinates are matched to the monitor OBS records; screenpilot first matches the OBS source name against monitor models reported by KWin (e.g. "Lenovo R24e | Monitor" → HDMI-A-5), then falls back to the monitor under the cursor. If it guessed wrong, fix the session afterwards with `screenpilot remap <session> --screen <name>` (the raw pointer log is kept in `pointer.raw.jsonl`). screenpilot reuses a screen-capture source you already have in OBS when one is showing pixels, so the portal picker does not reappear.
 
@@ -252,17 +252,39 @@ and look at (or send) `windows-live-report/`. `screenpilot doctor` alone reports
 - The demo browser is Chrome, Edge or Brave (first found); set `SCREENPILOT_BROWSER` to pick another.
 - The `open` take step opens a file or URL with the default app (the URL protocol handler on Windows, `xdg-open` on Linux, `open` on macOS).
 
+## macOS
+
+macOS 12+ on Apple Silicon and Intel. Recording, screenshots, driving (pointer, clicks, typing incl. Arabic and emoji, shortcuts), the window list, focusing/placing windows and the demo browser all work without OBS. You need ffmpeg (`brew install ffmpeg`) and Chrome, Edge or Brave in `/Applications` for web demos.
+
+macOS asks for privacy permissions, and grants them to the app that starts ScreenPilot (Claude, Cursor, VS Code, Terminal...), not to ScreenPilot itself. Open System Settings > Privacy & Security and turn that app on under:
+
+| Permission | Needed for | Without it |
+|---|---|---|
+| Accessibility | moving the mouse, clicking, typing, focusing and resizing windows | driving fails with these same steps in the error |
+| Screen & System Audio Recording (Screen Recording on macOS 14 and older) | recording, screenshots, window titles | recording fails with these steps; macOS adds the app to the list the first time |
+| Input Monitoring | logging your own clicks while you record (click zooms/ripples) | recordings have no click events (optional) |
+
+Then quit and reopen that app. When a permission is missing ScreenPilot opens the right settings pane and its error names the app to allow. `screenpilot doctor` lists all three plus ffmpeg, avfoundation and the browser.
+
+- Coordinates are points (the unit macOS, its window list and web pages use), not pixels: a Retina display is reported at its "looks like" size. Recordings keep full Retina detail (2 pixels per point), capped at 4096x2304 for 5K and multi-monitor canvases; pointer and window logs are normalized to the video, so zooms land right either way.
+- Monitors are named as in System Settings ("Built-in Retina Display", "DELL U2720Q"); identical models get " (2)".
+- Shortcuts are literal: `ctrl+c` is Control-C. Use `cmd+c` (`super`/`meta`/`win` also mean Command, `alt`/`option` mean Option).
+- Notification banners and Focus modes have no public API: turn on Do Not Disturb yourself before recording.
+- Minimized windows and windows on other Spaces are not listed. Full-screen windows leave full screen when a take places them.
+
+CI: `.github/workflows/macos.yml` runs tests and `pnpm smoke:macos` on a real Apple Silicon runner when `src/platform/macos` or the macOS recorder changes (or by hand from the Actions tab); macOS minutes cost 10x on private repos, so the job is short. The runner cannot grant privacy permissions, so checks that need one are reported as "blocked" in `smoke-report/report.json` rather than failed. On your own Mac, run `pnpm smoke:macos` from a terminal that has the permissions above.
+
 CI: GitHub Actions. `.github/workflows/ci.yml` (Linux: typecheck, tests, build) runs on every push and pull request to `main`; `.github/workflows/windows.yml` (tests + `smoke:windows` on a real Windows runner) runs only when code that behaves differently on Windows changes (`src/platform`, `src/record`, `src/drive`, `src/take`, `src/util`, `scripts`, dependencies), or by hand from the Actions tab, since Windows minutes count double on private repos.
 
 ## Limitations
 
-- Driving the desktop (`perform`, `drive`, `screenshot`) works on KDE Wayland; the Windows backend is new (see above).
+- Driving the desktop (`perform`, `drive`, `screenshot`) works on KDE Wayland, Windows and macOS; the Windows and macOS backends are new (see above).
 - Voiceover uses Edge TTS only (needs network; unofficial service, may change).
-- Native recording covers KDE Plasma and Windows; elsewhere use `--recorder obs`.
-- Click capture on Wayland needs the `input` group; macOS will likely need Input Monitoring permission for the host app (untested).
+- Native recording covers KDE Plasma, Windows and macOS; elsewhere use `--recorder obs`.
+- Click capture on Wayland needs the `input` group; on macOS the app that starts ScreenPilot needs Accessibility (and Input Monitoring).
 - Rendering is not fast: use `draft` while iterating.
 - Narration in cut regions is dropped; the agent must keep lines inside kept segments.
 
 ---
 
-Docs synced to commit 8e7b979 ("build: self-contained packages with bundled Node", 2026-10-27).
+Docs synced to commit 4782106 ("feat(macos): native macOS desktop, input and recording", 2026-10-27).
