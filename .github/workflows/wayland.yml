@@ -43,9 +43,8 @@ jobs:
           dpkg-deb -c ./*.deb | grep -E 'vgem|vkms|udmabuf' || echo "no vgem/vkms/udmabuf in modules-extra"
           sudo dpkg --unpack ./*.deb 2>&1 | tail -2
           sudo depmod -a
-          sudo modprobe vgem 2>&1 || true
           sudo modprobe vkms 2>&1 || true
-          ls -la /dev/dri || true
+          ls -la /dev/dri; ls -la /sys/class/drm/
           sudo chmod a+rw /dev/dri/* || true
       - run: pnpm install --frozen-lockfile
       - name: Wayland smoke test (headless sway)

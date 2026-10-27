@@ -63,9 +63,20 @@ export WLR_BACKENDS=headless
 export WLR_LIBINPUT_NO_DEVICES=1
 # xdg-desktop-portal-wlr <= 0.7.1 refuses a compositor that offers no dmabuf screencopy format,
 # and that needs a GLES2 renderer on a DRM render node (pixman only has shared memory).
+# vkms (virtual KMS) has only a card node, which wlroots can render on when told so.
+VKMS_CARD=""
+for d in /sys/class/drm/card[0-9]*; do
+  [ -e "$d/device/driver" ] || continue
+  if [ "$(basename "$(readlink -f "$d/device/driver")")" = vkms ]; then VKMS_CARD="/dev/dri/$(basename "$d")"; fi
+done
 if ls /dev/dri/renderD* >/dev/null 2>&1; then
   export WLR_RENDERER="${WLR_RENDERER:-gles2}"
   export WLR_RENDERER_ALLOW_SOFTWARE=1
+elif [ -n "$VKMS_CARD" ]; then
+  echo "using vkms $VKMS_CARD for the sway renderer" >&2
+  export WLR_RENDERER="${WLR_RENDERER:-gles2}"
+  export WLR_RENDERER_ALLOW_SOFTWARE=1
+  export WLR_RENDER_DRM_DEVICE="$VKMS_CARD"
 else
   export WLR_RENDERER="${WLR_RENDERER:-pixman}"
 fi
