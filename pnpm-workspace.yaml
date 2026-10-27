@@ -1,0 +1,7 @@
+allowBuilds:
+  esbuild: true
+  msedge-tts: false
+  uiohook-napi: true
+  usocket: false
+minimumReleaseAgeExclude:
+  - hyperframes@0.8.207
