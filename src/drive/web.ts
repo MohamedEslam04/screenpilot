@@ -80,7 +80,9 @@ export async function openBrowser(opts: { screen?: ScreenInfo; url?: string; log
     const app = process.platform === "darwin" ? bin.match(/^(.*?\.app)\//)?.[1] : undefined;
     if (app) spawn("open", ["-n", "-a", app, "--args", ...args], { detached: true, stdio: "ignore" }).unref();
     else spawn(bin, args, { detached: true, stdio: "ignore" }).unref();
-    for (let i = 0; i < 60 && !(await cdpUp()); i++) await sleep(250);
+    // macOS checks an app the first time LaunchServices opens it (Gatekeeper): that can take a while.
+    const tries = app ? 240 : 60;
+    for (let i = 0; i < tries && !(await cdpUp()); i++) await sleep(250);
     if (!(await cdpUp())) throw new Error("The demo browser did not open its debugging port.");
   }
   await singleTab(opts.url);
