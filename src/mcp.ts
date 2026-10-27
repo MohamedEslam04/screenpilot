@@ -75,7 +75,7 @@ async function framesResult(video: string, times: number[], opts: { outDir: stri
 let recording: ActiveRecording | null = null;
 
 // One Driver for the whole server process, opened on first use. It can need the
-// user to approve a KDE "remote control" dialog once (the token is then saved).
+// user to approve a "remote control" portal dialog once on Wayland (the token is then saved).
 let driver: Driver | null = null;
 let driverOpening: Promise<Driver> | null = null;
 let performing: Driver | null = null;
@@ -92,7 +92,7 @@ async function getDriver(): Promise<Driver> {
   return driverOpening;
 }
 
-/** Monitor layout: from the live driver if open, else straight from KWin. */
+/** Monitor layout: from the live driver if open, else straight from the desktop. */
 async function getScreens(): Promise<ScreenInfo[]> {
   if (driver) return driver.screens();
   return (await getDesktop()).screens();
@@ -102,7 +102,8 @@ const DRIVE_NOTE =
   "Coordinates are normalized 0..1 per monitor (x from left, y from top). Take a screenshot first, act, then screenshot again to verify. " +
   "This uses the REAL mouse and keyboard: ask the user not to touch them (touching the mouse aborts). " +
   "Prefer {web: selector} targets inside the demo browser (browser_open). " +
-  "The first use may need the user to approve a KDE remote-control dialog (once).";
+  "The first use may need the user to approve a remote-control dialog (once, on Wayland). " +
+  "Run doctor to see what this desktop supports: on GNOME/other Wayland there is no window control (use {screen, x, y} targets only).";
 const norm = z.number().min(0).max(1);
 
 // Sent to every MCP client on connect (Claude, Codex, OpenCode, Cursor…), so
@@ -126,7 +127,7 @@ server.registerTool(
       screen: z.string().optional().describe("Monitor name to normalize pointer coordinates against (e.g. eDP-1)"),
       obsUrl: z.string().optional().describe("obs-websocket URL. Default ws://127.0.0.1:4455"),
       obsPassword: z.string().optional().describe("obs-websocket password. Default: read from the local OBS config"),
-      recorder: z.enum(["native", "obs"]).optional().describe("native: no OBS needed (KDE PipeWire / Windows ffmpeg). Default: native when available"),
+      recorder: z.enum(["native", "obs"]).optional().describe("native: no OBS needed (Wayland PipeWire portal / X11 and Windows ffmpeg). Default: native when available"),
       fitWindow: z
         .string()
         .optional()

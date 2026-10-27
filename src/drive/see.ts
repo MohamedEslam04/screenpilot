@@ -9,9 +9,8 @@ import { run } from "../util/exec.js";
 import { probeVideo } from "../util/media.js";
 import { loadState } from "./state.js";
 import { isOurs, named } from "../brand.js";
-import { getDesktop } from "../platform/index.js";
-import { gstAvailable, snapshotMonitors } from "../record/backends/kde-pipewire.js";
-import { isKde } from "../record/input/kwin.js";
+import { detectDesktop, type DesktopId, getDesktop } from "../platform/index.js";
+import { gstAvailable, snapshotMonitors } from "../record/backends/pipewire.js";
 
 // Current pictures of each monitor, straight from OBS's capture sources (no
 // extra screen-share permission needed), and which source shows which monitor.
@@ -135,19 +134,42 @@ export async function screenshot(
   screens: ScreenInfo[],
   opts: { only?: string; outDir: string; width?: number; grid?: boolean },
 ): Promise<{ shots: Shot[]; warnings: string[] }> {
-  // Native first (no OBS): KDE reads the portal's monitor streams.
-  if (process.platform === "linux" && isKde() && (await gstAvailable())) {
+  let desktop: DesktopId | undefined;
+  try {
+    desktop = detectDesktop().id;
+  } catch {
+    desktop = undefined;
+  }
+  // Native first (no OBS): Wayland desktops read the portal's monitor streams.
+  if ((desktop === "kde" || desktop === "portal") && (await gstAvailable())) {
     const wanted = opts.only ? screens.filter((s) => s.name === opts.only) : screens;
     if (opts.only && wanted.length === 0) throw new Error(`No monitor named "${opts.only}"`);
     await mkdir(opts.outDir, { recursive: true });
     const fileOf = (s: ScreenInfo) => join(opts.outDir, `${s.name}.jpg`);
-    await snapshotMonitors(wanted, fileOf, opts.width ?? 1280);
+    const open =
+      desktop === "kde" ? (await import("../platform/kde.js")).openRemoteDesktop : (await import("../platform/portal.js")).openCaptureSession;
+    await snapshotMonitors(open, wanted, fileOf, opts.width ?? 1280);
     const shots = wanted.map((s) => ({ screen: s.name, file: fileOf(s) }));
     if (opts.grid) for (const s of shots) await overlayGrid(s.file);
     return { shots, warnings: [] };
   }
+  // X11: one x11grab frame per monitor.
+  if (desktop === "x11") {
+    const { x11grabStillArgs } = await import("../record/backends/x11-ffmpeg.js");
+    const wanted = opts.only ? screens.filter((s) => s.name === opts.only) : screens;
+    if (opts.only && wanted.length === 0) throw new Error(`No monitor named "${opts.only}"`);
+    await mkdir(opts.outDir, { recursive: true });
+    const shots: Shot[] = [];
+    for (const s of wanted) {
+      const file = join(opts.outDir, `${s.name.replace(/[^\w.-]/g, "_")}.jpg`);
+      await run("ffmpeg", x11grabStillArgs(s, file, opts.width ?? 1280));
+      shots.push({ screen: s.name, file });
+    }
+    if (opts.grid) for (const s of shots) await overlayGrid(s.file);
+    return { shots, warnings: [] };
+  }
   // Windows: one gdigrab frame per monitor.
-  if (process.platform === "win32") {
+  if (desktop === "windows") {
     const { gdigrabStillArgs } = await import("../record/backends/windows-ffmpeg.js");
     const wanted = opts.only ? screens.filter((s) => s.name === opts.only) : screens;
     if (opts.only && wanted.length === 0) throw new Error(`No monitor named "${opts.only}"`);

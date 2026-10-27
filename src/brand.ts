@@ -43,6 +43,9 @@ export function configDir(app = APP, previous = PREVIOUS_NAMES): string {
 /** Env var naming where sessions go (the desktop extension sets it from its settings). */
 export const OUTPUT_ENV = `${APP.toUpperCase()}_OUTPUT`;
 
+/** Env var forcing the desktop backend (kde, x11, portal or windows) instead of detecting it. */
+export const DESKTOP_ENV = `${APP.toUpperCase()}_DESKTOP`;
+
 /** Folder for new recording sessions: $SCREENPILOT_OUTPUT, else ./sessions. */
 export function sessionsRoot(): string {
   return process.env[OUTPUT_ENV] || "sessions";

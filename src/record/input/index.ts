@@ -33,11 +33,19 @@ export function pickAdapter(id: InputAdapterId): InputAdapter {
   return new UiohookAdapter();
 }
 
+/** The desktop's watcher (pointer, clicks, active window, monitors) for "auto"; pickAdapter when there is no supported desktop. */
+async function autoAdapter(): Promise<InputAdapter> {
+  try {
+    return (await import("../../platform/index.js").then((m) => m.getDesktop())).createWatcher();
+  } catch {
+    return pickAdapter("auto");
+  }
+}
+
 /** Start an adapter, falling back to no input if it fails. */
 export async function startAdapter(id: InputAdapterId): Promise<InputAdapter> {
-  // On Windows the desktop's watcher logs pointer, clicks and the active window.
-  const adapter =
-    id === "auto" && process.platform === "win32" ? (await import("../../platform/index.js").then((m) => m.getDesktop())).createWatcher() : pickAdapter(id);
+  // KDE: KWin pointer script + evdev clicks; X11 / Windows: polling + uiohook; other Wayland: monitors only.
+  const adapter = id === "auto" ? await autoAdapter() : pickAdapter(id);
   try {
     await adapter.start();
     return adapter;

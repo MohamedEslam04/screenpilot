@@ -5,10 +5,9 @@ import { startAdapter } from "./input/index.js";
 import { type Rect, type ScreenInfo, screenAt, screenForSourceName } from "./input/types.js";
 import { normalizeEvents, normalizeWindows } from "./normalize.js";
 import type { RecorderBackend, RecorderId } from "./backend.js";
-import { gstAvailable, KdePipewireBackend } from "./backends/kde-pipewire.js";
+import { gstAvailable, PipewireBackend } from "./backends/pipewire.js";
 import { ObsBackend } from "./backends/obs.js";
-import { isKde } from "./input/kwin.js";
-import { getDesktop, type Watcher } from "../platform/index.js";
+import { detectDesktop, getDesktop, type Watcher } from "../platform/index.js";
 import { detectLayout } from "../drive/see.js";
 import { loadState, saveState } from "../drive/state.js";
 import { type CaptureInfo, ObsRecorder, resolveObsConfig, unionRect } from "./obs.js";
@@ -34,7 +33,7 @@ export interface RecordOptions {
   map?: Record<string, string>;
   /** Resize the window matching this (class or title) to 16:9 for the recording; put back after. */
   fitWindow?: string;
-  /** "native" (no OBS: PipeWire on KDE, ffmpeg on Windows) or "obs". Default: native when available. */
+  /** "native" (no OBS: PipeWire on Wayland, ffmpeg on X11 and Windows) or "obs". Default: native when available. */
   recorder?: RecorderId;
   /** Close notification popups on screen and hold new ones while recording (default true). */
   quiet?: boolean;
@@ -103,7 +102,9 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
   try {
     adapter = await startAdapter(opts.input ?? "auto");
     const warnings = [...adapter.warnings];
-    const screens: ScreenInfo[] = adapter.screens();
+    // Watchers report monitors; with an explicit --input that does not, ask the desktop.
+    let screens: ScreenInfo[] = adapter.screens();
+    if (screens.length === 0) screens = await getDesktop().then((d) => d.screens()).catch(() => []);
 
     let capture: CaptureInfo;
     let screen: Rect;
@@ -139,11 +140,11 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
     }
     const rec = backend;
 
-    // Window fitting and notification handling need a supported desktop (KDE, Windows).
+    // Window fitting and notification handling need a supported desktop.
     const desktop = await getDesktop().catch(() => undefined);
     let unfit = async () => {};
     if (opts.fitWindow) {
-      if (!desktop) throw new Error("--fit-window needs KDE Plasma or Windows");
+      if (!desktop) throw new Error("--fit-window needs a supported desktop (KDE Plasma, X11 or Windows)");
       const fitted = await desktop.fitWindow(opts.fitWindow);
       unfit = fitted.restore;
       log(`fitted "${fitted.window.caption}" to 16:9 (restored after recording)`);
@@ -234,17 +235,37 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
   }
 }
 
-/** Native capture when this OS has it (no OBS needed), else OBS. */
+/** Native capture when this desktop has it (no OBS needed), else OBS. */
 export async function defaultRecorder(): Promise<RecorderId> {
-  if (process.platform === "win32") return "native";
-  if (process.platform === "linux" && isKde() && (await gstAvailable())) return "native";
-  return "obs";
+  let id;
+  try {
+    id = detectDesktop().id;
+  } catch {
+    return "obs";
+  }
+  if (id === "windows") return "native";
+  if (id === "x11") return (await (await import("./backends/x11-ffmpeg.js")).hasX11grab()) ? "native" : "obs";
+  return (await gstAvailable()) ? "native" : "obs"; // kde, portal
 }
 
+/** KDE / other Wayland: portal PipeWire streams + GStreamer; X11: ffmpeg x11grab; Windows: ffmpeg gdigrab. */
 async function nativeBackend(): Promise<RecorderBackend> {
-  if (process.platform === "linux") return new KdePipewireBackend();
-  if (process.platform === "win32") return (await import("./backends/windows-ffmpeg.js")).windowsFfmpegBackend();
-  throw new Error(`Native recording is not available on ${process.platform}; use --recorder obs`);
+  let id;
+  try {
+    id = detectDesktop().id;
+  } catch (err) {
+    throw new Error(`Native recording is not available here (${(err as Error).message}); use --recorder obs`);
+  }
+  switch (id) {
+    case "windows":
+      return (await import("./backends/windows-ffmpeg.js")).windowsFfmpegBackend();
+    case "x11":
+      return (await import("./backends/x11-ffmpeg.js")).x11FfmpegBackend();
+    case "kde":
+      return new PipewireBackend((await import("../platform/kde.js")).openRemoteDesktop);
+    case "portal":
+      return new PipewireBackend((await import("../platform/portal.js")).openCaptureSession);
+  }
 }
 
 /** Monitors to record: "all", a list, one named monitor, or the one under the cursor. */
