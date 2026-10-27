@@ -32,18 +32,34 @@ The packages include Node, ffmpeg and ffprobe. Install another AI app later? Run
 
 ## Why
 
-Playwright can only record a browser. screenpilot records anything on screen (native apps, IDEs, terminals, Electron) on Linux (including KDE Wayland), Windows and macOS, and gives an AI agent the tools to see the footage and edit it.
+Playwright can only record a browser. screenpilot records anything on screen (native apps, IDEs, terminals, Electron) on Linux (KDE, GNOME, Cinnamon, MATE, Xfce, sway, Hyprland, on X11 or Wayland), Windows and macOS, and gives an AI agent the tools to see the footage and edit it.
+
+## Platform support
+
+screenpilot picks a desktop backend by itself (`screenpilot doctor` shows which one and what works); set `SCREENPILOT_DESKTOP=kde|x11|portal|windows|macos` to override.
+
+| | Record (native) | Drive (pointer, keys, typing) | Windows (list, focus, fit to 16:9) | Pointer + click logging |
+|---|---|---|---|---|
+| **KDE Plasma, Wayland** (`kde`) | PipeWire portal streams + GStreamer | RemoteDesktop portal (approve once) | KWin scripts | KWin pointer; clicks need the `input` group |
+| **Any X11 session** (`x11`): GNOME on Xorg, Linux Mint Cinnamon/MATE/Xfce, KDE X11, ... | ffmpeg `x11grab` | XTest (any Unicode text, no clipboard or layout switch) | EWMH window manager | XQueryPointer + global hook |
+| **GNOME and other Wayland desktops** (`portal`) | PipeWire portal streams + GStreamer (asks once) | RemoteDesktop portal (approve once) | not available: focus/fit steps and `{web}` targets fail with a clear error; window-framed views fall back to monitor views | none (Wayland hides the pointer); performed takes still log their own clicks |
+| **sway, Hyprland and other wlroots** (`portal`) | ScreenCast portal + GStreamer (asks once) | not available (no RemoteDesktop portal) | not available | none |
+| **Windows 10/11** (`windows`) | ffmpeg `gdigrab` | SendInput | Win32 | cursor polling + global hook |
+| **macOS 12+**, Apple Silicon and Intel (`macos`) | ffmpeg `avfoundation` (Screen Recording permission) | CGEvent (Accessibility permission) | Accessibility API | Quartz polling + global hook (Input Monitoring) |
+
+Status: KDE Wayland is used daily; Windows, X11 and macOS each have a CI smoke test on a real runner (`smoke:windows`; `smoke:x11` under Xvfb + openbox; `smoke:macos`, where steps that need a privacy permission the runner can't grant are reported as blocked). The `portal` backend was verified by forcing it on KDE Wayland (monitors from the portal streams, recording); GNOME's monitor names come from Mutter's `DisplayConfig`, sway's and Hyprland's from `swaymsg` / `hyprctl`, but those three have not been run on real hardware yet.
 
 ## Requirements
 
 - Node 22+ and pnpm
 - ffmpeg and ffprobe on `PATH`
 - A screen recorder, one of:
-  - **native (default, nothing extra to install):** on KDE Plasma it records the PipeWire monitor streams with GStreamer (`gst-launch-1.0` with `pipewiresrc` and an H.264 encoder such as `openh264enc` or `x264enc`; it reuses the remote-control approval, so no extra dialog); on Windows it records with ffmpeg; on macOS with ffmpeg's avfoundation (see [macOS](#macos)).
+  - **native (default):** on Wayland (KDE, GNOME, wlroots) it records the PipeWire monitor streams from the xdg screen-cast portal with GStreamer (`gst-launch-1.0` with `pipewiresrc` and an H.264 encoder: `x264enc`, `openh264enc` or VA-API, whichever is installed; on KDE it reuses the remote-control approval, so no extra dialog). `screenpilot doctor` prints the install command for your distro if a piece is missing (Fedora: `sudo dnf install gstreamer1 pipewire-gstreamer gstreamer1-plugin-openh264`; Debian/Ubuntu: `sudo apt install gstreamer1.0-tools gstreamer1.0-pipewire gstreamer1.0-plugins-ugly`). On X11 and Windows it records with ffmpeg; on macOS with ffmpeg's avfoundation (see [macOS](#macos)).
   - **OBS Studio 28+** (`--recorder obs`) with the WebSocket server enabled (Tools -> WebSocket Server Settings), if you prefer OBS's encoders and settings.
 - Network access for Edge TTS (voiceover and `voices`)
 - KDE Wayland: pointer position comes from a KWin script. Click capture needs your user to be in the `input` group (see below).
-- Windows and macOS: the pointer and the active window are polled from the OS; clicks come from a global hook (uiohook). X11: pointer and clicks from uiohook. Other Wayland compositors: no pointer logging yet (zooms come from the storyboard only).
+- Windows and X11: the pointer is polled and clicks come from a global hook (uiohook); the active window is logged too. macOS: the pointer and active window are polled from Quartz, clicks come from uiohook (Input Monitoring permission). Other Wayland compositors: no pointer logging (zooms come from a performed take's own clicks or the storyboard).
+- Typing non-Latin text on Wayland goes through the clipboard and needs `wl-clipboard` (`wl-copy`); X11 and Windows type any Unicode directly.
 
 With `--recorder obs`, the first recording creates a `screenpilot` scene in OBS with one screen-capture source; on Wayland the system asks once which screen to share. With several monitors, pass `--screen <name>` (e.g. `eDP-1`) so pointer coordinates are matched to the monitor OBS records; screenpilot first matches the OBS source name against monitor models reported by KWin (e.g. "Lenovo R24e | Monitor" → HDMI-A-5), then falls back to the monitor under the cursor. If it guessed wrong, fix the session afterwards with `screenpilot remap <session> --screen <name>` (the raw pointer log is kept in `pointer.raw.jsonl`). screenpilot reuses a screen-capture source you already have in OBS when one is showing pixels, so the portal picker does not reappear.
 
@@ -150,7 +166,9 @@ The agent can operate the desktop itself while it records: it looks (`screenshot
 
 Requirements
 
-- KDE Plasma on Wayland. Driving uses the RemoteDesktop portal; approve the KDE "remote control" dialog once and select all monitors. The token is saved in `~/.config/screenpilot/state.json` (chmod 600), so later runs are silent.
+- KDE Plasma or GNOME on Wayland: driving uses the RemoteDesktop portal; approve the "remote control" dialog once and select all monitors. The token is saved in `~/.config/screenpilot/state.json` (chmod 600), so later runs are silent. On GNOME there is no window control, so use `{screen, x, y}` targets (no `focus`, `waitForWindow`, `{window}` or `{web}` targets).
+- X11 (any desktop with an EWMH window manager): XTest, no dialog. Everything works, including `{web}` targets and window framing.
+- Windows: see [Windows](#windows).
 - Recording uses the native recorder by default. With `--recorder obs`, OBS needs one capture source per monitor (or one for the whole desktop); names usually match the monitors, otherwise pass `--map "Source Name=HDMI-A-1"` (saved for next time). `screenshot` reads the OBS sources.
 - The demo browser (`screenpilot browser`) uses its own profile at `~/.config/screenpilot/browser`, with downloads going to `~/Downloads` without prompts. Your normal browser is untouched.
 
@@ -174,7 +192,7 @@ Safety
 - Never put secrets in `take.json`: use `{"type": {"env": "VAR"}}`; the value is read from the environment and never logged or echoed.
 - Rehearse with `--dry-run` before recording.
 
-Limitations: driving is KDE Wayland only for now (Windows later). Recording on other platforms still works as described above.
+Limitations: see [Platform support](#platform-support). On wlroots compositors (sway, Hyprland) driving is not possible (no RemoteDesktop portal); recording still works.
 
 ## Framing two monitors
 
@@ -191,7 +209,9 @@ With window framing, KWin reports the active window over time (`windows.jsonl`, 
 
 Zooms, highlights and callouts use coordinates normalized to the whole recording (both monitors), so they work in all three. If OBS has one source that shows the whole desktop, screenpilot uses it (cropped for a single monitor); otherwise it places one source per monitor. Which source shows which monitor is worked out by comparing the pictures.
 
-While recording, screenpilot closes notification popups already on screen (KDE) and asks the desktop to hold new ones (freedesktop `Notifications.Inhibit`; released when recording stops or the process dies). Plasma already does this during screen sharing; critical notifications (e.g. low memory) still show.
+While recording, screenpilot closes notification popups already on screen (KDE) and asks the desktop to hold new ones (freedesktop `Notifications.Inhibit`; released when recording stops or the process dies). Plasma already does this during screen sharing; critical notifications (e.g. low memory) still show. Notification servers without `Inhibit` (GNOME Shell, most X11 daemons) are left alone: turn on Do Not Disturb yourself.
+
+Window framing needs the active window over time: KDE, X11 and Windows log it; on other Wayland desktops window views fall back to monitor views.
 
 Renders use 2 headless-Chrome workers by default (`--workers`): more is faster but can push a desktop that is also running OBS and browsers out of memory.
 
@@ -275,17 +295,19 @@ Then quit and reopen that app. When a permission is missing ScreenPilot opens th
 
 CI: `.github/workflows/macos.yml` runs tests and `pnpm smoke:macos` on a real Apple Silicon runner when `src/platform/macos` or the macOS recorder changes (or by hand from the Actions tab); macOS minutes cost 10x on private repos, so the job is short. The runner cannot grant privacy permissions, so checks that need one are reported as "blocked" in `smoke-report/report.json` rather than failed. On your own Mac, run `pnpm smoke:macos` from a terminal that has the permissions above.
 
-CI: GitHub Actions. `.github/workflows/ci.yml` (Linux: typecheck, tests, build) runs on every push and pull request to `main`; `.github/workflows/windows.yml` (tests + `smoke:windows` on a real Windows runner) runs only when code that behaves differently on Windows changes (`src/platform`, `src/record`, `src/drive`, `src/take`, `src/util`, `scripts`, dependencies), or by hand from the Actions tab, since Windows minutes count double on private repos.
+CI: GitHub Actions. `.github/workflows/ci.yml` (Linux: typecheck, tests, build; plus `smoke:x11` under Xvfb + openbox: monitors, XTest pointer read-back, typing "Hello مرحبا 123" into a Tk window and reading it back, window list/focus/fit-restore, the demo browser, an x11grab recording that must decode, and a recorded take → storyboard) runs on every push and pull request to `main`; `.github/workflows/windows.yml` (tests + `smoke:windows` on a real Windows runner) runs only when code that behaves differently on Windows changes (`src/platform`, `src/record`, `src/drive`, `src/take`, `src/util`, `scripts`, dependencies), or by hand from the Actions tab, since Windows minutes count double on private repos.
 
 ## Limitations
 
-- Driving the desktop (`perform`, `drive`, `screenshot`) works on KDE Wayland, Windows and macOS; the Windows and macOS backends are new (see above).
+- Driving the desktop (`perform`, `drive`, `screenshot`) works on KDE Wayland, X11, GNOME Wayland (no window control), Windows and macOS; not on wlroots compositors.
+- Wayland desktops other than KDE expose no window list and no pointer position: no window framing, no `{web}`/`{window}` targets, no pointer log for your own recordings.
 - Voiceover uses Edge TTS only (needs network; unofficial service, may change).
-- Native recording covers KDE Plasma, Windows and macOS; elsewhere use `--recorder obs`.
-- Click capture on Wayland needs the `input` group; on macOS the app that starts ScreenPilot needs Accessibility (and Input Monitoring).
+- Native recording covers Linux (Wayland through the screen-cast portal, X11 through ffmpeg), Windows and macOS.
+- X11 with fractional/HiDPI scaling is recorded in X pixels as reported by XRandR.
+- Click capture on KDE Wayland needs the `input` group; on macOS the app that starts ScreenPilot needs Accessibility (and Input Monitoring).
 - Rendering is not fast: use `draft` while iterating.
 - Narration in cut regions is dropped; the agent must keep lines inside kept segments.
 
 ---
 
-Docs synced to commit 4782106 ("feat(macos): native macOS desktop, input and recording", 2026-10-27).
+Docs synced to commit 2113564 ("ci: X11 smoke test under Xvfb + openbox", 2026-10-27).

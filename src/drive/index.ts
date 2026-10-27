@@ -5,7 +5,7 @@ import type { ScreenInfo } from "../record/input/types.js";
 
 // The agent's hands: smooth pointer motion, clicks, keys and typing on the
 // real desktop, with the pointer position and monitor layout read back from
-// the OS. The OS specifics (KDE portal, Windows SendInput) are behind
+// the OS. The OS specifics (xdg portal, XTest, Windows SendInput) are behind
 // Injector / Watcher.
 
 /** A point on a monitor, normalized 0..1. Without `screen`, the monitor under the pointer. */
@@ -219,4 +219,4 @@ export class Driver {
   }
 }
 
-export { mapStreams } from "../platform/kde.js";
+export { mapStreams } from "../platform/portal.js";

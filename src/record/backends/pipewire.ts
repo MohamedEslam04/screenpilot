@@ -2,18 +2,23 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import type { RemoteDesktopSession } from "../../drive/portal.js";
-import { mapStreams, openRemoteDesktop } from "../../platform/kde.js";
+import { mapStreams } from "../../platform/portal.js";
+import { installHint } from "../../util/distro.js";
 import { run } from "../../util/exec.js";
 import { canvasFor, type RecorderBackend } from "../backend.js";
 import type { ScreenInfo } from "../input/types.js";
 import type { CaptureInfo } from "../obs.js";
 
-// Native recording on KDE Plasma: the xdg portal gives us a PipeWire stream
-// per monitor (already approved for remote control, so no dialog), and
-// GStreamer composes the chosen monitors side by side and encodes H.264.
+// Native recording on Wayland (KDE, GNOME, wlroots): the xdg portal gives us
+// a PipeWire stream per monitor (on KDE already approved for remote control,
+// so no dialog), and GStreamer composes the chosen monitors side by side and
+// encodes H.264 with whichever encoder is installed.
 
 const FPS = 30;
 const ENCODERS = ["x264enc", "openh264enc", "vah264enc", "vaapih264enc"] as const;
+
+/** Opens the portal session whose monitor streams are recorded. */
+export type OpenStreams = (log: (m: string) => void) => Promise<RemoteDesktopSession>;
 
 export async function gstAvailable(): Promise<boolean> {
   try {
@@ -25,7 +30,8 @@ export async function gstAvailable(): Promise<boolean> {
 }
 
 let encoder: string | undefined | null = null;
-async function pickEncoder(): Promise<string | undefined> {
+/** The first installed H.264 encoder (x264, OpenH264, VA-API). */
+export async function pickEncoder(): Promise<string | undefined> {
   if (encoder !== null) return encoder;
   encoder = undefined;
   for (const e of ENCODERS) {
@@ -74,7 +80,7 @@ export function buildPipeline(streams: StreamPlacement[], canvas: { w: number; h
   return args;
 }
 
-export class KdePipewireBackend implements RecorderBackend {
+export class PipewireBackend implements RecorderBackend {
   readonly id = "native" as const;
   startedAt = 0;
   private portal?: RemoteDesktopSession;
@@ -85,15 +91,17 @@ export class KdePipewireBackend implements RecorderBackend {
   private enc = "";
   private log: (m: string) => void = () => {};
 
+  constructor(private open: OpenStreams) {}
+
   async prepare(screens: ScreenInfo[], _all: ScreenInfo[], log: (m: string) => void): Promise<CaptureInfo> {
     this.log = log;
     const enc = await pickEncoder();
-    if (!enc) throw new Error("No GStreamer H.264 encoder (install gstreamer1-plugin-openh264 or x264).");
+    if (!enc) throw new Error(`No GStreamer H.264 encoder (${installHint("gstreamer")}).`);
     this.enc = enc;
-    this.portal = await openRemoteDesktop(log);
+    this.portal = await this.open(log);
     const streamOf = mapStreams(this.portal.streams, screens);
     const missing = screens.filter((s) => !streamOf.has(s.name));
-    if (missing.length) throw new Error(`No screen stream for ${missing.map((s) => s.name).join(", ")} (allow all monitors in the KDE dialog)`);
+    if (missing.length) throw new Error(`No screen stream for ${missing.map((s) => s.name).join(", ")} (allow all monitors in the screen-sharing dialog)`);
     const capture = canvasFor(screens, FPS, `pipewire+${enc}`, screens.map((s) => s.name).join(" + "));
     const x0 = Math.min(...screens.map((s) => s.x));
     const y0 = Math.min(...screens.map((s) => s.y));
@@ -158,12 +166,13 @@ export class KdePipewireBackend implements RecorderBackend {
  * buffers are pulled because the very first one can be blank.
  */
 export async function snapshotMonitors(
+  open: OpenStreams,
   screens: ScreenInfo[],
   outFile: (s: ScreenInfo) => string,
   width: number,
   log: (m: string) => void = () => {},
 ): Promise<void> {
-  const portal = await openRemoteDesktop(log);
+  const portal = await open(log);
   try {
     const streamOf = mapStreams(portal.streams, screens);
     for (const s of screens) {

@@ -2,10 +2,17 @@ import { existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { APP } from "./brand.js";
+import { DESKTOP_ENV } from "./brand.js";
 import { Driver } from "./drive/index.js";
+import { portalVersion } from "./drive/portal.js";
 import { findBrowser } from "./drive/web.js";
-import { getDesktop } from "./platform/index.js";
+import { DESKTOP_IDS, desktopName, isWlrootsEnv } from "./platform/detect.js";
+import { type DesktopChoice, type DesktopId, detectDesktop, getDesktop } from "./platform/index.js";
+import { pickEncoder } from "./record/backends/pipewire.js";
+import { hasX11grab } from "./record/backends/x11-ffmpeg.js";
+import { mouseAccess } from "./record/input/evdev.js";
 import { ObsRecorder, resolveObsConfig } from "./record/obs.js";
+import { installHint } from "./util/distro.js";
 import { run } from "./util/exec.js";
 import { getProvider } from "./voice/index.js";
 
@@ -109,6 +116,107 @@ async function macChecks(add: Add): Promise<void> {
   });
 }
 
+// Per-capability support of the picked desktop backend, with the fix when something is missing.
+
+type Result = Omit<Check, "name">;
+const fail = (detail: string): Result => ({ ok: false, detail });
+
+async function gstreamerSupport(): Promise<Result> {
+  try {
+    await run("gst-inspect-1.0", ["pipewiresrc"]);
+  } catch {
+    return fail(`GStreamer or its PipeWire plugin (pipewiresrc) is missing: ${installHint("gstreamer")} (or record with --recorder obs)`);
+  }
+  const enc = await pickEncoder();
+  if (!enc) return fail(`no GStreamer H.264 encoder: ${installHint("gstreamer")} (or record with --recorder obs)`);
+  return { ok: true, detail: `portal PipeWire streams + GStreamer (${enc})` };
+}
+
+export async function recordSupport(id: DesktopId): Promise<Result> {
+  switch (id) {
+    case "windows":
+      return { ok: true, detail: "ffmpeg gdigrab (see the ffmpeg check)" };
+    case "macos":
+      return { ok: true, detail: "ffmpeg avfoundation (see the screen recording and avfoundation checks)" };
+    case "x11":
+      return (await hasX11grab())
+        ? { ok: true, detail: `ffmpeg x11grab on ${process.env.DISPLAY ?? ":0"}` }
+        : fail(`ffmpeg with x11grab is needed: ${installHint("ffmpeg")} (or record with --recorder obs)`);
+    case "kde":
+      return gstreamerSupport();
+    case "portal": {
+      if ((await portalVersion("ScreenCast")) === undefined) {
+        return fail("xdg-desktop-portal has no ScreenCast interface: install your desktop's portal backend (xdg-desktop-portal-gnome, -wlr or -hyprland) and log in again");
+      }
+      const gst = await gstreamerSupport();
+      const rd = (await portalVersion("RemoteDesktop")) !== undefined;
+      return gst.ok ? { ...gst, detail: `${gst.detail}; ${rd ? "RemoteDesktop" : "ScreenCast"} session (asks once)` } : gst;
+    }
+  }
+}
+
+export async function driveSupport(id: DesktopId): Promise<Result> {
+  switch (id) {
+    case "windows":
+      return { ok: true, detail: "SendInput" };
+    case "macos":
+      return { ok: true, detail: "CGEvent (see the accessibility check)" };
+    case "x11": {
+      const x = await (await import("./platform/x11/xlib.js")).x11();
+      return x.hasXTest() ? { ok: true, detail: "XTest" } : fail("the X server has no XTEST extension");
+    }
+    case "kde":
+    case "portal": {
+      const v = await portalVersion("RemoteDesktop");
+      if (v !== undefined) return { ok: true, detail: `xdg-desktop-portal RemoteDesktop v${v} (approve once; the token is saved)` };
+      if (isWlrootsEnv(process.env)) {
+        return skip(`not supported on ${desktopName(process.env)}: wlroots compositors have no RemoteDesktop portal (recording still works)`);
+      }
+      return fail("xdg-desktop-portal has no RemoteDesktop interface: install your desktop's portal backend (e.g. xdg-desktop-portal-gnome) and log in again");
+    }
+  }
+}
+
+export async function windowSupport(id: DesktopId): Promise<Result> {
+  switch (id) {
+    case "windows":
+      return { ok: true, detail: "Win32" };
+    case "macos":
+      return { ok: true, detail: "Accessibility API (see the accessibility check)" };
+    case "kde":
+      return { ok: true, detail: "KWin scripts" };
+    case "x11": {
+      const { hasEwmh } = await import("./platform/x11/windows.js");
+      const x = await (await import("./platform/x11/xlib.js")).x11();
+      return hasEwmh(x) ? { ok: true, detail: "EWMH window manager" } : fail("no EWMH window manager is running on this display (window list, focus and fit need one)");
+    }
+    case "portal":
+      return skip(`not available on ${desktopName(process.env)} (Wayland has no window list for apps): focus/fit steps and web targets don't work; window-framed views fall back to screens`);
+  }
+}
+
+export async function pointerSupport(id: DesktopId): Promise<Result> {
+  switch (id) {
+    case "windows":
+      return { ok: true, detail: "cursor polling + clicks from the global mouse hook" };
+    case "macos":
+      return { ok: true, detail: "cursor polling + clicks from the global mouse hook (see the input monitoring check)" };
+    case "x11":
+      return { ok: true, detail: "XQueryPointer polling + clicks from the global mouse hook (uiohook)" };
+    case "kde": {
+      const { devices, readable } = await mouseAccess();
+      if (readable.length) return { ok: true, detail: `pointer from KWin, clicks from ${readable.length} evdev device(s)` };
+      return skip(
+        devices.length
+          ? "pointer from KWin; clicks are NOT logged: run `sudo usermod -aG input $USER` and log in again (that group can read all input)"
+          : "pointer from KWin; no mouse devices found for click logging",
+      );
+    }
+    case "portal":
+      return skip(`none on ${desktopName(process.env)} (Wayland does not expose the pointer): performed takes still get their clicks from the driver; zooms otherwise come from the storyboard`);
+  }
+}
+
 export async function doctor(opts: { input?: boolean } = {}): Promise<DoctorReport> {
   const checks: Check[] = [];
   const add = async (name: string, fn: () => Promise<Omit<Check, "name"> | { ok: boolean; detail: string }>) => {
@@ -125,12 +233,27 @@ export async function doctor(opts: { input?: boolean } = {}): Promise<DoctorRepo
   });
   await add("ffmpeg", () => tool("ffmpeg"));
   await add("ffprobe", () => tool("ffprobe"));
-  await add("desktop", async () => ({ ok: true, detail: (await getDesktop()).id }));
+  let choice: DesktopChoice | undefined;
+  await add("desktop", async () => {
+    choice = detectDesktop();
+    return { ok: true, detail: `${choice.id} (${choice.reason}; override with ${DESKTOP_ENV}=${DESKTOP_IDS.join("|")})` };
+  });
   await add("monitors", async () => {
     const screens = await (await getDesktop()).screens();
     return { ok: screens.length > 0, detail: screens.map((s) => `${s.name} ${s.w}x${s.h}+${s.x}+${s.y}`).join("; ") || "none found" };
   });
-  await add("windows", async () => ({ ok: true, detail: `${(await (await getDesktop()).listWindows()).length} windows listed` }));
+  if (choice) {
+    const id = choice.id;
+    await add("can record (native)", () => recordSupport(id));
+    await add("can drive (input injection)", () => driveSupport(id));
+    await add("window control", () => windowSupport(id));
+    await add("pointer logging", () => pointerSupport(id));
+  }
+  await add("windows", async () => {
+    const desktop = await getDesktop();
+    if (!desktop.windowControl) return skip("no window list on this desktop");
+    return { ok: true, detail: `${(await desktop.listWindows()).length} windows listed` };
+  });
   await add("input injection", async () => (opts.input ? inputCheck() : skip("pass --input to test (it moves the real pointer)")));
   await add("obs", obsCheck);
   await add("demo browser", async () => {

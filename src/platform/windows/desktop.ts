@@ -135,6 +135,7 @@ async function fitWindow(match: string, aspect = 16 / 9): Promise<{ window: Wind
 
 export const windowsDesktop: Desktop = {
   id: "windows",
+  windowControl: true,
 
   async screens() {
     return (await win32()).monitors().map((m) => m.screen);

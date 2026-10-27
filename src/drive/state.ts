@@ -2,10 +2,12 @@ import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { configDir } from "../brand.js";
 
-// Small per-user state: portal restore token, confirmed OBS source → monitor map.
+// Small per-user state: portal restore tokens, confirmed OBS source → monitor map.
 
 export interface State {
   remoteDesktopToken?: string;
+  /** ScreenCast-only portal sessions (compositors without RemoteDesktop, e.g. wlroots). */
+  screenCastToken?: string;
   sourceMap?: Record<string, string>;
   /** OBS record folder to put back if a recording was interrupted. */
   pendingRecordDir?: string;
