@@ -152,7 +152,7 @@ Three ways to show a multi-monitor setup (all tested on KDE Wayland with two 192
 
 Zooms, highlights and callouts use coordinates normalized to the whole recording (both monitors), so they work in all three. If OBS has one source that shows the whole desktop, demoreel uses it (cropped for a single monitor); otherwise it places one source per monitor. Which source shows which monitor is worked out by comparing the pictures.
 
-While recording, demoreel asks the desktop to hold notification popups (freedesktop `Notifications.Inhibit`; released when recording stops or the process dies). Plasma already does this during screen sharing; critical notifications (e.g. low memory) still show.
+While recording, demoreel closes notification popups already on screen (KDE) and asks the desktop to hold new ones (freedesktop `Notifications.Inhibit`; released when recording stops or the process dies). Plasma already does this during screen sharing; critical notifications (e.g. low memory) still show.
 
 Renders use 2 headless-Chrome workers by default (`--workers`): more is faster but can push a desktop that is also running OBS and browsers out of memory.
 

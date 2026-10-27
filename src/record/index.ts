@@ -5,6 +5,7 @@ import { startAdapter } from "./input/index.js";
 import { type Rect, type ScreenInfo, screenAt, screenForSourceName } from "./input/types.js";
 import { normalizeEvents } from "./normalize.js";
 import { quietNotifications } from "./quiet.js";
+import { closeNotificationPopups } from "../drive/kwinscript.js";
 import { detectLayout } from "../drive/see.js";
 import { loadState, saveState } from "../drive/state.js";
 import { type CaptureInfo, ObsRecorder, resolveObsConfig, unionRect } from "./obs.js";
@@ -27,7 +28,7 @@ export interface RecordOptions {
   screens?: "all" | string[];
   /** OBS source name → monitor name, when names don't make it obvious (saved for next time). */
   map?: Record<string, string>;
-  /** Hold notification popups while recording (default true). */
+  /** Close notification popups on screen and hold new ones while recording (default true). */
   quiet?: boolean;
   log?: (msg: string) => void;
 }
@@ -124,6 +125,10 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
     }
 
     const unquiet = opts.quiet === false ? async () => {} : await quietNotifications();
+    if (opts.quiet !== false && adapter.id === "kwin") {
+      const closed = await closeNotificationPopups().catch(() => 0);
+      if (closed) log(`closed ${closed} notification popup(s) before recording`);
+    }
     try {
       await obs.start(dir);
     } catch (err) {
