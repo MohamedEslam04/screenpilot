@@ -242,9 +242,10 @@ async function main(): Promise<void> {
     if (!driver || !textEdit) throw new Error("needs driver + TextEdit window");
     const q = await quartz();
     const notes = [`post-event access ${q.postEventAllowed()}`];
-    // Diagnose where macOS accepts synthetic key events: HID tap first (default), then the session tap.
-    for (const tap of ["hid", "session"]) {
-      process.env.SCREENPILOT_MAC_TAP = tap;
+    // The default (keys at the session tap) must work; the HID tap is tried after it for the report.
+    for (const tap of ["default", "hid"]) {
+      if (tap === "default") delete process.env.SCREENPILOT_MAC_TAP;
+      else process.env.SCREENPILOT_MAC_TAP = tap;
       const w = await refresh(textEdit.id);
       await driver.desktop.focusWindow(w.id);
       await driver.moveToGlobal({ x: w.x + w.w / 2, y: w.y + w.h / 2 }, { dur: 0.3 });

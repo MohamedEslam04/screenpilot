@@ -64,20 +64,22 @@ export async function openBrowser(opts: { screen?: ScreenInfo; url?: string; log
     await quietDownloads(join(profile, "Default", "Preferences"));
     const bin = findBrowser();
     opts.log?.(`starting ${bin} (demo profile)`);
-    spawn(
-      bin,
-      [
-        `--user-data-dir=${profile}`,
-        `--remote-debugging-port=${CDP_PORT}`,
-        "--no-first-run",
-        "--no-default-browser-check",
-        "--disable-session-crashed-bubble",
-        "--hide-crash-restore-bubble",
-        "--new-window",
-        opts.url ?? "about:blank",
-      ],
-      { detached: true, stdio: "ignore" },
-    ).unref();
+    const args = [
+      `--user-data-dir=${profile}`,
+      `--remote-debugging-port=${CDP_PORT}`,
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--disable-session-crashed-bubble",
+      "--hide-crash-restore-bubble",
+      "--new-window",
+      opts.url ?? "about:blank",
+    ];
+    // macOS only lets an app come to the front if LaunchServices started it: a child
+    // process of ours never can. `open -n` starts a separate instance (the user's own
+    // browser is untouched) and passes our flags through.
+    const app = process.platform === "darwin" ? bin.match(/^(.*?\.app)\//)?.[1] : undefined;
+    if (app) spawn("open", ["-n", "-a", app, "--args", ...args], { detached: true, stdio: "ignore" }).unref();
+    else spawn(bin, args, { detached: true, stdio: "ignore" }).unref();
     for (let i = 0; i < 60 && !(await cdpUp()); i++) await sleep(250);
     if (!(await cdpUp())) throw new Error("The demo browser did not open its debugging port.");
   }
