@@ -1,0 +1,109 @@
+name: Release install test
+
+# Installs a PUBLISHED release on clean runners the way a user would (Windows
+# setup.exe, macOS Install ScreenPilot.command, Linux install.sh), then uses it
+# like an AI app does (scripts/ci/release-e2e.mjs: MCP initialize, tools,
+# doctor, storyboard, render with an Arabic voiceover), then uninstalls it.
+# Runs after each tagged Release, or by hand for any tag.
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to test (empty = latest)
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'v'))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            asset: ScreenPilot-windows-setup.exe
+          - os: ubuntu-latest
+            asset: ScreenPilot-linux.tar.gz
+          - os: macos-latest
+            asset: ScreenPilot-macos-arm64.zip
+          - os: macos-15-intel
+            asset: ScreenPilot-macos-x64.zip
+    runs-on: ${{ matrix.os }}
+    # Counts queue time too (Apple Silicon runners can queue for a while).
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag || github.event.workflow_run.head_branch || '' }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download the release
+        shell: bash
+        timeout-minutes: 5
+        run: |
+          gh release download $TAG --repo "$GITHUB_REPOSITORY" --pattern "${{ matrix.asset }}" --dir dl
+          ls -la dl
+      # An AI app the user already has: setup must find it and register ScreenPilot.
+      - name: Pretend OpenCode is installed
+        shell: bash
+        run: mkdir -p "$HOME/.config/opencode"
+
+      - name: Install (Windows setup.exe, silent)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        timeout-minutes: 10
+        run: |
+          $p = Start-Process -FilePath "dl\${{ matrix.asset }}" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/LOG=install.log' -Wait -PassThru
+          Get-Content install.log -Tail 15
+          if ($p.ExitCode -ne 0) { throw "installer exit code $($p.ExitCode)" }
+          "APP=$env:LOCALAPPDATA\ScreenPilot" >> $env:GITHUB_ENV
+          "NODE=$env:LOCALAPPDATA\ScreenPilot\bin\node.exe" >> $env:GITHUB_ENV
+      - name: Install (macOS, Install ScreenPilot.command)
+        if: runner.os == 'macOS'
+        timeout-minutes: 10
+        run: |
+          ditto -x -k "dl/${{ matrix.asset }}" x
+          bash "x/ScreenPilot/Install ScreenPilot.command" </dev/null
+          echo "APP=$HOME/Library/Application Support/ScreenPilot" >> "$GITHUB_ENV"
+          echo "NODE=$HOME/Library/Application Support/ScreenPilot/bin/node" >> "$GITHUB_ENV"
+      - name: Install (Linux, install.sh)
+        if: runner.os == 'Linux'
+        timeout-minutes: 10
+        run: |
+          mkdir x && tar -xzf "dl/${{ matrix.asset }}" -C x
+          SCREENPILOT_NO_TERMINAL=1 ./x/ScreenPilot/install.sh </dev/null
+          echo "APP=$HOME/.local/share/screenpilot" >> "$GITHUB_ENV"
+          echo "NODE=$HOME/.local/share/screenpilot/bin/node" >> "$GITHUB_ENV"
+
+      # The rest uses only what the release installed (its own Node and ffmpeg).
+      - name: Use it like an AI app (MCP)
+        shell: bash
+        timeout-minutes: 12
+        run: '"$NODE" scripts/ci/release-e2e.mjs "$HOME/.config/opencode/opencode.json"'
+
+      - name: Uninstall (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          Start-Process -FilePath "$env:APP\unins000.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait
+          # The uninstaller re-runs itself from a temp copy: wait for the files to go.
+          for ($i = 0; $i -lt 60 -and (Test-Path "$env:APP\bin"); $i++) { Start-Sleep 2 }
+          if (Test-Path "$env:APP\bin") { throw "ScreenPilot files are still there" }
+      - name: Uninstall (macOS)
+        if: runner.os == 'macOS'
+        run: bash "x/ScreenPilot/Uninstall ScreenPilot.command" </dev/null
+      - name: Uninstall (Linux)
+        if: runner.os == 'Linux'
+        run: ./x/ScreenPilot/uninstall.sh </dev/null
+      - name: Check it was removed from the AI app
+        shell: bash
+        run: |
+          if grep -q screenpilot "$HOME/.config/opencode/opencode.json"; then
+            cat "$HOME/.config/opencode/opencode.json"; echo "still configured"; exit 1
+          fi
+          echo "removed from OpenCode"
