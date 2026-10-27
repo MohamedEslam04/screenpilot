@@ -116,6 +116,7 @@ server.registerTool(
       screen: z.string().optional().describe("Monitor name to normalize pointer coordinates against (e.g. eDP-1)"),
       obsUrl: z.string().optional().describe("obs-websocket URL. Default ws://127.0.0.1:4455"),
       obsPassword: z.string().optional().describe("obs-websocket password. Default: read from the local OBS config"),
+      recorder: z.enum(["native", "obs"]).optional().describe("native: no OBS needed (KDE PipeWire / Windows ffmpeg). Default: native when available"),
       fitWindow: z
         .string()
         .optional()
