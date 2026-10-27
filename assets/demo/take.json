@@ -1,0 +1,40 @@
+{
+  "name": "screenpilot-readme-demo",
+  "screens": ["HDMI-A-5"],
+  "camera": "window",
+  "setup": [
+    { "browser": { "screen": "HDMI-A-5", "url": "file:///data/personal_projects/demoreel/assets/demo/site/index.html" } },
+    { "wait": 1 }
+  ],
+  "steps": [
+    { "caption": "ScreenPilot: screen videos made by your AI\nفيديوهات شاشتك… يعملها الـ AI بتاعك", "dur": 4 },
+    { "wait": 2.5 },
+    { "move": { "web": "#cta-install" }, "dur": 0.9 },
+    { "wait": 0.4 },
+    { "click": { "web": "#cta-install" } },
+    { "wait": 1.2 },
+    { "caption": "Install on Windows, macOS or Linux with one double-click\nتثبيت على ويندوز وماك ولينكس بدبل كليك واحدة", "dur": 6 },
+    { "wait": 0.8 },
+    { "click": { "web": "#tab-mac" } },
+    { "wait": 1.6 },
+    { "click": { "web": "#tab-linux" } },
+    { "wait": 1.6 },
+    { "click": { "web": "#tab-win" } },
+    { "wait": 1.2 },
+    { "click": { "web": "#nav-how" } },
+    { "wait": 1 },
+    { "caption": "Record, review, edit, render: all on your computer\nتسجيل، مراجعة، مونتاج، وفيديو جاهز… وكله على جهازك", "dur": 4 },
+    { "wait": 3 },
+    { "click": { "web": "#nav-apps" } },
+    { "wait": 1 },
+    { "caption": "Works with Claude, Cursor, Codex and more, no API key\nبيشتغل مع Claude، Cursor، Codex وغيرهم… من غير API key", "dur": 4 },
+    { "wait": 3 },
+    { "click": { "web": "#nav-demo" } },
+    { "wait": 1.2 },
+    { "move": { "web": "#play" }, "dur": 0.7 },
+    { "click": { "web": "#play" } },
+    { "caption": "A finished video, made end to end by ScreenPilot\nفيديو كامل اتعمل من الأول للآخر بـ ScreenPilot", "dur": 5 },
+    { "wait": 9 }
+  ],
+  "tail": 1
+}

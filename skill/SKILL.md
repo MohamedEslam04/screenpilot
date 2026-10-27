@@ -131,8 +131,20 @@ What each part does:
 - `captions`: `style` is `pill` (subtitle-like), `title` (big), or `callout` (bubble pointing at `x`,`y`; always give x/y). `position` is bottom/top/center.
 - `highlights`: a box (`x`,`y` top-left, `w`,`h` size, all 0..1) with optional label.
 - `narration`: `at` is the source time the line starts. Per-line `voice` overrides `voice.name`. A line placed in a cut region is dropped (warning). Lines also show as subtitles unless `caption: false` or `voice.subtitles: false`.
-- `intro` / `outro`: title cards. `music`: `{ "src": "bgm.mp3", "volume": 0.12 }`. `keepSourceAudio`, `output` (1920x1080@30 default) and `theme` (background, padding, radius, accent, font, clickRipples) are optional.
+- `intro` / `outro`: title cards. `music`: `{ "src": "bgm.mp3", "volume": 0.12 }`. `keepSourceAudio`, `output` (1920x1080@30 default) and `theme` (background, padding, radius, accent, font, captionColor, captionBackground, clickRipples, `fonts`: extra Google Fonts, `css`: your own CSS) are optional; see "Design the look" below.
 - Voices: MCP `voices` (lang: "ar-EG") / `screenpilot voices --lang ar-EG`. Egyptian Arabic: `ar-EG-SalmaNeural` (f), `ar-EG-ShakirNeural` (m). English: `en-US-AndrewNeural`, `en-US-AriaNeural`.
+
+## Design the look (every video is different)
+
+There is no house style: the defaults are a fallback, not a look. Before rendering, decide:
+
+- **Who and where.** Developers on a GitHub README, customers on a landing page, a sales prospect, followers on Reels/TikTok, colleagues in a tutorial. That decides size (`output`: 1920x1080 for README/YouTube/slides, 1080x1920 for Reels/TikTok/Shorts, 1080x1080 for feeds), pace and tone.
+- **Brand.** Take colors and type from the product being shown (its site, app or logo): `theme.background` (solid, gradient or image), `theme.accent`, `theme.font` + `theme.fonts` (any Google Fonts, e.g. `"Tajawal:wght@400;700"` for Arabic).
+- **Details with `theme.css`.** Restyle anything: caption boxes (`.text.pill > span`, `.text.subtitle > span`, `.text.title > span`, lines `.text .ln`), intro/outro cards (`.card`, `.card h1`, `.card p`), highlights (`.hl`), callouts, ripples, the recording frame (`#frame`) and the stage (`#root`). `storyboard_schema` lists them.
+- **The shot.** Pick what to record and show from the goal, not by habit. Monitors: one (`screens: ["eDP-1"]`), several, or `"all"`. Camera: `"window"` follows the app in use (product demos, hides the desktop), `"screen"` shows the whole monitor (OS-level how-tos, when the taskbar or other apps matter), `"all"` puts monitors side by side (flows that span screens: editor + app, dashboard + terminal). Change it mid-video with `view` steps in a take or `views` in the storyboard, and zoom only where detail matters.
+- **Captions.** Social: big, bold, few words. Tutorials: calm, explanatory, lower third. Bilingual: one caption with two lines, `"English\nعربي"`; avoid a lone "و" between Latin words (it renders like "g"), use Arabic commas instead.
+
+Render a draft and look at it with check_output before the final render.
 
 ## Style guidance for good demos
 

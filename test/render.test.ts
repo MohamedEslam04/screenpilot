@@ -93,3 +93,36 @@ describe("renderHtml", () => {
     expect(renderHtml(plan(), { gsapSrc: "gsap.min.js" })).toBe(html);
   });
 });
+
+describe("styling chosen by the agent", () => {
+  const styled = (theme: Record<string, unknown>, captions: unknown[] = []) => {
+    const s = StoryboardSchema.parse({ source: "rec.mp4", theme, captions });
+    const timeline = buildTimeline({ segments: [], holds: [], sourceDuration: 10, offset: 0 });
+    return renderHtml(
+      buildPlan({ sb: s, timeline, editedSrc: "e.mp4", editedHasAudio: false, source: { width: 1920, height: 1080 }, narration: [], clicks: [] }),
+      { gsapSrc: "g.js" },
+    );
+  };
+
+  it("loads the storyboard's fonts and applies its CSS after the built-in styles", () => {
+    const html = styled({ fonts: ["Tajawal:wght@400;700", "Space Grotesk:wght@500"], css: ".text.pill > span { border-radius: 0; }" });
+    expect(html).toContain("family=Tajawal:wght@400;700");
+    expect(html).toContain("family=Space+Grotesk:wght@500");
+    expect(html.indexOf('<style id="theme-css">')).toBeGreaterThan(html.indexOf(".card p {"));
+    expect(html).toContain(".text.pill > span { border-radius: 0; }");
+  });
+
+  it("can't break out of its style element", () => {
+    const html = styled({ css: "x{}</style><script>alert(1)</script>" });
+    expect(html).not.toContain("</style><script>");
+  });
+
+  it("adds nothing when no CSS is given", () => {
+    expect(styled({})).not.toContain("theme-css");
+  });
+
+  it("splits a caption into lines with their own direction", () => {
+    const html = styled({}, [{ at: 0, text: "Hello\nمرحبا" }]);
+    expect(html).toContain('<span class="ln" dir="auto">Hello</span><span class="ln" dir="auto">مرحبا</span>');
+  });
+});

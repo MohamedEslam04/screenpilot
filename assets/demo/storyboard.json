@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "source": "2026-10-27T21-25-24-895Z.mkv",
+  "events": "events.jsonl",
+  "voice": {
+    "name": "en-US-AndrewNeural",
+    "rate": "+0%",
+    "gap": 0.35
+  },
+  "segments": [
+    {
+      "in": 0,
+      "out": 35.77,
+      "speed": 1
+    }
+  ],
+  "zooms": [
+    {
+      "at": 4.51,
+      "dur": 2,
+      "x": 0.453,
+      "y": 0.553,
+      "scale": 1.8
+    },
+    {
+      "at": 7.17,
+      "dur": 6.32,
+      "x": 0.314,
+      "y": 0.348,
+      "scale": 1.8
+    },
+    {
+      "at": 13.75,
+      "dur": 2,
+      "x": 0.799,
+      "y": 0.178,
+      "scale": 1.8
+    },
+    {
+      "at": 18.29,
+      "dur": 2,
+      "x": 0.856,
+      "y": 0.178,
+      "scale": 1.8
+    },
+    {
+      "at": 22.82,
+      "dur": 2,
+      "x": 0.9,
+      "y": 0.178,
+      "scale": 1.8
+    },
+    {
+      "at": 25.23,
+      "dur": 2,
+      "x": 0.496,
+      "y": 0.601,
+      "scale": 1.8
+    }
+  ],
+  "captions": [
+    {
+      "at": 0.6,
+      "dur": 4,
+      "text": "ScreenPilot: screen videos made by your AI\nفيديوهات شاشتك… يعملها الـ AI بتاعك",
+      "position": "bottom"
+    },
+    {
+      "at": 6.17,
+      "dur": 6,
+      "text": "Install on Windows, macOS or Linux with one double-click\nتثبيت على ويندوز وماك ولينكس بدبل كليك واحدة",
+      "position": "bottom"
+    },
+    {
+      "at": 15.22,
+      "dur": 4,
+      "text": "Record, review, edit, render: all on your computer\nتسجيل، مراجعة، مونتاج، وفيديو جاهز… وكله على جهازك",
+      "position": "bottom"
+    },
+    {
+      "at": 19.75,
+      "dur": 4,
+      "text": "Works with Claude, Cursor, Codex and more, no API key\nبيشتغل مع Claude، Cursor، Codex وغيرهم… من غير API key",
+      "position": "bottom"
+    },
+    {
+      "at": 25.68,
+      "dur": 5,
+      "text": "A finished video, made end to end by ScreenPilot\nفيديو كامل اتعمل من الأول للآخر بـ ScreenPilot",
+      "position": "bottom"
+    }
+  ],
+  "narration": [],
+  "views": [
+    {
+      "at": 0,
+      "rect": {
+        "x": 0.0427,
+        "y": 0.0657,
+        "w": 0.9146,
+        "h": 0.9148
+      },
+      "label": "ScreenPilot - Brave",
+      "transition": "pan"
+    }
+  ],
+  "intro": {
+    "title": "ScreenPilot",
+    "subtitle": "Screen videos, made by your AI",
+    "dur": 2.5
+  },
+  "outro": {
+    "title": "Get ScreenPilot",
+    "subtitle": "Windows · macOS · Linux",
+    "dur": 3
+  },
+  "theme": {
+    "background": "radial-gradient(1100px 620px at 12% 8%, rgba(109,125,255,.38), transparent 60%), radial-gradient(900px 560px at 92% 95%, rgba(34,211,238,.28), transparent 62%), #0b1020",
+    "padding": 0.06,
+    "radius": 22,
+    "accent": "#22d3ee",
+    "fonts": [
+      "Tajawal:wght@500;700;800"
+    ],
+    "font": "'Inter', 'Tajawal', system-ui, sans-serif",
+    "css": "#frame { box-shadow: 0 40px 120px rgba(34,211,238,.16), 0 0 0 1px rgba(255,255,255,.08); }\n.text.pill > span { background: rgba(11,16,32,.82); border: 1px solid rgba(139,155,255,.45); border-radius: 20px; padding: 18px 36px 16px; box-shadow: 0 24px 70px rgba(0,0,0,.5); }\n.text .ln:first-child { font-size: 40px; font-weight: 800; color: #fff; letter-spacing: -0.01em; }\n.text .ln + .ln { font-family: 'Tajawal', sans-serif; font-size: 36px; font-weight: 700; color: #67e8f9; margin-top: 4px; }\n.card-inner { padding: 0 10%; }\n.card h1 { font-size: 128px; background: linear-gradient(90deg, #8b9bff, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }\n.card p { color: #c7d2fe; font-size: 42px; }\n.ripple { border-color: #22d3ee; box-shadow: 0 0 18px #22d3ee; }"
+  }
+}

@@ -93,6 +93,19 @@ export const ThemeSchema = z.object({
   captionColor: z.string().default("#ffffff"),
   captionBackground: z.string().default("rgba(15, 23, 42, 0.82)"),
   clickRipples: z.boolean().default(true).describe("Draw a ripple on every recorded click (needs events.jsonl)"),
+  fonts: z
+    .array(z.string().min(1))
+    .default([])
+    .describe('Extra Google Fonts to load, as css2 "family" specs, e.g. "Tajawal:wght@400;700" or "Space Grotesk:wght@500;700"; then use them in font or css'),
+  css: z
+    .string()
+    .default("")
+    .describe(
+      "Your own CSS, applied after the built-in styles, to design the look of this video. Elements: #root (whole frame; its background), " +
+        "#frame (the recording box), .card / .card-inner / .card h1 / .card p (intro and outro), .text (captions; .text.pill, .text.subtitle, " +
+        ".text.title; the visible box is .text.<style> > span; .text .ln is one line of a multi-line caption), .pos-bottom / .pos-top / .pos-center, " +
+        ".hl and .hl span (highlights), .callout span, .ripple (click ripples).",
+    ),
 });
 
 export const VoiceSchema = z.object({

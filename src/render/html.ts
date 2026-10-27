@@ -7,8 +7,13 @@ import type { RenderPlan, TextItem } from "./plan.js";
 // HyperFrames resolves video frames from the video's own timing.
 
 const COMPOSITION_ID = "main";
-const FONTS_URL =
-  "https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;800&family=Inter:wght@500;600;800&display=swap";
+const BASE_FONTS = ["Cairo:wght@500;700;800", "Inter:wght@500;600;800"];
+
+/** Google Fonts css2 URL for the default fonts plus the storyboard's own. */
+export function fontsUrl(extra: string[] = []): string {
+  const families = [...new Set([...BASE_FONTS, ...extra])].map((f) => `family=${encodeURIComponent(f.trim()).replace(/%20/g, "+").replace(/%3A/gi, ":").replace(/%40/g, "@").replace(/%3B/gi, ";").replace(/%2C/gi, ",")}`);
+  return `https://fonts.googleapis.com/css2?${families.join("&")}&display=swap`;
+}
 
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -68,7 +73,10 @@ export function renderHtml(plan: RenderPlan, opts: { gsapSrc: string }): string 
   const subtitles = plan.texts.filter((t) => t.style === "subtitle");
   plan.texts.forEach((t, i) => {
     const id = `tx${i}`;
-    const inner = `<span dir="auto">${esc(t.text)}</span>`;
+    // One line per "\n", each with its own direction, so "English\nعربي" reads right in both.
+    const lines = t.text.split("\n").filter((l) => l.trim());
+    const inner =
+      lines.length > 1 ? `<span>${lines.map((l) => `<span class="ln" dir="auto">${esc(l)}</span>`).join("")}</span>` : `<span dir="auto">${esc(t.text)}</span>`;
     if (t.style === "callout") {
       const x = (t.x ?? 0.5) * cam.w;
       const y = (t.y ?? 0.5) * cam.h;
@@ -118,7 +126,7 @@ export function renderHtml(plan: RenderPlan, opts: { gsapSrc: string }): string 
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=${W}, height=${H}" />
-<link rel="stylesheet" href="${FONTS_URL}" />
+<link rel="stylesheet" href="${esc(fontsUrl(theme.fonts))}" />
 <script src="${esc(opts.gsapSrc)}"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -140,12 +148,13 @@ html, body { width: ${W}px; height: ${H}px; overflow: hidden; background: #000; 
 .callout.above span { bottom: 22px; }
 .callout.below span { top: 22px; }
 .text { position: absolute; left: 0; right: 0; text-align: center; }
-.text span { display: inline-block; max-width: ${Math.round(W * 0.8)}px; }
-.text.pill span, .text.subtitle span { color: ${theme.captionColor}; background: ${theme.captionBackground};
+.text > span { display: inline-block; max-width: ${Math.round(W * 0.8)}px; }
+.text .ln { display: block; }
+.text.pill > span, .text.subtitle > span { color: ${theme.captionColor}; background: ${theme.captionBackground};
   padding: 14px 30px; border-radius: 16px; font-weight: 700; line-height: 1.35; }
-.text.pill span { font-size: 44px; }
-.text.subtitle span { font-size: 38px; font-weight: 600; }
-.text.title span { color: #fff; font-size: 84px; font-weight: 800; letter-spacing: -0.02em; text-shadow: 0 8px 40px rgba(0,0,0,.55); }
+.text.pill > span { font-size: 44px; }
+.text.subtitle > span { font-size: 38px; font-weight: 600; }
+.text.title > span { color: #fff; font-size: 84px; font-weight: 800; letter-spacing: -0.02em; text-shadow: 0 8px 40px rgba(0,0,0,.55); }
 .pos-bottom { bottom: ${subtitleBottom}px; }
 .pos-bottom-raised { bottom: ${subtitleBottom + 110}px; }
 .pos-top { top: ${frame.top + Math.round(H * 0.045)}px; }
@@ -155,6 +164,7 @@ html, body { width: ${W}px; height: ${H}px; overflow: hidden; background: #000; 
 .card h1 { font-size: 104px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
 .card p { margin-top: 28px; font-size: 44px; font-weight: 500; }
 </style>
+${theme.css.trim() ? `<style id="theme-css">\n${theme.css.replace(/<\/style/gi, "<\\/style")}\n</style>` : ""}
 </head>
 <body>
 <div id="root" data-composition-id="${COMPOSITION_ID}" data-start="0" data-duration="${n(plan.duration)}" data-width="${W}" data-height="${H}" data-fps="${plan.fps}">
