@@ -47,10 +47,14 @@ jobs:
         run: |
           gh release download $TAG --repo "$GITHUB_REPOSITORY" --pattern "${{ matrix.asset }}" --dir dl
           ls -la dl
-      # An AI app the user already has: setup must find it and register ScreenPilot.
+      # AI apps the user already has: setup must find them and register ScreenPilot.
       - name: Pretend OpenCode is installed
         shell: bash
         run: mkdir -p "$HOME/.config/opencode"
+      - name: Install Claude Code
+        shell: bash
+        timeout-minutes: 5
+        run: npm install -g @anthropic-ai/claude-code && claude --version
 
       - name: Install (Windows setup.exe, silent)
         if: runner.os == 'Windows'
@@ -85,6 +89,14 @@ jobs:
         timeout-minutes: 12
         run: '"$NODE" scripts/ci/release-e2e.mjs "$HOME/.config/opencode/opencode.json"'
 
+      - name: Check Claude Code has it
+        shell: bash
+        timeout-minutes: 3
+        run: |
+          claude mcp get screenpilot | tee cc.txt
+          grep -q "Connected" cc.txt
+          test -f "$HOME/.claude/skills/screenpilot/SKILL.md"
+
       - name: Uninstall (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -107,3 +119,5 @@ jobs:
             cat "$HOME/.config/opencode/opencode.json"; echo "still configured"; exit 1
           fi
           echo "removed from OpenCode"
+          if claude mcp get screenpilot >/dev/null 2>&1; then echo "still in Claude Code"; exit 1; fi
+          echo "removed from Claude Code"

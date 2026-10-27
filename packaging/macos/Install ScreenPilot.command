@@ -11,7 +11,7 @@ fi
 xattr -dr com.apple.quarantine . 2>/dev/null || true
 ./bin/node dist/cli.js setup "$@" >/dev/null
 code=$?
-[ "$code" -ne 0 ] && echo "Setup did not finish (see the message above). Close your AI apps and try again."
+[ "$code" -ne 0 ] && echo "Setup did not finish completely (see the message above)."
 echo
-read -r -p "Press Enter to close " _
+read -r -p "Press Enter to close " _ || true
 exit "$code"

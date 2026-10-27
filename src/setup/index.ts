@@ -164,21 +164,40 @@ function configure(spec: ClientSpec, env: PathEnv, launch: ServerLaunch, remove:
   }
 }
 
+/** The `claude` CLI: on Windows a .exe runs without a shell (so paths with spaces survive); an npm .cmd shim needs one. */
+function claudeCli(): { file: string; shell: boolean } | undefined {
+  if (process.platform !== "win32") return spawnSync("claude", ["--version"], { stdio: "ignore" }).status === 0 ? { file: "claude", shell: false } : undefined;
+  const where = spawnSync("where", ["claude"], { encoding: "utf8", windowsHide: true });
+  const found = where.status === 0 ? where.stdout.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : [];
+  const exe = found.find((f) => /\.exe$/i.test(f));
+  if (exe) return { file: exe, shell: false };
+  const cmd = found.find((f) => /\.(cmd|bat)$/i.test(f));
+  return cmd ? { file: cmd, shell: true } : undefined;
+}
+
+function runClaude(cli: { file: string; shell: boolean }, args: string[]) {
+  // Through cmd.exe every argument with spaces must be quoted by us.
+  const argv = cli.shell ? args.map((a) => (/[\s&|<>^]/.test(a) ? `"${a}"` : a)) : args;
+  return spawnSync(cli.shell ? `"${cli.file}"` : cli.file, argv, { shell: cli.shell, encoding: "utf8", windowsHide: true });
+}
+
 function claudeAvailable(): boolean {
-  return spawnSync("claude", ["--version"], { shell: process.platform === "win32", stdio: "ignore" }).status === 0;
+  return claudeCli() !== undefined;
 }
 
 /** Claude Code keeps MCP servers in its own store: use its CLI when it is installed. */
 function claudeCode(launch: ServerLaunch, dir: string, remove: boolean): SetupRow {
-  const shell = process.platform === "win32";
-  if (!claudeAvailable()) return { client: "Claude Code", status: "not installed", detail: "" };
-  spawnSync("claude", ["mcp", "remove", "--scope", "user", APP], { shell, stdio: "ignore" });
+  const cli = claudeCli();
+  if (!cli) return { client: "Claude Code", status: "not installed", detail: "" };
+  runClaude(cli, ["mcp", "remove", "--scope", "user", APP]);
   if (remove) {
     rmSync(join(homedir(), ".claude", "skills", APP), { recursive: true, force: true });
     return { client: "Claude Code", status: "removed", detail: "user scope" };
   }
+  // The name goes before -e: -e takes several values and would swallow it ("Invalid environment
+  // variable format: screenpilot"); "--" ends -e and starts the server command.
   const envArgs = Object.entries(launch.env).flatMap(([k, v]) => ["-e", `${k}=${v}`]);
-  const r = spawnSync("claude", ["mcp", "add", "--scope", "user", ...envArgs, APP, "--", launch.command, ...launch.args], { shell, encoding: "utf8" });
+  const r = runClaude(cli, ["mcp", "add", "--scope", "user", APP, ...envArgs, "--", launch.command, ...launch.args]);
   if (r.status !== 0) return { client: "Claude Code", status: "failed", detail: (r.stderr || r.stdout || "").trim().slice(0, 200) };
   // The skill teaches Claude the record → storyboard → render workflow.
   const skill = join(dir, "skill");

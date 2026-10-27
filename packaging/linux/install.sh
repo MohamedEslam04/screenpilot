@@ -105,6 +105,6 @@ fi
 "$DIR/bin/node" "$DIR/dist/cli.js" setup "$@" >/dev/null
 code=$?
 if [ "$code" -ne 0 ]; then
-  echo "Setup did not finish (see the message above). Close your AI apps and try again." >&2
+  echo "Setup did not finish completely (see the message above)." >&2
 fi
 finish "$code"
