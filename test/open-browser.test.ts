@@ -6,7 +6,8 @@ describe("openCommand", () => {
   it("picks the default-app launcher per platform", () => {
     expect(openCommand("/a/b.pdf", "linux")).toEqual({ cmd: "xdg-open", args: ["/a/b.pdf"] });
     expect(openCommand("https://x.dev", "darwin")).toEqual({ cmd: "open", args: ["https://x.dev"] });
-    expect(openCommand("C:\\a\\b.pdf", "win32")).toEqual({ cmd: "cmd", args: ["/c", "start", "", "C:\\a\\b.pdf"] });
+    expect(openCommand("C:\\a\\b.pdf", "win32")).toEqual({ cmd: "rundll32.exe", args: ["url.dll,FileProtocolHandler", "C:\\a\\b.pdf"] });
+    expect(openCommand("https://x.dev/?a=1&b=2", "win32").args[1]).toBe("https://x.dev/?a=1&b=2");
   });
 });
 
