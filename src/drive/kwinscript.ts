@@ -93,3 +93,13 @@ if (w) { if (w.minimized) w.minimized = false; ${geo} workspace.activeWindow = w
 reply(w ? "ok" : "missing");
 `);
 }
+
+/** Dismiss notification popups already on screen (Do Not Disturb only stops new ones). */
+export async function closeNotificationPopups(): Promise<number> {
+  const n = await runKwinScript(`
+var n = 0;
+workspace.windowList().forEach(function (w) { if (w.notification || w.criticalNotification) { w.closeWindow(); n++; } });
+reply(n);
+`);
+  return Number(n);
+}
