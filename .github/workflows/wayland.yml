@@ -6,7 +6,15 @@ name: Wayland
 on:
   workflow_dispatch:
   push:
-    branches: [ci/wayland-sway]
+    branches: [main]
+    paths:
+      - "src/platform/wayland.ts"
+      - "src/platform/portal.ts"
+      - "src/platform/displays.ts"
+      - "src/platform/detect.ts"
+      - "src/record/backends/pipewire.ts"
+      - "scripts/wayland-*"
+      - ".github/workflows/wayland.yml"
 
 concurrency:
   group: wayland-${{ github.ref }}

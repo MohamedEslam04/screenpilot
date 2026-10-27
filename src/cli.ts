@@ -20,7 +20,7 @@ import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/lo
 import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider } from "./voice/index.js";
-import { APP, APP_TITLE } from "./brand.js";
+import { APP, APP_TITLE, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { getDesktop } from "./platform/index.js";
 import { hookPinned } from "./record/input/hook.js";
@@ -56,7 +56,7 @@ const parseTimes = (s: string) => s.split(",").map((x) => Number(x.trim())).filt
 const program = new Command()
   .name(APP)
   .description("AI pilot for screen videos: record any app (or let the agent drive it), then edit it into a polished video.")
-  .version("0.1.0");
+  .version(VERSION);
 
 program
   .command("record")

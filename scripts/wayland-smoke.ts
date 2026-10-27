@@ -4,7 +4,7 @@
 // The session script creates two outputs, HEADLESS-1 1280x720 at 0,0 and
 // HEADLESS-2 1024x768 at 1280,0. Writes wayland-smoke-report/report.json;
 // exits 1 if any check failed.
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { doctor } from "../src/doctor.js";
 import { Driver } from "../src/drive/index.js";
@@ -95,6 +95,17 @@ async function main(): Promise<void> {
   });
 
   await check("native recording 3 s, --screens all (ScreenCast portal + GStreamer)", async () => {
+    // xdg-desktop-portal-wlr insists on dmabuf, which needs a GPU render node; GitHub's
+    // hosted runners have none (vgem is missing, vkms only has a card node).
+    let nodes: string[] = [];
+    try {
+      nodes = readdirSync("/dev/dri");
+    } catch {
+      // no /dev/dri at all
+    }
+    if (!nodes.some((n) => n.startsWith("renderD"))) {
+      return "skipped: no /dev/dri/renderD* here, and xdg-desktop-portal-wlr can't screen-cast without one (needs a GPU or self-hosted runner)";
+    }
     const rec = await startRecording({ dir: join(OUT, "recording-all"), screens: "all", recorder: "native", log });
     await new Promise((r) => setTimeout(r, 3000));
     const r = await rec.stop();

@@ -1,4 +1,4 @@
-import { existsSync, renameSync } from "node:fs";
+import { existsSync, readFileSync, renameSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -50,3 +50,6 @@ export const DESKTOP_ENV = `${APP.toUpperCase()}_DESKTOP`;
 export function sessionsRoot(): string {
   return process.env[OUTPUT_ENV] || "sessions";
 }
+
+/** The app version, from package.json (one level above src/ and dist/). */
+export const VERSION: string = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
