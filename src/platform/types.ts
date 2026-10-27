@@ -3,12 +3,13 @@ import type { InputAdapter, ScreenInfo } from "../record/input/types.js";
 
 // What the tool needs from a desktop: monitors, windows, input injection and
 // a watcher for the pointer and the active window. One implementation per OS
-// (KDE Plasma, Windows).
+// (KDE Plasma, Windows, macOS). Global coordinates are the desktop's own
+// unit: logical px on KDE, physical px on Windows, points on macOS.
 
 export interface WindowInfo {
   id: string;
   caption: string;
-  /** App identity: KDE resource class, or the exe name on Windows (e.g. chrome.exe). */
+  /** App identity: KDE resource class, the exe name on Windows (e.g. chrome.exe), the app name on macOS (e.g. Google Chrome). */
   resourceClass: string;
   pid: number;
   active: boolean;
@@ -44,7 +45,7 @@ export interface Injector {
 export type Watcher = InputAdapter & { readonly focus: FocusEvent[] };
 
 export interface Desktop {
-  readonly id: "kde" | "windows";
+  readonly id: "kde" | "windows" | "macos";
   screens(): Promise<ScreenInfo[]>;
   listWindows(): Promise<WindowInfo[]>;
   focusWindow(id: string, place?: Placement): Promise<void>;

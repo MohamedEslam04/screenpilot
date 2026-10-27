@@ -9,7 +9,7 @@ export interface ScreenInfo extends Rect {
   name: string;
   manufacturer?: string;
   model?: string;
-  /** Windows: monitor device interface path (what OBS's monitor_capture stores as monitor_id). */
+  /** Windows: monitor device interface path (what OBS's monitor_capture stores as monitor_id). macOS: the CGDirectDisplayID. */
   deviceId?: string;
 }
 

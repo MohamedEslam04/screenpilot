@@ -27,6 +27,12 @@ export function browserCandidates(env: Record<string, string | undefined>, platf
     ];
     return rels.flatMap((rel) => roots.map((r) => win32.join(r, rel)));
   }
+  if (platform === "darwin") {
+    // App bundles in /Applications, or ~/Applications for per-user installs.
+    const roots = ["/Applications", ...(env.HOME ? [posix.join(env.HOME, "Applications")] : [])];
+    const apps = ["Google Chrome", "Microsoft Edge", "Brave Browser", "Chromium"];
+    return apps.flatMap((app) => roots.map((r) => posix.join(r, `${app}.app`, "Contents", "MacOS", app)));
+  }
   return (env.PATH ?? "").split(posix.delimiter).filter(Boolean).flatMap((dir) => CANDIDATES.map((c) => posix.join(dir, c)));
 }
 
