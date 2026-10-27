@@ -67,7 +67,9 @@ install_command() {
   esac
 }
 
-gaps="$(missing_recording_bits)"
+# X11 sessions record with the bundled ffmpeg; GStreamer is only for Wayland (PipeWire).
+gaps=""
+[ "${XDG_SESSION_TYPE:-}" != "x11" ] && gaps="$(missing_recording_bits)"
 if [ -n "$gaps" ]; then
   echo "Built-in screen recording needs a few system packages that are missing:"
   # shellcheck disable=SC2001
