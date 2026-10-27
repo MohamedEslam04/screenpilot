@@ -45,7 +45,10 @@ jobs:
           sudo depmod -a
           sudo modprobe vkms 2>&1 || true
           ls -la /dev/dri; ls -la /sys/class/drm/
-          sudo chmod a+rw /dev/dri/* || true
+          sudo udevadm settle || true
+          sleep 2
+          sudo chmod a+rw /dev/dri/card* || true
+          ls -la /dev/dri
       - run: pnpm install --frozen-lockfile
       - name: Wayland smoke test (headless sway)
         timeout-minutes: 6
