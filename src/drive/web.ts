@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { type Browser, chromium, type Page } from "playwright-core";
 import type { ScreenInfo } from "../record/input/types.js";
 import { focusWindow, listWindows, type WindowInfo } from "./kwinscript.js";
@@ -106,10 +106,24 @@ async function quietDownloads(prefsPath: string): Promise<void> {
   }
   const download = { ...(prefs.download as Record<string, unknown> | undefined), prompt_for_download: false, default_directory: downloadsDir() };
   const savefile = { ...(prefs.savefile as Record<string, unknown> | undefined), default_directory: downloadsDir() };
-  // Brave's analytics infobar would sit on top of every page in the video.
-  const brave = (prefs.brave as Record<string, unknown> | undefined) ?? {};
+  await writeFile(prefsPath, JSON.stringify({ ...prefs, download, savefile }));
+  await acknowledgeBraveAnalytics(join(dirname(dirname(prefsPath)), "Local State"));
+}
+
+/**
+ * Brave's "privacy-preserving product analytics" infobar would sit on top of
+ * every page in the video. It is a browser-wide (Local State) setting.
+ */
+async function acknowledgeBraveAnalytics(localStatePath: string): Promise<void> {
+  let state: Record<string, unknown> = {};
+  try {
+    state = JSON.parse(await readFile(localStatePath, "utf8")) as Record<string, unknown>;
+  } catch {
+    // fresh profile
+  }
+  const brave = (state.brave as Record<string, unknown> | undefined) ?? {};
   const p3a = { ...(brave.p3a as Record<string, unknown> | undefined), enabled: false, notice_acknowledged: true };
-  await writeFile(prefsPath, JSON.stringify({ ...prefs, download, savefile, brave: { ...brave, p3a } }));
+  await writeFile(localStatePath, JSON.stringify({ ...state, brave: { ...brave, p3a } }));
 }
 
 export function downloadsDir(): string {
