@@ -140,6 +140,20 @@ Safety
 
 Limitations: driving is KDE Wayland only for now (Windows later). Recording on other platforms still works as described above.
 
+## Framing two monitors
+
+Three ways to show a multi-monitor setup (all tested on KDE Wayland with two 1920x1080 monitors):
+
+| You want | take.json / record | storyboard |
+|---|---|---|
+| One monitor only; the other never appears | `"screens": ["HDMI-A-5"]` (CLI `record --screens HDMI-A-5`) | nothing special |
+| Both recorded, the video shows one at a time and pans to where the action is | `"screens": "all"` | `views` (filled from the pointer by `perform` / `init --suggest`; edit or add `{at, screen, transition: "pan"\|"cut"}`) |
+| Both side by side the whole time | `"screens": "all"` | `"views": []` and an ultrawide `"output": {"width": 2560, "height": 720}` |
+
+Zooms, highlights and callouts use coordinates normalized to the whole recording (both monitors), so they work in all three. If OBS has one source that shows the whole desktop, demoreel uses it (cropped for a single monitor); otherwise it places one source per monitor. Which source shows which monitor is worked out by comparing the pictures.
+
+Renders use 2 headless-Chrome workers by default (`--workers`): more is faster but can push a desktop that is also running OBS and browsers out of memory.
+
 ## Storyboard reference
 
 Times are source seconds; positions are normalized 0..1 (x from left, y from top). Paths are relative to the storyboard file. `demoreel schema` is authoritative.

@@ -3,7 +3,7 @@ import { performance } from "node:perf_hooks";
 import { KwinAdapter } from "../record/input/kwin.js";
 import type { ScreenInfo } from "../record/input/types.js";
 import { run } from "../util/exec.js";
-import { parseCombo, splitTyping, charKeysym } from "./keys.js";
+import { charStroke, parseCombo, SHIFT, splitTyping } from "./keys.js";
 import { type PortalStream, RemoteDesktopSession } from "./portal.js";
 import { loadState, saveState } from "./state.js";
 
@@ -206,10 +206,12 @@ export class Driver {
       }
       for (const ch of run.text) {
         this.checkInterrupted();
-        const sym = charKeysym(ch)!;
+        const { sym, shift } = charStroke(ch)!;
+        if (shift) await this.portal.keysym(SHIFT, true);
         await this.portal.keysym(sym, true);
         await sleep(12);
         await this.portal.keysym(sym, false);
+        if (shift) await this.portal.keysym(SHIFT, false);
         await sleep(delay * (0.6 + this.rand() * 0.8));
       }
     }

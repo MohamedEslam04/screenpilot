@@ -59,9 +59,8 @@ export async function openBrowser(opts: { screen?: ScreenInfo; url?: string; log
     ).unref();
     for (let i = 0; i < 60 && !(await cdpUp()); i++) await sleep(250);
     if (!(await cdpUp())) throw new Error("The demo browser did not open its debugging port.");
-  } else if (opts.url) {
-    await withPage((p) => p.goto(opts.url!).then(() => undefined));
   }
+  await singleTab(opts.url);
   await allowDownloads();
   const win = await browserWindow();
   if (opts.screen) {
@@ -95,8 +94,8 @@ export async function browserWindow(): Promise<WindowInfo> {
 }
 
 /**
- * Some browsers (Brave) ask where to save every download; that dialog would
- * stall a take. Must be written while the browser is not running.
+ * Some browsers (Brave) ask where to save every download, which would stall a
+ * take, and show first-run infobars. Must be written while the browser is not running.
  */
 async function quietDownloads(prefsPath: string): Promise<void> {
   let prefs: Record<string, unknown> = {};
@@ -107,7 +106,10 @@ async function quietDownloads(prefsPath: string): Promise<void> {
   }
   const download = { ...(prefs.download as Record<string, unknown> | undefined), prompt_for_download: false, default_directory: downloadsDir() };
   const savefile = { ...(prefs.savefile as Record<string, unknown> | undefined), default_directory: downloadsDir() };
-  await writeFile(prefsPath, JSON.stringify({ ...prefs, download, savefile }));
+  // Brave's analytics infobar would sit on top of every page in the video.
+  const brave = (prefs.brave as Record<string, unknown> | undefined) ?? {};
+  const p3a = { ...(brave.p3a as Record<string, unknown> | undefined), enabled: false, notice_acknowledged: true };
+  await writeFile(prefsPath, JSON.stringify({ ...prefs, download, savefile, brave: { ...brave, p3a } }));
 }
 
 export function downloadsDir(): string {
@@ -122,6 +124,20 @@ async function allowDownloads(): Promise<void> {
   await cdp.detach();
 }
 
+/**
+ * Keep exactly one tab: browsers restore old tabs on restart, and CDP cannot
+ * tell which tab is on screen (all report "visible"), so extra tabs would make
+ * us aim at a hidden page.
+ */
+async function singleTab(url?: string): Promise<void> {
+  const b = await connect();
+  const pages = b.contexts().flatMap((c) => c.pages()).filter((p) => !p.url().startsWith("devtools://"));
+  const keep = pages.at(-1) ?? (await b.contexts()[0]!.newPage());
+  for (const p of pages) if (p !== keep) await p.close().catch(() => {});
+  if (url && keep.url() !== url) await keep.goto(url);
+  await keep.bringToFront();
+}
+
 let browser: Browser | undefined;
 
 async function connect(): Promise<Browser> {
@@ -130,12 +146,19 @@ async function connect(): Promise<Browser> {
   return browser;
 }
 
-/** Run with the demo browser's active (most recent, non-devtools) page. */
+/** Run with the tab the viewer actually sees (CDP lists background tabs too). */
 export async function withPage<T>(fn: (page: Page) => Promise<T>): Promise<T> {
   const b = await connect();
   const pages = b.contexts().flatMap((c) => c.pages()).filter((p) => !p.url().startsWith("devtools://"));
-  const page = pages.at(-1);
-  if (!page) throw new Error("The demo browser has no open tab.");
+  if (pages.length === 0) throw new Error("The demo browser has no open tab.");
+  let page = pages.at(-1)!;
+  for (const p of pages) {
+    const visible = await p.evaluate(() => document.visibilityState === "visible").catch(() => false);
+    if (visible) {
+      page = p;
+      break;
+    }
+  }
   return fn(page);
 }
 
