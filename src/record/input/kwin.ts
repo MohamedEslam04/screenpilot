@@ -26,6 +26,30 @@ var s = JSON.stringify(workspace.screens.map(function (o) {
 callDBus(svc, ${JSON.stringify(OBJ)}, ${JSON.stringify(IFACE)}, "screens", s);
 send();
 workspace.cursorPosChanged.connect(send);
+
+// Which window is being used, and where it is: the camera can frame it.
+function sendFocus() {
+  var w = workspace.activeWindow;
+  if (!w) return;
+  var g = w.frameGeometry; // with its title bar: that is how the window looks
+  // Only the part not covered by panels: framing it must not show the panel.
+  var a = workspace.clientArea(KWin.MaximizeArea, w);
+  var x0 = Math.max(g.x, a.x), y0 = Math.max(g.y, a.y);
+  var x1 = Math.min(g.x + g.width, a.x + a.width), y1 = Math.min(g.y + g.height, a.y + a.height);
+  if (x1 <= x0 || y1 <= y0) return;
+  callDBus(svc, ${JSON.stringify(OBJ)}, ${JSON.stringify(IFACE)}, "focus", JSON.stringify({
+    id: String(w.internalId), cls: String(w.resourceClass), title: w.caption, x: x0, y: y0, w: x1 - x0, h: y1 - y0
+  }));
+}
+var tracked = null;
+function track(w) {
+  if (tracked) tracked.frameGeometryChanged.disconnect(sendFocus);
+  tracked = w;
+  if (w) w.frameGeometryChanged.connect(sendFocus);
+  sendFocus();
+}
+workspace.windowActivated.connect(track);
+track(workspace.activeWindow);
 `;
 }
 
@@ -47,10 +71,23 @@ export function isKde(): boolean {
 
 let instances = 0;
 
+export interface FocusEvent {
+  at: number; // performance.now()
+  id: string;
+  cls: string;
+  title: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export class KwinAdapter implements InputAdapter {
   readonly id = "kwin";
   readonly events: RawEvent[] = [];
   readonly warnings: string[] = [];
+  /** Active window over time (global logical px), for window-framed views. */
+  readonly focus: FocusEvent[] = [];
   private bus?: dbus.MessageBus;
   // Unique per instance: the driver and the recorder each run one in the same process.
   private readonly tag = `${process.pid}_${++instances}`;
@@ -86,11 +123,15 @@ export class KwinAdapter implements InputAdapter {
       screens(s: string) {
         adapter.screenList = parseScreens(s);
       }
+      focus(s: string) {
+        adapter.focus.push({ at: performance.now(), ...(JSON.parse(s) as Omit<FocusEvent, "at">) });
+      }
     }
     Pointer.configureMembers({
       methods: {
         cursor: { inSignature: "ii", outSignature: "" },
         screens: { inSignature: "s", outSignature: "" },
+        focus: { inSignature: "s", outSignature: "" },
       },
     });
     bus.export(OBJ, new Pointer(IFACE));

@@ -142,13 +142,16 @@ Limitations: driving is KDE Wayland only for now (Windows later). Recording on o
 
 ## Framing two monitors
 
-Three ways to show a multi-monitor setup (all tested on KDE Wayland with two 1920x1080 monitors):
+Four ways to frame what was recorded (all tested on KDE Wayland with two 1920x1080 monitors):
 
 | You want | take.json / record | storyboard |
 |---|---|---|
+| The window being used, nothing else (no panel, tray or other apps); pans when you switch windows. **Default** for `perform` and `init --suggest` | `"camera": "window"` (default) | `views` with `rect` (filled from `windows.jsonl`; `init --frame window`) |
 | One monitor only; the other never appears | `"screens": ["HDMI-A-5"]` (CLI `record --screens HDMI-A-5`) | nothing special |
 | Both recorded, the video shows one at a time and pans to where the action is | `"screens": "all"` | `views` (filled from the pointer by `perform` / `init --suggest`; edit or add `{at, screen, transition: "pan"\|"cut"}`) |
 | Both side by side the whole time | `"screens": "all"` | `"views": []` and an ultrawide `"output": {"width": 2560, "height": 720}` |
+
+With window framing, KWin reports the active window over time (`windows.jsonl`, the part not covered by panels), and takes place windows at 16:9 inside the monitor's usable area so the camera shows them whole. A window view fills the frame (its longer side is trimmed if it is not 16:9); monitor views show the whole monitor.
 
 Zooms, highlights and callouts use coordinates normalized to the whole recording (both monitors), so they work in all three. If OBS has one source that shows the whole desktop, demoreel uses it (cropped for a single monitor); otherwise it places one source per monitor. Which source shows which monitor is worked out by comparing the pictures.
 

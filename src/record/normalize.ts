@@ -31,3 +31,45 @@ function round(n: number, d: number): number {
   const f = 10 ** d;
   return Math.round(n * f) / f;
 }
+
+export interface WindowSpan {
+  t: number;
+  id: string;
+  cls: string;
+  title: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Active-window reports → recording coordinates, clipped to what was recorded. */
+export function normalizeWindows(
+  raw: { at: number; id: string; cls: string; title: string; x: number; y: number; w: number; h: number }[],
+  startedAt: number,
+  screen: Rect,
+  content: Rect,
+): WindowSpan[] {
+  const out: WindowSpan[] = [];
+  const nx = (px: number) => content.x + ((px - screen.x) / screen.w) * content.w;
+  const ny = (py: number) => content.y + ((py - screen.y) / screen.h) * content.h;
+  const clip = (v: number) => Math.min(1, Math.max(0, v));
+  for (const w of raw) {
+    const x0 = clip(nx(w.x));
+    const y0 = clip(ny(w.y));
+    const x1 = clip(nx(w.x + w.w));
+    const y1 = clip(ny(w.y + w.h));
+    if (x1 - x0 < 0.01 || y1 - y0 < 0.01) continue; // not on the recorded area
+    out.push({
+      t: round(Math.max(0, (w.at - startedAt) / 1000), 3),
+      id: w.id,
+      cls: w.cls,
+      title: w.title,
+      x: round(x0, 4),
+      y: round(y0, 4),
+      w: round(x1 - x0, 4),
+      h: round(y1 - y0, 4),
+    });
+  }
+  return out;
+}

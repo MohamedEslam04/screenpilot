@@ -1,4 +1,4 @@
-import type { Storyboard, Theme } from "../storyboard/schema.js";
+import type { Storyboard, Theme, View } from "../storyboard/schema.js";
 import type { Timeline } from "../storyboard/timeline.js";
 import type { VoiceClip } from "../voice/index.js";
 import { type CamTween, FULL, planCamera, planViewCamera, type Rect, type ViewSpan, type ZoomSpan } from "./zoom.js";
@@ -109,13 +109,25 @@ export function buildPlan(input: PlanInput): RenderPlan {
   const outroDur = sb.outro?.dur ?? 0;
   const duration = round(tl.videoEnd + outroDur);
   const screens = new Map<string, Rect>(sb.screens.map((s) => [s.name, { x: s.x, y: s.y, w: s.w, h: s.h }]));
-  const rectOf = (name: string) => (name === "all" ? FULL : screens.get(name));
-  const views = sb.views.filter((v) => rectOf(v.screen)).sort((a, b) => a.at - b.at);
-  const firstRect = views[0] ? rectOf(views[0].screen)! : undefined;
-  const frame = firstRect
-    ? frameBox(width, height, firstRect.w * input.source.width, firstRect.h * input.source.height, sb.theme.padding)
-    : frameBox(width, height, input.source.width, input.source.height, sb.theme.padding);
-  const cam = firstRect ? { w: frame.w / firstRect.w, h: frame.h / firstRect.h } : { w: frame.w, h: frame.h };
+  const rectOf = (v: View): Rect | undefined => v.rect ?? (v.screen === "all" ? FULL : v.screen ? screens.get(v.screen) : undefined);
+  const views = sb.views.filter((v) => rectOf(v)).sort((a, b) => a.at - b.at);
+  const firstRect = views[0] ? rectOf(views[0]) : undefined;
+  const srcW = input.source.width;
+  const srcH = input.source.height;
+  // A monitor view keeps its own shape; free-form (window) views use the output's shape.
+  const frame = !firstRect
+    ? frameBox(width, height, srcW, srcH, sb.theme.padding)
+    : views[0]!.rect
+      ? frameBox(width, height, width, height, sb.theme.padding)
+      : frameBox(width, height, firstRect.w * srcW, firstRect.h * srcH, sb.theme.padding);
+  // #cam holds the whole source, sized so the first view fits the frame at scale 1.
+  let cam = { w: frame.w, h: frame.h };
+  if (firstRect && views[0]!.rect) {
+    const base = Math.max(frame.w / (firstRect.w * srcW), frame.h / (firstRect.h * srcH));
+    cam = { w: srcW * base, h: srcH * base };
+  } else if (firstRect) {
+    cam = { w: frame.w / firstRect.w, h: frame.h / firstRect.h };
+  }
 
   const spans: ZoomSpan[] = [];
   for (const z of sb.zooms) {
@@ -124,10 +136,11 @@ export function buildPlan(input: PlanInput): RenderPlan {
   }
 
   function viewSpans(): ViewSpan[] {
-    const out: ViewSpan[] = [{ start: 0, rect: firstRect!, cut: false }];
+    // Free-form (window) views fill the frame so nothing around the window shows.
+    const out: ViewSpan[] = [{ start: 0, rect: firstRect!, cut: false, cover: !!views[0]!.rect }];
     for (const v of views.slice(1)) {
       const t = tl.toOutput(v.at);
-      if (t !== null) out.push({ start: t, rect: rectOf(v.screen)!, cut: v.transition === "cut" });
+      if (t !== null) out.push({ start: t, rect: rectOf(v)!, cut: v.transition === "cut", cover: !!v.rect });
     }
     return out;
   }

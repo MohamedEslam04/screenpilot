@@ -65,8 +65,7 @@ export async function openBrowser(opts: { screen?: ScreenInfo; url?: string; log
   const win = await browserWindow();
   if (opts.screen) {
     const s = opts.screen;
-    const m = Math.round(Math.min(s.w, s.h) * 0.03);
-    await focusWindow(win.id, { x: s.x + m, y: s.y + m, w: s.w - 2 * m, h: s.h - 2 * m });
+    await focusWindow(win.id, { screen: s.name });
     await sleep(400);
   } else {
     await focusWindow(win.id);
@@ -148,7 +147,8 @@ async function singleTab(url?: string): Promise<void> {
   const pages = b.contexts().flatMap((c) => c.pages()).filter((p) => !p.url().startsWith("devtools://"));
   const keep = pages.at(-1) ?? (await b.contexts()[0]!.newPage());
   for (const p of pages) if (p !== keep) await p.close().catch(() => {});
-  if (url && keep.url() !== url) await keep.goto(url);
+  // Always load fresh: a page left over from an earlier take keeps its typed state.
+  if (url) await keep.goto(url);
   await keep.bringToFront();
 }
 

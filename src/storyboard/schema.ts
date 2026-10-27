@@ -36,11 +36,17 @@ export const ScreenSchema = z.object({
   h: norm.refine((v) => v > 0, { message: "screen.h must be > 0" }),
 });
 
-export const ViewSchema = z.object({
-  at: time.describe("Source time the camera moves to this screen"),
-  screen: z.string().min(1).describe('A screens[].name, or "all" for the whole recording'),
-  transition: z.enum(["pan", "cut"]).default("pan"),
-});
+export const RectSchema = z.object({ x: norm, y: norm, w: norm, h: norm });
+
+export const ViewSchema = z
+  .object({
+    at: time.describe("Source time the camera moves to this view"),
+    screen: z.string().min(1).optional().describe('A screens[].name, or "all" for the whole recording'),
+    rect: RectSchema.optional().describe("Any region (0..1 of the source), e.g. the window being used"),
+    label: z.string().optional().describe("What the rect is, e.g. a window title (informational)"),
+    transition: z.enum(["pan", "cut"]).default("pan"),
+  })
+  .refine((v) => (v.screen === undefined) !== (v.rect === undefined), { message: "a view needs exactly one of screen or rect" });
 
 export const CaptionSchema = z.object({
   at: time,

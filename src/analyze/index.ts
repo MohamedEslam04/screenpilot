@@ -5,7 +5,7 @@ import { evenTimes } from "../frames.js";
 import { clicksOf, readEvents } from "../record/events.js";
 import { run } from "../util/exec.js";
 import { probeVideo } from "../util/media.js";
-import { dwellPoints, idleSpans, parseFreezes, type ScreenRect, suggestSegments, suggestViews, suggestZooms } from "./detect.js";
+import { dwellPoints, idleSpans, parseFreezes, type ScreenRect, suggestSegments, suggestViews, suggestZooms, suggestWindowViews, type WindowReport, type WindowView } from "./detect.js";
 
 // Public analysis API: what is in a recording, so an agent can write a storyboard.
 
@@ -21,6 +21,8 @@ export interface AnalyzeResult {
   suggestedZooms: { at: number; dur: number; x: number; y: number; scale: number }[];
   /** Camera views across monitors; only for multi-monitor sessions (meta.canvasScreens). */
   suggestedViews?: { at: number; screen: string; transition: "pan" | "cut" }[];
+  /** Camera views framing the window in use (sessions recorded on KDE). */
+  suggestedWindowViews?: WindowView[];
   /** One image with labelled thumbnails across the recording. */
   contactSheet: string;
   frames: { t: number; file: string }[];
@@ -37,6 +39,7 @@ export async function resolveTarget(target: string): Promise<{
   events: string | null;
   dir: string;
   canvasScreens?: ScreenRect[];
+  windows?: string;
 }> {
   const abs = resolve(target);
   if (statSync(abs).isDirectory()) {
@@ -46,12 +49,14 @@ export async function resolveTarget(target: string): Promise<{
       video: string;
       events: string | null;
       canvasScreens?: ScreenRect[];
+      windows?: string | null;
     };
     return {
       video: join(abs, meta.video),
       events: meta.events ? join(abs, meta.events) : null,
       dir: abs,
       ...(meta.canvasScreens?.length ? { canvasScreens: meta.canvasScreens } : {}),
+      ...(meta.windows ? { windows: join(abs, meta.windows) } : {}),
     };
   }
   const events = join(dirname(abs), "events.jsonl");
@@ -60,7 +65,7 @@ export async function resolveTarget(target: string): Promise<{
 
 /** `target` is a session directory (from `demoreel record`) or a video file. */
 export async function analyze(target: string, opts: AnalyzeOptions = {}): Promise<AnalyzeResult> {
-  const { video, events, dir, canvasScreens } = await resolveTarget(target);
+  const { video, events, dir, canvasScreens, windows } = await resolveTarget(target);
   const info = await probeVideo(video);
 
   let clicks: { t: number; x: number; y: number }[] = [];
@@ -71,6 +76,13 @@ export async function analyze(target: string, opts: AnalyzeOptions = {}): Promis
     moves = all.filter((e) => e.type === "move" && e.x !== undefined).map((e) => ({ t: e.t, x: e.x!, y: e.y! }));
     if (clicks.length === 0) clicks = dwellPoints(moves);
   }
+
+  const windowReports: WindowReport[] = windows
+    ? (await readFile(windows, "utf8"))
+        .split("\n")
+        .filter((l) => l.trim())
+        .map((l) => JSON.parse(l) as WindowReport)
+    : [];
 
   const { stderr } = await run("ffmpeg", [
     "-hide_banner",
@@ -118,6 +130,7 @@ export async function analyze(target: string, opts: AnalyzeOptions = {}): Promis
     suggestedSegments: suggestSegments(info.duration, idle),
     suggestedZooms: suggestZooms(clicks),
     ...(canvasScreens ? { suggestedViews: suggestViews([...moves, ...clicks], canvasScreens) } : {}),
+    ...(windowReports.length ? { suggestedWindowViews: suggestWindowViews(windowReports, { screens: canvasScreens }) } : {}),
     contactSheet,
     frames,
   };

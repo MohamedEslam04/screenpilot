@@ -221,9 +221,10 @@ program
   .argument("<target>", "Session directory or raw recording (mp4, mkv, webm, mov)")
   .option("-o, --out <file>", "Storyboard path (default: storyboard.json in the session / next to the video)")
   .option("--voice <name>", "Default Edge TTS voice", "en-US-AndrewNeural")
-  .option("--suggest", "Pre-fill segments and zooms from `analyze`")
+  .option("--suggest", "Pre-fill segments, zooms and camera views from `analyze`")
+  .option("--frame <how>", "Camera for suggested views: window | screen | all", "window")
   .option("-f, --force", "Overwrite an existing storyboard")
-  .action(async (target: string, o: { out?: string; voice: string; suggest?: boolean; force?: boolean }) => {
+  .action(async (target: string, o: { out?: string; voice: string; suggest?: boolean; force?: boolean; frame: "window" | "screen" | "all" }) => {
     print(await initStoryboard(target, o));
   });
 

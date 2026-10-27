@@ -42,7 +42,7 @@ export function lintStoryboard(sb: Storyboard, sourceDuration?: number): string[
   }
   const names = new Set(sb.screens.map((s) => s.name));
   sb.views.forEach((v, i) => {
-    if (v.screen !== "all" && !names.has(v.screen)) warnings.push(`views[${i}] names unknown screen "${v.screen}"`);
+    if (v.screen && v.screen !== "all" && !names.has(v.screen)) warnings.push(`views[${i}] names unknown screen "${v.screen}"`);
   });
   sb.captions.forEach((c, i) => {
     if (c.style === "callout" && (c.x === undefined || c.y === undefined)) {
