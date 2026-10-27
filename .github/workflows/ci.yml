@@ -22,7 +22,8 @@ jobs:
           node-version: 24
           cache: pnpm
       - name: Install ffmpeg
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+        uses: AnimMouse/setup-ffmpeg@v1
+        timeout-minutes: 5
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
@@ -39,7 +40,8 @@ jobs:
           node-version: 24
           cache: pnpm
       - name: Install ffmpeg
-        run: choco install ffmpeg -y --no-progress
+        uses: AnimMouse/setup-ffmpeg@v1
+        timeout-minutes: 5
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
