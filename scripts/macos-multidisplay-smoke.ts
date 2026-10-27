@@ -5,6 +5,7 @@
 // main display, 100 pt lower. This script then checks what screenpilot does
 // with two displays of different density. Moves the real pointer and types.
 // Writes smoke-report/multidisplay-report.json; exits 1 if any check failed.
+import { spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -133,6 +134,16 @@ async function main(): Promise<void> {
     return screens.map((s) => `device ${s.device} = Capture screen ${s.screen}`).join("; ");
   });
 
+  await check("avfoundation delivers the Retina display in full pixels", async () => {
+    needCapture();
+    if (!retina) throw new Error("needs the Retina display");
+    const png = join(OUT, "md-avf-retina.png");
+    await run("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "avfoundation", "-framerate", "30", "-i", `Capture screen ${retina.index}:none`, "-frames:v", "1", "-y", png]);
+    const info = await probeVideo(png);
+    if (info.width !== retina.pixelW || info.height !== retina.pixelH) throw new Error(`avfoundation frame is ${info.width}x${info.height}, display has ${retina.pixelW}x${retina.pixelH} px`);
+    return `Capture screen ${retina.index} frame ${info.width}x${info.height}`;
+  });
+
   await check("pointer: CGEvent moves read back within 0.5 pt on both displays", async () => {
     if (!q || ds.length < 2) throw new Error("needs quartz + 2 displays");
     const inj = new MacInjector(q, ds.map((d) => d.screen));
@@ -254,13 +265,28 @@ async function main(): Promise<void> {
     if (!(r.duration > 1.5)) throw new Error(`recording too short: ${r.duration}s`);
     // Expected from the documented rules: common density = min(sharpest, 4096/union w, 2304/union h).
     if (info.width !== want.w || info.height !== want.h) throw new Error(`video is ${info.width}x${info.height}, expected ${want.w}x${want.h} (scale ${sc.toFixed(3)})`);
+    // Content, not just size: the Retina display's menu bar must sit at its place, the gap above it must be black.
+    const mean = (x: number, y: number, w: number, h: number) =>
+      new Promise<number>((res) => {
+        const f = ["-hide_banner", "-loglevel", "error", "-ss", "1", "-i", r.video, "-frames:v", "1", "-vf", `crop=${w}:${h}:${x}:${y},scale=1:1:flags=area,format=gray`, "-f", "rawvideo", "-"];
+        const p = spawn("ffmpeg", f, { stdio: ["ignore", "pipe", "ignore"] });
+        const chunks: Buffer[] = [];
+        p.stdout.on("data", (d: Buffer) => chunks.push(d));
+        p.once("close", () => res(Buffer.concat(chunks)[0] ?? -1));
+      });
+    const pl = want.places[1]!;
+    const barY = pl.y + 6;
+    const bar = await mean(pl.x + Math.round(pl.w * 0.3), barY, Math.round(pl.w * 0.2), 10);
+    const gap = pl.y > 24 ? await mean(pl.x + 20, 4, 200, pl.y - 12) : 0;
+    if (bar < 120) throw new Error(`Retina menu bar region at ${pl.x},${barY} is dark (mean ${bar}): the display is not where the layout says`);
+    if (gap > 30) throw new Error(`gap above the Retina display is not black (mean ${gap})`);
     const nm = { x: (pm.x - u.x) / u.w, y: (pm.y - u.y) / u.h };
     const nr = { x: (pr.x - u.x) / u.w, y: (pr.y - u.y) / u.h };
     const bad: string[] = [];
     if (!sawPointer(events, nm)) bad.push(`no pointer event at main ${nm.x.toFixed(4)},${nm.y.toFixed(4)}`);
     if (!sawPointer(events, nr)) bad.push(`no pointer event at retina ${nr.x.toFixed(4)},${nr.y.toFixed(4)}`);
     if (bad.length) throw new Error(`${bad.join("; ")}; ${events.length} events, sample ${JSON.stringify(events.slice(-3))}`);
-    return `${info.width}x${info.height} at ${sc.toFixed(3)} px/pt (union ${rectText(u)} pt, places ${want.places.map(rectText).join(" | ")}); pointer main→(${nm.x.toFixed(3)},${nm.y.toFixed(3)}) retina→(${nr.x.toFixed(3)},${nr.y.toFixed(3)}) ok; ${r.warnings.join(" | ") || "no warnings"}`;
+    return `${info.width}x${info.height} (menu bar mean ${bar}, gap mean ${gap}) at ${sc.toFixed(3)} px/pt (union ${rectText(u)} pt, places ${want.places.map(rectText).join(" | ")}); pointer main→(${nm.x.toFixed(3)},${nm.y.toFixed(3)}) retina→(${nr.x.toFixed(3)},${nr.y.toFixed(3)}) ok; ${r.warnings.join(" | ") || "no warnings"}`;
   });
   if (capture) await run("screencapture", ["-x", "-C", join(OUT, "md-02-end.png")]).catch(() => {});
 
