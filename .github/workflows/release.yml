@@ -110,6 +110,13 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+      # Version-free names (ScreenPilot-windows-setup.exe, ...) so the README can link to
+      # releases/latest/download/<name> and the links never go stale.
+      - name: Name files without the version
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          for f in dist/*; do mv "$f" "${f/-${v}-/-}"; done
+          ls -la dist
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
