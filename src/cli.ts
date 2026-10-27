@@ -151,11 +151,16 @@ program
     if (r.renderer) process.stderr.write(`\n  Video renderer: ${r.renderer.ok ? "ready" : `not ready: ${r.renderer.detail}. Videos will download it on first use.`}\n`);
     if (!o.remove) {
       const added = r.rows.filter((x) => x.status === "added").map((x) => x.client);
-      process.stderr.write(
-        added.length
-          ? `\nDone. Restart ${added.join(", ")}, then ask your AI to record your screen or make a video. Videos are saved to ${r.outputDir}\n`
-          : "\nNo AI tool found. Install one (Claude Desktop, Codex, OpenCode, Cursor, …) and run setup again.\n",
-      );
+      const failed = r.rows.filter((x) => x.status === "failed").map((x) => x.client);
+      if (added.length) {
+        process.stderr.write(`\nDone. Restart ${added.join(", ")}, then ask your AI to record your screen or make a video. Videos are saved to ${r.outputDir}\n`);
+      } else if (!failed.length) {
+        process.stderr.write("\nNo AI tool found. Install one (Claude Desktop, Codex, OpenCode, Cursor, …) and run setup again.\n");
+      }
+      if (failed.length) {
+        process.stderr.write(`\nCould not add ScreenPilot to ${failed.join(", ")} (see the reason above). Please report it: https://github.com/MohamedEslam04/screenpilot/issues\n`);
+        process.exitCode = 1;
+      }
     }
     print(r);
   });
