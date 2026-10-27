@@ -23,6 +23,7 @@ import { getProvider } from "./voice/index.js";
 import { APP, APP_TITLE } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { getDesktop } from "./platform/index.js";
+import { hookPinned } from "./record/input/hook.js";
 
 useBundledTools(import.meta.url);
 const log = (msg: string) => process.stderr.write(`${APP}: ${msg}\n`);
@@ -381,8 +382,14 @@ program
     process.exit(0);
   });
 
-program.parseAsync().catch((err: unknown) => {
-  if (err instanceof StoryboardError) log(err.message);
-  else log(err instanceof Error ? err.message : String(err));
-  process.exit(1);
-});
+program
+  .parseAsync()
+  .then(() => {
+    // An idle macOS mouse hook would keep the process alive (see hookPinned).
+    if (hookPinned()) process.exit(process.exitCode ?? 0);
+  })
+  .catch((err: unknown) => {
+    if (err instanceof StoryboardError) log(err.message);
+    else log(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  });
