@@ -36,14 +36,22 @@ jobs:
         timeout-minutes: 5
       - name: Create the virtual Retina display
         run: |
-          nohup "$RUNNER_TEMP/vdisplay" 1512 982 1 px 100 smoke-report/vdisplay.json > smoke-report/vdisplay.log 2>&1 &
-          PID=$!
-          for i in $(seq 1 40); do
-            [ -f smoke-report/vdisplay.json ] && break
-            kill -0 $PID 2>/dev/null || break
-            sleep 0.5
+          # Mode units differ between macOS versions: try pixels, then points, until a 2x mode is active.
+          for unit in px pt; do
+            rm -f smoke-report/vdisplay.json
+            nohup "$RUNNER_TEMP/vdisplay" 1512 982 1 $unit 100 smoke-report/vdisplay.json > smoke-report/vdisplay-$unit.log 2>&1 &
+            PID=$!
+            for i in $(seq 1 40); do
+              [ -f smoke-report/vdisplay.json ] && break
+              kill -0 $PID 2>/dev/null || break
+              sleep 0.5
+            done
+            echo "== unit $unit"; cat smoke-report/vdisplay-$unit.log || true
+            cp smoke-report/vdisplay.json smoke-report/vdisplay-$unit.json || true
+            if grep -q '"pixelW" : 3024' smoke-report/vdisplay.json; then echo "unit $unit gives 3024 px"; break; fi
+            kill $PID 2>/dev/null || true
+            sleep 3
           done
-          cat smoke-report/vdisplay.log || true
           cat smoke-report/vdisplay.json
           system_profiler SPDisplaysDataType || true
           ffmpeg -hide_banner -f avfoundation -list_devices true -i "" 2>&1 | grep -i "capture screen" || true

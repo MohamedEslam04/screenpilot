@@ -56,6 +56,23 @@ var waited = 0
 while !active().contains(id) && waited < 100 { usleep(100_000); waited += 1 }
 if !active().contains(id) { fail("display \(id) never became active; active=\(active())") }
 
+// The display comes up in its 1x mode: switch to the requested point size backed by `scale` pixels per point.
+func listModes() -> [CGDisplayMode] {
+  (CGDisplayCopyAllDisplayModes(id, [kCGDisplayShowDuplicateLowResolutionModes: true] as CFDictionary) as? [CGDisplayMode]) ?? []
+}
+var switched = "not needed"
+if let m = listModes().first(where: { $0.width == Int(ptW) && $0.height == Int(ptH) && $0.pixelWidth == Int(ptW * scale) }),
+  let cur = CGDisplayCopyDisplayMode(id), cur.pixelWidth != m.pixelWidth {
+  var c: CGDisplayConfigRef?
+  CGBeginDisplayConfiguration(&c)
+  let e1 = CGConfigureDisplayWithDisplayMode(c, id, m, nil)
+  let e2 = CGCompleteDisplayConfiguration(c, .forSession)
+  switched = "set \(m.width)x\(m.height)@\(m.pixelWidth)x\(m.pixelHeight): \(e1.rawValue)/\(e2.rawValue)"
+  usleep(1_500_000)
+} else if hidpi == 1 {
+  switched = "no \(ptW)x\(ptH)@\(ptW * scale) mode in the list"
+}
+
 // Place it right of the main display, offsetY lower.
 let mainID = CGMainDisplayID()
 let mb = CGDisplayBounds(mainID)
@@ -80,7 +97,7 @@ func describe(_ d: CGDirectDisplayID) -> [String: Any] {
   return o
 }
 let report: [String: Any] = [
-  "id": id, "applied": applied, "placeErr": err.rawValue, "completeErr": done.rawValue,
+  "id": id, "applied": applied, "switched": switched, "placeErr": err.rawValue, "completeErr": done.rawValue,
   "args": ["pointW": ptW, "pointH": ptH, "hiDPI": hidpi, "modeUnit": modeUnit, "offsetY": offY],
   "before": before, "active": active().map(describe),
 ]
