@@ -10,6 +10,8 @@ import { probeVideo } from "../util/media.js";
 import { loadState } from "./state.js";
 import { isOurs, named } from "../brand.js";
 import { getDesktop } from "../platform/index.js";
+import { gstAvailable, snapshotMonitors } from "../record/backends/kde-pipewire.js";
+import { isKde } from "../record/input/kwin.js";
 
 // Current pictures of each monitor, straight from OBS's capture sources (no
 // extra screen-share permission needed), and which source shows which monitor.
@@ -133,6 +135,17 @@ export async function screenshot(
   screens: ScreenInfo[],
   opts: { only?: string; outDir: string; width?: number; grid?: boolean },
 ): Promise<{ shots: Shot[]; warnings: string[] }> {
+  // Native first (no OBS): KDE reads the portal's monitor streams.
+  if (process.platform === "linux" && isKde() && (await gstAvailable())) {
+    const wanted = opts.only ? screens.filter((s) => s.name === opts.only) : screens;
+    if (opts.only && wanted.length === 0) throw new Error(`No monitor named "${opts.only}"`);
+    await mkdir(opts.outDir, { recursive: true });
+    const fileOf = (s: ScreenInfo) => join(opts.outDir, `${s.name}.jpg`);
+    await snapshotMonitors(wanted, fileOf, opts.width ?? 1280);
+    const shots = wanted.map((s) => ({ screen: s.name, file: fileOf(s) }));
+    if (opts.grid) for (const s of shots) await overlayGrid(s.file);
+    return { shots, warnings: [] };
+  }
   const cfg = await resolveObsConfig();
   const obs = new OBSWebSocket();
   await obs.connect(cfg.url, cfg.password);

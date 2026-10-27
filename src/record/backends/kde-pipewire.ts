@@ -152,3 +152,32 @@ export class KdePipewireBackend implements RecorderBackend {
 
   async dispose(): Promise<void> {}
 }
+
+/**
+ * One still per monitor straight from the portal streams (no OBS). A few
+ * buffers are pulled because the very first one can be blank.
+ */
+export async function snapshotMonitors(
+  screens: ScreenInfo[],
+  outFile: (s: ScreenInfo) => string,
+  width: number,
+  log: (m: string) => void = () => {},
+): Promise<void> {
+  const portal = await openRemoteDesktop(log);
+  try {
+    const streamOf = mapStreams(portal.streams, screens);
+    for (const s of screens) {
+      const st = streamOf.get(s.name);
+      if (!st) throw new Error(`No screen stream for ${s.name}`);
+      const height = Math.round((width * s.h) / s.w / 2) * 2;
+      await run("gst-launch-1.0", [
+        "-q",
+        "pipewiresrc", `path=${st.node}`, "num-buffers=4", "!",
+        "videoconvert", "!", "videoscale", "!", `video/x-raw,width=${width},height=${height}`, "!",
+        "jpegenc", "quality=88", "!", "multifilesink", `location=${outFile(s)}`,
+      ]);
+    }
+  } finally {
+    await portal.close();
+  }
+}
