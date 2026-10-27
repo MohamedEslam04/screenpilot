@@ -42,18 +42,27 @@ interface Result {
 const results: Result[] = [];
 
 /** One isolated check: a throw fails only this check (a Blocked throw only marks it blocked). */
+const CHECK_TIMEOUT_MS = 90_000;
+
 async function check(name: string, fn: () => Promise<string>): Promise<void> {
   const t0 = Date.now();
   let ok = true;
   let blocked = false;
   let detail: string;
+  log(`start ${name}`);
+  let timer: NodeJS.Timeout | undefined;
   try {
-    detail = await fn();
+    // A hung check (a permission prompt, a stuck process) must not hide the ones after it.
+    detail = await Promise.race([
+      fn(),
+      new Promise<never>((_, rej) => (timer = setTimeout(() => rej(new Error(`timed out after ${CHECK_TIMEOUT_MS / 1000} s`)), CHECK_TIMEOUT_MS))),
+    ]);
   } catch (err) {
     blocked = err instanceof Blocked;
     ok = blocked;
     detail = err instanceof Error ? err.message : String(err);
   }
+  clearTimeout(timer);
   results.push({ name, ok, ...(blocked ? { blocked } : {}), detail, ms: Date.now() - t0 });
   log(`${blocked ? "BLOCKED" : ok ? "ok  " : "FAIL"} ${name}: ${detail}`);
 }
