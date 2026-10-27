@@ -1,0 +1,46 @@
+{
+  "name": "demoreel",
+  "version": "0.1.0",
+  "description": "Record any desktop app, let an AI agent write the storyboard, render a polished demo video (zooms, captions, voiceover).",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "demoreel": "dist/cli.js",
+    "demoreel-mcp": "dist/mcp.js"
+  },
+  "files": [
+    "dist",
+    "skill",
+    "AGENTS.md",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "deps:latest": "pnpm update --latest && pnpm outdated"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "commander": "^15.0.0",
+    "dbus-next": "^0.10.2",
+    "gsap": "^3.15.0",
+    "hyperframes": "^0.8.207",
+    "msedge-tts": "^2.1.1",
+    "obs-websocket-js": "^5.0.8",
+    "playwright-core": "^1.64.1",
+    "uiohook-napi": "^1.5.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
