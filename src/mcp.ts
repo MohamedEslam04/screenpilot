@@ -124,10 +124,10 @@ server.registerTool(
   "record_start",
   {
     description:
-      "Start recording the desktop (OBS screen capture + pointer/click events). Only one recording at a time. " +
-      "Tell the user to perform the demo, then call record_stop. OBS Studio must be running with its WebSocket server enabled.",
+      "Start recording the desktop (built-in recorder, no OBS needed; plus pointer/click/active-window events). Only one recording at a time. " +
+      "Tell the user to perform the demo, then call record_stop. recorder \"obs\" records through a running OBS Studio instead.",
     inputSchema: {
-      dir: z.string().optional().describe("Session directory. Default: ./sessions/<timestamp>"),
+      dir: z.string().optional().describe("Session directory. Default: a new folder in the user's Videos/ScreenPilot"),
       input: z.enum(["auto", "kwin", "uiohook", "none"]).optional().describe("Pointer/click capture adapter. Default auto"),
       screen: z.string().optional().describe("Monitor name to normalize pointer coordinates against (e.g. eDP-1)"),
       obsUrl: z.string().optional().describe("obs-websocket URL. Default ws://127.0.0.1:4455"),
@@ -140,7 +140,7 @@ server.registerTool(
       screens: z
         .union([z.literal("all"), z.array(z.string()).min(1)])
         .optional()
-        .describe('Record several monitors side by side: "all" or monitor names (needs KWin for the layout)'),
+        .describe('Record several monitors side by side: "all" or monitor names (see the monitors check in doctor)'),
       map: z.record(z.string(), z.string()).optional().describe("OBS capture source name -> monitor name, when names don't make it obvious"),
     },
   },
@@ -344,7 +344,7 @@ server.registerTool(
   "screenshot",
   {
     description:
-      "Picture of each monitor (via OBS capture sources, so OBS must be running), as image blocks plus warnings. " +
+      "Picture of each monitor (built-in capture, or OBS when recording through it), as image blocks plus warnings. " +
       "grid=true overlays a 0..1 coordinate grid; read the x/y for pointer_move/click straight off it. " +
       "Take one before acting and another after, to verify. Read-only.",
     inputSchema: {
@@ -366,7 +366,11 @@ server.registerTool(
 
 server.registerTool(
   "windows",
-  { description: "List open windows (id, caption, class, pid, active, geometry in global logical pixels, monitor) via KWin. Read-only." },
+  {
+    description:
+      "List open windows (id, caption, class/app, pid, active, geometry in global desktop coordinates, monitor). Read-only. " +
+      "Empty on Wayland desktops without window control (GNOME, sway): use screen targets there.",
+  },
   safe(async () => text(await (await getDesktop()).listWindows())),
 );
 
@@ -540,12 +544,12 @@ server.registerTool(
   "perform",
   {
     description:
-      "Perform a take.json on the real desktop: records (OBS) while driving mouse/keyboard, and writes a storyboard from what happened. " +
+      "Perform a take.json on the real desktop: records (built-in recorder) while driving mouse/keyboard, and writes a storyboard from what happened. " +
       "dryRun=true rehearses the same actions WITHOUT recording: always rehearse first. " +
       `On failure returns {failedStep, error, partial} as an error. Takes about as long as the take. ${DRIVE_NOTE}`,
     inputSchema: {
       take: z.string().describe("Path to take.json"),
-      dir: z.string().optional().describe("Session directory. Default: ./sessions/<timestamp>"),
+      dir: z.string().optional().describe("Session directory. Default: a new folder in the user's Videos/ScreenPilot"),
       dryRun: z.boolean().optional().describe("Rehearse without recording"),
     },
   },
