@@ -154,7 +154,8 @@ reply("ok");
 var w = workspace.windowList().filter(function (x) { return String(x.internalId) === ${JSON.stringify(win.id)}; })[0];
 if (w) {
   w.frameGeometry = { x: ${before.x}, y: ${before.y}, width: ${before.w}, height: ${before.h} };
-  if (${before.max} === 3) w.setMaximize(true, true);
+  // maximizeMode: 1 = vertical, 2 = horizontal, 3 = both
+  if (${before.max}) w.setMaximize(${(before.max & 1) !== 0}, ${(before.max & 2) !== 0});
 }
 reply("ok");
 `).catch(() => {});
