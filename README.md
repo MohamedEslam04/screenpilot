@@ -199,9 +199,21 @@ Items
 
 When a narration line is longer than its slot, the render freezes the video automatically so lines never overlap.
 
+## Windows
+
+Windows support is new. It is verified by CI (typecheck, tests, build and an end-to-end smoke test on a Windows runner) and by `pnpm smoke:windows` on a real desktop, which writes `smoke-report/report.json` and screenshots. Run `demoreel doctor` first: it reports what is found (ffmpeg, monitors, OBS, browser, voices); add `--input` to also test pointer injection.
+
+- Driving uses `SendInput`. Windows you run elevated (as administrator) cannot be controlled from a non-elevated process: run demoreel elevated too.
+- Coordinates are physical pixels.
+- Holding notification popups and closing them are no-ops on Windows.
+- The demo browser is Chrome, Edge or Brave (first found); set `DEMOREEL_BROWSER` to pick another.
+- The `open` take step opens a file or URL with the default app (`start` on Windows, `xdg-open` on Linux, `open` on macOS).
+
+CI: GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request to `main`, on Linux and Windows.
+
 ## Limitations
 
-- Driving the desktop (`perform`, `drive`, `screenshot`) works on KDE Wayland only; Windows support is planned.
+- Driving the desktop (`perform`, `drive`, `screenshot`) works on KDE Wayland; the Windows backend is new (see above).
 - Voiceover uses Edge TTS only (needs network; unofficial service, may change).
 - Recording requires OBS; demoreel does not bundle a capture backend.
 - Click capture on Wayland needs the `input` group; macOS will likely need Input Monitoring permission for the host app (untested).

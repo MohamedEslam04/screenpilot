@@ -23,6 +23,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "smoke:windows": "tsx scripts/windows-smoke.ts",
     "deps:latest": "pnpm update --latest && pnpm outdated"
   },
   "dependencies": {

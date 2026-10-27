@@ -10,6 +10,7 @@ import { analyze } from "./analyze/index.js";
 import { Driver } from "./drive/index.js";
 import { screenshot } from "./drive/see.js";
 import { locate, openBrowser } from "./drive/web.js";
+import { doctor } from "./doctor.js";
 import { evenTimes, grabFrames } from "./frames.js";
 import { initStoryboard } from "./init.js";
 import type { ScreenInfo } from "./record/input/types.js";
@@ -498,10 +499,24 @@ server.registerTool(
 );
 
 server.registerTool(
+  "doctor",
+  {
+    description:
+      "Check this machine and report {summary, checks:[{name, ok, detail, skipped?}]}: node, ffmpeg, desktop, monitors, windows, OBS, demo browser, voices. Never fails; read the report. " +
+      "input=true also tests input injection and briefly moves the real pointer.",
+    inputSchema: { input: z.boolean().optional().describe("Also test input injection (moves the pointer)") },
+  },
+  safe(async ({ input }) => {
+    if (input) await closeDriver(); // one remote-control session at a time
+    return text(await doctor({ input }));
+  }),
+);
+
+server.registerTool(
   "take_schema",
   {
     description:
-      "JSON Schema of take.json (a demo the agent performs on the real desktop while recording: say/caption/view/browser/goto/move/click/drag/type/key/scroll/wait/waitFor/waitForWindow/focus/run). Read it before writing a take.",
+      "JSON Schema of take.json (a demo the agent performs on the real desktop while recording: say/caption/view/browser/goto/move/click/drag/type/key/scroll/wait/waitFor/waitForWindow/focus/open/run). Read it before writing a take.",
   },
   safe(async () => text(takeJsonSchema())),
 );
