@@ -1,34 +1,129 @@
 # ScreenPilot
 
-Your AI pilot for screen videos: it records anything on your screen (or drives the apps itself), then edits it into a polished video with zooms, captions and voiceover.
+Ask your AI app for a screen video and get a finished one: ScreenPilot records your screen (or uses your apps itself), then edits the footage into a polished MP4 with zooms, captions and an AI voiceover in English, Arabic and many other languages. No video editing, and no screen recorder to set up.
+
+ScreenPilot works inside the AI app you already use: Claude, ChatGPT Codex, Cursor, OpenCode, Gemini CLI, Copilot, Windsurf, VS Code and [many more](#which-ai-apps-work). It needs no API key and no account: your AI app does the thinking, and ScreenPilot gives it the screen, the recorder and the video editor. Everything runs on your computer.
+
+## Install
+
+Pick the download for your computer. Everything ScreenPilot needs is inside it; you don't need to install anything else.
+
+| Your computer | Download |
+|---|---|
+| **Windows 10 or 11** | [ScreenPilot-windows-setup.exe](https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-windows-setup.exe) |
+| **Mac with Apple Silicon** (M1, M2, M3, M4…) | [ScreenPilot-macos-arm64.zip](https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-macos-arm64.zip) |
+| **Mac with Intel** | [ScreenPilot-macos-x64.zip](https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-macos-x64.zip) |
+| **Linux** (64-bit) | [ScreenPilot-linux.tar.gz](https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-linux.tar.gz) |
+
+Not sure which Mac you have? Apple menu → **About This Mac**: "Chip: Apple M…" means Apple Silicon, "Processor: Intel" means Intel. All versions are on the [Releases](https://github.com/MohamedEslam04/screenpilot/releases) page.
+
+Install your AI app first (and open it once), then ScreenPilot: the installer adds itself to every AI app it finds. Installed a new AI app later? Run the ScreenPilot installer again.
+
+### Windows
+
+1. Download **ScreenPilot-windows-setup.exe** and double-click it.
+2. If Windows says **"Windows protected your PC"**, click **More info**, then **Run anyway**. (The installer isn't signed yet.)
+3. Click **Install**. You don't need an administrator password. The first install takes a minute or two: it also downloads the video renderer (about 100 MB, only once).
+4. The last page lists the AI apps ScreenPilot was added to. Click **Finish**.
+5. **Restart your AI app**: quit it completely (for Claude Desktop: right-click its icon next to the clock → Quit), then open it again.
+
+If your antivirus asks about ScreenPilot, allow it: ScreenPilot watches mouse clicks while recording so it can zoom in on them.
+
+- **Update:** download the new installer and run it. If an AI app is open, the installer asks you to close it first.
+- **Uninstall:** Settings → Apps → Installed apps → ScreenPilot → Uninstall. It also removes ScreenPilot from your AI apps.
+- **Claude Desktop only?** You can instead double-click [ScreenPilot-windows.mcpb](https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-windows.mcpb) and click Install in Claude.
+- **Can't run installers?** Use [ScreenPilot-windows.zip](https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-windows.zip): right-click it → **Extract All**, open the extracted folder and double-click **ScreenPilot Setup.cmd**.
+
+### macOS
+
+1. Download the zip for your Mac and double-click it to unzip. You get a **ScreenPilot** folder.
+2. Open the folder and double-click **Install ScreenPilot.command**.
+3. The first time, macOS says it can't verify the developer. Click **Done**, open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to "Install ScreenPilot.command", then confirm. (ScreenPilot isn't notarized by Apple yet.)
+4. A Terminal window shows what was installed. Press **Enter** to close it. You can delete the downloaded folder now.
+5. **Restart your AI app** (Cmd+Q, then open it again).
+6. The first time you ask for a recording, macOS asks you to allow your **AI app** (Claude, Cursor, Terminal…, not ScreenPilot itself) in **System Settings → Privacy & Security**:
+   - **Screen & System Audio Recording**: needed to record.
+   - **Accessibility**: needed when the AI uses your apps for you (mouse and keyboard).
+   - **Input Monitoring** (optional): lets recordings zoom in on your own clicks.
+
+   Turn the AI app on in each list, then quit and reopen it.
+
+- **Uninstall:** double-click **Uninstall ScreenPilot.command** in the downloaded folder (download it again if you deleted it).
+- **Claude Desktop only?** Double-click [ScreenPilot-macos-arm64.mcpb](https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-macos-arm64.mcpb) (Intel: [ScreenPilot-macos-x64.mcpb](https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-macos-x64.mcpb)) and click Install in Claude.
+
+### Linux
+
+1. Download **ScreenPilot-linux.tar.gz**, right-click it → **Extract Here**. You get a **ScreenPilot** folder.
+2. Open the folder and double-click **install.sh** (choose **Run** or **Run in Terminal** if asked). A terminal window shows what happens. Or open a terminal in the folder and run `./install.sh`.
+3. Built-in recording on Wayland desktops needs a few system packages (GStreamer). If they're missing, the installer shows the exact command for your distribution (Fedora, Ubuntu/Debian/Mint, Arch, openSUSE) and asks whether to run it: type `y` and your password. You can skip this and do it later.
+4. **Restart your AI app.**
+5. The first time you record (or let the AI use your desktop), your desktop asks once to allow screen sharing or remote control. Allow it.
+
+Don't run the installer with `sudo`: it installs for your user and needs no admin rights.
+
+What works depends on the desktop:
+
+| Desktop | Record | AI uses your apps | Arranges windows |
+|---|---|---|---|
+| KDE Plasma | yes | yes | yes |
+| GNOME / Ubuntu (Wayland) | yes | yes | no |
+| X11 desktops (Linux Mint, Xfce, MATE, GNOME on Xorg…) | yes | yes | yes |
+| sway, Hyprland | yes | no | no |
+
+- **Uninstall:** run `./uninstall.sh` in the downloaded folder.
+
+## Use it
+
+Restart your AI app, then just ask, for example:
+
+- "Record my screen while I show the signup flow, then make a short video with captions."
+- "Make a demo video of our dashboard: open it, show the reports page, and add an Arabic voiceover."
+- "Turn this recording into a tutorial with zooms on every click: `~/Videos/demo.mp4`."
+
+Your recordings and finished videos are saved in the **ScreenPilot** folder inside your Videos folder (on a Mac: Movies). The first video takes a little longer while everything warms up.
+
+## Which AI apps work
+
+The installer adds ScreenPilot to each of these it finds:
+
+- Claude Desktop (including the Microsoft Store version) and Claude Code
+- Codex, OpenCode, Gemini CLI, Qwen Code, GitHub Copilot CLI, Amazon Q, Goose, Warp
+- Cursor, Windsurf, Devin Desktop, Antigravity, Kiro, Zed, LM Studio
+- VS Code, VS Code Insiders and VSCodium, plus the Cline and Roo Code extensions
+
+JetBrains AI Assistant has no settings file: after installing, use its **Import from Claude** button. Any other app that supports MCP servers works too; see [Add it to another app](#add-it-to-another-app).
+
+## If something goes wrong
+
+- **The AI app doesn't know ScreenPilot:** quit the AI app completely and open it again. Still nothing? Run the installer again: it lists which apps it added ScreenPilot to.
+- **"No AI tool found":** install your AI app, open it once, then run the ScreenPilot installer again.
+- **The installer says to close your AI apps:** an open AI app is using the old ScreenPilot. Quit it and click Retry.
+- **"Video renderer: not ready":** the one-time download needs internet. Nothing to do: your first video downloads it.
+- **Recording or mouse control fails on a Mac:** allow your AI app under Screen & System Audio Recording and Accessibility (see [macOS notes](#macos-notes)), then quit and reopen the AI app.
+- **Check everything at once:** ask your AI app to "run the ScreenPilot doctor". It checks the recorder, permissions, voices and more, and says how to fix what's missing.
+
+### Add it to another app
+
+For an AI app that isn't in the list, add an MCP server by hand. This command prints the settings to copy:
+
+- Windows (Command Prompt): `"%LOCALAPPDATA%\ScreenPilot\bin\node.exe" "%LOCALAPPDATA%\ScreenPilot\dist\cli.js" setup --print`
+- macOS: `~/Library/Application\ Support/ScreenPilot/bin/node ~/Library/Application\ Support/ScreenPilot/dist/cli.js setup --print`
+- Linux: `~/.local/share/screenpilot/bin/node ~/.local/share/screenpilot/dist/cli.js setup --print`
+
+It prints a standard `mcpServers` entry (command, arguments, environment) that most apps accept.
+
+---
+
+# For developers
+
+Everything below is about building and changing ScreenPilot. To use it, see [Install](#install).
+
+How it works:
 
 1. **Record** the screen (built in, or through OBS) plus pointer, click and active-window events.
 2. **Analyze**: the agent looks at a contact sheet and frames with a coordinate grid.
 3. The agent writes `storyboard.json`: cuts, speed-ups, zooms, captions, highlights, voiceover lines.
 4. **Render** an MP4 with [HyperFrames](https://github.com/heygen-com/hyperframes) (HTML + GSAP) and Edge TTS voiceover.
-
-## Get it (no terminal needed)
-
-ScreenPilot is a tool for the AI app you already use. It needs no API key and no account. Your AI app does the thinking, and ScreenPilot gives it the screen, the recorder and the video editor. Download from [Releases](https://github.com/MohamedEslam04/screenpilot/releases):
-
-- **Windows:** download and run `ScreenPilot-<version>-windows-setup.exe`. It installs for your user only (no administrator password) and adds ScreenPilot to your AI apps, then shows you what it did. Windows will probably say "Windows protected your PC" because the installer is not signed yet: click **More info**, then **Run anyway**. Your antivirus may also ask about it, because ScreenPilot watches mouse clicks to make good zooms; allow it. If you are updating and an AI app is open, the installer asks you to close it first. To remove it, use Windows Settings -> Apps -> ScreenPilot -> Uninstall.
-  - Prefer a zip? Extract `ScreenPilot-<version>-windows.zip` first (right-click -> Extract All; do not run it from inside the zip), then double-click `ScreenPilot Setup.cmd`.
-  - Only use Claude Desktop? `ScreenPilot-<version>-windows.mcpb` installs it there with one double-click.
-- **macOS (Apple Silicon or Intel):** unzip `ScreenPilot-<version>-macos-arm64.zip` (Intel Macs: `-macos-x64.zip`), open the `ScreenPilot` folder and double-click `Install ScreenPilot.command`. The first time, macOS may say it can't verify the developer: open System Settings -> Privacy & Security and click **Open Anyway**. Only use Claude Desktop? Double-click `ScreenPilot-<version>-macos-<arch>.mcpb` instead. When you first record or let the AI drive, macOS asks you to allow your AI app under Screen Recording and Accessibility.
-- **Linux:** extract `ScreenPilot-<version>-linux.tar.gz`, then double-click `install.sh` (choose "Run" if your file manager asks; it opens a terminal to show the result) or run `./install.sh`. It also checks that built-in screen recording has what it needs (GStreamer with PipeWire and an H.264 encoder) and, if not, prints the exact command for your distro (Fedora, Ubuntu/Debian, Arch, openSUSE) and offers to run it. This is optional: recording with OBS and editing existing videos work without it.
-
-Setup copies the app to `%LOCALAPPDATA%\ScreenPilot`, `~/Library/Application Support/ScreenPilot` or `~/.local/share/screenpilot`, and adds it to every AI app it finds on the computer:
-
-- Claude Desktop (including the Microsoft Store version) and Claude Code (with the workflow skill)
-- Codex, OpenCode, Gemini CLI, Qwen Code, GitHub Copilot CLI, Amazon Q, Goose, Warp
-- Cursor, Windsurf, Devin Desktop, Antigravity, Kiro, Zed, LM Studio
-- VS Code, VS Code Insiders, VSCodium, and the Cline and Roo Code extensions in any of them
-
-JetBrains AI Assistant has no config file: use its "Import from Claude" button after setup. For any other MCP-capable tool, `screenpilot setup --print` shows the entry to paste, and `screenpilot setup --list` shows which tools were found.
-
-Each config file is backed up first (`<file>.screenpilot-backup`), and your other entries and comments are kept. Videos are saved to `ScreenPilot` inside your Videos folder (wherever Windows or your desktop keeps it, e.g. OneDrive or a translated folder name; `~/Movies` on macOS). Setup also downloads the video renderer (about 100 MB, once) and makes a 2-second test video, so your first real video starts right away. Restart your AI app and ask it something like "record my screen while I show the signup flow, then make a video with Arabic voiceover". To remove it, use the Windows uninstaller above (or `Uninstall ScreenPilot.cmd` from the zip), or run `uninstall.sh` on Linux.
-
-The packages include Node, ffmpeg and ffprobe. Install another AI app later? Run setup again. Don't run setup with `sudo`: it installs for your user and needs no admin rights.
 
 ## Why
 
@@ -54,7 +149,7 @@ Status: KDE Wayland is used daily; Windows, X11 and macOS each have a CI smoke t
 - Node 22+ and pnpm
 - ffmpeg and ffprobe on `PATH`
 - A screen recorder, one of:
-  - **native (default):** on Wayland (KDE, GNOME, wlroots) it records the PipeWire monitor streams from the xdg screen-cast portal with GStreamer (`gst-launch-1.0` with `pipewiresrc` and an H.264 encoder: `x264enc`, `openh264enc` or VA-API, whichever is installed; on KDE it reuses the remote-control approval, so no extra dialog). `screenpilot doctor` prints the install command for your distro if a piece is missing (Fedora: `sudo dnf install gstreamer1 pipewire-gstreamer gstreamer1-plugin-openh264`; Debian/Ubuntu: `sudo apt install gstreamer1.0-tools gstreamer1.0-pipewire gstreamer1.0-plugins-ugly`). On X11 and Windows it records with ffmpeg; on macOS with ffmpeg's avfoundation (see [macOS](#macos)).
+  - **native (default):** on Wayland (KDE, GNOME, wlroots) it records the PipeWire monitor streams from the xdg screen-cast portal with GStreamer (`gst-launch-1.0` with `pipewiresrc` and an H.264 encoder: `x264enc`, `openh264enc` or VA-API, whichever is installed; on KDE it reuses the remote-control approval, so no extra dialog). `screenpilot doctor` prints the install command for your distro if a piece is missing (Fedora: `sudo dnf install gstreamer1 pipewire-gstreamer gstreamer1-plugin-openh264`; Debian/Ubuntu: `sudo apt install gstreamer1.0-tools gstreamer1.0-pipewire gstreamer1.0-plugins-ugly`). On X11 and Windows it records with ffmpeg; on macOS with ffmpeg's avfoundation (see [macOS notes](#macos-notes)).
   - **OBS Studio 28+** (`--recorder obs`) with the WebSocket server enabled (Tools -> WebSocket Server Settings), if you prefer OBS's encoders and settings.
 - Network access for Edge TTS (voiceover and `voices`)
 - KDE Wayland: pointer position comes from a KWin script. Click capture needs your user to be in the `input` group (see below).
@@ -168,7 +263,7 @@ Requirements
 
 - KDE Plasma or GNOME on Wayland: driving uses the RemoteDesktop portal; approve the "remote control" dialog once and select all monitors. The token is saved in `~/.config/screenpilot/state.json` (chmod 600), so later runs are silent. On GNOME there is no window control, so use `{screen, x, y}` targets (no `focus`, `waitForWindow`, `{window}` or `{web}` targets).
 - X11 (any desktop with an EWMH window manager): XTest, no dialog. Everything works, including `{web}` targets and window framing.
-- Windows: see [Windows](#windows).
+- Windows: see [Windows notes](#windows-notes).
 - Recording uses the native recorder by default. With `--recorder obs`, OBS needs one capture source per monitor (or one for the whole desktop); names usually match the monitors, otherwise pass `--map "Source Name=HDMI-A-1"` (saved for next time). `screenshot` reads the OBS sources.
 - The demo browser (`screenpilot browser`) uses its own profile at `~/.config/screenpilot/browser`, with downloads going to `~/Downloads` without prompts. Your normal browser is untouched.
 
@@ -255,7 +350,7 @@ Items
 
 When a narration line is longer than its slot, the render freezes the video automatically so lines never overlap.
 
-## Windows
+## Windows notes
 
 Windows support is new and verified on every push by CI on a real Windows runner (`pnpm smoke:windows`): monitors, pointer injection (0–1 px), Notepad focus/16:9/fit-restore, Unicode typing incl. Arabic and emoji (checked through the clipboard), the Chrome demo browser with trusted clicks, native screenshots and recording (ffmpeg gdigrab, no OBS), and a recorded take that produces a storyboard. The runner has one 1024x768 monitor, so multi-monitor layouts and display scaling are not covered there: on your own PC run
 
@@ -273,7 +368,7 @@ and look at (or send) `windows-live-report/`. `screenpilot doctor` alone reports
 - The demo browser is Chrome, Edge or Brave (first found); set `SCREENPILOT_BROWSER` to pick another.
 - The `open` take step opens a file or URL with the default app (the URL protocol handler on Windows, `xdg-open` on Linux, `open` on macOS).
 
-## macOS
+## macOS notes
 
 macOS 12+ on Apple Silicon and Intel. Recording, screenshots, driving (pointer, clicks, typing incl. Arabic and emoji, shortcuts), the window list, focusing/placing windows and the demo browser all work without OBS. The macOS download includes ffmpeg; from source you need it yourself (`brew install ffmpeg`). Web demos need Chrome, Edge or Brave in `/Applications`.
 
