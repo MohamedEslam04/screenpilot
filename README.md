@@ -219,7 +219,7 @@ and look at (or send) `windows-live-report/`. `demoreel doctor` alone reports wh
 - The demo browser is Chrome, Edge or Brave (first found); set `DEMOREEL_BROWSER` to pick another.
 - The `open` take step opens a file or URL with the default app (the URL protocol handler on Windows, `xdg-open` on Linux, `open` on macOS).
 
-CI: GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request to `main`, on Linux and Windows.
+CI: GitHub Actions. `.github/workflows/ci.yml` (Linux: typecheck, tests, build) runs on every push and pull request to `main`; `.github/workflows/windows.yml` (tests + `smoke:windows` on a real Windows runner) runs only when code that behaves differently on Windows changes (`src/platform`, `src/record`, `src/drive`, `src/take`, `src/util`, `scripts`, dependencies), or by hand from the Actions tab, since Windows minutes count double on private repos.
 
 ## Limitations
 
