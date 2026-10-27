@@ -1,5 +1,6 @@
 allowBuilds:
   esbuild: true
+  koffi: true
   msedge-tts: false
   uiohook-napi: true
   usocket: false
