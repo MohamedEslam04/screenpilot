@@ -283,7 +283,12 @@ async function main(): Promise<void> {
     needAx();
     const s = ds[0]?.screen;
     if (!driver || !s) throw new Error("needs driver + display");
-    await openBrowser({ screen: s, url: writeSmokePage(), log });
+    try {
+      await openBrowser({ screen: s, url: writeSmokePage(), log });
+    } catch (err) {
+      await shot("04-browser-failed", capture).catch(() => {});
+      throw err;
+    }
     await sleep(800);
     const at: string[] = [];
     for (const sel of ["#a", "#b"]) {

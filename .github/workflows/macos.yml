@@ -50,6 +50,13 @@ jobs:
       # Real desktop session on the runner: displays, CGEvent pointer, windows,
       # TextEdit, the demo browser, screencapture/avfoundation. Checks that need
       # a privacy permission the runner lacks are reported as "blocked", not failed.
+      # Real users have opened their browser before; on a fresh runner LaunchServices'
+      # first-launch check of an app with the download quarantine flag can show a dialog.
+      - name: Prepare Chrome
+        run: |
+          xattr -l "/Applications/Google Chrome.app" || true
+          sudo xattr -dr com.apple.quarantine "/Applications/Google Chrome.app" || true
+          spctl --assess --verbose "/Applications/Google Chrome.app" || true
       - name: macOS smoke test
         run: pnpm smoke:macos
         timeout-minutes: 6

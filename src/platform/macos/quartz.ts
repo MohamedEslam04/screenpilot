@@ -55,6 +55,7 @@ export const PROTOTYPES = {
     CGPreflightScreenCaptureAccess: "bool CGPreflightScreenCaptureAccess()",
     CGRequestScreenCaptureAccess: "bool CGRequestScreenCaptureAccess()",
     CGPreflightPostEventAccess: "bool CGPreflightPostEventAccess()",
+    CGEventSourceFlagsState: "uint64_t CGEventSourceFlagsState(int32_t stateID)",
   },
   ApplicationServices: {
     AXIsProcessTrusted: "bool AXIsProcessTrusted()",
@@ -349,6 +350,11 @@ function bind(koffi: Koffi) {
     },
 
     /** Accessibility permission for this process (really: for the app that launched it). */
+    /** Modifier flags macOS currently sees as held (HID system state). */
+    modifierFlags(): bigint {
+      return BigInt(fn.CGEventSourceFlagsState(kCGEventSourceStateHIDSystemState) as number | bigint);
+    },
+
     /** Whether macOS lets this process post keyboard/mouse events (10.15+; part of the Accessibility grant). */
     postEventAllowed(): boolean | undefined {
       try {

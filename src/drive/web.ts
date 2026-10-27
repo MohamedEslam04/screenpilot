@@ -78,7 +78,13 @@ export async function openBrowser(opts: { screen?: ScreenInfo; url?: string; log
     // process of ours never can. `open -n` starts a separate instance (the user's own
     // browser is untouched) and passes our flags through.
     const app = process.platform === "darwin" ? bin.match(/^(.*?\.app)\//)?.[1] : undefined;
-    if (app) spawn("open", ["-n", "-a", app, "--args", ...args], { detached: true, stdio: "ignore" }).unref();
+    if (app) {
+      // `open` returns as soon as LaunchServices has the request; report why if it refuses.
+      const o = spawn("open", ["-n", "-a", app, "--args", ...args], { stdio: ["ignore", "ignore", "pipe"] });
+      let err = "";
+      o.stderr?.on("data", (d: Buffer) => (err += d));
+      o.on("close", (code) => code && opts.log?.(`open -a ${app} failed (${code}): ${err.trim()}`));
+    }
     else spawn(bin, args, { detached: true, stdio: "ignore" }).unref();
     // macOS checks an app the first time LaunchServices opens it (Gatekeeper): that can take a while.
     const tries = app ? 240 : 60;
