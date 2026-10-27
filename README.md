@@ -310,4 +310,4 @@ CI: GitHub Actions. `.github/workflows/ci.yml` (Linux: typecheck, tests, build; 
 
 ---
 
-Docs synced to commit 2113564 ("ci: X11 smoke test under Xvfb + openbox", 2026-10-27).
+Docs synced to commit 6278d6f ("ci(macos): also run on input and driving changes", 2026-10-27).
