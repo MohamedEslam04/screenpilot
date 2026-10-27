@@ -34,7 +34,8 @@ function argValue(name: string): string | undefined {
 
 function sh(cmd: string, args: string[], cwd = root): Promise<void> {
   return new Promise((res, rej) => {
-    const p = spawn(cmd, args, { cwd, stdio: "inherit", shell: process.platform === "win32" });
+    // pnpm/npx are .cmd shims on Windows and need a shell; a full .exe path (often under "Program Files") must not get one.
+    const p = spawn(cmd, args, { cwd, stdio: "inherit", shell: process.platform === "win32" && !/\.exe$/i.test(cmd) });
     p.on("close", (c) => (c === 0 ? res() : rej(new Error(`${cmd} ${args.join(" ")} → exit ${c}`))));
   });
 }
