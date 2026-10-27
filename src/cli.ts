@@ -6,6 +6,7 @@ import { analyze } from "./analyze/index.js";
 import { doctor } from "./doctor.js";
 import { evenTimes, grabFrames } from "./frames.js";
 import { initStoryboard } from "./init.js";
+import { setup } from "./setup/index.js";
 import { type InputAdapterId, startRecording } from "./record/index.js";
 import { remapSession } from "./record/remap.js";
 import { Driver } from "./drive/index.js";
@@ -19,7 +20,7 @@ import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/lo
 import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider } from "./voice/index.js";
-import { APP } from "./brand.js";
+import { APP, APP_TITLE } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { getDesktop } from "./platform/index.js";
 
@@ -112,6 +113,35 @@ program
   .requiredOption("--screen <name>", "Monitor OBS actually recorded, e.g. HDMI-A-1")
   .action(async (session: string, o: { screen: string }) => {
     print(await remapSession(session, o.screen));
+  });
+
+program
+  .command("setup")
+  .description("Install for people who don't use a terminal: copy the app to its folder and add it to every AI tool found (Claude, Codex, OpenCode, Cursor, Gemini, Windsurf, VS Code)")
+  .option("--clients <ids>", "Only these: claude-desktop,claude-code,codex,opencode,cursor,gemini,windsurf,vscode")
+  .option("--remove", "Remove it from those tools instead")
+  .option("--output <dir>", "Where videos are saved (default: ~/Videos/ScreenPilot)")
+  .option("--in-place", "Register the package where it is (no copy)")
+  .action(async (o: { clients?: string; remove?: boolean; output?: string; inPlace?: boolean }) => {
+    const r = await setup({
+      clients: o.clients?.split(",").map((x) => x.trim()),
+      remove: o.remove,
+      outputDir: o.output,
+      inPlace: o.inPlace,
+      log,
+    });
+    const width = Math.max(...r.rows.map((x) => x.client.length));
+    process.stderr.write(`\n${APP_TITLE} ${o.remove ? "removed" : "set up"} (${r.appDir})\n`);
+    for (const row of r.rows) process.stderr.write(`  ${row.client.padEnd(width)}  ${row.status}${row.detail ? `  ${row.detail}` : ""}\n`);
+    if (!o.remove) {
+      const added = r.rows.filter((x) => x.status === "added").map((x) => x.client);
+      process.stderr.write(
+        added.length
+          ? `\nDone. Restart ${added.join(", ")}, then ask your AI to record your screen or make a video. Videos are saved to ${r.outputDir}\n`
+          : "\nNo AI tool found. Install one (Claude Desktop, Codex, OpenCode, Cursor, …) and run setup again.\n",
+      );
+    }
+    print(r);
   });
 
 program
