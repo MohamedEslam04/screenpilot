@@ -87,3 +87,16 @@ describe("contentToScreen", () => {
     expect(p.y).toBe(100 + 2.5);
   });
 });
+
+describe("charStroke", () => {
+  it("presses Shift explicitly for capitals and shifted symbols", async () => {
+    const { charStroke } = await import("../src/drive/keys.js");
+    expect(charStroke("A")).toEqual({ sym: 0x61, shift: true });
+    expect(charStroke("a")).toEqual({ sym: 0x61, shift: false });
+    expect(charStroke("!")).toEqual({ sym: 0x31, shift: true });
+    expect(charStroke("|")).toEqual({ sym: 0x5c, shift: true });
+    expect(charStroke("1")).toEqual({ sym: 0x31, shift: false });
+    expect(charStroke("\n")).toEqual({ sym: 0xff0d, shift: false });
+    expect(charStroke("é")).toBeNull();
+  });
+});

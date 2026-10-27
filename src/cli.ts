@@ -125,6 +125,7 @@ program
     });
     try {
       print(await performTake(takePath, { ...o, log, onDriver: (d) => (driver = d) }));
+      process.exit(0); // the CDP connection to the demo browser would keep us alive
     } catch (err) {
       if (err instanceof TakeError) {
         print({ failedStep: err.index + 1, step: err.step, error: err.cause.message, partial: err.partial });
@@ -289,9 +290,10 @@ program
   .option("-o, --output <file>", "Output video (default: <storyboard>.mp4)")
   .option("-q, --quality <q>", "draft | looks | delivery", "looks")
   .option("--png-frames", "Lossless source frames: sharper UI text, slower")
+  .option("--workers <n>", "Parallel renderers (each is a headless Chrome)", "2")
   .option("--build-dir <dir>")
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string }) => {
-    const r = await renderStoryboard(path, { ...o, log });
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers: string }) => {
+    const r = await renderStoryboard(path, { ...o, workers: Number(o.workers), log });
     print({ output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
   });
 

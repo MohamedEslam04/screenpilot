@@ -57,11 +57,33 @@ export function parseCombo(combo: string): number[] {
     });
 }
 
+// US layout: shifted characters and the key that produces them. We press
+// Shift ourselves: injecting a shifted keysym makes KWin press Shift on its
+// own and it can stay latched, turning "A1" into "A!".
+const SHIFTED: Record<string, string> = {
+  "~": "`", "!": "1", "@": "2", "#": "3", "$": "4", "%": "5", "^": "6", "&": "7", "*": "8", "(": "9", ")": "0",
+  _: "-", "+": "=", "{": "[", "}": "]", "|": "\\", ":": ";", '"': "'", "<": ",", ">": ".", "?": "/",
+};
+
+export const SHIFT = 0xffe1;
+
+/** The unshifted key for a character and whether Shift is needed; null = type it via the clipboard. */
+export function charStroke(ch: string): { sym: number; shift: boolean } | null {
+  if (ch === "\n") return { sym: NAMED.enter!, shift: false };
+  if (ch === "\t") return { sym: NAMED.tab!, shift: false };
+  if (/^[A-Z]$/.test(ch)) return { sym: ch.toLowerCase().codePointAt(0)!, shift: true };
+  const base = SHIFTED[ch];
+  if (base) return { sym: base.codePointAt(0)!, shift: true };
+  const cp = ch.codePointAt(0)!;
+  if (cp >= 0x20 && cp <= 0x7e) return { sym: cp, shift: false };
+  return null;
+}
+
 /** Split text into runs typed key-by-key and runs that need the clipboard. */
 export function splitTyping(text: string): { keys: boolean; text: string }[] {
   const runs: { keys: boolean; text: string }[] = [];
   for (const ch of text) {
-    const keys = charKeysym(ch) !== null;
+    const keys = charStroke(ch) !== null;
     const last = runs.at(-1);
     if (last && last.keys === keys) last.text += ch;
     else runs.push({ keys, text: ch });

@@ -159,6 +159,8 @@ export interface RenderOptions extends PrepareOptions {
   quality?: "draft" | "looks" | "delivery";
   /** Lossless frame extraction; sharper UI text, slower. */
   pngFrames?: boolean;
+  /** Parallel headless Chrome renderers (default 2). */
+  workers?: number;
 }
 
 export interface RenderResult extends Prepared {
@@ -194,6 +196,9 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
       opts.quality ?? "looks",
       "--video-frame-format",
       opts.pngFrames ? "png" : "auto",
+      // Each worker is a headless Chrome (~250 MB+); "auto" can starve a desktop that is also running OBS and browsers.
+      "--workers",
+      String(opts.workers ?? 2),
       "--quiet",
     ],
     { env: hyperframesEnv() },
