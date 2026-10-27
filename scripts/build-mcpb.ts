@@ -4,7 +4,8 @@
 //
 // Builds for the OS it runs on (native modules are per-OS, so CI builds each
 // platform on its own runner):
-//   windows → release/ScreenPilot-<version>-windows.zip   ("ScreenPilot Setup.cmd" adds it to every AI tool)
+//   windows → release/ScreenPilot-<version>-windows-setup.exe (Inno Setup installer: the main download)
+//             release/ScreenPilot-<version>-windows.zip   ("ScreenPilot Setup.cmd" adds it to every AI tool)
 //             release/ScreenPilot-<version>-windows.mcpb  (double-click in Claude Desktop)
 //   linux   → release/ScreenPilot-<version>-linux.tar.gz  (install.sh adds it to every AI tool)
 // The zip/tarball carry their own Node, so nothing else needs installing.
@@ -13,6 +14,8 @@ import { spawn } from "node:child_process";
 import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { APP, APP_TITLE, OUTPUT_ENV } from "../src/brand.js";
+import { makeIco } from "./ico.js";
+import { bundleVcRuntime } from "./vcruntime.js";
 
 const root = resolve(import.meta.dirname, "..");
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { version: string; description: string };
@@ -87,6 +90,9 @@ async function main(): Promise<void> {
     log("no --ffmpeg-dir: the package will use ffmpeg from PATH");
   }
 
+  // Native modules built with MSVC need the VC++ runtime: ship it app-local (Windows only; see scripts/vcruntime.ts).
+  if (platform === "windows") bundleVcRuntime(stage, log);
+
   const tools = await listTools(join(stage, "dist", "mcp.js"));
   log(`${tools.length} tools`);
   mkdirSync(out, { recursive: true });
@@ -138,9 +144,18 @@ async function main(): Promise<void> {
 
     // Claude Desktop brings its own Node for the .mcpb; the zip is for every other tool.
     bundleNode();
+    bundleVcRuntime(stage, log); // node.exe itself, if it needs the runtime
+    await buildInstaller();
+    // Opened straight from inside a zip, Windows extracts only this file: tell people to extract everything.
     const setupCmd = (args: string, done: string) =>
       [
         "@echo off",
+        'if not exist "%~dp0bin\\node.exe" (',
+        "  chcp 65001 > nul",
+        "  echo Please extract the zip first: right-click it \u2192 Extract All, then open the extracted folder and run this again.",
+        "  pause",
+        "  exit /b 1",
+        ")",
         'cd /d "%~dp0"',
         `"bin\\node.exe" "dist\\cli.js" setup${args} > nul`,
         "echo.",
@@ -161,19 +176,37 @@ async function main(): Promise<void> {
     log(`→ ${zip}`);
   } else {
     bundleNode();
-    const script = (args: string, what: string) => `#!/usr/bin/env bash
-# ${what}
-set -euo pipefail
-DIR="$(cd "$(dirname "$0")" && pwd)"
-"$DIR/bin/node" "$DIR/dist/cli.js" setup${args} "$@" >/dev/null
-`;
-    writeFileSync(join(stage, "install.sh"), script("", `Adds ${APP_TITLE} to every AI tool on this computer. Usage: ./install.sh [--output <videos folder>]`));
-    writeFileSync(join(stage, "uninstall.sh"), script(" --remove", `Removes ${APP_TITLE} from your AI tools.`));
+    for (const f of ["install.sh", "uninstall.sh"]) copyFileSync(join(root, "packaging", "linux", f), join(stage, f));
     for (const f of ["install.sh", "uninstall.sh"]) chmodSync(join(stage, f), 0o755);
     const file = join(out, `${APP_TITLE}-${pkg.version}-linux.tar.gz`);
     await sh("tar", ["-czf", file, "-C", dirname(stage), APP_TITLE]);
     log(`→ ${file}`);
   }
+}
+
+/** The Windows installer (.exe) from packaging/windows/screenpilot.iss; Inno Setup only exists on Windows. */
+async function buildInstaller(): Promise<void> {
+  const iscc = findInno();
+  if (!iscc) {
+    if (process.platform === "win32") throw new Error("Inno Setup 6 not found. Install it (choco install innosetup -y) or set ISCC to ISCC.exe.");
+    log("Inno Setup only runs on Windows: skipping the .exe installer");
+    return;
+  }
+  const ico = join(out, "icon.ico");
+  await makeIco(ffmpegDir ? join(ffmpegDir, `ffmpeg${exe}`) : "ffmpeg", join(root, "assets", "icon.png"), join(out, "ico-tmp"), ico, (c, a) => sh(c, a));
+  const file = join(out, `${APP_TITLE}-${pkg.version}-windows-setup.exe`);
+  rmSync(file, { force: true });
+  await sh(iscc, [`/DAppName=${APP_TITLE}`, `/DAppVersion=${pkg.version}`, `/DStageDir=${stage}`, `/DOutDir=${out}`, `/DIconFile=${ico}`, join(root, "packaging", "windows", "screenpilot.iss")]);
+  rmSync(ico, { force: true });
+  if (!existsSync(file)) throw new Error(`Inno Setup did not produce ${file}`);
+  log(`→ ${file}`);
+}
+
+function findInno(): string | undefined {
+  if (process.platform !== "win32") return undefined;
+  const dirs = [process.env.ISCC, process.env["ProgramFiles(x86)"], process.env.ProgramFiles, process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "Programs")];
+  const candidates = [dirs[0], ...dirs.slice(1).map((d) => d && join(d, "Inno Setup 6", "ISCC.exe"))];
+  return candidates.find((c): c is string => !!c && existsSync(c));
 }
 
 /** Ship the Node that built the package (its native modules match it). */
