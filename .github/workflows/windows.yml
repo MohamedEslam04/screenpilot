@@ -1,0 +1,65 @@
+name: Windows
+
+# Windows minutes count double on private repos, so this runs only when code
+# that behaves differently on Windows changes (or by hand from the Actions tab).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/platform/**"
+      - "src/record/**"
+      - "src/drive/**"
+      - "src/take/**"
+      - "src/util/**"
+      - "scripts/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/windows.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/platform/**"
+      - "src/record/**"
+      - "src/drive/**"
+      - "src/take/**"
+      - "src/util/**"
+      - "scripts/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/windows.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6 # version from package.json "packageManager"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install ffmpeg
+        uses: AnimMouse/setup-ffmpeg@v1
+        timeout-minutes: 5
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      # Real desktop session on the runner: drives Notepad and the demo browser.
+      - name: Windows smoke test
+        run: pnpm smoke:windows
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-report
+          path: smoke-report/
+          if-no-files-found: warn
