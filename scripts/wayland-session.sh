@@ -96,7 +96,7 @@ default=wlr
 EOF
 dbus-update-activation-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_RUNTIME_DIR SWAYSOCK 2>/dev/null || true
 
-XDPW=$(ls /usr/libexec/xdg-desktop-portal-wlr /usr/lib/xdg-desktop-portal-wlr 2>/dev/null | head -1 || true)
+XDPW="${XDPW_BIN:-$(ls /usr/libexec/xdg-desktop-portal-wlr /usr/lib/xdg-desktop-portal-wlr 2>/dev/null | head -1 || true)}"
 WAYLAND_DEBUG="${XDPW_WAYLAND_DEBUG:-}" "$XDPW" -l DEBUG -r -c "$XDG_CONFIG_HOME/xdg-desktop-portal-wlr/config" >"$LOGS/xdpw.log" 2>&1 &
 PIDS+=($!)
 wait_for "xdpw on the bus" 15 busctl --user status org.freedesktop.impl.portal.desktop.wlr
