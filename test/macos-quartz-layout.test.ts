@@ -18,7 +18,7 @@ describe("Quartz types and prototypes", () => {
 
   it("parses every function prototype against these types", () => {
     const protos = [...Object.values(PROTOTYPES).flatMap((p) => Object.values(p) as string[]), AX_GET_WINDOW];
-    expect(protos.length).toBe(47);
+    expect(protos.length).toBe(48);
     for (const p of protos) expect(() => koffi.proto(p.replace(/(\w+)\(/, "MacCheck_$1(")), p).not.toThrow();
   });
 });

@@ -12,7 +12,11 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export interface PostApi {
   post(e: MacEvent): void;
   cursor(): { x: number; y: number };
+  /** Modifier flags macOS sees as held; lets the warm-up wait until our first event registers. */
+  modifierFlags?(): bigint;
 }
+
+const SHIFT_FLAG = 0x20000n;
 
 export class MacInjector implements Injector {
   private pos?: { x: number; y: number };
@@ -25,7 +29,7 @@ export class MacInjector implements Injector {
     private screens: ScreenInfo[],
     private now: () => number = () => performance.now(),
     /** Wait after the warm-up Shift tap (0 skips the warm-up, e.g. in tests). */
-    private warmUpMs = 600,
+    private warmUpMs = 1000,
   ) {}
 
   async moveTo(x: number, y: number): Promise<boolean> {
@@ -49,15 +53,23 @@ export class MacInjector implements Injector {
   }
 
   /**
-   * The first synthetic key events after we start are dropped on macOS (seen on
-   * CI: the first typed text never arrives, the same text a moment later does).
-   * A Shift tap and a short wait absorb that before anything that matters.
+   * macOS drops synthetic key events for a moment after a process posts its
+   * first one (seen on CI: the start of the first typed text is lost, later
+   * text arrives). Hold Shift until macOS reports it held (up to 3 s), then
+   * release it and give it at least `warmUpMs` before anything that matters.
    */
   private async warmUpKeys(): Promise<void> {
     if (this.keysReady || this.warmUpMs <= 0) return;
     this.keysReady = true;
-    for (const e of comboEvents("shift")) this.q.post(e);
-    await sleep(this.warmUpMs);
+    const [down, up] = comboEvents("shift");
+    const start = this.now();
+    if (down) this.q.post(down);
+    if (this.q.modifierFlags) {
+      while (this.now() - start < 3000 && !(this.q.modifierFlags() & SHIFT_FLAG)) await sleep(25);
+    }
+    if (up) this.q.post(up);
+    const left = this.warmUpMs - (this.now() - start);
+    if (left > 0) await sleep(left);
   }
 
   async pressCombo(combo: string): Promise<void> {
