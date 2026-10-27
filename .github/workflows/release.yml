@@ -19,7 +19,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        # macOS minutes cost 10x on private repos: these jobs only run for releases and by hand.
+        os: [windows-latest, ubuntu-latest, macos-latest, macos-15-intel]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     steps:
@@ -52,8 +53,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: pnpm package --ffmpeg-dir (Split-Path (Get-Command ffmpeg).Source)
-      - name: Package (Linux)
-        if: runner.os == 'Linux'
+      - name: Package (Linux, macOS)
+        if: runner.os != 'Windows'
         run: pnpm package --ffmpeg-dir "$(dirname "$(command -v ffmpeg)")"
       # The packaged server must start on its bundled Node and see its bundled tools.
       - name: Check the package
@@ -92,7 +93,7 @@ jobs:
         run: bash scripts/ci/test-linux-install.sh
       - uses: actions/upload-artifact@v7
         with:
-          name: package-${{ runner.os }}
+          name: package-${{ matrix.os }}
           path: |
             release/*.exe
             release/*.zip
