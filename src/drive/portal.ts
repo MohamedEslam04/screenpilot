@@ -3,7 +3,8 @@ import { APP } from "../brand.js";
 
 // xdg-desktop-portal RemoteDesktop session: the official Wayland way to inject
 // pointer and keyboard input. Paired with a ScreenCast source selection so we
-// get per-monitor streams, which absolute pointer motion is expressed in.
+// get per-monitor streams, which absolute pointer motion is expressed in. A
+// ScreenCast-only session (streams, no input) serves compositors without one.
 
 const DEST = "org.freedesktop.portal.Desktop";
 const PATH = "/org/freedesktop/portal/desktop";
@@ -34,33 +35,45 @@ export class RemoteDesktopSession {
   streams: PortalStream[] = [];
   restoreToken?: string;
 
-  /** Opens the session; KDE asks the user once unless `restoreToken` is still valid. */
-  async open(restoreToken?: string): Promise<void> {
+  /**
+   * Opens the session; the desktop asks the user once unless `restoreToken`
+   * is still valid. `screenCastOnly` asks for monitor streams without input
+   * devices (compositors without a RemoteDesktop portal, e.g. wlroots).
+   */
+  async open(restoreToken?: string, opts: { screenCastOnly?: boolean } = {}): Promise<void> {
+    const iface = opts.screenCastOnly ? SC : RD;
     // Our unique bus name (needed to predict request paths) is known only after Hello.
     await this.bus.call(
       new dbus.Message({ destination: "org.freedesktop.DBus", path: "/org/freedesktop/DBus", interface: "org.freedesktop.DBus", member: "GetId" }),
     );
-    const created = await this.request(RD, "CreateSession", "a{sv}", [
+    const created = await this.request(iface, "CreateSession", "a{sv}", [
       { session_handle_token: new Variant("s", this.token("s")) },
     ]);
     this.session = String(created.session_handle);
 
-    const devOpts: Record<string, dbus.Variant> = {
-      types: new Variant("u", KEYBOARD | POINTER),
-      persist_mode: new Variant("u", PERSIST_UNTIL_REVOKED),
+    const sources: Record<string, dbus.Variant> = {
+      types: new Variant("u", MONITOR),
+      multiple: new Variant("b", true),
+      cursor_mode: new Variant("u", 2),
     };
-    if (restoreToken) devOpts.restore_token = new Variant("s", restoreToken);
-    await this.request(RD, "SelectDevices", "oa{sv}", [this.session, devOpts]);
+    if (opts.screenCastOnly) {
+      // Without RemoteDesktop, the ScreenCast selection carries the persistence.
+      sources.persist_mode = new Variant("u", PERSIST_UNTIL_REVOKED);
+      if (restoreToken) sources.restore_token = new Variant("s", restoreToken);
+    } else {
+      const devOpts: Record<string, dbus.Variant> = {
+        types: new Variant("u", KEYBOARD | POINTER),
+        persist_mode: new Variant("u", PERSIST_UNTIL_REVOKED),
+      };
+      if (restoreToken) devOpts.restore_token = new Variant("s", restoreToken);
+      await this.request(RD, "SelectDevices", "oa{sv}", [this.session, devOpts]);
+    }
+    await this.request(SC, "SelectSources", "oa{sv}", [this.session, sources]);
 
-    await this.request(SC, "SelectSources", "oa{sv}", [
-      this.session,
-      { types: new Variant("u", MONITOR), multiple: new Variant("b", true), cursor_mode: new Variant("u", 2) },
-    ]);
-
-    const started = await this.request(RD, "Start", "osa{sv}", [this.session, "", {}]);
+    const started = await this.request(iface, "Start", "osa{sv}", [this.session, "", {}]);
     this.restoreToken = started.restore_token ? String(started.restore_token) : undefined;
     this.streams = parseStreams(started.streams);
-    if (this.streams.length === 0) throw new Error("Remote control was granted without any screen; pick the monitors to control.");
+    if (this.streams.length === 0) throw new Error("Screen sharing was granted without any screen; pick the monitors to share.");
   }
 
   async motionAbsolute(stream: number, x: number, y: number): Promise<void> {
@@ -135,6 +148,29 @@ export class RemoteDesktopSession {
 
     await this.bus.call(new dbus.Message({ destination: DEST, path: PATH, interface: iface, member, signature, body }));
     return response;
+  }
+}
+
+/** The portal interface's version, or undefined when the desktop does not implement it (wlroots has no RemoteDesktop). */
+export async function portalVersion(iface: "RemoteDesktop" | "ScreenCast"): Promise<number | undefined> {
+  const bus = dbus.sessionBus();
+  try {
+    const reply = await bus.call(
+      new dbus.Message({
+        destination: DEST,
+        path: PATH,
+        interface: "org.freedesktop.DBus.Properties",
+        member: "Get",
+        signature: "ss",
+        body: [`org.freedesktop.portal.${iface}`, "version"],
+      }),
+    );
+    const v = reply?.body?.[0] as dbus.Variant | undefined;
+    return v ? Number(v.value) : undefined;
+  } catch {
+    return undefined;
+  } finally {
+    bus.disconnect();
   }
 }
 

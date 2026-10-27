@@ -51,7 +51,7 @@ export interface BrowserWindow {
 }
 
 /** Start (or reuse) the demo browser and place its window on `screen`. */
-export async function openBrowser(opts: { screen?: ScreenInfo; url?: string; log?: (m: string) => void } = {}): Promise<WindowInfo> {
+export async function openBrowser(opts: { screen?: ScreenInfo; url?: string; log?: (m: string) => void } = {}): Promise<WindowInfo | { note: string }> {
   if (!(await cdpUp())) {
     const profile = join(configDir(), "browser");
     await mkdir(join(profile, "Default"), { recursive: true });
@@ -77,6 +77,11 @@ export async function openBrowser(opts: { screen?: ScreenInfo; url?: string; log
   }
   await singleTab(opts.url);
   await allowDownloads();
+  const desktop = await getDesktop();
+  if (!desktop.windowControl) {
+    // No window positions here (e.g. GNOME Wayland): the browser stays where the compositor put it.
+    return { note: `The demo browser is open; ${desktop.id} gives no window control, so it was not placed and web targets ({web: selector}) can't be located. Use screen targets.` };
+  }
   const win = await browserWindow();
   if (opts.screen) {
     const s = opts.screen;
@@ -99,6 +104,10 @@ export async function browserWindow(): Promise<WindowInfo> {
   await cdp.detach();
   const pid = info.processInfo.find((p) => p.type === "browser")?.id;
   if (!pid) throw new Error("CDP did not report the browser process id.");
+  const desktop = await getDesktop();
+  if (!desktop.windowControl) {
+    throw new Error(`Web targets need the browser window's position, which ${desktop.id} does not give apps (Wayland). Use screen targets ({screen, x, y}).`);
+  }
   for (let i = 0; i < 20; i++) {
     const hit = (await (await getDesktop()).listWindows()).find((w) => w.pid === pid);
     if (hit) return hit;
