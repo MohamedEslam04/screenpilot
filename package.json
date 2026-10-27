@@ -24,7 +24,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke:windows": "tsx scripts/windows-smoke.ts",
-    "deps:latest": "pnpm update --latest && pnpm outdated"
+    "deps:latest": "pnpm update --latest && pnpm outdated",
+    "windows:live": "tsx scripts/windows-live.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

@@ -4,3 +4,5 @@ dist
 .demoreel-cache
 sessions/
 .claude/
+smoke-report/
+windows-live-report/
