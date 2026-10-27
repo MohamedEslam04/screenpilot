@@ -33,6 +33,17 @@ describe("browserCandidates", () => {
     ]);
   });
 
+  it("lists app bundles in /Applications then ~/Applications on macOS", () => {
+    const c = browserCandidates({ HOME: "/Users/me", PATH: "/usr/bin" }, "darwin");
+    expect(c.slice(0, 2)).toEqual([
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "/Users/me/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    ]);
+    expect(c).toContain("/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge");
+    expect(c).toContain("/Applications/Brave Browser.app/Contents/MacOS/Brave Browser");
+    expect(browserCandidates({}, "darwin")).toHaveLength(4);
+  });
+
   it("skips Windows roots that are not set", () => {
     expect(browserCandidates({ LOCALAPPDATA: "C:\\L" }, "win32")).toHaveLength(3);
   });

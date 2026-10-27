@@ -162,6 +162,27 @@ export async function screenshot(
     if (opts.grid) for (const s of shots) await overlayGrid(s.file);
     return { shots, warnings: [] };
   }
+  // macOS: `screencapture` of each display's point rect (the image comes out in pixels), scaled down by ffmpeg.
+  if (process.platform === "darwin") {
+    const { screencaptureArgs } = await import("../record/backends/macos-avfoundation.js");
+    const { ensureScreenCapture } = await import("../platform/macos/desktop.js");
+    await ensureScreenCapture();
+    const wanted = opts.only ? screens.filter((s) => s.name === opts.only) : screens;
+    if (opts.only && wanted.length === 0) throw new Error(`No monitor named "${opts.only}"`);
+    await mkdir(opts.outDir, { recursive: true });
+    const shots: Shot[] = [];
+    for (const [i, s] of wanted.entries()) {
+      // Display names have spaces and parentheses: number the files instead.
+      const file = join(opts.outDir, `screen-${i + 1}.jpg`);
+      const png = `${file}.png`;
+      await run("screencapture", screencaptureArgs(s, png));
+      await run("ffmpeg", ["-hide_banner", "-loglevel", "error", "-i", png, "-vf", `scale=${opts.width ?? 1280}:-2`, "-q:v", "3", "-y", file]);
+      await rm(png, { force: true });
+      shots.push({ screen: s.name, file });
+    }
+    if (opts.grid) for (const s of shots) await overlayGrid(s.file);
+    return { shots, warnings: [] };
+  }
   const cfg = await resolveObsConfig();
   const obs = new OBSWebSocket();
   await obs.connect(cfg.url, cfg.password);

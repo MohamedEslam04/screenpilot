@@ -102,7 +102,8 @@ const DRIVE_NOTE =
   "Coordinates are normalized 0..1 per monitor (x from left, y from top). Take a screenshot first, act, then screenshot again to verify. " +
   "This uses the REAL mouse and keyboard: ask the user not to touch them (touching the mouse aborts). " +
   "Prefer {web: selector} targets inside the demo browser (browser_open). " +
-  "The first use may need the user to approve a KDE remote-control dialog (once).";
+  "The first use may need the user to approve a KDE remote-control dialog (once); on macOS the AI app needs Accessibility and Screen Recording permission (errors say where). " +
+  "On macOS shortcuts use cmd (e.g. cmd+c), not ctrl.";
 const norm = z.number().min(0).max(1);
 
 // Sent to every MCP client on connect (Claude, Codex, OpenCode, Cursor…), so
@@ -126,7 +127,7 @@ server.registerTool(
       screen: z.string().optional().describe("Monitor name to normalize pointer coordinates against (e.g. eDP-1)"),
       obsUrl: z.string().optional().describe("obs-websocket URL. Default ws://127.0.0.1:4455"),
       obsPassword: z.string().optional().describe("obs-websocket password. Default: read from the local OBS config"),
-      recorder: z.enum(["native", "obs"]).optional().describe("native: no OBS needed (KDE PipeWire / Windows ffmpeg). Default: native when available"),
+      recorder: z.enum(["native", "obs"]).optional().describe("native: no OBS needed (KDE PipeWire / Windows and macOS ffmpeg). Default: native when available"),
       fitWindow: z
         .string()
         .optional()
