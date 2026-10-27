@@ -168,6 +168,9 @@ begin
   if CurStep = ssPostInstall then
   begin
     Tmp := ExpandConstant('{tmp}\screenpilot-setup.txt');
+    { setup also downloads the video renderer the first time (~100 MB): say so while it runs. }
+    WizardForm.StatusLabel.Caption := 'Adding ScreenPilot to your AI apps and preparing the video renderer (first install may download about 100 MB)...';
+    WizardForm.FilenameLabel.Caption := '';
     Code := RunSetup('--in-place', Tmp);
     SummaryText := PlainSummary(Trim(ReadText(Tmp)), Code);
     SummaryMemo.Text := SummaryText;

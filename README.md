@@ -18,18 +18,16 @@ ScreenPilot is a tool for the AI app you already use. It needs no API key and no
 
 Setup copies the app to `%LOCALAPPDATA%\ScreenPilot` or `~/.local/share/screenpilot`, and adds it to every AI app it finds on the computer:
 
-- Claude Desktop
-- Claude Code (with the workflow skill)
-- Codex
-- OpenCode
-- Cursor
-- Gemini CLI
-- Windsurf
-- VS Code
+- Claude Desktop (including the Microsoft Store version) and Claude Code (with the workflow skill)
+- Codex, OpenCode, Gemini CLI, Qwen Code, GitHub Copilot CLI, Amazon Q, Goose, Warp
+- Cursor, Windsurf, Devin Desktop, Antigravity, Kiro, Zed, LM Studio
+- VS Code, VS Code Insiders, VSCodium, and the Cline and Roo Code extensions in any of them
 
-Each config file is backed up first (`<file>.screenpilot-backup`), and your other entries and comments are kept. Videos are saved to `~/Videos/ScreenPilot`. Restart your AI app and ask it something like "record my screen while I show the signup flow, then make a video with Arabic voiceover". To remove it, use the Windows uninstaller above (or `Uninstall ScreenPilot.cmd` from the zip), or run `uninstall.sh` on Linux.
+JetBrains AI Assistant has no config file: use its "Import from Claude" button after setup. For any other MCP-capable tool, `screenpilot setup --print` shows the entry to paste, and `screenpilot setup --list` shows which tools were found.
 
-The packages include Node, ffmpeg and ffprobe. Install another AI app later? Run setup again.
+Each config file is backed up first (`<file>.screenpilot-backup`), and your other entries and comments are kept. Videos are saved to `ScreenPilot` inside your Videos folder (wherever Windows or your desktop keeps it, e.g. OneDrive or a translated folder name; `~/Movies` on macOS). Setup also downloads the video renderer (about 100 MB, once) and makes a 2-second test video, so your first real video starts right away. Restart your AI app and ask it something like "record my screen while I show the signup flow, then make a video with Arabic voiceover". To remove it, use the Windows uninstaller above (or `Uninstall ScreenPilot.cmd` from the zip), or run `uninstall.sh` on Linux.
+
+The packages include Node, ffmpeg and ffprobe. Install another AI app later? Run setup again. Don't run setup with `sudo`: it installs for your user and needs no admin rights.
 
 ## Why
 
