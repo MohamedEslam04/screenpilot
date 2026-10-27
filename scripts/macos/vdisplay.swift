@@ -43,7 +43,7 @@ desc.vendorID = 0x3456
 desc.productID = 0x1234
 desc.serialNum = 0x0001
 
-let vd = CGVirtualDisplay(descriptor: desc)
+guard let vd = CGVirtualDisplay(descriptor: desc) else { fail("CGVirtualDisplay(descriptor:) returned nil: the virtual display was refused") }
 let settings = CGVirtualDisplaySettings()
 settings.hiDPI = hidpi
 settings.modes = [CGVirtualDisplayMode(width: modeW, height: modeH, refreshRate: 60)]
@@ -57,8 +57,8 @@ while !active().contains(id) && waited < 100 { usleep(100_000); waited += 1 }
 if !active().contains(id) { fail("display \(id) never became active; active=\(active())") }
 
 // Place it right of the main display, offsetY lower.
-let main = CGMainDisplayID()
-let mb = CGDisplayBounds(main)
+let mainID = CGMainDisplayID()
+let mb = CGDisplayBounds(mainID)
 var cfg: CGDisplayConfigRef?
 CGBeginDisplayConfiguration(&cfg)
 let err = CGConfigureDisplayOrigin(cfg, id, Int32(mb.origin.x + mb.size.width), offY)
@@ -68,7 +68,7 @@ usleep(1_500_000)
 func describe(_ d: CGDirectDisplayID) -> [String: Any] {
   let b = CGDisplayBounds(d)
   var o: [String: Any] = [
-    "id": d, "main": d == main, "virtual": d == id,
+    "id": d, "main": d == mainID, "virtual": d == id,
     "x": b.origin.x, "y": b.origin.y, "w": b.size.width, "h": b.size.height,
   ]
   if let m = CGDisplayCopyDisplayMode(d) {
