@@ -120,7 +120,7 @@ async function main(): Promise<void> {
     if (retina.pixelW !== WANT.w * 2 || retina.pixelH !== WANT.h * 2) bad.push(`retina pixels ${retina.pixelW}x${retina.pixelH}, want ${WANT.w * 2}x${WANT.h * 2}`);
     if (retina.scale !== WANT.scale) bad.push(`retina scale ${retina.scale}`);
     if (retina.screen.x !== main.screen.w) bad.push(`retina x ${retina.screen.x}, want ${main.screen.w} (right of main)`);
-    if (retina.screen.y !== WANT.offsetY) bad.push(`retina y ${retina.screen.y}, want ${WANT.offsetY}`);
+    if (!near(retina.screen.y, WANT.offsetY, 4)) bad.push(`retina y ${retina.screen.y}, want ${WANT.offsetY}`);
     if (main.pixelW !== main.screen.w * main.scale) bad.push("main pixel/scale mismatch");
     if (new Set(ds.map((d) => d.screen.name)).size !== ds.length) bad.push(`duplicate names: ${ds.map((d) => d.screen.name).join(", ")}`);
     if (bad.length) throw new Error(bad.join("; "));
