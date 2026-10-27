@@ -3,3 +3,4 @@ dist
 *.log
 .demoreel-cache
 sessions/
+.claude/

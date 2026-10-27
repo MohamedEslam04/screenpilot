@@ -4,6 +4,10 @@ import { probeVideo } from "../util/media.js";
 import { startAdapter } from "./input/index.js";
 import { type Rect, type ScreenInfo, screenAt, screenForSourceName } from "./input/types.js";
 import { normalizeEvents, normalizeWindows } from "./normalize.js";
+import type { RecorderBackend, RecorderId } from "./backend.js";
+import { gstAvailable, KdePipewireBackend } from "./backends/kde-pipewire.js";
+import { ObsBackend } from "./backends/obs.js";
+import { isKde } from "./input/kwin.js";
 import { getDesktop, type Watcher } from "../platform/index.js";
 import { detectLayout } from "../drive/see.js";
 import { loadState, saveState } from "../drive/state.js";
@@ -30,6 +34,8 @@ export interface RecordOptions {
   map?: Record<string, string>;
   /** Resize the window matching this (class or title) to 16:9 for the recording; put back after. */
   fitWindow?: string;
+  /** "native" (no OBS: PipeWire on KDE, ffmpeg on Windows) or "obs". Default: native when available. */
+  recorder?: RecorderId;
   /** Close notification popups on screen and hold new ones while recording (default true). */
   quiet?: boolean;
   log?: (msg: string) => void;
@@ -91,8 +97,8 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
   const dir = resolve(opts.dir ?? join("sessions", sessionName()));
   await mkdir(dir, { recursive: true });
 
-  const obs = new ObsRecorder();
-  await obs.connect(await resolveObsConfig(opts.obsUrl, opts.obsPassword));
+  const recorder = opts.recorder ?? (await defaultRecorder());
+  let backend: RecorderBackend | undefined;
   let adapter: Awaited<ReturnType<typeof startAdapter>> | undefined;
   try {
     adapter = await startAdapter(opts.input ?? "auto");
@@ -101,30 +107,37 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
 
     let capture: CaptureInfo;
     let screen: Rect;
-    if (opts.screens) {
-      // Several monitors side by side in one canvas.
-      const chosen = opts.screens === "all" ? screens : screens.filter((s) => opts.screens!.includes(s.name));
-      if (chosen.length === 0) {
-        throw new Error(
-          screens.length ? `No such monitors (have: ${screens.map((s) => s.name).join(", ")})` : "Multi-monitor recording needs KDE (KWin) to read the monitor layout.",
-        );
-      }
-      const state = await loadState();
-      if (opts.map && Object.keys(opts.map).length) await saveState({ ...state, sourceMap: { ...state.sourceMap, ...opts.map } });
-      const layout = await detectLayout(obs.client, screens);
-      for (const [src, scr] of Object.entries(opts.map ?? {})) layout.perScreen.set(scr, src);
-      if (layout.warnings.length && !layout.workspace) throw new Error(layout.warnings.join("\n"));
-      warnings.push(...layout.warnings);
-      capture = await obs.prepareMulti(chosen, layout, log, screens);
+    if (recorder === "native") {
+      const chosen = chooseScreens(screens, opts, adapter.cursor());
+      backend = await nativeBackend();
+      capture = await backend.prepare(chosen, screens, log);
       screen = unionRect(chosen);
+      log(`recording ${chosen.map((s) => s.name).join(" + ")} (native)`);
     } else {
-      capture = await obs.prepareScene(log);
-      // Which monitor are we recording? Needed to place pointer events.
-      const pick = chooseScreen(screens, capture.sourceName, adapter.cursor(), opts.screen);
-      screen = pick.screen ?? { x: 0, y: 0, w: capture.sourceWidth, h: capture.sourceHeight };
-      if (pick.warning) warnings.push(pick.warning);
-      log(`OBS source "${capture.sourceName}"${pick.screen ? ` → pointer mapped to ${pick.screen.name}` : ""}`);
+      const obs = new ObsRecorder();
+      backend = new ObsBackend(obs);
+      await obs.connect(await resolveObsConfig(opts.obsUrl, opts.obsPassword));
+      if (opts.screens) {
+        // Several monitors side by side in one canvas.
+        const chosen = chooseScreens(screens, opts, adapter.cursor());
+        const state = await loadState();
+        if (opts.map && Object.keys(opts.map).length) await saveState({ ...state, sourceMap: { ...state.sourceMap, ...opts.map } });
+        const layout = await detectLayout(obs.client, screens);
+        for (const [src, scr] of Object.entries(opts.map ?? {})) layout.perScreen.set(scr, src);
+        if (layout.warnings.length && !layout.workspace) throw new Error(layout.warnings.join("\n"));
+        warnings.push(...layout.warnings);
+        capture = await obs.prepareMulti(chosen, layout, log, screens);
+        screen = unionRect(chosen);
+      } else {
+        capture = await obs.prepareScene(log);
+        // Which monitor are we recording? Needed to place pointer events.
+        const pick = chooseScreen(screens, capture.sourceName, adapter.cursor(), opts.screen);
+        screen = pick.screen ?? { x: 0, y: 0, w: capture.sourceWidth, h: capture.sourceHeight };
+        if (pick.warning) warnings.push(pick.warning);
+        log(`OBS source "${capture.sourceName}"${pick.screen ? ` → pointer mapped to ${pick.screen.name}` : ""}`);
+      }
     }
+    const rec = backend;
 
     // Window fitting and notification handling need a supported desktop (KDE, Windows).
     const desktop = await getDesktop().catch(() => undefined);
@@ -141,7 +154,7 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
       if (closed) log(`closed ${closed} notification popup(s) before recording`);
     }
     try {
-      await obs.start(dir);
+      await rec.start(dir);
     } catch (err) {
       await unquiet();
       await unfit();
@@ -152,22 +165,22 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
 
     return {
       dir,
-      startedAt: obs.startedAt,
+      startedAt: rec.startedAt,
       inputAdapter: a.id,
       async stop(): Promise<RecordResult> {
         let output: string;
         try {
-          output = await obs.stop();
+          output = await rec.stop();
         } finally {
           await unquiet(); // a long-lived MCP server must not keep notifications held
           await unfit();
         }
         await a.stop();
-        await obs.disconnect();
+        await rec.dispose();
         warnings.push(...a.warnings.filter((w) => !warnings.includes(w)));
 
         // Raw pointer log (desktop pixels, ms since start) so `remap` can fix a wrong monitor guess later.
-        const raw = a.events.map((e) => ({ ...e, at: Math.round((e.at - obs.startedAt) * 10) / 10 }));
+        const raw = a.events.map((e) => ({ ...e, at: Math.round((e.at - rec.startedAt) * 10) / 10 }));
         const events = normalizeEvents(raw, 0, screen, capture.contentRect);
         const eventsPath = a.id === "none" ? null : join(dir, "events.jsonl");
         if (eventsPath) {
@@ -175,7 +188,7 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
           await writeJsonl(join(dir, "pointer.raw.jsonl"), raw);
         }
         // Active window over time, in recording coordinates (for window-framed views).
-        const focus = "focus" in a ? normalizeWindows((a as Watcher).focus, obs.startedAt, screen, capture.contentRect) : [];
+        const focus = "focus" in a ? normalizeWindows((a as Watcher).focus, rec.startedAt, screen, capture.contentRect) : [];
         if (focus.length) await writeJsonl(join(dir, "windows.jsonl"), focus);
         const info = await probeVideo(output);
         const metaPath = join(dir, "meta.json");
@@ -189,6 +202,7 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
               windows: focus.length ? "windows.jsonl" : null,
               recordedAt: new Date(Date.now() - info.duration * 1000).toISOString(),
               inputAdapter: a.id,
+              recorder: rec.id,
               screen,
               screens,
               ...(capture.canvasScreens ? { canvasScreens: capture.canvasScreens } : {}),
@@ -214,8 +228,40 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
     };
   } catch (err) {
     await adapter?.stop().catch(() => {});
-    await obs.restore();
-    await obs.disconnect().catch(() => {});
+    await backend?.restore().catch(() => {});
+    await backend?.dispose().catch(() => {});
     throw err;
   }
+}
+
+/** Native capture when this OS has it (no OBS needed), else OBS. */
+export async function defaultRecorder(): Promise<RecorderId> {
+  if (process.platform === "win32") return "native";
+  if (process.platform === "linux" && isKde() && (await gstAvailable())) return "native";
+  return "obs";
+}
+
+async function nativeBackend(): Promise<RecorderBackend> {
+  if (process.platform === "linux") return new KdePipewireBackend();
+  throw new Error(`Native recording is not available on ${process.platform}; use --recorder obs`);
+}
+
+/** Monitors to record: "all", a list, one named monitor, or the one under the cursor. */
+export function chooseScreens(
+  screens: ScreenInfo[],
+  opts: { screens?: "all" | string[]; screen?: string },
+  cursor: { x: number; y: number } | undefined,
+): ScreenInfo[] {
+  if (screens.length === 0) throw new Error("Could not read the monitor layout from the desktop.");
+  if (opts.screens) {
+    const chosen = opts.screens === "all" ? screens : screens.filter((s) => opts.screens!.includes(s.name));
+    if (chosen.length === 0) throw new Error(`No such monitors (have: ${screens.map((s) => s.name).join(", ")})`);
+    return chosen;
+  }
+  if (opts.screen) {
+    const s = screens.find((x) => x.name === opts.screen);
+    if (!s) throw new Error(`No monitor named "${opts.screen}" (have: ${screens.map((x) => x.name).join(", ")})`);
+    return [s];
+  }
+  return [(cursor && screenAt(screens, cursor.x, cursor.y)) ?? screens[0]!];
 }
