@@ -240,22 +240,35 @@ async function main(): Promise<void> {
   await check("textedit: type Unicode + clipboard round trip", async () => {
     needAx();
     if (!driver || !textEdit) throw new Error("needs driver + TextEdit window");
-    const w = await refresh(textEdit.id);
-    await driver.desktop.focusWindow(w.id);
-    await driver.moveToGlobal({ x: w.x + w.w / 2, y: w.y + w.h / 2 }, { dur: 0.3 });
-    await driver.click();
-    await sleep(300);
-    await driver.type(TYPED, { cps: 30 });
-    await sleep(300);
-    await shot("03-textedit-typed", capture);
-    await pbcopy("smoke-sentinel"); // so a failed copy cannot pass
-    await driver.key("cmd+a");
-    await sleep(150);
-    await driver.key("cmd+c");
-    await sleep(500);
-    const got = (await pbpaste()).replace(/\n$/, "");
-    if (got !== TYPED) throw new Error(`clipboard ${JSON.stringify(got)} != typed ${JSON.stringify(TYPED)}`);
-    return `clipboard matches ${JSON.stringify(TYPED)}`;
+    const q = await quartz();
+    const notes = [`post-event access ${q.postEventAllowed()}`];
+    // Diagnose where macOS accepts synthetic key events: HID tap first (default), then the session tap.
+    for (const tap of ["hid", "session"]) {
+      process.env.SCREENPILOT_MAC_TAP = tap;
+      const w = await refresh(textEdit.id);
+      await driver.desktop.focusWindow(w.id);
+      await driver.moveToGlobal({ x: w.x + w.w / 2, y: w.y + w.h / 2 }, { dur: 0.3 });
+      await driver.click();
+      await sleep(300);
+      await driver.key("cmd+a");
+      await driver.key("backspace");
+      await driver.type(TYPED, { cps: 30 });
+      await sleep(300);
+      await shot(`03-textedit-typed-${tap}`, capture);
+      await pbcopy("smoke-sentinel"); // so a failed copy cannot pass
+      await driver.key("cmd+a");
+      await sleep(150);
+      await driver.key("cmd+c");
+      await sleep(500);
+      const got = (await pbpaste()).replace(/\n$/, "");
+      if (got === TYPED) {
+        delete process.env.SCREENPILOT_MAC_TAP;
+        return `${tap} tap: clipboard matches ${JSON.stringify(TYPED)} (${notes.join("; ")})`;
+      }
+      notes.push(`${tap} tap: clipboard ${JSON.stringify(got)}`);
+    }
+    delete process.env.SCREENPILOT_MAC_TAP;
+    throw new Error(`typed ${JSON.stringify(TYPED)} never arrived: ${notes.join("; ")}`);
   });
 
   await check("textedit: close", async () => {

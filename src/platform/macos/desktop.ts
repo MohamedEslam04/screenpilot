@@ -7,6 +7,7 @@ import { nsScreens } from "./nsscreen.js";
 import { permissionError } from "./permissions.js";
 import { quartz, type AxWindow, type Quartz } from "./quartz.js";
 import { MacWatcher } from "./watcher.js";
+import { run } from "../../util/exec.js";
 
 // macOS 12+ (Apple Silicon and Intel) through Quartz and the Accessibility
 // API (koffi). Window ids are CGWindowIDs as decimal strings. All geometry
@@ -96,10 +97,11 @@ async function focusWindow(id: string, place?: Placement): Promise<void> {
       }
     }
     q.activate(pid, win);
-    for (let i = 0; i < 20; i++) {
-      await sleep(50);
-      if (q.focusedPid() === pid) return;
-    }
+    if (await frontWithin(q, pid, 1000)) return;
+    // AXFrontmost is sometimes ignored (an app still starting, Chrome): ask AppKit directly.
+    await activateApp(pid);
+    win.raise();
+    if (await frontWithin(q, pid, 2000)) return;
     throw new Error(`macOS did not bring window ${id} to the front`);
   } finally {
     win.release();
@@ -159,3 +161,17 @@ export const macosDesktop: Desktop = {
     return new MacWatcher(quartz, displays);
   },
 };
+
+async function frontWithin(q: Quartz, pid: number, ms: number): Promise<boolean> {
+  for (let t = 0; t < ms; t += 50) {
+    if (q.focusedPid() === pid) return true;
+    await sleep(50);
+  }
+  return q.focusedPid() === pid;
+}
+
+/** NSRunningApplication.activate (all windows, ignoring other apps) through JXA; needs no extra permission. */
+async function activateApp(pid: number): Promise<void> {
+  const js = `ObjC.import("AppKit"); const a = $.NSRunningApplication.runningApplicationWithProcessIdentifier(${Math.trunc(pid)}); if (a) a.activateWithOptions(3);`;
+  await run("osascript", ["-l", "JavaScript", "-e", js]).catch(() => {});
+}
