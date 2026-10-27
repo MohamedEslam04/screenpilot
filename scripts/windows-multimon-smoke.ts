@@ -15,6 +15,7 @@ import { win32, type Monitor } from "../src/platform/windows/win32.js";
 import { readEvents, clicksOf } from "../src/record/events.js";
 import { startRecording } from "../src/record/index.js";
 import type { Rect } from "../src/record/input/types.js";
+import { Driver } from "../src/drive/index.js";
 import { screenshot } from "../src/drive/see.js";
 import { run } from "../src/util/exec.js";
 import { probeVideo } from "../src/util/media.js";
@@ -61,11 +62,12 @@ async function psMonitors(): Promise<{ name: string; primary: boolean; bounds: R
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -Namespace W -Name U -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(System.IntPtr v);'
 [W.U]::SetProcessDpiAwarenessContext([IntPtr](-4)) | Out-Null
-[System.Windows.Forms.Screen]::AllScreens | ForEach-Object {
+$all = @([System.Windows.Forms.Screen]::AllScreens | ForEach-Object {
   [pscustomobject]@{ name = $_.DeviceName; primary = $_.Primary
     bounds = @{ x = $_.Bounds.X; y = $_.Bounds.Y; w = $_.Bounds.Width; h = $_.Bounds.Height }
     work = @{ x = $_.WorkingArea.X; y = $_.WorkingArea.Y; w = $_.WorkingArea.Width; h = $_.WorkingArea.Height } }
-} | ConvertTo-Json -Compress -AsArray`);
+})
+ConvertTo-Json -Compress -InputObject $all`);
   return JSON.parse(stdout);
 }
 
@@ -224,6 +226,27 @@ async function main(): Promise<void> {
     }
     if (bad.length) throw new Error(`${bad.length}/${pts.length} off: ${bad.join("; ")}`);
     return `${ok.length} points exact within 1 px: ${ok.slice(-3).join("; ")}`;
+  });
+
+  await check("Driver targets {screen, x, y} on both monitors", async () => {
+    const driver = await Driver.open({ log });
+    try {
+      const out: string[] = [];
+      for (const m of [m2, m1]) {
+        for (const [x, y] of [[0.5, 0.5], [0.9, 0.1]] as const) {
+          const to = driver.toGlobal({ screen: m.screen.name, x, y });
+          await driver.moveToGlobal(to, { dur: 0.3 });
+          await sleep(150);
+          const c = w.cursorPos()!;
+          const d = Math.max(Math.abs(c.x - to.x), Math.abs(c.y - to.y));
+          if (d > 1) throw new Error(`${m.screen.name} (${x},${y}): wanted ${Math.round(to.x)},${Math.round(to.y)}, pointer is at ${c.x},${c.y}`);
+          out.push(`${m.screen.name} (${x},${y}) -> ${c.x},${c.y}`);
+        }
+      }
+      return out.join("; ");
+    } finally {
+      await driver.close();
+    }
   });
 
   let notepad: WindowInfo | undefined;
