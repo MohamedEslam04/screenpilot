@@ -7,6 +7,28 @@ Your AI pilot for screen videos: it records anything on your screen (or drives t
 3. The agent writes `storyboard.json`: cuts, speed-ups, zooms, captions, highlights, voiceover lines.
 4. **Render** an MP4 with [HyperFrames](https://github.com/heygen-com/hyperframes) (HTML + GSAP) and Edge TTS voiceover.
 
+## Get it (no terminal needed)
+
+ScreenPilot is a tool for the AI app you already use. It needs no API key and no account. Your AI app does the thinking, and ScreenPilot gives it the screen, the recorder and the video editor. Download from [Releases](https://github.com/MohamedEslam04/screenpilot/releases):
+
+- **Windows:** unzip `ScreenPilot-<version>-windows.zip`, then double-click `ScreenPilot Setup.cmd`. Only use Claude Desktop? `ScreenPilot-<version>-windows.mcpb` installs it there with one double-click.
+- **Linux:** extract `ScreenPilot-<version>-linux.tar.gz`, then run `install.sh`.
+
+Setup copies the app to `%LOCALAPPDATA%\ScreenPilot` or `~/.local/share/screenpilot`, and adds it to every AI app it finds on the computer:
+
+- Claude Desktop
+- Claude Code (with the workflow skill)
+- Codex
+- OpenCode
+- Cursor
+- Gemini CLI
+- Windsurf
+- VS Code
+
+Each config file is backed up first (`<file>.screenpilot-backup`), and your other entries and comments are kept. Videos are saved to `~/Videos/ScreenPilot`. Restart your AI app and ask it something like "record my screen while I show the signup flow, then make a video with Arabic voiceover". To remove it, run `Uninstall ScreenPilot.cmd` or `uninstall.sh`.
+
+The packages include Node, ffmpeg and ffprobe. Install another AI app later? Run setup again.
+
 ## Why
 
 Playwright can only record a browser. screenpilot records anything on screen (native apps, IDEs, terminals, Electron) on Linux (including KDE Wayland), Windows and macOS, and gives an AI agent the tools to see the footage and edit it.
@@ -34,14 +56,17 @@ sudo usermod -aG input "$USER"   # then log out and back in
 
 Be aware: members of `input` can read ALL keyboard and mouse input system-wide, including passwords typed in any app. Only do this on a machine and account you trust, and consider removing yourself afterwards (`sudo gpasswd -d "$USER" input`). Without it you can still record without click capture (input adapter `none`, or `kwin` for pointer only); you lose click ripples, and zoom suggestions fall back to where the pointer came to rest.
 
-## Install
+## Install from source (developers)
 
 ```sh
 pnpm install
 pnpm build
+node dist/cli.js setup --in-place   # optional: add this checkout to your AI apps
 ```
 
 Binaries: `dist/cli.js` (`screenpilot`) and `dist/mcp.js` (`screenpilot-mcp`).
+
+`pnpm package --ffmpeg-dir <dir>` builds the release files for the OS it runs on (Node, ffmpeg and ffprobe included). Pushing a `v*` tag makes `.github/workflows/release.yml` build them on Windows and Linux runners and publish a GitHub Release.
 
 ## Quick start (CLI)
 
@@ -61,7 +86,13 @@ screenpilot render sessions/<ts>/storyboard.json -q delivery -o demo.mp4
 
 ## MCP setup
 
-The server speaks stdio. Use an absolute path to the built file.
+`screenpilot setup` does this for you:
+
+- `--clients codex,opencode` limits it to those clients;
+- `--remove` takes it out;
+- `--output <dir>` sets where videos go.
+
+To configure by hand: the server speaks stdio. Use an absolute path to the built file.
 
 Claude Code:
 
@@ -84,7 +115,9 @@ OpenCode (`opencode.json`):
 }
 ```
 
-Other clients: any MCP client that can launch a stdio server with that command.
+OpenCode 2.x also accepts its newer layout, `mcp.servers.screenpilot` with `"disabled": false`. Setup uses that layout when your file already does.
+
+Other clients: any MCP client that can launch a stdio server with that command. The server sends the workflow as MCP `instructions`, so agents without the skill still know the steps.
 
 Copy or symlink `skill/` to `~/.claude/skills/screenpilot` to give Claude Code the workflow skill. Other agents can read `AGENTS.md`.
 
@@ -232,4 +265,4 @@ CI: GitHub Actions. `.github/workflows/ci.yml` (Linux: typecheck, tests, build) 
 
 ---
 
-Docs synced to commit 532f18f ("docs: platforms, doctor, open step, windows:live", 2026-10-27).
+Docs synced to commit 8e7b979 ("build: self-contained packages with bundled Node", 2026-10-27).
