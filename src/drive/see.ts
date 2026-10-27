@@ -9,6 +9,7 @@ import { run } from "../util/exec.js";
 import { probeVideo } from "../util/media.js";
 import { loadState } from "./state.js";
 import { isOurs, named } from "../brand.js";
+import { getDesktop } from "../platform/index.js";
 
 // Current pictures of each monitor, straight from OBS's capture sources (no
 // extra screen-share permission needed), and which source shows which monitor.
@@ -54,6 +55,19 @@ export interface CaptureLayout {
  */
 export async function detectLayout(obs: OBSWebSocket, screens: ScreenInfo[]): Promise<CaptureLayout> {
   const sources = await captureSources(obs);
+  // Some OSes say exactly which monitor a source captures (Windows: monitor_id).
+  const desktop = await getDesktop().catch(() => undefined);
+  if (desktop?.sourceMonitor) {
+    const perScreen = new Map<string, string>();
+    const { inputs } = await obs.call("GetInputList");
+    for (const src of sources) {
+      const kind = String(inputs.find((i) => i.inputName === src)?.inputKind ?? "");
+      const { inputSettings } = await obs.call("GetInputSettings", { inputName: src });
+      const monitor = desktop.sourceMonitor(kind, inputSettings, screens);
+      if (monitor && !perScreen.has(monitor)) perScreen.set(monitor, src);
+    }
+    if (screens.every((s) => perScreen.has(s.name))) return { perScreen, warnings: [] };
+  }
   const restore = await showSources(obs, sources);
   const dir = await mkdtemp(join(tmpdir(), named("layout-")));
   try {

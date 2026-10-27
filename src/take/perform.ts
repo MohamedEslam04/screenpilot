@@ -5,8 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 import { analyze } from "../analyze/index.js";
 import { Driver, type DriverAction } from "../drive/index.js";
-import { useLatinLayout } from "../drive/keyboard.js";
-import { findWindow, focusWindow, listWindows } from "../drive/kwinscript.js";
+import { findWindow } from "../platform/index.js";
 import { locate, openBrowser, waitForWeb, withPage } from "../drive/web.js";
 import { initStoryboard } from "../init.js";
 import type { InputEvent } from "../record/events.js";
@@ -86,7 +85,7 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
 
   const ctx: StepContext = { driver, log, baseDir };
   // Before recording: a layout switch later would flash KDE's OSD in the video.
-  const restoreLayout = await useLatinLayout();
+  const restoreLayout = await driver.desktop.useLatinLayout();
   try {
     for (const [i, step] of take.setup.entries()) {
       await runStep(step, ctx).catch((e: Error) => {
@@ -198,7 +197,7 @@ interface StepContext {
 export async function resolveTarget(t: Target, d: Driver): Promise<{ x: number; y: number }> {
   if ("web" in t) return locate(t.web, d);
   if ("window" in t) {
-    const w = findWindow(await listWindows(), t.window);
+    const w = findWindow(await d.desktop.listWindows(), t.window);
     if (!w) throw new Error(`No window matching "${t.window}"`);
     return { x: w.x + t.x * w.w, y: w.y + t.y * w.h };
   }
@@ -240,15 +239,15 @@ async function runStep(step: Step, { driver: d, log, baseDir }: StepContext): Pr
     await waitForWeb(step.waitFor.web, (step.waitFor.timeout ?? 30) * 1000);
   } else if ("waitForWindow" in step) {
     const deadline = Date.now() + (step.waitForWindow.timeout ?? 15) * 1000;
-    while (!findWindow(await listWindows(), step.waitForWindow.match)) {
+    while (!findWindow(await d.desktop.listWindows(), step.waitForWindow.match)) {
       if (Date.now() > deadline) throw new Error(`No window matching "${step.waitForWindow.match}" appeared`);
       await sleep(300);
     }
   } else if ("focus" in step) {
-    const w = findWindow(await listWindows(), step.focus.match);
+    const w = findWindow(await d.desktop.listWindows(), step.focus.match);
     if (!w) throw new Error(`No window matching "${step.focus.match}"`);
     const s = step.focus.screen ? d.screens().find((x) => x.name === step.focus.screen) : undefined;
-    await focusWindow(w.id, s ? { screen: s.name } : undefined);
+    await d.desktop.focusWindow(w.id, s ? { screen: s.name } : undefined);
     await sleep(350);
   } else if ("run" in step) {
     const [cmd, ...args] = step.run.map(expandHome);

@@ -3,6 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import dbus from "dbus-next";
 import { DBUS_NAME, DBUS_PATH, named } from "../brand.js";
+import { findWindow, type Placement, type WindowInfo } from "../platform/types.js";
+
+export { findWindow, type WindowInfo };
 
 // Run a one-shot KWin script that reports back one string over D-Bus. KWin
 // scripts are the only way to read window geometry/focus on Wayland.
@@ -49,21 +52,6 @@ export async function runKwinScript(body: string, timeoutMs = 3000): Promise<str
   }
 }
 
-export interface WindowInfo {
-  id: string;
-  caption: string;
-  resourceClass: string;
-  pid: number;
-  active: boolean;
-  minimized: boolean;
-  /** Client area (no decorations) in global logical pixels. */
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  output: string;
-}
-
 const LIST = `
 var out = workspace.windowList().filter(function (w) { return w.normalWindow; }).map(function (w) {
   var g = w.clientGeometry;
@@ -77,12 +65,6 @@ export async function listWindows(): Promise<WindowInfo[]> {
   return JSON.parse(await runKwinScript(LIST)) as WindowInfo[];
 }
 
-/** First window whose caption or class contains `match` (case-insensitive). */
-export function findWindow(windows: WindowInfo[], match: string): WindowInfo | undefined {
-  const m = match.toLowerCase();
-  return windows.find((w) => w.resourceClass.toLowerCase().includes(m)) ?? windows.find((w) => w.caption.toLowerCase().includes(m));
-}
-
 /**
  * Raise + focus a window. `place` either gives an exact frame rect, or a
  * monitor whose usable area (without panels) the window should fill, inset by
@@ -90,7 +72,7 @@ export function findWindow(windows: WindowInfo[], match: string): WindowInfo | u
  */
 export async function focusWindow(
   id: string,
-  place?: { x: number; y: number; w: number; h: number } | { screen: string; margin?: number; aspect?: number },
+  place?: Placement,
 ): Promise<void> {
   let geo = "";
   if (place && "screen" in place) {
