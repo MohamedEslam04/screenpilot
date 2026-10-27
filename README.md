@@ -210,4 +210,4 @@ When a narration line is longer than its slot, the render freezes the video auto
 
 ---
 
-Docs synced to commit ca6e348 ("feat: frame the window in use instead of the whole screen", 2026-10-27).
+Docs synced to commit 6d2be88 ("feat: record --fit-window resizes one window to 16:9 while recording", 2026-10-27).
