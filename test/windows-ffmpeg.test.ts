@@ -98,3 +98,13 @@ describe("ffmpeg progress", () => {
     expect(progressFrame("Input #0, gdigrab, from 'desktop':")).toBeUndefined();
   });
 });
+
+describe("gdigrabStillArgs", async () => {
+  const { gdigrabStillArgs } = await import("../src/record/backends/windows-ffmpeg.js");
+  it("grabs one frame of a monitor left of the primary (negative offset)", () => {
+    const args = gdigrabStillArgs({ name: "\\\\.\\DISPLAY2", x: -1920, y: 0, w: 1920, h: 1080 }, "C:\\t\\s.jpg", 960);
+    expect(args.slice(args.indexOf("-offset_x"), args.indexOf("-offset_x") + 6)).toEqual(["-offset_x", "-1920", "-offset_y", "0", "-video_size", "1920x1080"]);
+    expect(args).toContain("-frames:v");
+    expect(args.at(-1)).toBe("C:\\t\\s.jpg");
+  });
+});
