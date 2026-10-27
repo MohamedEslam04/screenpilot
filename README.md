@@ -203,7 +203,14 @@ When a narration line is longer than its slot, the render freezes the video auto
 
 ## Windows
 
-Windows support is new. It is verified by CI (typecheck, tests, build and an end-to-end smoke test on a Windows runner) and by `pnpm smoke:windows` on a real desktop, which writes `smoke-report/report.json` and screenshots. Run `demoreel doctor` first: it reports what is found (ffmpeg, monitors, OBS, browser, voices); add `--input` to also test pointer injection.
+Windows support is new and verified on every push by CI on a real Windows runner (`pnpm smoke:windows`): monitors, pointer injection (0–1 px), Notepad focus/16:9/fit-restore, Unicode typing incl. Arabic and emoji (checked through the clipboard), the Chrome demo browser with trusted clicks, native screenshots and recording (ffmpeg gdigrab, no OBS), and a recorded take that produces a storyboard. The runner has one 1024x768 monitor, so multi-monitor layouts and display scaling are not covered there: on your own PC run
+
+```sh
+pnpm install
+pnpm windows:live   # doctor --input, smoke test, a narrated take across your monitors + draft render
+```
+
+and look at (or send) `windows-live-report/`. `demoreel doctor` alone reports what is found (ffmpeg, monitors, OBS, browser, voices); add `--input` to also test pointer injection.
 
 - Driving uses `SendInput`. Windows you run elevated (as administrator) cannot be controlled from a non-elevated process: run demoreel elevated too.
 - Coordinates are physical pixels.

@@ -3,7 +3,7 @@
 // Drives the real pointer and keyboard, so keep your hands off. Writes
 // smoke-report/report.json and screenshots; exits 1 if any check failed.
 import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -11,6 +11,7 @@ import { Driver } from "../src/drive/index.js";
 import { screenshot } from "../src/drive/see.js";
 import { locate, openBrowser, withPage } from "../src/drive/web.js";
 import { startRecording } from "../src/record/index.js";
+import { performTake } from "../src/take/perform.js";
 import { getDesktop, type WindowInfo } from "../src/platform/index.js";
 import type { ScreenInfo } from "../src/record/input/types.js";
 import { run } from "../src/util/exec.js";
@@ -248,6 +249,23 @@ async function main(): Promise<void> {
     const r = await rec.stop();
     if (!(r.duration > 1.5)) throw new Error(`recording too short: ${r.duration}s (${r.video})`);
     return `${r.video} ${r.duration.toFixed(2)}s, events ${r.eventCount}, warnings ${r.warnings.length}`;
+  });
+  await check("perform: recorded take → storyboard", async () => {
+    const takeDir = mkdtempSync(join(tmpdir(), "smoke-take-"));
+    const take = join(takeDir, "take.json");
+    writeFileSync(
+      take,
+      JSON.stringify({
+        screens: "all",
+        setup: [{ browser: { url: writeSmokePage() } }],
+        steps: [{ click: { web: "#a" } }, { wait: 0.5 }, { click: { web: "#b" } }, { key: "ctrl+a" }, { wait: 0.5 }],
+      }),
+    );
+    const r = await performTake(take, { dir: join(OUT, "take"), log });
+    const sb = JSON.parse(readFileSync(r.storyboard!, "utf8")) as { views?: unknown[]; zooms?: unknown[] };
+    if (!r.recording || r.recording.duration < 1) throw new Error("no recording");
+    if (!sb.zooms?.length) throw new Error("storyboard has no zooms from the clicks");
+    return `${r.recording.video} ${r.recording.duration.toFixed(1)}s; zooms ${sb.zooms.length}, views ${sb.views?.length ?? 0}`;
   });
   await shot("05-end");
 }
