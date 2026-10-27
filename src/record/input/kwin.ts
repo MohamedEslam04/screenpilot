@@ -5,12 +5,13 @@ import { performance } from "node:perf_hooks";
 import dbus from "dbus-next";
 import { EvdevButtons } from "./evdev.js";
 import type { InputAdapter, RawEvent, ScreenInfo } from "./types.js";
+import { DBUS_NAME, DBUS_PATH, named } from "../../brand.js";
 
 // KDE Plasma (Wayland or X11): a tiny KWin script pushes the pointer position
 // and monitor layout to us over D-Bus; buttons come from evdev.
 
-const IFACE = "dev.demoreel.Pointer";
-const OBJ = "/dev/demoreel/Pointer";
+const IFACE = `${DBUS_NAME}.Pointer`;
+const OBJ = `${DBUS_PATH}/Pointer`;
 
 export function kwinScript(service: string): string {
   return `
@@ -91,8 +92,8 @@ export class KwinAdapter implements InputAdapter {
   private bus?: dbus.MessageBus;
   // Unique per instance: the driver and the recorder each run one in the same process.
   private readonly tag = `${process.pid}_${++instances}`;
-  private scriptName = `demoreel-${this.tag}`;
-  private scriptPath = join(tmpdir(), `demoreel-${this.tag}.js`);
+  private scriptName = named(this.tag);
+  private scriptPath = join(tmpdir(), `${named(this.tag)}.js`);
   private screenList: ScreenInfo[] = [];
   private pos?: { x: number; y: number };
   private buttons = new EvdevButtons((e) => {
@@ -111,7 +112,7 @@ export class KwinAdapter implements InputAdapter {
   async start(): Promise<void> {
     const bus = dbus.sessionBus();
     this.bus = bus;
-    const service = `dev.demoreel.Rec${this.tag}`;
+    const service = `${DBUS_NAME}.Rec${this.tag}`;
     await bus.requestName(service, 0);
 
     const adapter = this;

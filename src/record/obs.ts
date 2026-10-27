@@ -6,6 +6,7 @@ import { performance } from "node:perf_hooks";
 import { EventSubscription, OBSWebSocket } from "obs-websocket-js";
 import { loadState, saveState } from "../drive/state.js";
 import type { ScreenInfo } from "./input/types.js";
+import { APP, isOurs, named } from "../brand.js";
 
 type SceneItem = Record<string, unknown>;
 
@@ -13,8 +14,8 @@ type SceneItem = Record<string, unknown>;
 // a dedicated "demoreel" scene holding one full-screen capture source, so the
 // user's own scenes are untouched apart from switching to it while recording.
 
-export const SCENE = "demoreel";
-export const SOURCE = "demoreel-screen";
+export const SCENE = APP;
+export const SOURCE = named("screen");
 
 // Preference order: Wayland portal, X11, Windows, macOS.
 const CAPTURE_KINDS = ["pipewire-screen-capture-source", "xshm_input_v2", "xshm_input", "monitor_capture", "screen_capture"];
@@ -68,7 +69,7 @@ export interface CaptureInfo {
   canvasScreens?: { name: string; x: number; y: number; w: number; h: number }[];
 }
 
-export const MULTI_SCENE = "demoreel-multi";
+export const MULTI_SCENE = named("multi");
 
 export interface VideoSettings {
   baseWidth: number;
@@ -302,7 +303,7 @@ export class ObsRecorder {
 
   async listCaptureSources(): Promise<string[]> {
     const { inputs } = await this.obs.call("GetInputList");
-    return inputs.filter((i) => CAPTURE_KINDS.includes(String(i.inputKind))).map((i) => String(i.inputName)).filter((n) => !n.startsWith("demoreel"));
+    return inputs.filter((i) => CAPTURE_KINDS.includes(String(i.inputKind))).map((i) => String(i.inputName)).filter((n) => !isOurs(n));
   }
 
   /**

@@ -85,3 +85,4 @@ Take tips: put `say` with `wait: true` before an important click so the viewer h
 - Keep ALL dependencies on latest: `pnpm deps:latest`.
 - HyperFrames telemetry is disabled through env vars in `src/render/index.ts` (`hyperframesEnv()`); keep it that way for every HyperFrames subprocess.
 - The MCP server must never write to stdout except protocol messages; log to stderr.
+- Renaming the project: the name lives only in `src/brand.ts` (`APP`). Change it, add the old name to `PREVIOUS_NAMES` (users' config folder is moved over on first run), then update `package.json` (`name`, `bin`), the docs, and rename the GitHub repo.

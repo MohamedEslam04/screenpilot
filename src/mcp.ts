@@ -24,9 +24,10 @@ import { type PerformResult, performTake, resolveTarget, TakeError } from "./tak
 import { TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider } from "./voice/index.js";
+import { APP, named } from "./brand.js";
 
 // stdout is the protocol channel: log to stderr only.
-const log = (msg: string) => process.stderr.write(`demoreel: ${msg}\n`);
+const log = (msg: string) => process.stderr.write(`${APP}: ${msg}\n`);
 
 const MAX_IMAGES = 12;
 
@@ -106,7 +107,7 @@ const DRIVE_NOTE =
   "The first use may need the user to approve a KDE remote-control dialog (once).";
 const norm = z.number().min(0).max(1);
 
-const server = new McpServer({ name: "demoreel", version: "0.1.0" });
+const server = new McpServer({ name: APP, version: "0.1.0" });
 
 server.registerTool(
   "record_start",
@@ -133,7 +134,7 @@ server.registerTool(
   },
   safe(async (a) => {
     if (recording) throw new Error(`A recording is already running (dir: ${recording.dir}). Call record_stop first.`);
-    recording = await startRecording({ ...a, log: (m) => process.stderr.write(`demoreel: ${m}\n`) });
+    recording = await startRecording({ ...a, log });
     return text({ recording: true, dir: recording.dir, inputAdapter: recording.inputAdapter, startedAt: new Date().toISOString() });
   }),
 );
@@ -341,7 +342,7 @@ server.registerTool(
     },
   },
   safe(async ({ screen, grid, width }) => {
-    const r = await screenshot(await getScreens(), { only: screen, grid, width, outDir: join(tmpdir(), "demoreel-screens") });
+    const r = await screenshot(await getScreens(), { only: screen, grid, width, outDir: join(tmpdir(), named("screens")) });
     return {
       content: [
         { type: "text", text: json({ shots: r.shots, warnings: r.warnings }) },

@@ -20,8 +20,9 @@ import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/lo
 import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider } from "./voice/index.js";
+import { APP } from "./brand.js";
 
-const log = (msg: string) => process.stderr.write(`demoreel: ${msg}\n`);
+const log = (msg: string) => process.stderr.write(`${APP}: ${msg}\n`);
 const print = (data: unknown) => process.stdout.write(`${typeof data === "string" ? data : JSON.stringify(data, null, 2)}\n`);
 async function withDriver(fn: (d: Driver) => Promise<void>): Promise<void> {
   const d = await Driver.open({ log });
@@ -53,7 +54,7 @@ const parseMap = (s: string) =>
 const parseTimes = (s: string) => s.split(",").map((x) => Number(x.trim())).filter((x) => Number.isFinite(x));
 
 const program = new Command()
-  .name("demoreel")
+  .name(APP)
   .description("Record any desktop app, write a storyboard, render a polished demo video.")
   .version("0.1.0");
 

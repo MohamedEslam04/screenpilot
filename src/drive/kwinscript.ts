@@ -2,20 +2,21 @@ import { unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import dbus from "dbus-next";
+import { DBUS_NAME, DBUS_PATH, named } from "../brand.js";
 
 // Run a one-shot KWin script that reports back one string over D-Bus. KWin
 // scripts are the only way to read window geometry/focus on Wayland.
 
-const IFACE = "dev.demoreel.Result";
-const OBJ = "/dev/demoreel/Result";
+const IFACE = `${DBUS_NAME}.Result`;
+const OBJ = `${DBUS_PATH}/Result`;
 let seq = 0;
 
 /** `body` must end by calling `reply(<string>)`. */
 export async function runKwinScript(body: string, timeoutMs = 3000): Promise<string> {
   const bus = dbus.sessionBus();
   const id = `${process.pid}_${++seq}`;
-  const service = `dev.demoreel.Q${id}`;
-  const name = `demoreel-q-${id}`;
+  const service = `${DBUS_NAME}.Q${id}`;
+  const name = named(`q-${id}`);
   const path = join(tmpdir(), `${name}.js`);
   try {
     await bus.requestName(service, 0);

@@ -15,6 +15,7 @@ import type { Rect } from "../record/input/types.js";
 import { normalizeEvents } from "../record/normalize.js";
 import { synthesizeLines } from "../voice/index.js";
 import { type Step, type Take, TakeSchema, type Target } from "./schema.js";
+import { CACHE_DIR } from "../brand.js";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -66,7 +67,7 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
   const clips = await synthesizeLines(
     "edge",
     says.map((s) => ({ text: s.say, voice: s.voice ?? take.voice.name, rate: take.voice.rate })),
-    join(baseDir, ".demoreel-cache", "voice"),
+    join(baseDir, CACHE_DIR, "voice"),
   );
   const lineLength = new Map(says.map((s, i) => [s, clips[i]!.duration]));
 

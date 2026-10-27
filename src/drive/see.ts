@@ -8,6 +8,7 @@ import { MULTI_SCENE, resolveObsConfig, unionRect } from "../record/obs.js";
 import { run } from "../util/exec.js";
 import { probeVideo } from "../util/media.js";
 import { loadState } from "./state.js";
+import { isOurs, named } from "../brand.js";
 
 // Current pictures of each monitor, straight from OBS's capture sources (no
 // extra screen-share permission needed), and which source shows which monitor.
@@ -34,7 +35,7 @@ export async function captureSources(obs: OBSWebSocket): Promise<string[]> {
   return inputs
     .filter((i) => CAPTURE_KINDS.includes(String(i.inputKind)))
     .map((i) => String(i.inputName))
-    .filter((n) => !n.startsWith("demoreel"));
+    .filter((n) => !isOurs(n));
 }
 
 export interface CaptureLayout {
@@ -54,7 +55,7 @@ export interface CaptureLayout {
 export async function detectLayout(obs: OBSWebSocket, screens: ScreenInfo[]): Promise<CaptureLayout> {
   const sources = await captureSources(obs);
   const restore = await showSources(obs, sources);
-  const dir = await mkdtemp(join(tmpdir(), "demoreel-layout-"));
+  const dir = await mkdtemp(join(tmpdir(), named("layout-")));
   try {
     const shots: { src: string; file: string; aspect: number }[] = [];
     for (const src of sources) {
