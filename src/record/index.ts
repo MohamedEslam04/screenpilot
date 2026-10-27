@@ -12,7 +12,7 @@ import { getDesktop, type Watcher } from "../platform/index.js";
 import { detectLayout } from "../drive/see.js";
 import { loadState, saveState } from "../drive/state.js";
 import { type CaptureInfo, ObsRecorder, resolveObsConfig, unionRect } from "./obs.js";
-import { APP } from "../brand.js";
+import { APP, sessionsRoot } from "../brand.js";
 
 // Public recording API (used by the CLI and the MCP server).
 
@@ -94,7 +94,7 @@ function sessionName(d = new Date()): string {
 
 export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRecording> {
   const log = opts.log ?? (() => {});
-  const dir = resolve(opts.dir ?? join("sessions", sessionName()));
+  const dir = resolve(opts.dir ?? join(sessionsRoot(), sessionName()));
   await mkdir(dir, { recursive: true });
 
   const recorder = opts.recorder ?? (await defaultRecorder());
