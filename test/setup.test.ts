@@ -1,6 +1,7 @@
 import { parse } from "jsonc-parser";
 import { describe, expect, it } from "vitest";
-import { CLIENTS, jsonSet, stillValid, tomlServer } from "../src/setup/clients.js";
+import { parseDocument } from "yaml";
+import { CLIENTS, gooseServer, jsonSet, NEVER, stillValid, tomlServer } from "../src/setup/clients.js";
 
 const launch = { command: "C:\\SP\\bin\\node.exe", args: ["C:\\SP\\dist\\mcp.js"], env: { SCREENPILOT_OUTPUT: "C:\\Users\\a\\Videos\\ScreenPilot" } };
 const spec = (id: string) => CLIENTS.find((c) => c.id === id)!;
@@ -113,5 +114,52 @@ describe("stillValid", () => {
   it("rejects broken JSON", () => {
     expect(stillValid(spec("cursor"), "{ broken")).toBe(false);
     expect(stillValid(spec("cursor"), '{"a": 1,}')).toBe(true); // trailing comma tolerated (JSONC)
+  });
+});
+
+describe("more clients", () => {
+  const mac = { home: "/Users/u", platform: "darwin" as const, appData: "/Users/u/Library/Application Support" };
+  const win = { home: "C:/Users/u", platform: "win32" as const, appData: "C:/Users/u/AppData/Roaming" };
+
+  it("has unique ids", () => {
+    const ids = CLIENTS.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("resolves macOS paths", () => {
+    expect(spec("claude-desktop").file(mac)).toBe("/Users/u/Library/Application Support/Claude/claude_desktop_config.json");
+    expect(spec("vscode").file(mac)).toBe("/Users/u/Library/Application Support/Code/User/mcp.json");
+    expect(spec("opencode").file(mac)).toBe("/Users/u/.config/opencode/opencode.json");
+    expect(spec("zed").file(mac)).toBe("/Users/u/.config/zed/settings.json");
+    expect(spec("goose").file(win)).toBe("C:/Users/u/AppData/Roaming/Block/goose/config/config.yaml");
+  });
+
+  it("only targets Claude Desktop (Store) when its package folder exists", () => {
+    expect(spec("claude-desktop-store").marker(win)).toBe(NEVER);
+    const store = { ...win, claudeStoreDir: "C:/Users/u/AppData/Local/Packages/Claude_pzs8sxrjxfjjc/LocalCache/Roaming/Claude" };
+    expect(spec("claude-desktop-store").file(store)).toBe(`${store.claudeStoreDir}/claude_desktop_config.json`);
+  });
+
+  it("detects Cline by its globalStorage folder in each VS Code fork", () => {
+    expect(spec("cline-cursor").file(env)).toBe("/home/u/.config/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json");
+    expect(spec("cline-cursor").marker(env)).toBe("/home/u/.config/Cursor/User/globalStorage/saoudrizwan.claude-dev");
+  });
+
+  it("writes Zed context_servers and Copilot's local entry", () => {
+    expect(JSON.parse(spec("zed").apply("{}", "screenpilot", launch)).context_servers.screenpilot).toEqual(launch);
+    const copilot = JSON.parse(spec("copilot").apply("", "screenpilot", launch)).mcpServers.screenpilot;
+    expect(copilot).toEqual({ type: "local", ...launch, tools: ["*"] });
+  });
+
+  it("edits Goose YAML keeping comments and other extensions", () => {
+    const before = "# my goose\nextensions:\n  developer:\n    type: builtin\n    enabled: true\n";
+    const text = gooseServer(before, "screenpilot", launch);
+    expect(text).toContain("# my goose");
+    const doc = parseDocument(text).toJS() as { extensions: Record<string, Record<string, unknown>> };
+    expect(doc.extensions.developer).toEqual({ type: "builtin", enabled: true });
+    expect(doc.extensions.screenpilot).toMatchObject({ type: "stdio", cmd: launch.command, args: launch.args, envs: launch.env, enabled: true });
+    expect(stillValid(spec("goose"), text)).toBe(true);
+    const removed = parseDocument(gooseServer(text, "screenpilot", undefined)).toJS() as { extensions: Record<string, unknown> };
+    expect(Object.keys(removed.extensions)).toEqual(["developer"]);
   });
 });

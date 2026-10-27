@@ -1,4 +1,5 @@
 import { applyEdits, findNodeAtLocation, modify, parse, parseTree } from "jsonc-parser";
+import { parseDocument } from "yaml";
 
 // Where each AI tool keeps its MCP servers, and how to add/remove ours.
 // Pure functions over file text so they can be tested without touching disk.
@@ -18,7 +19,7 @@ export interface ClientSpec {
   alternates?: (env: PathEnv) => string[];
   /** Folder whose presence means the tool is installed. */
   marker: (env: PathEnv) => string;
-  format: "json" | "toml";
+  format: "json" | "toml" | "yaml";
   /** Add (launch) or remove (undefined) our server in the file's text. */
   apply: (text: string, name: string, launch: ServerLaunch | undefined) => string;
 }
@@ -26,9 +27,12 @@ export interface ClientSpec {
 export interface PathEnv {
   home: string;
   platform: NodeJS.Platform;
-  /** %APPDATA% on Windows, ~/.config elsewhere. */
+  /** Per-user app settings: %APPDATA% on Windows, ~/Library/Application Support on macOS, $XDG_CONFIG_HOME or ~/.config on Linux. */
   appData: string;
   codexHome?: string;
+  copilotHome?: string;
+  /** Claude Desktop from the Microsoft Store keeps its settings in its package folder: ...\\LocalCache\\Roaming\\Claude. */
+  claudeStoreDir?: string;
 }
 
 const fmt = { formattingOptions: { insertSpaces: true, tabSize: 2, eol: "\n" } };
@@ -47,14 +51,44 @@ const mcpServersJson =
 
 const standard = (l: ServerLaunch) => ({ command: l.command, args: l.args, env: l.env });
 
+const mcpServers = mcpServersJson("mcpServers", standard);
+const dirOf = (f: string) => f.slice(0, f.lastIndexOf("/"));
+const json = (id: string, title: string, file: (e: PathEnv) => string, apply = mcpServers): ClientSpec => ({
+  id,
+  title,
+  file,
+  marker: (e) => dirOf(file(e)),
+  format: "json",
+  apply,
+});
+/** ~/.config: $XDG_CONFIG_HOME on Linux, the plain folder on macOS and Windows (for tools that follow XDG everywhere). */
+const xdg = (e: PathEnv) => (e.platform === "linux" ? e.appData : j(e.home, ".config"));
+/** Marker for a client that can't be on this machine (setup never writes there, even when asked). */
+export const NEVER = "/nonexistent/screenpilot-marker";
+
+// VS Code and its forks share one user-folder layout; Cline and Roo Code can live in any of them.
+const CODE_HOSTS = [
+  ["Code", "VS Code", "vscode"],
+  ["Code - Insiders", "VS Code Insiders", "vscode-insiders"],
+  ["VSCodium", "VSCodium", "vscodium"],
+  ["Cursor", "Cursor", "cursor"],
+  ["Windsurf", "Windsurf", "windsurf"],
+] as const;
+const codeUser = (e: PathEnv, folder: string) => j(e.appData, folder, "User");
+const vscodeShape = mcpServersJson("servers", (l) => ({ type: "stdio", command: l.command, args: l.args, env: l.env }));
+
+/** A VS Code extension's settings file; installed when its globalStorage folder exists. */
+const extension = (id: string, title: string, file: (e: PathEnv) => string): ClientSpec => ({
+  ...json(id, title, file),
+  marker: (e) => dirOf(dirOf(file(e))),
+});
+
 export const CLIENTS: ClientSpec[] = [
+  json("claude-desktop", "Claude Desktop", (e) => j(e.appData, "Claude", "claude_desktop_config.json")),
   {
-    id: "claude-desktop",
-    title: "Claude Desktop",
-    file: (e) => j(e.appData, "Claude", "claude_desktop_config.json"),
-    marker: (e) => j(e.appData, "Claude"),
-    format: "json",
-    apply: mcpServersJson("mcpServers", standard),
+    // The Store (MSIX) build reads its virtualized copy and ignores %APPDATA%\Claude.
+    ...json("claude-desktop-store", "Claude Desktop (Store)", (e) => j(e.claudeStoreDir ?? NEVER, "claude_desktop_config.json")),
+    marker: (e) => e.claudeStoreDir ?? NEVER,
   },
   {
     id: "codex",
@@ -73,39 +107,64 @@ export const CLIENTS: ClientSpec[] = [
     format: "json",
     apply: openCode,
   },
+  json("cursor", "Cursor", (e) => j(e.home, ".cursor", "mcp.json")),
+  json("gemini", "Gemini CLI", (e) => j(e.home, ".gemini", "settings.json")),
+  json("antigravity", "Antigravity", (e) => j(e.home, ".gemini", "antigravity", "mcp_config.json")),
+  json("windsurf", "Windsurf", (e) => j(e.home, ".codeium", "windsurf", "mcp_config.json")),
+  json("devin", "Devin Desktop", (e) => j(e.platform === "win32" ? j(e.appData, "devin") : j(xdg(e), "devin"), "mcp_config.json")),
+  ...CODE_HOSTS.slice(0, 3).map(([folder, title, id]) => ({
+    ...json(id, title, (e) => j(codeUser(e, folder), "mcp.json"), vscodeShape),
+    marker: (e: PathEnv) => codeUser(e, folder),
+  })),
+  ...CODE_HOSTS.flatMap(([folder, host, id]) => [
+    extension(`cline-${id}`, `Cline (${host})`, (e) =>
+      j(codeUser(e, folder), "globalStorage", "saoudrizwan.claude-dev", "settings", "cline_mcp_settings.json"),
+    ),
+    extension(`roo-${id}`, `Roo Code (${host})`, (e) =>
+      j(codeUser(e, folder), "globalStorage", "rooveterinaryinc.roo-cline", "settings", "mcp_settings.json"),
+    ),
+  ]),
+  json("zed", "Zed", (e) => j(e.platform === "win32" ? j(e.appData, "Zed") : j(xdg(e), "zed"), "settings.json"), mcpServersJson("context_servers", standard)),
+  json("lmstudio", "LM Studio", (e) => j(e.home, ".lmstudio", "mcp.json")),
+  { ...json("kiro", "Kiro", (e) => j(e.home, ".kiro", "settings", "mcp.json")), marker: (e) => j(e.home, ".kiro") },
+  json("qwen", "Qwen Code", (e) => j(e.home, ".qwen", "settings.json")),
+  json(
+    "copilot",
+    "GitHub Copilot CLI",
+    (e) => j(e.copilotHome ?? j(e.home, ".copilot"), "mcp-config.json"),
+    mcpServersJson("mcpServers", (l) => ({ type: "local", command: l.command, args: l.args, env: l.env, tools: ["*"] })),
+  ),
+  json("amazonq", "Amazon Q", (e) => j(e.home, ".aws", "amazonq", "mcp.json")),
+  json("warp", "Warp", (e) => j(e.home, ".warp", ".mcp.json")),
   {
-    id: "cursor",
-    title: "Cursor",
-    file: (e) => j(e.home, ".cursor", "mcp.json"),
-    marker: (e) => j(e.home, ".cursor"),
-    format: "json",
-    apply: mcpServersJson("mcpServers", standard),
-  },
-  {
-    id: "gemini",
-    title: "Gemini CLI",
-    file: (e) => j(e.home, ".gemini", "settings.json"),
-    marker: (e) => j(e.home, ".gemini"),
-    format: "json",
-    apply: mcpServersJson("mcpServers", standard),
-  },
-  {
-    id: "windsurf",
-    title: "Windsurf",
-    file: (e) => j(e.home, ".codeium", "windsurf", "mcp_config.json"),
-    marker: (e) => j(e.home, ".codeium", "windsurf"),
-    format: "json",
-    apply: mcpServersJson("mcpServers", standard),
-  },
-  {
-    id: "vscode",
-    title: "VS Code",
-    file: (e) => j(e.appData, "Code", "User", "mcp.json"),
-    marker: (e) => j(e.appData, "Code", "User"),
-    format: "json",
-    apply: mcpServersJson("servers", (l) => ({ type: "stdio", command: l.command, args: l.args, env: l.env })),
+    id: "goose",
+    title: "Goose",
+    file: (e) => (e.platform === "win32" ? j(e.appData, "Block", "goose", "config", "config.yaml") : j(xdg(e), "goose", "config.yaml")),
+    marker: (e) => (e.platform === "win32" ? j(e.appData, "Block", "goose") : j(xdg(e), "goose")),
+    format: "yaml",
+    apply: gooseServer,
   },
 ];
+
+/** Goose: `extensions.<name>` in YAML, with `cmd`/`envs` instead of `command`/`env`. */
+export function gooseServer(text: string, name: string, launch: ServerLaunch | undefined): string {
+  const doc = parseDocument(text.trim() ? text : "{}");
+  if (launch) {
+    doc.setIn(["extensions", name], {
+      type: "stdio",
+      name,
+      enabled: true,
+      cmd: launch.command,
+      args: launch.args,
+      envs: launch.env,
+      env_keys: [],
+      timeout: 300,
+    });
+  } else {
+    doc.deleteIn(["extensions", name]);
+  }
+  return doc.toString();
+}
 
 /**
  * OpenCode 2.x keeps servers under `mcp.servers` (with `disabled`); 1.x put them
@@ -128,8 +187,8 @@ function openCode(text: string, name: string, launch: ServerLaunch | undefined):
     : jsonSet(out, ["mcp", name], { type: "local", command, enabled: true, environment: launch.env });
 }
 
-/** OpenCode follows XDG on every OS: ~/.config/opencode even on Windows. */
-const openCodeDir = (e: PathEnv) => j(e.platform === "win32" ? j(e.home, ".config") : e.appData, "opencode");
+/** OpenCode follows XDG on every OS: ~/.config/opencode even on Windows and macOS. */
+const openCodeDir = (e: PathEnv) => j(xdg(e), "opencode");
 
 /** True when our server is already configured with this exact launch. */
 export function hasServer(spec: ClientSpec, text: string, name: string, launch: ServerLaunch): boolean {
@@ -168,6 +227,7 @@ export function tomlServer(text: string, name: string, launch: ServerLaunch | un
 /** Parse check used before writing: never save a file we broke. */
 export function stillValid(spec: ClientSpec, text: string): boolean {
   if (spec.format === "toml") return true;
+  if (spec.format === "yaml") return parseDocument(text).errors.length === 0;
   const errors: { error: number }[] = [];
   parse(text, errors as never, { allowTrailingComma: true });
   return errors.length === 0;

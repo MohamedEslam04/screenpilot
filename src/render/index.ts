@@ -168,7 +168,7 @@ export interface RenderResult extends Prepared {
   output: string;
 }
 
-function hyperframesBin(): string {
+export function hyperframesBin(): string {
   const pkg = require.resolve("hyperframes/package.json");
   return join(dirname(pkg), "bin", "hyperframes.mjs");
 }

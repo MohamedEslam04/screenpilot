@@ -6,7 +6,7 @@ import { analyze } from "./analyze/index.js";
 import { doctor } from "./doctor.js";
 import { evenTimes, grabFrames } from "./frames.js";
 import { initStoryboard } from "./init.js";
-import { setup } from "./setup/index.js";
+import { knownClients, manualConfig, setup } from "./setup/index.js";
 import { type InputAdapterId, startRecording } from "./record/index.js";
 import { remapSession } from "./record/remap.js";
 import { Driver } from "./drive/index.js";
@@ -117,22 +117,37 @@ program
 
 program
   .command("setup")
-  .description("Install for people who don't use a terminal: copy the app to its folder and add it to every AI tool found (Claude, Codex, OpenCode, Cursor, Gemini, Windsurf, VS Code)")
-  .option("--clients <ids>", "Only these: claude-desktop,claude-code,codex,opencode,cursor,gemini,windsurf,vscode")
+  .description("Install for people who don't use a terminal: copy the app to its folder and add it to every AI tool found (Claude, Codex, OpenCode, Cursor, Gemini, Copilot, Zed, Cline, …)")
+  .option("--clients <ids>", "Only these client ids (e.g. claude-desktop,claude-code,codex,opencode,cursor); see `setup --list`")
+  .option("--list", "List the AI tools setup knows and whether each is installed here")
   .option("--remove", "Remove it from those tools instead")
   .option("--output <dir>", "Where videos are saved (default: ~/Videos/ScreenPilot)")
   .option("--in-place", "Register the package where it is (no copy)")
-  .action(async (o: { clients?: string; remove?: boolean; output?: string; inPlace?: boolean }) => {
+  .option("--skip-prepare", "Don't download the render browser or run the test render")
+  .option("--print", "Only print the config to paste into an AI tool by hand")
+  .action(async (o: { clients?: string; remove?: boolean; output?: string; inPlace?: boolean; skipPrepare?: boolean; print?: boolean; list?: boolean }) => {
+    if (o.list) {
+      print(knownClients());
+      return;
+    }
+    if (o.print) {
+      print(manualConfig(o.output));
+      return;
+    }
     const r = await setup({
       clients: o.clients?.split(",").map((x) => x.trim()),
       remove: o.remove,
       outputDir: o.output,
       inPlace: o.inPlace,
+      skipPrepare: o.skipPrepare,
       log,
     });
-    const width = Math.max(...r.rows.map((x) => x.client.length));
+    // Dozens of tools are checked: list only the ones that changed (or failed).
+    const shown = r.rows.filter((x) => x.status !== "not installed" && x.status !== "not configured");
+    const width = Math.max(0, ...shown.map((x) => x.client.length));
     process.stderr.write(`\n${APP_TITLE} ${o.remove ? "removed" : "set up"} (${r.appDir})\n`);
-    for (const row of r.rows) process.stderr.write(`  ${row.client.padEnd(width)}  ${row.status}${row.detail ? `  ${row.detail}` : ""}\n`);
+    for (const row of shown) process.stderr.write(`  ${row.client.padEnd(width)}  ${row.status}${row.detail ? `  ${row.detail}` : ""}\n`);
+    if (r.renderer) process.stderr.write(`\n  Video renderer: ${r.renderer.ok ? "ready" : `not ready: ${r.renderer.detail}. Videos will download it on first use.`}\n`);
     if (!o.remove) {
       const added = r.rows.filter((x) => x.status === "added").map((x) => x.client);
       process.stderr.write(
