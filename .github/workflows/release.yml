@@ -1,8 +1,9 @@
 name: Release
 
 # Push a tag like v0.2.0 to publish installers on a GitHub Release:
-#   ScreenPilot-<version>-windows.mcpb   double-click to install in Claude Desktop
-#   ScreenPilot-<version>-linux.tar.gz   ./install.sh registers it with Claude Code
+#   ScreenPilot-<version>-windows.zip    unzip, double-click "ScreenPilot Setup.cmd" (adds it to every AI tool)
+#   ScreenPilot-<version>-windows.mcpb   double-click to install in Claude Desktop only
+#   ScreenPilot-<version>-linux.tar.gz   ./install.sh (adds it to every AI tool)
 # Run it by hand (Actions tab) to just build the packages as artifacts.
 on:
   push:
@@ -40,17 +41,29 @@ jobs:
       - name: Package (Linux)
         if: runner.os == 'Linux'
         run: pnpm package --ffmpeg-dir "$(dirname "$(command -v ffmpeg)")"
-      # The packaged server must start and see its bundled tools on its own.
+      # The packaged server must start on its bundled Node and see its bundled tools.
       - name: Check the package
         shell: bash
         run: |
-          stage=$(ls -d release/stage-*)
-          node "$stage/dist/cli.js" doctor > doctor.json || true
+          stage=$(ls -d release/stage-*/ScreenPilot)
+          "$stage/bin/node" "$stage/dist/cli.js" doctor > doctor.json || true
           node -e "const d=require('./doctor.json');console.log(d.summary);const f=d.checks.filter(c=>['ffmpeg','ffprobe','node'].includes(c.name)&&!c.ok);if(f.length){console.error(f);process.exit(1)}"
+      # What "ScreenPilot Setup.cmd" / install.sh do, against a throwaway home folder.
+      - name: Check setup
+        shell: bash
+        run: |
+          stage=$(ls -d release/stage-*/ScreenPilot)
+          home="$RUNNER_TEMP/fakehome"
+          mkdir -p "$home/.codex" "$home/.config/opencode"
+          HOME="$home" USERPROFILE="$home" APPDATA="$home/AppData/Roaming" LOCALAPPDATA="$home/AppData/Local" \
+            XDG_DATA_HOME="$home/.local/share" XDG_CONFIG_HOME="$home/.config" \
+            "$stage/bin/node" "$stage/dist/cli.js" setup --clients codex,opencode > setup.json
+          node -e "const r=require('./setup.json');console.log(r.appDir,r.rows);const fs=require('fs'),p=require('path');if(r.rows.some(x=>x.status!=='added')||!fs.existsSync(p.join(r.appDir,'dist','mcp.js')))process.exit(1)"
       - uses: actions/upload-artifact@v7
         with:
           name: package-${{ runner.os }}
           path: |
+            release/*.zip
             release/*.mcpb
             release/*.tar.gz
           if-no-files-found: error
