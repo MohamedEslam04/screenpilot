@@ -8,7 +8,9 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Driver } from "../src/drive/index.js";
+import { screenshot } from "../src/drive/see.js";
 import { locate, openBrowser, withPage } from "../src/drive/web.js";
+import { startRecording } from "../src/record/index.js";
 import { getDesktop, type WindowInfo } from "../src/platform/index.js";
 import type { ScreenInfo } from "../src/record/input/types.js";
 import { run } from "../src/util/exec.js";
@@ -232,6 +234,20 @@ async function main(): Promise<void> {
   await check("driver close", async () => {
     await driver?.close();
     return "closed";
+  });
+
+  await check("native screenshot (gdigrab)", async () => {
+    const r = await screenshot(await (await getDesktop()).screens(), { outDir: join(OUT, "screens"), width: 960 });
+    if (r.shots.length === 0) throw new Error("no shots");
+    return r.shots.map((x) => `${x.screen} → ${x.file}`).join("; ");
+  });
+
+  await check("native recording 3 s (gdigrab)", async () => {
+    const rec = await startRecording({ dir: join(OUT, "recording"), screens: "all", recorder: "native", log });
+    await sleep(3000);
+    const r = await rec.stop();
+    if (!(r.duration > 1.5)) throw new Error(`recording too short: ${r.duration}s (${r.video})`);
+    return `${r.video} ${r.duration.toFixed(2)}s, events ${r.eventCount}, warnings ${r.warnings.length}`;
   });
   await shot("05-end");
 }

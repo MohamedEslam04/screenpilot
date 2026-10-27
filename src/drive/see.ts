@@ -146,6 +146,22 @@ export async function screenshot(
     if (opts.grid) for (const s of shots) await overlayGrid(s.file);
     return { shots, warnings: [] };
   }
+  // Windows: one gdigrab frame per monitor.
+  if (process.platform === "win32") {
+    const { gdigrabStillArgs } = await import("../record/backends/windows-ffmpeg.js");
+    const wanted = opts.only ? screens.filter((s) => s.name === opts.only) : screens;
+    if (opts.only && wanted.length === 0) throw new Error(`No monitor named "${opts.only}"`);
+    await mkdir(opts.outDir, { recursive: true });
+    const shots: Shot[] = [];
+    for (const [i, s] of wanted.entries()) {
+      // Monitor names look like \\.\DISPLAY1: not usable in file names.
+      const file = join(opts.outDir, `screen-${i + 1}.jpg`);
+      await run("ffmpeg", gdigrabStillArgs(s, file, opts.width ?? 1280));
+      shots.push({ screen: s.name, file });
+    }
+    if (opts.grid) for (const s of shots) await overlayGrid(s.file);
+    return { shots, warnings: [] };
+  }
   const cfg = await resolveObsConfig();
   const obs = new OBSWebSocket();
   await obs.connect(cfg.url, cfg.password);

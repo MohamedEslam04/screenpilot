@@ -4,6 +4,7 @@ import type { RawEvent, Rect, ScreenInfo } from "../../record/input/types.js";
 import type { Watcher } from "../types.js";
 import { clipRect } from "./geometry.js";
 import { win32, type Monitor, type Win32 } from "./win32.js";
+import { useHook } from "../../record/input/hook.js";
 
 // Pointer and active window by polling Win32 (60 Hz / 10 Hz); clicks and
 // wheel from the global mouse hook (uiohook). Events have the same shape as
@@ -20,38 +21,6 @@ export function windowArea(w: WatchApi, h: bigint, monitors: Monitor[]): { frame
   const mon = w.monitorOf(h);
   const monitor = monitors.find((m) => m.handle === mon);
   return { frame, monitor, visible: frame && monitor ? clipRect(frame, monitor.work) : frame };
-}
-
-// uiohook is one global hook per process, and the driver and the recorder
-// each run a watcher: share it, start on first use, stop after the last.
-type Hook = typeof import("uiohook-napi").uIOhook;
-let hookUsers = 0;
-
-type ButtonHandler = (e: { button: unknown }) => void;
-
-async function useHook({ down, up, wheel }: { down: ButtonHandler; up: ButtonHandler; wheel: () => void }): Promise<() => void> {
-  const uIOhook: Hook = (await import("uiohook-napi")).uIOhook;
-  uIOhook.on("mousedown", down);
-  uIOhook.on("mouseup", up);
-  uIOhook.on("wheel", wheel);
-  const off = () => {
-    uIOhook.off("mousedown", down);
-    uIOhook.off("mouseup", up);
-    uIOhook.off("wheel", wheel);
-  };
-  if (hookUsers === 0) {
-    try {
-      uIOhook.start();
-    } catch (err) {
-      off();
-      throw err;
-    }
-  }
-  hookUsers++;
-  return () => {
-    off();
-    if (--hookUsers === 0) uIOhook.stop();
-  };
 }
 
 export class WindowsWatcher implements Watcher {
@@ -95,8 +64,8 @@ export class WindowsWatcher implements Watcher {
     };
     try {
       this.unhook = await useHook({
-        down: (e) => at("down", Number(e.button)),
-        up: (e) => at("up", Number(e.button)),
+        mousedown: (e: { button: unknown }) => at("down", Number(e.button)),
+        mouseup: (e: { button: unknown }) => at("up", Number(e.button)),
         wheel: () => at("scroll"),
       });
     } catch (err) {

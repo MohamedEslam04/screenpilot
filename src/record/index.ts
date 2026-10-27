@@ -243,6 +243,7 @@ export async function defaultRecorder(): Promise<RecorderId> {
 
 async function nativeBackend(): Promise<RecorderBackend> {
   if (process.platform === "linux") return new KdePipewireBackend();
+  if (process.platform === "win32") return (await import("./backends/windows-ffmpeg.js")).windowsFfmpegBackend();
   throw new Error(`Native recording is not available on ${process.platform}; use --recorder obs`);
 }
 

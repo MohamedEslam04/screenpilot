@@ -137,3 +137,21 @@ class WindowsFfmpegRecorder implements RecorderBackend {
 export function windowsFfmpegBackend(ffmpeg = "ffmpeg"): RecorderBackend {
   return new WindowsFfmpegRecorder(ffmpeg);
 }
+
+/** ffmpeg arguments for one still of a monitor (no OBS). */
+export function gdigrabStillArgs(screen: ScreenInfo, file: string, width: number): string[] {
+  return [
+    "-hide_banner", "-loglevel", "error",
+    "-f", "gdigrab",
+    "-draw_mouse", "1",
+    "-offset_x", String(screen.x),
+    "-offset_y", String(screen.y),
+    "-video_size", `${screen.w}x${screen.h}`,
+    "-i", "desktop",
+    "-frames:v", "1",
+    "-vf", `scale=${width}:-2`,
+    "-q:v", "3",
+    "-y",
+    file,
+  ];
+}
