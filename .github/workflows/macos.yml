@@ -9,6 +9,8 @@ on:
     paths:
       - "src/platform/macos/**"
       - "src/record/backends/macos*"
+      - "src/record/input/**"
+      - "src/drive/**"
       - "scripts/macos-smoke.ts"
       - ".github/workflows/macos.yml"
   pull_request:
@@ -16,6 +18,8 @@ on:
     paths:
       - "src/platform/macos/**"
       - "src/record/backends/macos*"
+      - "src/record/input/**"
+      - "src/drive/**"
       - "scripts/macos-smoke.ts"
       - ".github/workflows/macos.yml"
   workflow_dispatch:
