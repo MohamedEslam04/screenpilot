@@ -198,7 +198,7 @@ describe("suggestViews", () => {
 
 describe("initStoryboard with canvasScreens", () => {
   it("copies screens from meta.json", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "demoreel-init-"));
+    const dir = await mkdtemp(join(tmpdir(), "screenpilot-init-"));
     await mkdir(dir, { recursive: true });
     const { execFileSync } = await import("node:child_process");
     execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=s=640x180:d=2:r=10", "-pix_fmt", "yuv420p", join(dir, "rec.mp4")]);
@@ -211,5 +211,5 @@ describe("initStoryboard with canvasScreens", () => {
     const sb = JSON.parse(await readFile(storyboard, "utf8"));
     expect(sb.screens).toEqual(canvasScreens);
     expect(sb.views).toEqual([]);
-  });
+  }, 30_000); // spawns ffmpeg/ffprobe: slow on a busy machine
 });

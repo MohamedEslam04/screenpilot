@@ -1,6 +1,6 @@
-# demoreel
+# ScreenPilot
 
-Record any desktop app, let an AI agent write the storyboard, get a polished demo video.
+Your AI pilot for screen videos: it records anything on your screen (or drives the apps itself), then edits it into a polished video with zooms, captions and voiceover.
 
 1. **Record** the screen (built in, or through OBS) plus pointer, click and active-window events.
 2. **Analyze**: the agent looks at a contact sheet and frames with a coordinate grid.
@@ -9,7 +9,7 @@ Record any desktop app, let an AI agent write the storyboard, get a polished dem
 
 ## Why
 
-Playwright can only record a browser. demoreel records anything on screen (native apps, IDEs, terminals, Electron) on Linux (including KDE Wayland), Windows and macOS, and gives an AI agent the tools to see the footage and edit it.
+Playwright can only record a browser. screenpilot records anything on screen (native apps, IDEs, terminals, Electron) on Linux (including KDE Wayland), Windows and macOS, and gives an AI agent the tools to see the footage and edit it.
 
 ## Requirements
 
@@ -22,11 +22,11 @@ Playwright can only record a browser. demoreel records anything on screen (nativ
 - KDE Wayland: pointer position comes from a KWin script. Click capture needs your user to be in the `input` group (see below).
 - Windows, macOS and X11: pointer and clicks come from a global hook (uiohook). Other Wayland compositors: no pointer logging yet (zooms come from the storyboard only).
 
-With `--recorder obs`, the first recording creates a `demoreel` scene in OBS with one screen-capture source; on Wayland the system asks once which screen to share. With several monitors, pass `--screen <name>` (e.g. `eDP-1`) so pointer coordinates are matched to the monitor OBS records; demoreel first matches the OBS source name against monitor models reported by KWin (e.g. "Lenovo R24e | Monitor" → HDMI-A-5), then falls back to the monitor under the cursor. If it guessed wrong, fix the session afterwards with `demoreel remap <session> --screen <name>` (the raw pointer log is kept in `pointer.raw.jsonl`). demoreel reuses a screen-capture source you already have in OBS when one is showing pixels, so the portal picker does not reappear.
+With `--recorder obs`, the first recording creates a `screenpilot` scene in OBS with one screen-capture source; on Wayland the system asks once which screen to share. With several monitors, pass `--screen <name>` (e.g. `eDP-1`) so pointer coordinates are matched to the monitor OBS records; screenpilot first matches the OBS source name against monitor models reported by KWin (e.g. "Lenovo R24e | Monitor" → HDMI-A-5), then falls back to the monitor under the cursor. If it guessed wrong, fix the session afterwards with `screenpilot remap <session> --screen <name>` (the raw pointer log is kept in `pointer.raw.jsonl`). screenpilot reuses a screen-capture source you already have in OBS when one is showing pixels, so the portal picker does not reappear.
 
 ### KDE Wayland: the `input` group trade-off
 
-Wayland does not let apps observe global input. demoreel reads mouse buttons straight from `/dev/input` (evdev), which requires membership of the `input` group:
+Wayland does not let apps observe global input. screenpilot reads mouse buttons straight from `/dev/input` (evdev), which requires membership of the `input` group:
 
 ```sh
 sudo usermod -aG input "$USER"   # then log out and back in
@@ -41,23 +41,23 @@ pnpm install
 pnpm build
 ```
 
-Binaries: `dist/cli.js` (`demoreel`) and `dist/mcp.js` (`demoreel-mcp`).
+Binaries: `dist/cli.js` (`screenpilot`) and `dist/mcp.js` (`screenpilot-mcp`).
 
 ## Quick start (CLI)
 
 ```sh
-demoreel record                          # perform your demo, then stop
-demoreel analyze sessions/<timestamp>    # contact sheet, idle spans, clicks
-demoreel frames sessions/<ts>/video.mkv --at 3,9,15 --grid
-demoreel init sessions/<ts> --suggest --voice ar-EG-SalmaNeural
+screenpilot record                          # perform your demo, then stop
+screenpilot analyze sessions/<timestamp>    # contact sheet, idle spans, clicks
+screenpilot frames sessions/<ts>/video.mkv --at 3,9,15 --grid
+screenpilot init sessions/<ts> --suggest --voice ar-EG-SalmaNeural
 # edit sessions/<ts>/storyboard.json
-demoreel validate sessions/<ts>/storyboard.json
-demoreel render sessions/<ts>/storyboard.json -q draft
-demoreel check sessions/<ts>/storyboard.mp4
-demoreel render sessions/<ts>/storyboard.json -q delivery -o demo.mp4
+screenpilot validate sessions/<ts>/storyboard.json
+screenpilot render sessions/<ts>/storyboard.json -q draft
+screenpilot check sessions/<ts>/storyboard.mp4
+screenpilot render sessions/<ts>/storyboard.json -q delivery -o demo.mp4
 ```
 
-`demoreel voices --lang ar-EG` lists voices. `demoreel schema` prints the JSON Schema. `demoreel preview` opens HyperFrames Studio.
+`screenpilot voices --lang ar-EG` lists voices. `screenpilot schema` prints the JSON Schema. `screenpilot preview` opens HyperFrames Studio.
 
 ## MCP setup
 
@@ -66,7 +66,7 @@ The server speaks stdio. Use an absolute path to the built file.
 Claude Code:
 
 ```sh
-claude mcp add demoreel -- node /abs/path/to/demoreel/dist/mcp.js
+claude mcp add screenpilot -- node /abs/path/to/screenpilot/dist/mcp.js
 ```
 
 OpenCode (`opencode.json`):
@@ -75,9 +75,9 @@ OpenCode (`opencode.json`):
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "demoreel": {
+    "screenpilot": {
       "type": "local",
-      "command": ["node", "/abs/path/to/demoreel/dist/mcp.js"],
+      "command": ["node", "/abs/path/to/screenpilot/dist/mcp.js"],
       "enabled": true
     }
   }
@@ -86,7 +86,7 @@ OpenCode (`opencode.json`):
 
 Other clients: any MCP client that can launch a stdio server with that command.
 
-Copy or symlink `skill/` to `~/.claude/skills/demoreel` to give Claude Code the workflow skill. Other agents can read `AGENTS.md`.
+Copy or symlink `skill/` to `~/.claude/skills/screenpilot` to give Claude Code the workflow skill. Other agents can read `AGENTS.md`.
 
 ### Tools
 
@@ -116,23 +116,23 @@ The agent can operate the desktop itself while it records: it looks (`screenshot
 
 Requirements
 
-- KDE Plasma on Wayland. Driving uses the RemoteDesktop portal; approve the KDE "remote control" dialog once and select all monitors. The token is saved in `~/.config/demoreel/state.json` (chmod 600), so later runs are silent.
+- KDE Plasma on Wayland. Driving uses the RemoteDesktop portal; approve the KDE "remote control" dialog once and select all monitors. The token is saved in `~/.config/screenpilot/state.json` (chmod 600), so later runs are silent.
 - Recording uses the native recorder by default. With `--recorder obs`, OBS needs one capture source per monitor (or one for the whole desktop); names usually match the monitors, otherwise pass `--map "Source Name=HDMI-A-1"` (saved for next time). `screenshot` reads the OBS sources.
-- The demo browser (`demoreel browser`) uses its own profile at `~/.config/demoreel/browser`, with downloads going to `~/Downloads` without prompts. Your normal browser is untouched.
+- The demo browser (`screenpilot browser`) uses its own profile at `~/.config/screenpilot/browser`, with downloads going to `~/Downloads` without prompts. Your normal browser is untouched.
 
 Commands
 
 ```sh
-demoreel screenshot [--screen eDP-1] [--grid]   # what each monitor shows
-demoreel windows                                # open windows and their geometry
-demoreel browser --screen HDMI-A-1 --url https://example.com
-demoreel drive move eDP-1,0.5,0.5               # also: drive click, type, key, scroll (testing)
-demoreel perform take.json --dry-run            # rehearse: same actions, no recording
-demoreel perform take.json                      # record + drive; writes session dir + storyboard.json
-demoreel record --screens all                   # record every monitor side by side (manual demos too)
+screenpilot screenshot [--screen eDP-1] [--grid]   # what each monitor shows
+screenpilot windows                                # open windows and their geometry
+screenpilot browser --screen HDMI-A-1 --url https://example.com
+screenpilot drive move eDP-1,0.5,0.5               # also: drive click, type, key, scroll (testing)
+screenpilot perform take.json --dry-run            # rehearse: same actions, no recording
+screenpilot perform take.json                      # record + drive; writes session dir + storyboard.json
+screenpilot record --screens all                   # record every monitor side by side (manual demos too)
 ```
 
-Targets in a take: `{screen, x, y}` (normalized 0..1 per monitor), `{web: "selector"}` (Playwright selector in the demo browser; preferred) or `{window: "match", x, y}`. `demoreel take-schema` / MCP `take_schema` print the full `take.json` schema.
+Targets in a take: `{screen, x, y}` (normalized 0..1 per monitor), `{web: "selector"}` (Playwright selector in the demo browser; preferred) or `{window: "match", x, y}`. `screenpilot take-schema` / MCP `take_schema` print the full `take.json` schema.
 
 Safety
 
@@ -153,17 +153,17 @@ Four ways to frame what was recorded (all tested on KDE Wayland with two 1920x10
 | Both recorded, the video shows one at a time and pans to where the action is | `"screens": "all"` | `views` (filled from the pointer by `perform` / `init --suggest`; edit or add `{at, screen, transition: "pan"\|"cut"}`) |
 | Both side by side the whole time | `"screens": "all"` | `"views": []` and an ultrawide `"output": {"width": 2560, "height": 720}` |
 
-With window framing, KWin reports the active window over time (`windows.jsonl`, the part not covered by panels), and takes place windows at 16:9 inside the monitor's usable area so the camera shows them whole. For your own recordings, `demoreel record --fit-window <class or title>` does the same for one window and puts it back afterwards (MCP `record_start` `fitWindow`). A window view fills the frame (its longer side is trimmed if it is not 16:9); monitor views show the whole monitor.
+With window framing, KWin reports the active window over time (`windows.jsonl`, the part not covered by panels), and takes place windows at 16:9 inside the monitor's usable area so the camera shows them whole. For your own recordings, `screenpilot record --fit-window <class or title>` does the same for one window and puts it back afterwards (MCP `record_start` `fitWindow`). A window view fills the frame (its longer side is trimmed if it is not 16:9); monitor views show the whole monitor.
 
-Zooms, highlights and callouts use coordinates normalized to the whole recording (both monitors), so they work in all three. If OBS has one source that shows the whole desktop, demoreel uses it (cropped for a single monitor); otherwise it places one source per monitor. Which source shows which monitor is worked out by comparing the pictures.
+Zooms, highlights and callouts use coordinates normalized to the whole recording (both monitors), so they work in all three. If OBS has one source that shows the whole desktop, screenpilot uses it (cropped for a single monitor); otherwise it places one source per monitor. Which source shows which monitor is worked out by comparing the pictures.
 
-While recording, demoreel closes notification popups already on screen (KDE) and asks the desktop to hold new ones (freedesktop `Notifications.Inhibit`; released when recording stops or the process dies). Plasma already does this during screen sharing; critical notifications (e.g. low memory) still show.
+While recording, screenpilot closes notification popups already on screen (KDE) and asks the desktop to hold new ones (freedesktop `Notifications.Inhibit`; released when recording stops or the process dies). Plasma already does this during screen sharing; critical notifications (e.g. low memory) still show.
 
 Renders use 2 headless-Chrome workers by default (`--workers`): more is faster but can push a desktop that is also running OBS and browsers out of memory.
 
 ## Storyboard reference
 
-Times are source seconds; positions are normalized 0..1 (x from left, y from top). Paths are relative to the storyboard file. `demoreel schema` is authoritative.
+Times are source seconds; positions are normalized 0..1 (x from left, y from top). Paths are relative to the storyboard file. `screenpilot schema` is authoritative.
 
 Top level
 
@@ -210,13 +210,13 @@ pnpm install
 pnpm windows:live   # doctor --input, smoke test, a narrated take across your monitors + draft render
 ```
 
-and look at (or send) `windows-live-report/`. `demoreel doctor` alone reports what is found (ffmpeg, monitors, OBS, browser, voices); add `--input` to also test pointer injection.
+and look at (or send) `windows-live-report/`. `screenpilot doctor` alone reports what is found (ffmpeg, monitors, OBS, browser, voices); add `--input` to also test pointer injection.
 
-- Driving uses `SendInput`. Windows you run elevated (as administrator) cannot be controlled from a non-elevated process: run demoreel elevated too.
+- Driving uses `SendInput`. Windows you run elevated (as administrator) cannot be controlled from a non-elevated process: run screenpilot elevated too.
 - Coordinates are physical pixels.
 - Holding notification popups and closing them are no-ops on Windows.
 - Recording is native by default (ffmpeg `gdigrab`, mouse pointer included); `--recorder obs` maps OBS display-capture sources to monitors by their `monitor_id`.
-- The demo browser is Chrome, Edge or Brave (first found); set `DEMOREEL_BROWSER` to pick another.
+- The demo browser is Chrome, Edge or Brave (first found); set `SCREENPILOT_BROWSER` to pick another.
 - The `open` take step opens a file or URL with the default app (the URL protocol handler on Windows, `xdg-open` on Linux, `open` on macOS).
 
 CI: GitHub Actions. `.github/workflows/ci.yml` (Linux: typecheck, tests, build) runs on every push and pull request to `main`; `.github/workflows/windows.yml` (tests + `smoke:windows` on a real Windows runner) runs only when code that behaves differently on Windows changes (`src/platform`, `src/record`, `src/drive`, `src/take`, `src/util`, `scripts`, dependencies), or by hand from the Actions tab, since Windows minutes count double on private repos.

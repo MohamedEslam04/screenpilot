@@ -11,7 +11,7 @@ import { APP, isOurs, named } from "../brand.js";
 type SceneItem = Record<string, unknown>;
 
 // Drives OBS Studio through obs-websocket v5 (built into OBS 28+). We record
-// a dedicated "demoreel" scene holding one full-screen capture source, so the
+// a dedicated "screenpilot" scene holding one full-screen capture source, so the
 // user's own scenes are untouched apart from switching to it while recording.
 
 export const SCENE = APP;
@@ -119,7 +119,7 @@ export class ObsRecorder {
     await saveState(state);
   }
 
-  /** Create (once) the demoreel scene + capture source and switch to it. */
+  /** Create (once) the screenpilot scene + capture source and switch to it. */
   async prepareScene(log: (m: string) => void, pickTimeoutMs = 90_000): Promise<CaptureInfo> {
     const { scenes, currentProgramSceneName } = await this.obs.call("GetSceneList");
     this.previousScene = currentProgramSceneName;

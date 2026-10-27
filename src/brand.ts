@@ -6,8 +6,10 @@ import { join } from "node:path";
 // APP (and add the old name to PREVIOUS_NAMES so existing users keep their
 // settings: the config folder is moved over on first use).
 
-export const APP = "demoreel";
-export const PREVIOUS_NAMES: string[] = [];
+export const APP = "screenpilot";
+/** Display name. */
+export const APP_TITLE = "ScreenPilot";
+export const PREVIOUS_NAMES: string[] = ["demoreel"];
 
 /** D-Bus well-known-name / object-path prefixes. */
 export const DBUS_NAME = `dev.${APP}`;

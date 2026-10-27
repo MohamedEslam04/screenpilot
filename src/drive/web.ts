@@ -246,16 +246,16 @@ const metrics = (page: Page): Promise<Metrics> =>
 
 async function calibrate(page: Page, m: Metrics, win: WindowInfo, pointer: PointerMover): Promise<{ dx: number; dy: number }> {
   await page.evaluate(() => {
-    const w = window as unknown as { __demoreelPointer: { x: number; y: number } | null };
-    w.__demoreelPointer = null;
-    addEventListener("mousemove", (e) => (w.__demoreelPointer = { x: e.clientX, y: e.clientY }), { capture: true });
+    const w = window as unknown as { __screenpilotPointer: { x: number; y: number } | null };
+    w.__screenpilotPointer = null;
+    addEventListener("mousemove", (e) => (w.__screenpilotPointer = { x: e.clientX, y: e.clientY }), { capture: true });
   });
   const target = { x: m.iw / 2, y: m.ih / 2 };
   const est = contentToScreen({ ...target, width: 0, height: 0 }, m, win);
   await pointer.moveToGlobal({ x: est.x - 8, y: est.y - 8 }, { dur: 0.25 });
   await pointer.moveToGlobal(est, { dur: 0.12 });
   await sleep(150);
-  const got = await page.evaluate(() => (window as unknown as { __demoreelPointer: { x: number; y: number } | null }).__demoreelPointer);
+  const got = await page.evaluate(() => (window as unknown as { __screenpilotPointer: { x: number; y: number } | null }).__screenpilotPointer);
   if (!got) throw new Error("Calibration failed: the page saw no pointer movement (is the browser window visible?)");
   const k = win.w / m.ow;
   return { dx: (target.x - got.x) * k, dy: (target.y - got.y) * k };

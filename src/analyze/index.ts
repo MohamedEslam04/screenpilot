@@ -64,7 +64,7 @@ export async function resolveTarget(target: string): Promise<{
   return { video: abs, events: existsSync(events) ? events : null, dir: dirname(abs) };
 }
 
-/** `target` is a session directory (from `demoreel record`) or a video file. */
+/** `target` is a session directory (from `screenpilot record`) or a video file. */
 export async function analyze(target: string, opts: AnalyzeOptions = {}): Promise<AnalyzeResult> {
   const { video, events, dir, canvasScreens, windows } = await resolveTarget(target);
   const info = await probeVideo(video);

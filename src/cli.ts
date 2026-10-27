@@ -51,7 +51,7 @@ const parseTimes = (s: string) => s.split(",").map((x) => Number(x.trim())).filt
 
 const program = new Command()
   .name(APP)
-  .description("Record any desktop app, write a storyboard, render a polished demo video.")
+  .description("AI pilot for screen videos: record any app (or let the agent drive it), then edit it into a polished video.")
   .version("0.1.0");
 
 program

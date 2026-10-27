@@ -1,17 +1,17 @@
 ---
-name: demoreel
+name: screenpilot
 description: Make a polished demo / product video from a screen recording of any desktop app (Linux, Windows, macOS). Use when the user wants to record an app, edit a screen recording with zooms, captions, highlights and voiceover (English or Arabic), cut idle time, or render a demo MP4 from a storyboard.
 ---
 
-# demoreel: record, storyboard, render
+# screenpilot: record, storyboard, render
 
-You record (or receive) a raw screen recording, look at it, write `storyboard.json`, and demoreel renders an MP4 (HyperFrames, Edge TTS voiceover). You are the editor: you decide the cuts, zooms, captions and narration.
+You record (or receive) a raw screen recording, look at it, write `storyboard.json`, and screenpilot renders an MP4 (HyperFrames, Edge TTS voiceover). You are the editor: you decide the cuts, zooms, captions and narration.
 
-Each step has an MCP tool and a CLI form (`demoreel ...`, or `node /abs/path/dist/cli.js ...`). Use whichever is available.
+Each step has an MCP tool and a CLI form (`screenpilot ...`, or `node /abs/path/dist/cli.js ...`). Use whichever is available.
 
 ## Ground rules
 
-- All times in the storyboard are **SOURCE seconds** (the raw recording), never output seconds. Only `check_output` / `demoreel check` use output seconds.
+- All times in the storyboard are **SOURCE seconds** (the raw recording), never output seconds. Only `check_output` / `screenpilot check` use output seconds.
 - All positions are **normalized 0..1** of the source frame: x from the left, y from the top.
 - Narration never overlaps: if a voice line is longer than its slot, render freezes the video (`autoHolds` in the result). Do not hand-tune for that; just keep lines short.
 - Iterate with quality `draft`; use `delivery` only for the final render.
@@ -20,34 +20,34 @@ Each step has an MCP tool and a CLI form (`demoreel ...`, or `node /abs/path/dis
 
 1. **Record** (skip if the user gave a video).
    MCP `record_start` (dir?, input?, screen?, obsUrl?, obsPassword?) -> user performs the demo -> `record_stop`.
-   CLI `demoreel record` (Enter or Ctrl+C to finish, or `--duration <s>`; `--screen eDP-1` on multi-monitor setups). Records natively by default (no OBS needed: KDE PipeWire/GStreamer, Windows ffmpeg); `recorder: "obs"` / `--recorder obs` uses OBS. Run `doctor` first if anything is off.
+   CLI `screenpilot record` (Enter or Ctrl+C to finish, or `--duration <s>`; `--screen eDP-1` on multi-monitor setups). Records natively by default (no OBS needed: KDE PipeWire/GStreamer, Windows ffmpeg); `recorder: "obs"` / `--recorder obs` uses OBS. Run `doctor` first if anything is off.
    Result: a session dir with the video, `events.jsonl` (pointer and clicks) and meta.
    To frame one window cleanly, pass `fitWindow` (MCP) / `--fit-window <class or title>` (CLI): it is resized to 16:9 during the recording and put back after.
-   (OBS only) If record_stop warns that it assumed which monitor OBS records, check the frames; if the pointer does not line up, MCP `remap` (dir, screen) / CLI `demoreel remap <session> --screen <name>`.
+   (OBS only) If record_stop warns that it assumed which monitor OBS records, check the frames; if the pointer does not line up, MCP `remap` (dir, screen) / CLI `screenpilot remap <session> --screen <name>`.
 
-2. **Analyze.** MCP `analyze` (target = session dir or video). CLI `demoreel analyze <target>`.
+2. **Analyze.** MCP `analyze` (target = session dir or video). CLI `screenpilot analyze <target>`.
    Gives duration, `idle` spans (cut or speed these up), `clicks` (zoom targets), `suggestedSegments`, `suggestedZooms`, and a contact sheet image. Look at the contact sheet first to understand the story.
-3. **Look closer.** MCP `get_frames` (video, times, grid: true). CLI `demoreel frames <video> --at 1,4.5,10 --grid`.
+3. **Look closer.** MCP `get_frames` (video, times, grid: true). CLI `screenpilot frames <video> --at 1,4.5,10 --grid`.
    The grid labels 0..1 coordinates on the image: read the x/y of the button or field you want to zoom or highlight straight off it. Look at a frame just before and just after each click you plan to feature. Max 12 images per MCP call.
-4. **Init.** MCP `storyboard_init` (target, suggest?, out?, voice?). CLI `demoreel init <session-dir|video> --suggest [--voice ar-EG-SalmaNeural]`. Writes a starter storyboard; with suggest it pre-fills `segments` (idle time cut) and `zooms` (from clicks) for you to refine. `storyboard_schema` / `demoreel schema` prints the full JSON Schema.
+4. **Init.** MCP `storyboard_init` (target, suggest?, out?, voice?). CLI `screenpilot init <session-dir|video> --suggest [--voice ar-EG-SalmaNeural]`. Writes a starter storyboard; with suggest it pre-fills `segments` (idle time cut) and `zooms` (from clicks) for you to refine. `storyboard_schema` / `screenpilot schema` prints the full JSON Schema.
 5. **Write the storyboard** (see example). Edit the file directly.
-6. **Validate.** MCP `storyboard_validate` (path). CLI `demoreel validate <storyboard>`. Fix every schema issue; read warnings (overlapping segments, items past the end of the video, callouts without x/y).
-7. **Render a draft.** MCP `render` (storyboard, quality: "draft"). CLI `demoreel render <storyboard> -q draft`. Slow (minutes); it makes the voice, cuts the video and renders. `build` / `demoreel build` does everything except the final render; `preview` / `demoreel preview` opens HyperFrames Studio for the user.
-8. **Review.** MCP `check_output` (video, times?). CLI `demoreel check <video> [--at 2,8,15]`. Times are OUTPUT seconds. Check: zoom lands on the right element, captions are not cut off or overlapping, nothing important is hidden by a caption, pacing feels right.
+6. **Validate.** MCP `storyboard_validate` (path). CLI `screenpilot validate <storyboard>`. Fix every schema issue; read warnings (overlapping segments, items past the end of the video, callouts without x/y).
+7. **Render a draft.** MCP `render` (storyboard, quality: "draft"). CLI `screenpilot render <storyboard> -q draft`. Slow (minutes); it makes the voice, cuts the video and renders. `build` / `screenpilot build` does everything except the final render; `preview` / `screenpilot preview` opens HyperFrames Studio for the user.
+8. **Review.** MCP `check_output` (video, times?). CLI `screenpilot check <video> [--at 2,8,15]`. Times are OUTPUT seconds. Check: zoom lands on the right element, captions are not cut off or overlapping, nothing important is hidden by a caption, pacing feels right.
 9. **Iterate** steps 5-8. Change one kind of thing at a time (timing, then zooms, then wording).
-10. **Final render** with quality `delivery`: `demoreel render <storyboard> -q delivery -o demo.mp4`. Tell the user the output path, duration and any warnings.
+10. **Final render** with quality `delivery`: `screenpilot render <storyboard> -q delivery -o demo.mp4`. Tell the user the output path, duration and any warnings.
 
 ## Optional: you perform the demo (KDE Wayland)
 
-Instead of asking the user to perform the demo, drive the desktop yourself and let demoreel record it. Loop: **explore -> rehearse -> perform -> review storyboard -> render** (then the normal loop above, from step 2).
+Instead of asking the user to perform the demo, drive the desktop yourself and let screenpilot record it. Loop: **explore -> rehearse -> perform -> review storyboard -> render** (then the normal loop above, from step 2).
 
-Requirements: KDE Wayland; the user approves the KDE "remote control" dialog once (select all monitors; token saved in `~/.config/demoreel/state.json`); recording is native (OBS optional, with one capture source per monitor and `--map "Source=MONITOR"` if names don't match). On Windows driving works via SendInput (elevated apps need an elevated tool).
+Requirements: KDE Wayland; the user approves the KDE "remote control" dialog once (select all monitors; token saved in `~/.config/screenpilot/state.json`); recording is native (OBS optional, with one capture source per monitor and `--map "Source=MONITOR"` if names don't match). On Windows driving works via SendInput (elevated apps need an elevated tool).
 
 Rules for every drive tool: coordinates are normalized 0..1 per monitor; take a screenshot first, act, then screenshot again to verify; the real mouse and keyboard are used, so ask the user not to touch them (touching the mouse aborts); prefer `{web: selector}` targets inside the demo browser; secrets only as `{env: NAME}`, never as literal text.
 
-1. **Explore.** MCP `screenshot` (grid: true), `windows`, `browser_open` (screen, url), `web_locate` (selector), and act with `focus_window`, `pointer_move`, `click`, `drag`, `scroll`, `key`, `type_text`. CLI: `demoreel screenshot --grid`, `windows`, `browser`, `drive ...`. Check the result of each action with a new screenshot.
-2. **Write `take.json`.** MCP `take_schema` / CLI `demoreel take-schema`. Target forms: `{screen, x, y}`, `{web: selector}`, `{window: match, x, y}`.
-3. **Rehearse.** MCP `perform` (take, dryRun: true) / CLI `demoreel perform take.json --dry-run`. A failure returns `{failedStep, error, partial}` / names the step: fix it and repeat. MCP `abort` / Ctrl+C stops a run.
+1. **Explore.** MCP `screenshot` (grid: true), `windows`, `browser_open` (screen, url), `web_locate` (selector), and act with `focus_window`, `pointer_move`, `click`, `drag`, `scroll`, `key`, `type_text`. CLI: `screenpilot screenshot --grid`, `windows`, `browser`, `drive ...`. Check the result of each action with a new screenshot.
+2. **Write `take.json`.** MCP `take_schema` / CLI `screenpilot take-schema`. Target forms: `{screen, x, y}`, `{web: selector}`, `{window: match, x, y}`.
+3. **Rehearse.** MCP `perform` (take, dryRun: true) / CLI `screenpilot perform take.json --dry-run`. A failure returns `{failedStep, error, partial}` / names the step: fix it and repeat. MCP `abort` / Ctrl+C stops a run.
 4. **Perform.** `perform` without dryRun: records all monitors, drives, and writes a session dir with video, `events.jsonl` and a starter `storyboard.json` (zooms, narration, captions, views).
 5. **Review the storyboard** with `analyze` and `get_frames`, edit, `storyboard_validate`, render draft, `check_output`, final render.
 
@@ -132,7 +132,7 @@ What each part does:
 - `highlights`: a box (`x`,`y` top-left, `w`,`h` size, all 0..1) with optional label.
 - `narration`: `at` is the source time the line starts. Per-line `voice` overrides `voice.name`. A line placed in a cut region is dropped (warning). Lines also show as subtitles unless `caption: false` or `voice.subtitles: false`.
 - `intro` / `outro`: title cards. `music`: `{ "src": "bgm.mp3", "volume": 0.12 }`. `keepSourceAudio`, `output` (1920x1080@30 default) and `theme` (background, padding, radius, accent, font, clickRipples) are optional.
-- Voices: MCP `voices` (lang: "ar-EG") / `demoreel voices --lang ar-EG`. Egyptian Arabic: `ar-EG-SalmaNeural` (f), `ar-EG-ShakirNeural` (m). English: `en-US-AndrewNeural`, `en-US-AriaNeural`.
+- Voices: MCP `voices` (lang: "ar-EG") / `screenpilot voices --lang ar-EG`. Egyptian Arabic: `ar-EG-SalmaNeural` (f), `ar-EG-ShakirNeural` (m). English: `en-US-AndrewNeural`, `en-US-AriaNeural`.
 
 ## Style guidance for good demos
 
@@ -145,6 +145,6 @@ What each part does:
 - Start with a rough pass (segments + narration), review a draft, then add zooms and captions.
 
 ## Platform notes
-- Works on KDE Plasma (Wayland) and Windows 10/11. Run MCP `doctor` / CLI `demoreel doctor` first on a new machine.
+- Works on KDE Plasma (Wayland) and Windows 10/11. Run MCP `doctor` / CLI `screenpilot doctor` first on a new machine.
 - Take step `{ "open": "<file or URL>" }` opens it with the default app on any OS (prefer it over `run` with xdg-open/start).
 - On Windows, apps running as administrator cannot be driven from a non-admin process.

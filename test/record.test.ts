@@ -57,7 +57,7 @@ describe("kwin", () => {
   });
 
   it("embeds the D-Bus service name safely", () => {
-    expect(kwinScript("dev.demoreel.Rec42")).toContain('var svc = "dev.demoreel.Rec42";');
+    expect(kwinScript("dev.screenpilot.Rec42")).toContain('var svc = "dev.screenpilot.Rec42";');
   });
 });
 

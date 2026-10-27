@@ -1,6 +1,6 @@
-# demoreel: agent guide
+# screenpilot: agent guide
 
-Turn a screen recording of any desktop app into a polished demo MP4. You write `storyboard.json` (cuts, zooms, captions, highlights, voiceover); demoreel renders it with HyperFrames and Edge TTS. Run the CLI as `demoreel` (or `node dist/cli.js`). An MCP server (`dist/mcp.js`) exposes the same steps as tools; see README. Claude Code users also get `skill/SKILL.md` with a longer walkthrough and a full storyboard example.
+Turn a screen recording of any desktop app into a polished demo MP4. You write `storyboard.json` (cuts, zooms, captions, highlights, voiceover); screenpilot renders it with HyperFrames and Edge TTS. Run the CLI as `screenpilot` (or `node dist/cli.js`). An MCP server (`dist/mcp.js`) exposes the same steps as tools; see README. Claude Code users also get `skill/SKILL.md` with a longer walkthrough and a full storyboard example.
 
 ## Rules
 
@@ -11,28 +11,28 @@ Turn a screen recording of any desktop app into a polished demo MP4. You write `
 
 ## Workflow
 
-1. Record (or use an existing video): `demoreel record` -> session dir with video, `events.jsonl` and `windows.jsonl`. Records natively by default (KDE PipeWire/GStreamer, Windows ffmpeg); `--recorder obs` uses OBS instead. `demoreel doctor` checks the setup.
+1. Record (or use an existing video): `screenpilot record` -> session dir with video, `events.jsonl` and `windows.jsonl`. Records natively by default (KDE PipeWire/GStreamer, Windows ffmpeg); `--recorder obs` uses OBS instead. `screenpilot doctor` checks the setup.
    `--fit-window <class or title>` resizes that window to 16:9 for the recording (restored after) so window framing shows it whole.
-   If `record` warns it assumed which monitor OBS records and that was wrong: `demoreel remap <session> --screen <name>` (names in meta.json `screens`).
-2. Analyze: `demoreel analyze <session-dir|video>` -> idle spans, clicks, suggested segments/zooms, contact sheet image. View the contact sheet.
-3. Look closer: `demoreel frames <video> --at 1,4.5,10 --grid`. The grid shows 0..1 coordinates; read zoom/highlight/callout positions from it. View the images.
-4. Start: `demoreel init <session-dir|video> --suggest [--voice ar-EG-SalmaNeural]` (`--suggest` pre-fills idle cuts and click zooms). Schema: `demoreel schema`. Voices: `demoreel voices --lang ar-EG`.
+   If `record` warns it assumed which monitor OBS records and that was wrong: `screenpilot remap <session> --screen <name>` (names in meta.json `screens`).
+2. Analyze: `screenpilot analyze <session-dir|video>` -> idle spans, clicks, suggested segments/zooms, contact sheet image. View the contact sheet.
+3. Look closer: `screenpilot frames <video> --at 1,4.5,10 --grid`. The grid shows 0..1 coordinates; read zoom/highlight/callout positions from it. View the images.
+4. Start: `screenpilot init <session-dir|video> --suggest [--voice ar-EG-SalmaNeural]` (`--suggest` pre-fills idle cuts and click zooms). Schema: `screenpilot schema`. Voices: `screenpilot voices --lang ar-EG`.
 5. Edit `storyboard.json`: `segments` (keep parts, `speed` to fast-forward), `holds`, `zooms` (at, dur, x, y, scale), `captions` (style pill/title/callout; callout needs x,y), `highlights` (x,y,w,h), `narration` (at, text, optional per-line `voice`), `intro`/`outro`, `music`.
-6. Validate: `demoreel validate storyboard.json`.
-7. Draft: `demoreel render storyboard.json -q draft`.
-8. Review: `demoreel check storyboard.mp4 --at 2,8,15` (output seconds) and view the frames. Fix and repeat 5-8.
-9. Final: `demoreel render storyboard.json -q delivery -o demo.mp4`.
+6. Validate: `screenpilot validate storyboard.json`.
+7. Draft: `screenpilot render storyboard.json -q draft`.
+8. Review: `screenpilot check storyboard.mp4 --at 2,8,15` (output seconds) and view the frames. Fix and repeat 5-8.
+9. Final: `screenpilot render storyboard.json -q delivery -o demo.mp4`.
 
-`demoreel build` prepares everything without rendering; `demoreel preview` opens HyperFrames Studio.
+`screenpilot build` prepares everything without rendering; `screenpilot preview` opens HyperFrames Studio.
 
 ## Agent drives the desktop (KDE Wayland)
 
 Instead of asking the user to perform the demo, you can perform it. Loop: explore, rehearse, perform, review, render.
 
 1. Explore: `screenshot --grid` (MCP `screenshot`) and `windows`; `browser --url ...` for web apps. Act with `drive` (MCP `click`, `type_text`, ...), screenshot after each action to verify.
-2. Write `take.json` (`demoreel take-schema`, or MCP `take_schema`). Use `{web: selector}` targets inside the demo browser; they are exact.
-3. Rehearse: `demoreel perform take.json --dry-run`. Fix the failing step (errors name the step) and repeat until clean.
-4. Perform: `demoreel perform take.json` -> session dir with video, events and a starter `storyboard.json`.
+2. Write `take.json` (`screenpilot take-schema`, or MCP `take_schema`). Use `{web: selector}` targets inside the demo browser; they are exact.
+3. Rehearse: `screenpilot perform take.json --dry-run`. Fix the failing step (errors name the step) and repeat until clean.
+4. Perform: `screenpilot perform take.json` -> session dir with video, events and a starter `storyboard.json`.
 5. Review the storyboard (`analyze`, `frames --grid`), refine, `validate`, render `-q draft`, `check`, then `-q delivery`.
 
 The real mouse and keyboard are used: tell the user to keep their hands off (touching the mouse aborts). Secrets: `{"type": {"env": "VAR"}}`, never literal text.
@@ -87,4 +87,4 @@ Take tips: put `say` with `wait: true` before an important click so the viewer h
 - The MCP server must never write to stdout except protocol messages; log to stderr.
 - Renaming the project: the name lives only in `src/brand.ts` (`APP`). Change it, add the old name to `PREVIOUS_NAMES` (users' config folder is moved over on first run), then update `package.json` (`name`, `bin`), the docs, and rename the GitHub repo.
 - Platforms: everything OS-specific is behind `src/platform` (`Desktop`, `Injector`, `Watcher`): `kde.ts` (portal + KWin) and `windows/` (Win32 via koffi). Recording backends are in `src/record/backends` (native: KDE PipeWire/GStreamer, Windows ffmpeg gdigrab; or OBS).
-- Windows is verified in CI by `pnpm smoke:windows` on a real runner; on a real PC run `pnpm windows:live` (doctor, smoke, a narrated take across monitors + render into `windows-live-report/`). `demoreel doctor [--input]` checks any machine.
+- Windows is verified in CI by `pnpm smoke:windows` on a real runner; on a real PC run `pnpm windows:live` (doctor, smoke, a narrated take across monitors + render into `windows-live-report/`). `screenpilot doctor [--input]` checks any machine.
