@@ -152,6 +152,8 @@ Three ways to show a multi-monitor setup (all tested on KDE Wayland with two 192
 
 Zooms, highlights and callouts use coordinates normalized to the whole recording (both monitors), so they work in all three. If OBS has one source that shows the whole desktop, demoreel uses it (cropped for a single monitor); otherwise it places one source per monitor. Which source shows which monitor is worked out by comparing the pictures.
 
+While recording, demoreel asks the desktop to hold notification popups (freedesktop `Notifications.Inhibit`; released when recording stops or the process dies). Plasma already does this during screen sharing; critical notifications (e.g. low memory) still show.
+
 Renders use 2 headless-Chrome workers by default (`--workers`): more is faster but can push a desktop that is also running OBS and browsers out of memory.
 
 ## Storyboard reference
@@ -205,4 +207,4 @@ When a narration line is longer than its slot, the render freezes the video auto
 
 ---
 
-Docs synced to commit 599faaa ("fix: reliable driving and multi-monitor recording on KDE", 2026-10-27).
+Docs synced to commit b37c0a7 ("docs: record docs-sync baseline", 2026-10-27).

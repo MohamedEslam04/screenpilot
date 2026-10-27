@@ -4,6 +4,7 @@ import { probeVideo } from "../util/media.js";
 import { startAdapter } from "./input/index.js";
 import { type Rect, type ScreenInfo, screenAt, screenForSourceName } from "./input/types.js";
 import { normalizeEvents } from "./normalize.js";
+import { quietNotifications } from "./quiet.js";
 import { detectLayout } from "../drive/see.js";
 import { loadState, saveState } from "../drive/state.js";
 import { type CaptureInfo, ObsRecorder, resolveObsConfig, unionRect } from "./obs.js";
@@ -26,6 +27,8 @@ export interface RecordOptions {
   screens?: "all" | string[];
   /** OBS source name → monitor name, when names don't make it obvious (saved for next time). */
   map?: Record<string, string>;
+  /** Hold notification popups while recording (default true). */
+  quiet?: boolean;
   log?: (msg: string) => void;
 }
 
@@ -120,7 +123,13 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
       log(`OBS source "${capture.sourceName}"${pick.screen ? ` → pointer mapped to ${pick.screen.name}` : ""}`);
     }
 
-    await obs.start(dir);
+    const unquiet = opts.quiet === false ? async () => {} : await quietNotifications();
+    try {
+      await obs.start(dir);
+    } catch (err) {
+      await unquiet();
+      throw err;
+    }
     log(`recording → ${dir}`);
     const a = adapter;
 
@@ -129,7 +138,12 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
       startedAt: obs.startedAt,
       inputAdapter: a.id,
       async stop(): Promise<RecordResult> {
-        const output = await obs.stop();
+        let output: string;
+        try {
+          output = await obs.stop();
+        } finally {
+          await unquiet(); // a long-lived MCP server must not keep notifications held
+        }
         await a.stop();
         await obs.disconnect();
         warnings.push(...a.warnings.filter((w) => !warnings.includes(w)));
