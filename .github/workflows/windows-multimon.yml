@@ -1,0 +1,46 @@
+name: Windows multi-monitor
+
+# Proves multi-monitor and mixed-DPI behaviour: adds a second monitor with an
+# Indirect Display driver, gives it another DPI scale, then runs the smoke test.
+# Windows minutes count double, so this only runs by hand or on its own branch.
+on:
+  workflow_dispatch:
+  push:
+    branches: [ci/windows-multimon]
+
+concurrency:
+  group: windows-multimon-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  multimon:
+    runs-on: windows-latest
+    # Also counts time queued; billed time is bounded by the step timeouts.
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6 # version from package.json "packageManager"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install ffmpeg
+        uses: AnimMouse/setup-ffmpeg@v1
+        timeout-minutes: 5
+      - run: pnpm install --frozen-lockfile
+        timeout-minutes: 5
+      - name: Add a virtual monitor (150% DPI, offset to the right)
+        shell: powershell
+        timeout-minutes: 5
+        run: ./scripts/ci/windows-multimon-setup.ps1 -Scale 150 -OffsetY -200
+      - name: Multi-monitor smoke test
+        if: always() && hashFiles('scripts/windows-multimon-smoke.ts') != ''
+        timeout-minutes: 8
+        run: pnpm smoke:windows-multimon
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: multimon-report
+          path: multimon-report/
+          if-no-files-found: warn
