@@ -1,0 +1,62 @@
+name: macOS multi-display
+
+# Creates a virtual Retina display (private CGVirtualDisplay API) next to the
+# runner's display and runs scripts/macos-multidisplay-smoke.ts against it.
+# macOS minutes cost 10x: manual or on the ci/macos-multidisplay branch only.
+on:
+  workflow_dispatch:
+  push:
+    branches: [ci/macos-multidisplay]
+
+concurrency:
+  group: macos-multidisplay-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  multidisplay:
+    runs-on: macos-latest # Apple Silicon
+    # Counts queue time too; billed time is bounded by the step timeouts.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install ffmpeg
+        uses: AnimMouse/setup-ffmpeg@v1
+        timeout-minutes: 5
+      - run: pnpm install --frozen-lockfile
+        timeout-minutes: 5
+      - name: Build the virtual display helper
+        run: |
+          mkdir -p smoke-report
+          swiftc -O -import-objc-header scripts/macos/vdisplay.h scripts/macos/vdisplay.swift -o "$RUNNER_TEMP/vdisplay"
+        timeout-minutes: 5
+      - name: Create the virtual Retina display
+        run: |
+          nohup "$RUNNER_TEMP/vdisplay" 1512 982 1 px 100 smoke-report/vdisplay.json > smoke-report/vdisplay.log 2>&1 &
+          PID=$!
+          for i in $(seq 1 40); do
+            [ -f smoke-report/vdisplay.json ] && break
+            kill -0 $PID 2>/dev/null || break
+            sleep 0.5
+          done
+          cat smoke-report/vdisplay.log || true
+          cat smoke-report/vdisplay.json
+          system_profiler SPDisplaysDataType || true
+          ffmpeg -hide_banner -f avfoundation -list_devices true -i "" 2>&1 | grep -i "capture screen" || true
+        timeout-minutes: 3
+      - name: Prepare Chrome
+        run: sudo xattr -dr com.apple.quarantine "/Applications/Google Chrome.app" || true
+      - name: macOS multi-display smoke test
+        run: pnpm smoke:macos-multidisplay
+        timeout-minutes: 12
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-multidisplay-report
+          path: smoke-report/
+          if-no-files-found: warn
