@@ -143,3 +143,8 @@ What each part does:
 - **Pace.** Narration line and the action it describes should start together; leave ~0.3s of air between lines. Total demo ideally 30-90s.
 - **Don't stack effects.** A zoom + highlight + callout on the same click is too much; choose the one that points best.
 - Start with a rough pass (segments + narration), review a draft, then add zooms and captions.
+
+## Platform notes
+- Works on KDE Plasma (Wayland) and Windows 10/11. Run MCP `doctor` / CLI `demoreel doctor` first on a new machine.
+- Take step `{ "open": "<file or URL>" }` opens it with the default app on any OS (prefer it over `run` with xdg-open/start).
+- On Windows, apps running as administrator cannot be driven from a non-admin process.
