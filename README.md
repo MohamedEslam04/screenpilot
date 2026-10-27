@@ -202,3 +202,7 @@ When a narration line is longer than its slot, the render freezes the video auto
 - Click capture on Wayland needs the `input` group; macOS will likely need Input Monitoring permission for the host app (untested).
 - Rendering is not fast: use `draft` while iterating.
 - Narration in cut regions is dropped; the agent must keep lines inside kept segments.
+
+---
+
+Docs synced to commit 599faaa ("fix: reliable driving and multi-monitor recording on KDE", 2026-10-27).
