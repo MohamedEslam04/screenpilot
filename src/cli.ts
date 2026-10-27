@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { Command } from "commander";
 import { analyze } from "./analyze/index.js";
+import { doctor } from "./doctor.js";
 import { evenTimes, grabFrames } from "./frames.js";
 import { initStoryboard } from "./init.js";
 import { type InputAdapterId, startRecording } from "./record/index.js";
@@ -318,6 +319,17 @@ program
     const outDir = o.out ?? join(dirname(resolve(video)), `${basename(video)}.check`);
     const frames = await grabFrames(video, times, { outDir, width: 960, prefix: "out" });
     print({ duration: info.duration, hasAudio: info.hasAudio, frames });
+  });
+
+program
+  .command("doctor")
+  .description("Check this machine: ffmpeg, desktop, monitors, OBS, demo browser, voices. Prints a JSON report; exit code is always 0")
+  .option("--input", "Also test input injection (moves the real pointer for a moment)")
+  .action(async (o: { input?: boolean }) => {
+    const r = await doctor({ input: o.input });
+    print(r);
+    log(r.summary);
+    process.exit(0);
   });
 
 program.parseAsync().catch((err: unknown) => {
