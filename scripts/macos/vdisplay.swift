@@ -47,7 +47,7 @@ guard let vd = CGVirtualDisplay(descriptor: desc) else { fail("CGVirtualDisplay(
 let settings = CGVirtualDisplaySettings()
 settings.hiDPI = hidpi
 settings.modes = [CGVirtualDisplayMode(width: modeW, height: modeH, refreshRate: 60)]
-let applied = vd.applySettings(settings)
+let applied = vd.apply(settings)
 let id = vd.displayID
 if id == 0 { fail("CGVirtualDisplay has displayID 0 (not created); applySettings=\(applied)") }
 
