@@ -98,6 +98,8 @@ export interface Monitor {
   /** Monitor area without the taskbar / docked app bars. */
   work: Rect;
   primary: boolean;
+  /** Effective DPI of the monitor (96 = 100% scale); 96 when Windows can't say. */
+  dpi: number;
 }
 
 export type Win32 = ReturnType<typeof bind>;
@@ -118,6 +120,7 @@ const EDD_GET_DEVICE_INTERFACE_NAME = 1;
 const MONITORINFOF_PRIMARY = 1;
 const PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 const DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4;
+const MDT_EFFECTIVE_DPI = 0;
 
 let loaded: Promise<Win32> | undefined;
 
@@ -165,6 +168,9 @@ export const PROTOTYPES = {
       "int __stdcall QueryFullProcessImageNameW(HANDLE hProcess, uint32_t dwFlags, _Out_ void *lpExeName, _Inout_ uint32_t *lpdwSize)",
     CloseHandle: "int __stdcall CloseHandle(HANDLE hObject)",
   },
+  "shcore.dll": {
+    GetDpiForMonitor: "int32_t __stdcall GetDpiForMonitor(HMONITOR hmonitor, int dpiType, _Out_ uint32_t *dpiX, _Out_ uint32_t *dpiY)",
+  },
   "dwmapi.dll": {
     DwmGetWindowAttribute: "int32_t __stdcall DwmGetWindowAttribute(HWND hwnd, uint32_t dwAttribute, _Out_ void *pvAttribute, uint32_t cbAttribute)",
   },
@@ -192,6 +198,12 @@ function bind(koffi: Koffi) {
     // older Windows: coordinates may be DPI-virtualized
   }
 
+
+  const dpiOf = (h: bigint): number => {
+    const x = [0];
+    const y = [0];
+    return fn.GetDpiForMonitor(h, MDT_EFFECTIVE_DPI, x, y) === 0 && x[0]! > 0 ? x[0]! : 96;
+  };
 
   const inputSize = koffi.sizeof(t.INPUT);
   const wide = (buf: Buffer, chars: number) => buf.toString("utf16le", 0, chars * 2);
@@ -256,6 +268,7 @@ function bind(koffi: Koffi) {
           screen: toScreen(mi.szDevice, rectFromLTRB(mi.rcMonitor), model, deviceId),
           work: rectFromLTRB(mi.rcWork),
           primary: (mi.dwFlags & MONITORINFOF_PRIMARY) !== 0,
+          dpi: dpiOf(handle),
         });
       }
       return out;
