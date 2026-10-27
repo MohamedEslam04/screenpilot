@@ -9,7 +9,14 @@ const DEST = "org.freedesktop.Notifications";
 const PATH = "/org/freedesktop/Notifications";
 
 export async function quietNotifications(reason = "Recording a demo"): Promise<() => Promise<void>> {
-  const bus = dbus.sessionBus();
+  // No session bus (headless, CI, some X11 setups) means no popups to hold either.
+  let bus: dbus.MessageBus;
+  try {
+    bus = dbus.sessionBus();
+  } catch {
+    return async () => {};
+  }
+  bus.on("error", () => {});
   let cookie: number;
   try {
     const reply = await bus.call(
