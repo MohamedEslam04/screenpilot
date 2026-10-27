@@ -171,7 +171,7 @@ foreach ($c in $certs) {
 
 # The driver reads its monitor list from here: one 1920x1080@60 monitor (large enough for DPI scales up to 300%).
 New-Item -ItemType Directory -Force C:\VirtualDisplayDriver | Out-Null
-@'
+$vddXml = @'
 <?xml version='1.0' encoding='utf-8'?>
 <vdd_settings>
   <monitors><count>1</count></monitors>
@@ -181,7 +181,8 @@ New-Item -ItemType Directory -Force C:\VirtualDisplayDriver | Out-Null
   </resolutions>
   <options><CustomEdid>false</CustomEdid><PreventSpoof>false</PreventSpoof><EdidCeaOverride>false</EdidCeaOverride><HardwareCursor>true</HardwareCursor><SDR10bit>false</SDR10bit><HDRPlus>false</HDRPlus><logging>false</logging><debuglogging>false</debuglogging></options>
 </vdd_settings>
-'@ | Set-Content -Encoding utf8 C:\VirtualDisplayDriver\vdd_settings.xml
+'@
+[IO.File]::WriteAllText('C:\VirtualDisplayDriver\vdd_settings.xml', $vddXml, (New-Object Text.UTF8Encoding $false))
 
 Write-Host "installing $($inf.FullName)"
 Push-Location $inf.DirectoryName
