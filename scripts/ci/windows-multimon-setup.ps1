@@ -72,14 +72,16 @@ public static class Mm {
   }
 
   /** Attach `dev` (or move it) to x,y at its current/default size; staged, applied by Apply(). */
-  public static int Place(string dev, int x, int y, uint w, uint h) {
+  public static int Place(string dev, int x, int y, uint w, uint h, uint flags) {
     var m = Current(dev);
     if (w > 0) { m.dmPelsWidth = w; m.dmPelsHeight = h; }
     m.dmPositionX = x; m.dmPositionY = y;
     m.dmBitsPerPel = 32;
     m.dmFields = 0x20 | 0x40000 | 0x80000 | 0x100000; // POSITION | BITSPERPEL | PELSWIDTH | PELSHEIGHT
-    return ChangeDisplaySettingsEx(dev, ref m, IntPtr.Zero, 0x1 | 0x10000, IntPtr.Zero); // UPDATEREGISTRY | NORESET
+    return ChangeDisplaySettingsEx(dev, ref m, IntPtr.Zero, flags, IntPtr.Zero);
   }
+
+  public static int ModeSize() { return Marshal.SizeOf(typeof(DEVMODE)); }
 
   public static int Apply() { return ApplyDisplaySettings(null, IntPtr.Zero, IntPtr.Zero, 0, IntPtr.Zero); }
 
@@ -167,6 +169,20 @@ foreach ($c in $certs) {
   Import-Certificate -FilePath $f -CertStoreLocation Cert:\LocalMachine\TrustedPublisher | Out-Null
 }
 
+# The driver reads its monitor list from here: one 1920x1080@60 monitor (large enough for DPI scales up to 300%).
+New-Item -ItemType Directory -Force C:\VirtualDisplayDriver | Out-Null
+@'
+<?xml version='1.0' encoding='utf-8'?>
+<vdd_settings>
+  <monitors><count>1</count></monitors>
+  <gpu><friendlyname>default</friendlyname></gpu>
+  <resolutions>
+    <resolution><width>1920</width><height>1080</height><refresh_rate>60</refresh_rate></resolution>
+  </resolutions>
+  <options><CustomEdid>false</CustomEdid><PreventSpoof>false</PreventSpoof><EdidCeaOverride>false</EdidCeaOverride><HardwareCursor>true</HardwareCursor><SDR10bit>false</SDR10bit><HDRPlus>false</HDRPlus><logging>false</logging><debuglogging>false</debuglogging></options>
+</vdd_settings>
+'@ | Set-Content -Encoding utf8 C:\VirtualDisplayDriver\vdd_settings.xml
+
 Write-Host "installing $($inf.FullName)"
 Push-Location $inf.DirectoryName
 & $nefcon.FullName install $inf.Name 'Root\MttVDD' 2>&1 | Write-Host
@@ -190,7 +206,12 @@ Write-Host "primary $($primary.DeviceName) $($pm.dmPelsWidth)x$($pm.dmPelsHeight
 $vm = [Mm]::Current($vdd.DeviceName)
 $w = $vm.dmPelsWidth; $h = $vm.dmPelsHeight
 if ($w -eq 0) { $w = 1920; $h = 1080 }
-Write-Host ("place rc={0}" -f [Mm]::Place($vdd.DeviceName, [int]$pm.dmPelsWidth, $OffsetY, $w, $h))
+Write-Host "sizeof DEVMODE = $([Mm]::ModeSize()) (want 220)"
+foreach ($flags in 0x10001, 0x1, 0x0) {
+  $rc = [Mm]::Place($vdd.DeviceName, [int]$pm.dmPelsWidth, $OffsetY, $w, $h, $flags)
+  Write-Host ('place flags=0x{0:x} rc={1}' -f $flags, $rc)
+  if ($rc -eq 0) { break }
+}
 Write-Host ("apply rc={0}" -f [Mm]::Apply())
 Start-Sleep 3
 Show-Displays 'after arrange'
