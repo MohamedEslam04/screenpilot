@@ -8,10 +8,8 @@ import { initStoryboard } from "./init.js";
 import { type InputAdapterId, startRecording } from "./record/index.js";
 import { remapSession } from "./record/remap.js";
 import { Driver } from "./drive/index.js";
-import { listWindows } from "./drive/kwinscript.js";
 import { screenshot } from "./drive/see.js";
 import { locate, openBrowser } from "./drive/web.js";
-import { KwinAdapter } from "./record/input/kwin.js";
 import type { ScreenInfo } from "./record/input/types.js";
 import { performTake, TakeError } from "./take/perform.js";
 import { takeJsonSchema } from "./take/schema.js";
@@ -21,6 +19,7 @@ import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider } from "./voice/index.js";
 import { APP } from "./brand.js";
+import { getDesktop } from "./platform/index.js";
 
 const log = (msg: string) => process.stderr.write(`${APP}: ${msg}\n`);
 const print = (data: unknown) => process.stdout.write(`${typeof data === "string" ? data : JSON.stringify(data, null, 2)}\n`);
@@ -34,13 +33,9 @@ async function withDriver(fn: (d: Driver) => Promise<void>): Promise<void> {
   process.exit(0);
 }
 
-/** Monitor layout from KWin without opening a remote-control session. */
+/** Monitor layout without opening a remote-control session. */
 async function withDriverScreens<T>(fn: (screens: ScreenInfo[]) => Promise<T>): Promise<T> {
-  const k = new KwinAdapter();
-  await k.start();
-  const screens = k.screens();
-  await k.stop();
-  return fn(screens);
+  return fn(await (await getDesktop()).screens());
 }
 
 const parseMap = (s: string) =>
@@ -164,7 +159,7 @@ program
   .command("windows")
   .description("List open windows with their position (KWin)")
   .action(async () => {
-    print(await listWindows());
+    print(await (await getDesktop()).listWindows());
   });
 
 program

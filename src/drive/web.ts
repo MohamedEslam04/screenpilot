@@ -5,7 +5,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { type Browser, chromium, type Page } from "playwright-core";
 import type { ScreenInfo } from "../record/input/types.js";
-import { focusWindow, listWindows, type WindowInfo } from "./kwinscript.js";
+import { getDesktop, type WindowInfo } from "../platform/index.js";
 import { configDir } from "../brand.js";
 
 // A clean demo browser (own profile: no personal tabs, bookmarks or logins)
@@ -66,12 +66,12 @@ export async function openBrowser(opts: { screen?: ScreenInfo; url?: string; log
   const win = await browserWindow();
   if (opts.screen) {
     const s = opts.screen;
-    await focusWindow(win.id, { screen: s.name });
+    await (await getDesktop()).focusWindow(win.id, { screen: s.name });
     await sleep(400);
   } else {
-    await focusWindow(win.id);
+    await (await getDesktop()).focusWindow(win.id);
   }
-  return (await listWindows()).find((w) => w.id === win.id) ?? win;
+  return (await (await getDesktop()).listWindows()).find((w) => w.id === win.id) ?? win;
 }
 
 /**
@@ -86,7 +86,7 @@ export async function browserWindow(): Promise<WindowInfo> {
   const pid = info.processInfo.find((p) => p.type === "browser")?.id;
   if (!pid) throw new Error("CDP did not report the browser process id.");
   for (let i = 0; i < 20; i++) {
-    const hit = (await listWindows()).find((w) => w.pid === pid);
+    const hit = (await (await getDesktop()).listWindows()).find((w) => w.pid === pid);
     if (hit) return hit;
     await sleep(250);
   }

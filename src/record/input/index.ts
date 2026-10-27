@@ -35,7 +35,9 @@ export function pickAdapter(id: InputAdapterId): InputAdapter {
 
 /** Start an adapter, falling back to no input if it fails. */
 export async function startAdapter(id: InputAdapterId): Promise<InputAdapter> {
-  const adapter = pickAdapter(id);
+  // On Windows the desktop's watcher logs pointer, clicks and the active window.
+  const adapter =
+    id === "auto" && process.platform === "win32" ? (await import("../../platform/index.js").then((m) => m.getDesktop())).createWatcher() : pickAdapter(id);
   try {
     await adapter.start();
     return adapter;

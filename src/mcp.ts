@@ -8,12 +8,10 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { analyze } from "./analyze/index.js";
 import { Driver } from "./drive/index.js";
-import { findWindow, focusWindow, listWindows } from "./drive/kwinscript.js";
 import { screenshot } from "./drive/see.js";
 import { locate, openBrowser } from "./drive/web.js";
 import { evenTimes, grabFrames } from "./frames.js";
 import { initStoryboard } from "./init.js";
-import { KwinAdapter } from "./record/input/kwin.js";
 import type { ScreenInfo } from "./record/input/types.js";
 import { type ActiveRecording, startRecording } from "./record/index.js";
 import { remapSession } from "./record/remap.js";
@@ -25,6 +23,7 @@ import { TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider } from "./voice/index.js";
 import { APP, named } from "./brand.js";
+import { findWindow, getDesktop } from "./platform/index.js";
 
 // stdout is the protocol channel: log to stderr only.
 const log = (msg: string) => process.stderr.write(`${APP}: ${msg}\n`);
@@ -93,11 +92,7 @@ async function getDriver(): Promise<Driver> {
 /** Monitor layout: from the live driver if open, else straight from KWin. */
 async function getScreens(): Promise<ScreenInfo[]> {
   if (driver) return driver.screens();
-  const k = new KwinAdapter();
-  await k.start();
-  const screens = k.screens();
-  await k.stop();
-  return screens;
+  return (await getDesktop()).screens();
 }
 
 const DRIVE_NOTE =
@@ -355,7 +350,7 @@ server.registerTool(
 server.registerTool(
   "windows",
   { description: "List open windows (id, caption, class, pid, active, geometry in global logical pixels, monitor) via KWin. Read-only." },
-  safe(async () => text(await listWindows())),
+  safe(async () => text(await (await getDesktop()).listWindows())),
 );
 
 server.registerTool(
@@ -368,11 +363,12 @@ server.registerTool(
     },
   },
   driveTool(async ({ match, screen }: { match: string; screen?: string }, d) => {
-    const w = findWindow(await listWindows(), match);
+    const desktop = await getDesktop();
+    const w = findWindow(await desktop.listWindows(), match);
     if (!w) throw new Error(`No window matching "${match}"`);
     const s = screen ? d.screens().find((x) => x.name === screen) : undefined;
     if (screen && !s) throw new Error(`Unknown monitor "${screen}" (have: ${d.screens().map((x) => x.name).join(", ")})`);
-    await focusWindow(w.id, s ? { screen: s.name } : undefined);
+    await desktop.focusWindow(w.id, s ? { screen: s.name } : undefined);
     await new Promise((r) => setTimeout(r, 350));
     return { focused: w.caption };
   }),
