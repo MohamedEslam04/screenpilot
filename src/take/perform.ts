@@ -13,6 +13,7 @@ import { type ActiveRecording, type RecordResult, startRecording } from "../reco
 import type { Rect } from "../record/input/types.js";
 import { normalizeEvents } from "../record/normalize.js";
 import { synthesizeLines } from "../voice/index.js";
+import { openWithDefaultApp } from "./open.js";
 import { type Step, type Take, TakeSchema, type Target } from "./schema.js";
 import { CACHE_DIR } from "../brand.js";
 
@@ -249,6 +250,10 @@ async function runStep(step: Step, { driver: d, log, baseDir }: StepContext): Pr
     const s = step.focus.screen ? d.screens().find((x) => x.name === step.focus.screen) : undefined;
     await d.desktop.focusWindow(w.id, s ? { screen: s.name } : undefined);
     await sleep(350);
+  } else if ("open" in step) {
+    const target = /^[a-z][a-z0-9+.-]+:\/\//i.test(step.open) ? step.open : resolve(baseDir, expandHome(step.open));
+    log(`open: ${target}`);
+    openWithDefaultApp(target);
   } else if ("run" in step) {
     const [cmd, ...args] = step.run.map(expandHome);
     log(`run: ${cmd}`);
