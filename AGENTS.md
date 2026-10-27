@@ -11,7 +11,7 @@ Turn a screen recording of any desktop app into a polished demo MP4. You write `
 
 ## Workflow
 
-1. Record (or use an existing video): `screenpilot record` -> session dir with video, `events.jsonl` and `windows.jsonl`. Records natively by default (KDE PipeWire/GStreamer, Windows ffmpeg); `--recorder obs` uses OBS instead. `screenpilot doctor` checks the setup.
+1. Record (or use an existing video): `screenpilot record` -> session dir with video, `events.jsonl` and `windows.jsonl`. Records natively by default (Wayland: portal PipeWire + GStreamer; X11 and Windows: ffmpeg); `--recorder obs` uses OBS instead. `screenpilot doctor` checks the setup.
    `--fit-window <class or title>` resizes that window to 16:9 for the recording (restored after) so window framing shows it whole.
    If `record` warns it assumed which monitor OBS records and that was wrong: `screenpilot remap <session> --screen <name>` (names in meta.json `screens`).
 2. Analyze: `screenpilot analyze <session-dir|video>` -> idle spans, clicks, suggested segments/zooms, contact sheet image. View the contact sheet.
@@ -25,9 +25,9 @@ Turn a screen recording of any desktop app into a polished demo MP4. You write `
 
 `screenpilot build` prepares everything without rendering; `screenpilot preview` opens HyperFrames Studio.
 
-## Agent drives the desktop (KDE Wayland)
+## Agent drives the desktop (KDE Wayland, X11, GNOME Wayland, Windows)
 
-Instead of asking the user to perform the demo, you can perform it. Loop: explore, rehearse, perform, review, render.
+Instead of asking the user to perform the demo, you can perform it. Loop: explore, rehearse, perform, review, render. `screenpilot doctor` says what the desktop supports: on GNOME/other Wayland there is no window control (use only `{screen, x, y}` targets; no `focus`, `waitForWindow`, `{window}` or `{web}`), and wlroots (sway, Hyprland) cannot be driven at all (recording works).
 
 1. Explore: `screenshot --grid` (MCP `screenshot`) and `windows`; `browser --url ...` for web apps. Act with `drive` (MCP `click`, `type_text`, ...), screenshot after each action to verify.
 2. Write `take.json` (`screenpilot take-schema`, or MCP `take_schema`). Use `{web: selector}` targets inside the demo browser; they are exact.
@@ -86,6 +86,6 @@ Take tips: put `say` with `wait: true` before an important click so the viewer h
 - HyperFrames telemetry is disabled through env vars in `src/render/index.ts` (`hyperframesEnv()`); keep it that way for every HyperFrames subprocess.
 - The MCP server must never write to stdout except protocol messages; log to stderr.
 - Renaming the project: the name lives only in `src/brand.ts` (`APP`). Change it, add the old name to `PREVIOUS_NAMES` (users' config folder is moved over on first run), then update `package.json` (`name`, `bin`), the docs, and rename the GitHub repo.
-- Platforms: everything OS-specific is behind `src/platform` (`Desktop`, `Injector`, `Watcher`): `kde.ts` (portal + KWin) and `windows/` (Win32 via koffi). Recording backends are in `src/record/backends` (native: KDE PipeWire/GStreamer, Windows ffmpeg gdigrab; or OBS).
+- Platforms: everything OS-specific is behind `src/platform` (`Desktop`, `Injector`, `Watcher`), picked by `detect.ts` (override: `SCREENPILOT_DESKTOP=kde|x11|portal|windows`, name in `src/brand.ts`): `kde.ts` (portal + KWin), `x11/` (libX11/XRandR/XTest via koffi, EWMH), `wayland.ts` (generic xdg-portal desktop: GNOME, wlroots; monitors from Mutter DisplayConfig / swaymsg / hyprctl / portal streams), shared portal code in `portal.ts`, and `windows/` (Win32 via koffi). Recording backends are in `src/record/backends` (native: portal PipeWire/GStreamer `pipewire.ts`, ffmpeg x11grab / gdigrab; or OBS).
 - End users are not developers: they get a release package and run `screenpilot setup` (`src/setup`). It registers the server with every AI client it finds (`src/setup/clients.ts`: one entry per client with its config path and format). Config edits must keep the user's comments and other entries (jsonc-parser for JSON, a table rewrite for Codex TOML), and the file is backed up first. Test setup only with a fake `HOME`/`APPDATA`, never against real configs. Adding a client = one `CLIENTS` entry + a test. The MCP server's `instructions` (in `src/mcp.ts`) carry the workflow for clients without the skill.
-- Windows is verified in CI by `pnpm smoke:windows` on a real runner; on a real PC run `pnpm windows:live` (doctor, smoke, a narrated take across monitors + render into `windows-live-report/`). `screenpilot doctor [--input]` checks any machine.
+- X11 is verified in CI by `pnpm smoke:x11` under Xvfb + openbox (`.github/workflows/ci.yml`; locally only on a throwaway X display, it drives XTest). Windows is verified in CI by `pnpm smoke:windows` on a real runner; on a real PC run `pnpm windows:live` (doctor, smoke, a narrated take across monitors + render into `windows-live-report/`). `screenpilot doctor [--input]` checks any machine.
