@@ -230,10 +230,26 @@ export function tomlServer(text: string, name: string, launch: ServerLaunch | un
  */
 export function claudeAllowRule(text: string, rule: string, remove: boolean): string {
   const doc = (parse(text, [], { allowTrailingComma: true }) ?? {}) as { permissions?: { allow?: unknown } };
-  const current = Array.isArray(doc.permissions?.allow) ? (doc.permissions!.allow as unknown[]) : [];
-  const next = remove ? current.filter((r) => r !== rule) : current.includes(rule) ? current : [...current, rule];
-  if (next.length === current.length && (remove || current.includes(rule))) return text;
-  return jsonSet(text, ["permissions", "allow"], remove && next.length === 0 ? undefined : next);
+  const existing = doc.permissions?.allow;
+  const current = Array.isArray(existing) ? (existing as unknown[]) : [];
+  const at = current.indexOf(rule);
+  if (remove ? at < 0 : at >= 0) return text;
+  if (!Array.isArray(existing)) return jsonSet(text, ["permissions", "allow"], [rule]);
+  const arr = findNodeAtLocation(parseTree(text, [], { allowTrailingComma: true })!, ["permissions", "allow"])!;
+  const kids = arr.children ?? [];
+  const edit = (offset: number, length: number, content: string) => applyEdits(text, [{ offset, length, content }]);
+  if (remove && kids.length === 1) return edit(arr.offset, arr.length, "[]");
+  // `["a", "b"]` on one line: splice by hand so the line is not expanded. Multi-line arrays use the formatter.
+  if (!text.slice(arr.offset, arr.offset + arr.length).includes("\n")) {
+    if (!remove) {
+      const last = kids.at(-1);
+      return last ? edit(last.offset + last.length, 0, `, ${JSON.stringify(rule)}`) : edit(arr.offset + 1, 0, JSON.stringify(rule));
+    }
+    const kid = kids[at]!;
+    const next = kids[at + 1];
+    return next ? edit(kid.offset, next.offset - kid.offset, "") : edit(kids[at - 1]!.offset + kids[at - 1]!.length, kid.offset + kid.length - (kids[at - 1]!.offset + kids[at - 1]!.length), "");
+  }
+  return remove ? applyEdits(text, modify(text, ["permissions", "allow", at], undefined, fmt)) : applyEdits(text, modify(text, ["permissions", "allow", -1], rule, { ...fmt, isArrayInsertion: true }));
 }
 
 /** Parse check used before writing: never save a file we broke. */

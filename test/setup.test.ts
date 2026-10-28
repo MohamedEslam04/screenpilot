@@ -186,4 +186,23 @@ describe("Claude Code allow rule", () => {
     expect(JSON.parse(claudeAllowRule(before, "mcp__screenpilot", true)).permissions.allow).toEqual(["Bash(ls)"]);
     expect(claudeAllowRule('{"a":1}', "mcp__screenpilot", true)).toBe('{"a":1}');
   });
+
+  it("keeps the layout: inline stays inline, multi-line stays multi-line, add then remove is exact", () => {
+    const inline = '{\n  // keep me\n  "permissions": { "allow": ["Bash(ls)"], "deny": ["Bash(rm *)"] },\n  "theme": "dark"\n}\n';
+    const multi = '{\n  "permissions": {\n    "allow": [\n      "Bash(ls)",\n      "Bash(git status)"\n    ]\n  }\n}\n';
+    for (const before of [inline, multi]) {
+      const added = claudeAllowRule(before, "mcp__screenpilot", false);
+      expect(parse(added.replace(/\/\/.*\n/, "")).permissions.allow).toContain("mcp__screenpilot");
+      expect(claudeAllowRule(added, "mcp__screenpilot", true)).toBe(before);
+    }
+    expect(claudeAllowRule(inline, "mcp__screenpilot", false)).toContain('"allow": ["Bash(ls)", "mcp__screenpilot"]');
+  });
+
+  it("removes a rule from the middle of an inline list and empties a one-item list to []", () => {
+    const mid = '{ "permissions": { "allow": ["a", "mcp__screenpilot", "b"] } }';
+    expect(claudeAllowRule(mid, "mcp__screenpilot", true)).toBe('{ "permissions": { "allow": ["a", "b"] } }');
+    const only = '{ "permissions": { "allow": ["mcp__screenpilot"] } }';
+    expect(claudeAllowRule(only, "mcp__screenpilot", true)).toBe('{ "permissions": { "allow": [] } }');
+    expect(claudeAllowRule('{ "permissions": { "allow": [] } }', "mcp__screenpilot", false)).toBe('{ "permissions": { "allow": ["mcp__screenpilot"] } }');
+  });
 });
