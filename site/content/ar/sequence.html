@@ -1,0 +1,118 @@
+<!--
+title: دمج التسجيلات
+summary: اجمع عدة storyboards في فيديو واحد بملف sequence.json، وأدخل مقطع ميزة جديدة في منتصف عرض موجود دون إعادة تسجيله.
+-->
+<p>الملف <code>sequence.json</code> يجمع عدة storyboards، لكل منها تسجيله الخاص، في ملف MP4 واحد. يكتبه لك تطبيق الذكاء الاصطناعي، أو تكتبه بنفسك. أهم استخدام له هو إضافة ميزة جديدة إلى عرض صنعته من قبل: تسجّل الجزء الجديد فقط، ويبقى التسجيل القديم كما هو.</p>
+
+<h2 id="insert-feature">إدخال مقطع ميزة في عرض موجود</h2>
+<p>افترض أن <code>demo.json</code> عرض جاهز، وأن الميزة التي تريد إظهارها مكانها بعد الثانية 42 من تسجيله. لا تعيد تسجيل العرض ولا تعدّل الـ storyboard الخاص به. تفعل ثلاثة أشياء.</p>
+<ol>
+<li><strong>سجّل الميزة</strong> وحدها واكتب لها storyboard، ولنسمّه <code>feature/feature.json</code>. ابدأه بالسطر <code>"extends": "../demo.json"</code> ليأخذ مظهر العرض: القالب والصوت وحجم الخرج والموسيقى. انظر <a href="@guide/storyboard.html#extends">مشاركة المظهر بـ extends</a>.</li>
+<li><strong>اكتب <code>sequence.json</code></strong> بجانب <code>demo.json</code>. اذكر العرض مرتين مقسومًا عند الثانية 42، وضع الميزة بين النصفين.</li>
+<li><strong>تحقّق ثم صيّر.</strong></li>
+</ol>
+<p>يكفي أن يحتوي storyboard الميزة على ما يختلف فقط:</p>
+<pre><code class="language-json">{
+  "extends": "../demo.json",
+  "source": "rec.mp4",
+  "segments": [{ "in": 0, "out": 12 }],
+  "captions": [{ "at": 1, "text": "New: recurring invoices", "style": "title" }],
+  "narration": [{ "at": 1, "text": "Invoices can now repeat on a schedule." }]
+}</code></pre>
+<p>وهذا هو الـ sequence:</p>
+<pre><code class="language-json">{
+  "version": 1,
+  "parts": [
+    { "storyboard": "demo.json", "to": 42 },
+    { "storyboard": "feature/feature.json", "transition": { "type": "crossfade", "dur": 0.5 } },
+    { "storyboard": "demo.json", "from": 42, "transition": { "type": "crossfade" } }
+  ]
+}</code></pre>
+<pre><code class="language-sh">screenpilot sequence-validate sequence.json
+screenpilot sequence sequence.json -q draft
+screenpilot check sequence.mp4 --at 5,40,50
+screenpilot sequence sequence.json -q delivery -o demo-with-feature.mp4</code></pre>
+<p>النتيجة تشغّل العرض حتى الثانية 42، ثم تنتقل بـ crossfade إلى مقطع الميزة، ثم تعود بـ crossfade وتكمل بقية العرض. تُعرض مقدمة العرض (intro) مرة واحدة في البداية، وخاتمته (outro) مرة واحدة في النهاية.</p>
+<div class="note">الثواني في <code>from</code> و<code>to</code> هي ثواني المصدر الخاصة بذلك الـ storyboard، وهي نفسها التي تستخدمها في zooms وcaptions. اختر نقطة التقسيم من لقطة: <code>screenpilot frames demo.mp4 --at 42 --grid</code>.</div>
+
+<h2 id="sequence-file">ملف الـ sequence</h2>
+<p>المسارات في <code>sequence.json</code> نسبية إلى ملف الـ sequence. الأمر <code>screenpilot sequence-schema</code> (أو الأداة <code>sequence_schema</code>) يطبع JSON Schema المعتمد.</p>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>version</code></td><td><code>1</code></td><td>إصدار الصيغة. دائمًا 1.</td></tr>
+<tr><td><code>parts</code></td><td>مطلوب</td><td>الـ storyboards بترتيب التشغيل. واحد على الأقل. يمكن أن يظهر الـ storyboard نفسه أكثر من مرة.</td></tr>
+<tr><td><code>output</code></td><td>خرج الجزء الأول</td><td>الحقول <code>width</code> و<code>height</code> و<code>fps</code> للفيديو كله. ما تكتبه هنا يتغلب على <code>output</code> الخاص بالجزء الأول.</td></tr>
+</tbody>
+</table>
+
+<h3 id="part-fields">حقول الجزء</h3>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>storyboard</code></td><td>مطلوب</td><td>مسار storyboard نسبي إلى ملف الـ sequence.</td></tr>
+<tr><td><code>from</code></td><td>البداية</td><td>ثانية المصدر التي يبدأ منها هذا الجزء.</td></tr>
+<tr><td><code>to</code></td><td>النهاية</td><td>ثانية المصدر التي ينتهي عندها هذا الجزء.</td></tr>
+<tr><td><code>transition</code></td><td><code>cut</code></td><td>كيف يدخل هذا الجزء بعد الجزء السابق. انظر <a href="@guide/sequence.html#transitions">الانتقالات</a>. يُتجاهل في الجزء الأول.</td></tr>
+</tbody>
+</table>
+
+<h3 id="shared-rules">ما تشترك فيه كل الأجزاء</h3>
+<ul>
+<li><strong>حجم خرج واحد.</strong> تُصيَّر كل الأجزاء بالعرض والارتفاع ومعدل الإطارات نفسها، حتى لو اختلفت قيمها في الـ storyboards.</li>
+<li><strong>intro واحدة وoutro واحدة.</strong> تُعرض <code>intro</code> في الجزء الأول فقط، و<code>outro</code> في الجزء الأخير فقط. وتُترك بطاقات الأجزاء الأخرى.</li>
+<li><strong>ملفاتك لا تتغير.</strong> يكتب ScreenPilot storyboard مشتقًّا لكل جزء داخل مجلد البناء.</li>
+</ul>
+
+<h2 id="ranges">مدى المصدر: from وto</h2>
+<p>الحقلان <code>from</code> و<code>to</code> يُبقيان المدى <code>[from, to)</code> فقط من زمن المصدر في الـ storyboard. المدى نصف مفتوح: ما يقع عند <code>to</code> تمامًا يتبع الجزء الذي يبدأ عنده. ولهذا فإن <code>{"to": 42}</code> يليه <code>{"from": 42}</code> يُبقيان كل عنصر في العرض مرة واحدة بالضبط.</p>
+<table>
+<thead><tr><th>العنصر</th><th>ما يحدث عند الحدود</th></tr></thead>
+<tbody>
+<tr><td>Segments</td><td>تُقصّ إلى المدى. إذا لم يبقَ شيء، يصبح الـ sequence غير صالح.</td></tr>
+<tr><td>Narration</td><td>تبقى إذا بدأت داخل المدى. السطر الذي بدأ قبل <code>from</code> يُحذف، لأن السطر لا يستطيع أن يُستأنف من منتصف كلمة.</td></tr>
+<tr><td>Zooms وcaptions وhighlights</td><td>تُقصّ إلى المدى. ما يتجاوز حدًّا يُقصَّر. وإذا بقي منه أقل من 0.5 ثانية يُحذف.</td></tr>
+<tr><td>Holds وبطاقات الفصول</td><td>تبقى إذا وقع <code>at</code> داخل المدى.</td></tr>
+<tr><td>Overlays</td><td>الـ overlay الذي له <code>at</code> يُقصّ إلى المدى مثل zoom. والذي بلا <code>at</code> (شعار للفيديو كله) يبقى في كل جزء.</td></tr>
+<tr><td>زاوية الكاميرا</td><td>الـ view السارية عند <code>from</code> تنتقل إلى الجزء، فلا يبدأ النصف الثاني على نافذة أو شاشة خاطئة.</td></tr>
+</tbody>
+</table>
+<p>يحذّر <code>sequence-validate</code> إذا كان <code>to</code> بعد نهاية المصدر.</p>
+
+<h2 id="transitions">الانتقالات</h2>
+<p>الحقل <code>transition</code> في الجزء يحدد كيف يدخل بعد الجزء السابق. له <code>type</code> و<code>dur</code> اختياري.</p>
+<table>
+<thead><tr><th>النوع</th><th>ما يراه المشاهد</th></tr></thead>
+<tbody>
+<tr><td><code>cut</code></td><td>قطع عادي. هو الافتراضي.</td></tr>
+<tr><td><code>crossfade</code></td><td>يتلاشى الجزء السابق داخل هذا الجزء.</td></tr>
+<tr><td><code>fade-black</code></td><td>يتلاشى الجزء السابق إلى الأسود، ثم يظهر هذا الجزء تدريجيًا.</td></tr>
+<tr><td><code>wipe-left</code>, <code>wipe-right</code></td><td>يظهر هذا الجزء بمسحة في ذلك الاتجاه.</td></tr>
+<tr><td><code>slide-left</code>, <code>slide-right</code></td><td>ينزلق هذا الجزء فوق السابق في ذلك الاتجاه.</td></tr>
+</tbody>
+</table>
+<p>الحقل <code>dur</code> عدد الثواني التي يتداخل فيها الجزءان. افتراضيه 0.5، ويُقيَّد بنصف طول أي من الجزأين المجاورين، فلا يضيع مقطع قصير داخل انتقال طويل. والصوت يتلاشى مع الصورة.</p>
+
+<h2 id="rendering">تصيير الـ sequence</h2>
+<table>
+<thead><tr><th>الأمر</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>screenpilot sequence-validate &lt;sequence&gt;</code></td><td>يفحص الـ sequence وكل storyboard يستخدمه. إما يفشل ويعرض مشكلات الـ schema، وإما يطبع <code>valid: true</code> مع تحذيرات كل جزء.</td></tr>
+<tr><td><code>screenpilot sequence &lt;sequence&gt;</code></td><td>يصيّر كل جزء ثم يجمعها. الخيارات: <code>-o, --output</code> (الافتراضي <code>&lt;sequence&gt;.mp4</code>)، و<code>-q, --quality</code> (<code>draft</code> أو <code>looks</code> أو <code>delivery</code>)، و<code>--png-frames</code>، و<code>--workers</code>، و<code>--build-dir</code>.</td></tr>
+<tr><td><code>screenpilot sequence-schema</code></td><td>يطبع JSON Schema الخاص بـ <code>sequence.json</code>.</td></tr>
+</tbody>
+</table>
+<p>الخطوات نفسها متاحة كأدوات: <code>sequence_validate</code> و<code>sequence_render</code> (المدخلات <code>sequence</code> و<code>output</code> و<code>quality</code>) و<code>sequence_schema</code>. انظر <a href="@guide/tools.html#sequence">أدوات MCP</a>.</p>
+<ul>
+<li><strong>الأجزاء التي لم تتغير يُعاد استخدامها.</strong> يُصيَّر كل جزء مثل أي storyboard داخل <code>&lt;sequence&gt;.build/part-N/</code>. في المرة التالية، لا يُعاد تصيير جزء لم يتغير storyboard الخاص به ولا تسجيله ولا events ولا موسيقاه ولا overlays ولا الجودة. تعديل مقطع الميزة لا يعيد تصيير العرض.</li>
+<li><strong>الدمج.</strong> إذا كان كل جزء متصلًا بما بعده بقطع عادي وكانت الأجزاء مرمّزة بالطريقة نفسها، تُدمج بنسخ المسار دون أي فقد في الجودة. وإذا وُجد انتقال، أو اختلف الترميز، يُعاد ترميز الفيديو. تخبرك النتيجة بما حدث في الحقل <code>join</code> (<code>copy</code> أو <code>encode</code>).</li>
+<li><strong>النتيجة.</strong> يطبع الأمر مسار الملف والمدة وقيمة <code>join</code> وكل جزء مع مدته وهل أُعيد استخدامه وتحذيراته.</li>
+</ul>
+<div class="note">راجع أولًا بـ <code>-q draft</code>، ثم انظر إلى لقطات حول كل نقطة اتصال باستخدام <code>screenpilot check</code>. استخدم <code>-q delivery</code> للملف النهائي فقط.</div>
+
+<h2 id="limits">الحدود</h2>
+<ul>
+<li>الأمر <code>sequence</code> ليس له <code>--from</code> ولا <code>--to</code> ولا <code>--formats</code>. لمراجعة جزء واحد بسرعة، صيّر storyboard الخاص به بـ <code>screenpilot render --from --to</code>. ولتغيير الحجم اضبط <code>output</code> في الـ sequence.</li>
+<li>يحتفظ كل جزء بتسجيله وتعليقه الصوتي. ولا يُشترك بين الأجزاء إلا في حجم الخرج، وintro الجزء الأول وoutro الجزء الأخير.</li>
+<li>أي storyboard يفشل في التحقق يُفشل الـ sequence. ويذكر الخطأ الجزء، مثل <code>parts[1] (feature/feature.json)</code>.</li>
+</ul>

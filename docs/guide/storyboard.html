@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Storyboard reference · ScreenPilot</title>
-<meta name="description" content="The storyboard.json format: segments, holds, zooms, captions, highlights, narration, intro and outro, music, theme and output, with a full example.">
+<meta name="description" content="The storyboard.json format: segments, holds, zooms, captions, highlights, narration, cards, overlays, music, extends, theme and output, with a full example.">
 <link rel="canonical" href="https://mohamedeslam04.github.io/screenpilot/guide/storyboard.html">
 <link rel="alternate" hreflang="en" href="https://mohamedeslam04.github.io/screenpilot/guide/storyboard.html">
 <link rel="alternate" hreflang="ar" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/storyboard.html">
 <link rel="alternate" hreflang="x-default" href="https://mohamedeslam04.github.io/screenpilot/guide/storyboard.html">
-<meta property="og:type" content="article"><meta property="og:title" content="Storyboard reference · ScreenPilot"><meta property="og:description" content="The storyboard.json format: segments, holds, zooms, captions, highlights, narration, intro and outro, music, theme and output, with a full example.">
+<meta property="og:type" content="article"><meta property="og:title" content="Storyboard reference · ScreenPilot"><meta property="og:description" content="The storyboard.json format: segments, holds, zooms, captions, highlights, narration, cards, overlays, music, extends, theme and output, with a full example.">
 <meta property="og:url" content="https://mohamedeslam04.github.io/screenpilot/guide/storyboard.html"><meta property="og:image" content="https://mohamedeslam04.github.io/screenpilot/assets/og.png"><meta property="og:site_name" content="ScreenPilot"><meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0b132b">
@@ -27,25 +27,26 @@
   <nav class="nav" aria-label="Main"><a href="../guide/index.html" aria-current=page>Docs</a><a href="../guide/install.html" class="hide-s">Install</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../ar/guide/storyboard.html" lang="ar" hreflang="ar">العربية</a><button class="theme" type="button" aria-label="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
 </div></header>
 <main id="main"><div class="wrap docs">
-  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html" aria-current=page>Storyboard reference</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
-  <article class="doc"><h1>Storyboard reference</h1><p class="summary">The storyboard.json format: segments, holds, zooms, captions, highlights, narration, intro and outro, music, theme and output, with a full example.</p><p>A storyboard is a JSON file that describes the edit. The AI app writes it for you, but you can read it, change it and render it yourself. <code>screenpilot schema</code> (or the <code>storyboard_schema</code> tool) prints the authoritative JSON Schema. This page explains each field.</p>
+  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html" aria-current=page>Storyboard reference</a><a href="sequence.html">Combine recordings</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
+  <article class="doc"><h1>Storyboard reference</h1><p class="summary">The storyboard.json format: segments, holds, zooms, captions, highlights, narration, cards, overlays, music, extends, theme and output, with a full example.</p><p>A storyboard is a JSON file that describes the edit. The AI app writes it for you, but you can read it, change it and render it yourself. <code>screenpilot schema</code> (or the <code>storyboard_schema</code> tool) prints the authoritative JSON Schema. This page explains each field.</p>
 
 <h2 id="basics">The three rules<a class="a" href="#basics" aria-label="Link to this section">#</a></h2>
 <ul>
 <li><strong>Times are source seconds.</strong> They count from the start of the raw recording, never from the rendered video. Cuts and speed changes do not move them. Only <code>screenpilot check</code> and the <code>check_output</code> tool use output seconds.</li>
 <li><strong>Positions are normalized 0..1.</strong> <code>x</code> runs from the left edge and <code>y</code> from the top edge of the recording. Read them from a frame with <code>frames --grid</code>.</li>
-<li><strong>Paths are relative to the storyboard file.</strong> This applies to <code>source</code>, <code>events</code> and <code>music.src</code>.</li>
+<li><strong>Paths are relative to the storyboard file.</strong> This applies to <code>source</code>, <code>events</code>, <code>extends</code>, <code>music.src</code> and <code>overlays[].src</code>.</li>
 </ul>
-<p>Every field except <code>source</code> is optional. Run <code>screenpilot validate storyboard.json</code> after each edit. It reports schema errors and warnings: overlapping segments, items past the end of the source, views that name an unknown screen, and callouts without <code>x</code> and <code>y</code>.</p>
+<p>Every field except <code>source</code> is optional. Run <code>screenpilot validate storyboard.json</code> after each edit. It reports schema errors and warnings: overlapping segments, items past the end of the source, views that name an unknown screen, and callouts without <code>x</code> and <code>y</code>. It also gives style advice: see <a href="../guide/storyboard.html#lint">Style warnings</a>.</p>
 
 <h2 id="top-level">Top-level fields<a class="a" href="#top-level" aria-label="Link to this section">#</a></h2>
 <table>
 <thead><tr><th>Field</th><th>Default</th><th>What it is</th></tr></thead>
 <tbody>
 <tr><td><code>version</code></td><td><code>1</code></td><td>Format version. Always 1.</td></tr>
+<tr><td><code>extends</code></td><td>none</td><td>A base storyboard to take the look from. See <a href="../guide/storyboard.html#extends">Share a look with extends</a>.</td></tr>
 <tr><td><code>source</code></td><td>required</td><td>Path to the raw recording.</td></tr>
 <tr><td><code>events</code></td><td>none</td><td><code>events.jsonl</code> from <code>record</code>. It enables click ripples.</td></tr>
-<tr><td><code>keepSourceAudio</code></td><td><code>false</code></td><td>Keep the audio of the recording.</td></tr>
+<tr><td><code>keepSourceAudio</code></td><td><code>false</code></td><td>Keep the audio of the recording. Segments can then set <code>volume</code> or <code>mute</code>.</td></tr>
 <tr><td><code>output</code></td><td>1920x1080 at 30 fps</td><td>Size and frame rate. See <a href="../guide/storyboard.html#output">Output and voice</a>.</td></tr>
 <tr><td><code>theme</code></td><td>defaults</td><td>The look. See <a href="../guide/storyboard.html#theme">Theme</a>.</td></tr>
 <tr><td><code>voice</code></td><td>defaults</td><td>The narration voice. See <a href="../guide/storyboard.html#output">Output and voice</a>.</td></tr>
@@ -56,8 +57,10 @@
 <tr><td><code>captions</code></td><td><code>[]</code></td><td>On-screen text.</td></tr>
 <tr><td><code>highlights</code></td><td><code>[]</code></td><td>Boxes around parts of the screen.</td></tr>
 <tr><td><code>narration</code></td><td><code>[]</code></td><td>Voiceover lines.</td></tr>
-<tr><td><code>intro</code>, <code>outro</code></td><td>none</td><td>Title cards.</td></tr>
-<tr><td><code>music</code></td><td>none</td><td>Background music.</td></tr>
+<tr><td><code>intro</code>, <code>outro</code></td><td>none</td><td>Title cards before and after the video.</td></tr>
+<tr><td><code>cards</code></td><td><code>[]</code></td><td>Chapter cards in the middle of the video. See <a href="../guide/storyboard.html#chapter-cards">Chapter cards</a>.</td></tr>
+<tr><td><code>overlays</code></td><td><code>[]</code></td><td>Images, video and logos on top of the frame. See <a href="../guide/storyboard.html#overlays">Overlays</a>.</td></tr>
+<tr><td><code>music</code></td><td>none</td><td>Background music, optionally ducked under the voice.</td></tr>
 </tbody>
 </table>
 
@@ -69,9 +72,11 @@
 <tr><td><code>in</code></td><td>required</td><td>Start, in source seconds.</td></tr>
 <tr><td><code>out</code></td><td>required</td><td>End. Must be greater than <code>in</code>.</td></tr>
 <tr><td><code>speed</code></td><td><code>1</code></td><td>Playback speed, 0.25 to 16. Use 4 to 8 to fast-forward loading and waiting.</td></tr>
+<tr><td><code>volume</code></td><td><code>1</code></td><td>Level of this segment's source audio, 0 to 4. Needs <code>keepSourceAudio</code>.</td></tr>
+<tr><td><code>mute</code></td><td><code>false</code></td><td>Silence this segment's source audio. Same as <code>volume</code> 0.</td></tr>
 </tbody>
 </table>
-<p>A narration line placed inside a cut region is dropped, with a warning.</p>
+<p>A narration line placed inside a cut region is dropped, with a warning. <code>volume</code> and <code>mute</code> only matter when the source audio is kept: without <code>keepSourceAudio: true</code> and a recording that has sound, the render warns that they have no effect.</p>
 
 <h2 id="holds">Holds<a class="a" href="#holds" aria-label="Link to this section">#</a></h2>
 <p><code>holds</code> freeze the video on one frame, to give a caption or a line room.</p>
@@ -153,14 +158,75 @@
 </tbody>
 </table>
 
+<h2 id="chapter-cards">Chapter cards<a class="a" href="#chapter-cards" aria-label="Link to this section">#</a></h2>
+<p><code>cards</code> are title cards in the middle of the video, for a new chapter. Each one freezes the picture at <code>at</code> and shows a full card with a fade in and out, then the video carries on from the same frame.</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>at</code></td><td>required</td><td>Source time the video freezes and the card shows.</td></tr>
+<tr><td><code>dur</code></td><td><code>2.5</code></td><td>Seconds the card stays. The video is frozen meanwhile.</td></tr>
+<tr><td><code>title</code></td><td>required</td><td>Main text.</td></tr>
+<tr><td><code>subtitle</code></td><td>none</td><td>Second line.</td></tr>
+</tbody>
+</table>
+<p>A card whose <code>at</code> is in a cut region is dropped, and <code>validate</code> warns. Cards use the same look as the intro and outro (<code>theme.motion.cards</code> and the <code>.card</code> CSS).</p>
+
+<h2 id="overlays">Overlays<a class="a" href="#overlays" aria-label="Link to this section">#</a></h2>
+<p><code>overlays</code> put an image or a video on top of the output frame: a logo, a watermark, a picture-in-picture clip. Unlike zooms and highlights, the position is a fraction of the <strong>output</strong> frame, not of the recording, so a logo stays in the same corner however the camera moves.</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>src</code></td><td>required</td><td>An image or a video, relative to the storyboard.</td></tr>
+<tr><td><code>x</code>, <code>y</code></td><td>required</td><td>Left and top edge, 0..1 of the output frame.</td></tr>
+<tr><td><code>w</code>, <code>h</code></td><td>required</td><td>Width and height, 0..1 of the output frame. Must be above 0.</td></tr>
+<tr><td><code>at</code></td><td>none</td><td>Source time it appears.</td></tr>
+<tr><td><code>dur</code></td><td>none</td><td>Seconds it stays. With <code>at</code> and no <code>dur</code>, it stays until the end. With neither <code>at</code> nor <code>dur</code>, it shows for the whole video.</td></tr>
+<tr><td><code>fit</code></td><td><code>contain</code></td><td><code>contain</code> shows the whole image inside the box. <code>cover</code> fills the box and trims the overflow.</td></tr>
+<tr><td><code>opacity</code></td><td><code>1</code></td><td>0 to 1.</td></tr>
+<tr><td><code>radius</code></td><td>none</td><td>Corner radius in output pixels.</td></tr>
+<tr><td><code>shadow</code></td><td>none</td><td>Draw a shadow under it.</td></tr>
+<tr><td><code>motion</code></td><td>fade</td><td>Entrance and exit. See <a href="../guide/storyboard.html#motion">Motion</a>. <code>words</code>, <code>lines</code> and <code>wipe</code> fall back to <code>fade</code>.</td></tr>
+<tr><td><code>mute</code></td><td><code>true</code></td><td>For a video: <code>false</code> plays its sound too.</td></tr>
+<tr><td><code>loop</code></td><td><code>false</code></td><td>For a video: repeat it until the overlay ends.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-json">"overlays": [
+  { "src": "assets/logo.png", "x": 0.88, "y": 0.04, "w": 0.08, "h": 0.08, "opacity": 0.8 },
+  { "src": "assets/webcam.mp4", "at": 5, "dur": 12, "x": 0.72, "y": 0.66, "w": 0.24, "h": 0.28, "fit": "cover", "radius": 16, "shadow": true }
+]</code></pre>
+
 <h2 id="music">Music<a class="a" href="#music" aria-label="Link to this section">#</a></h2>
 <table>
 <thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
 <tbody>
 <tr><td><code>src</code></td><td>required</td><td>Path to an audio file, relative to the storyboard.</td></tr>
 <tr><td><code>volume</code></td><td><code>0.12</code></td><td>0 to 1. Keep it low so it does not cover the voice.</td></tr>
+<tr><td><code>duck</code></td><td>none</td><td>Lowers the music while someone speaks. See below.</td></tr>
 </tbody>
 </table>
+<p>Ducking makes the music quieter under each narration line and brings it back after. Give <code>duck</code> any of these fields, or an empty object <code>{}</code> for the defaults:</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>amount</code></td><td><code>0.6</code></td><td>How much quieter the music gets, 0 to 1. 0.6 means 60% lower.</td></tr>
+<tr><td><code>attack</code></td><td><code>0.2</code></td><td>Seconds the music takes to go down, finishing as the line starts. 0 to 5.</td></tr>
+<tr><td><code>release</code></td><td><code>0.5</code></td><td>Seconds the music takes to come back after the line. 0 to 5.</td></tr>
+</tbody>
+</table>
+
+<h2 id="extends">Share a look with extends<a class="a" href="#extends" aria-label="Link to this section">#</a></h2>
+<p><code>extends</code> points at a base storyboard, relative to this file. Use it when several videos should look and sound the same: each one extends the same base and adds its own recording. It is how a feature clip takes the look of the demo it joins in a <a href="../guide/sequence.html">sequence</a>.</p>
+<ul>
+<li><strong>Five fields are inherited:</strong> <code>theme</code>, <code>voice</code>, <code>output</code>, <code>music</code> and <code>keepSourceAudio</code>. Everything else (<code>source</code>, segments, zooms, captions, narration, intro, outro and the rest) is never inherited.</li>
+<li><strong>The child wins.</strong> Objects merge key by key, so a child that sets only <code>theme.accent</code> keeps the base's other theme fields. Arrays replace instead of merging, for example <code>theme.fonts</code>.</li>
+<li><strong>Chains work.</strong> The base can extend another storyboard. A cycle is an error that lists the chain.</li>
+<li><strong>Paths stay valid.</strong> <code>music.src</code> from the base is rewritten to point at the same file from the child's folder.</li>
+</ul>
+<pre><code class="language-json">{
+  "extends": "../demo.json",
+  "source": "rec.mp4",
+  "narration": [{ "at": 1, "text": "Invoices can now repeat on a schedule." }]
+}</code></pre>
 
 <h2 id="views">Screens and views<a class="a" href="#views" aria-label="Link to this section">#</a></h2>
 <p>For a recording of several monitors, <code>screens</code> says where each monitor sits in the recording and <code>views</code> says which part the camera shows from each time on. <code>init --suggest</code> fills both for you.</p>
@@ -278,6 +344,24 @@
 }</code></pre>
 <div class="note">The last narration line turns its own subtitle on with <code>caption: true</code>, while <code>voice.subtitles</code> is off for the others. The click near 24 s gets a zoom and a callout; the highlight sits on a different moment, so no single click carries every effect.</div>
 
+<h2 id="lint">Style warnings<a class="a" href="#lint" aria-label="Link to this section">#</a></h2>
+<p><code>validate</code> (and the <code>storyboard_validate</code> tool) also warns when the storyboard breaks the style guidance below. These are warnings only: they never block a render. Each message names the item, for example <code>captions[2]</code>.</p>
+<table>
+<thead><tr><th>Warning</th><th>Limit</th></tr></thead>
+<tbody>
+<tr><td>Narration too long</td><td>More than 12 words in a line.</td></tr>
+<tr><td>Narration too fast</td><td>More than about 3 words per second before the next line. The render would freeze the video to fit.</td></tr>
+<tr><td>Caption too long</td><td>More than 6 words.</td></tr>
+<tr><td>Captions overlap</td><td>Two captions at the same position at the same time. Callouts are left out of this check.</td></tr>
+<tr><td>Zooms overlap</td><td>Two zooms at the same time.</td></tr>
+<tr><td>Zoom scale</td><td>Outside 1.4 to 2.5.</td></tr>
+<tr><td>Stacked effects</td><td>A zoom, a highlight and a callout on the same point within one second.</td></tr>
+<tr><td>Segment speed</td><td>Above 8x. Cut it instead.</td></tr>
+<tr><td>Video length</td><td>Output over 90 seconds or under 15 seconds.</td></tr>
+<tr><td>Cards in cut regions</td><td>A chapter card whose <code>at</code> is cut away.</td></tr>
+</tbody>
+</table>
+
 <h2 id="style">Style guidance<a class="a" href="#style" aria-label="Link to this section">#</a></h2>
 <ul>
 <li><strong>Narration:</strong> one sentence, under about 12 words, one idea. Say what the viewer sees or why it matters, not which button to press. Keep lines short: a long line freezes the video.</li>
@@ -289,8 +373,8 @@
 <li><strong>Bilingual captions:</strong> use one caption with two lines (<code>"English\nعربي"</code>). Avoid a lone Arabic <em>waw</em> between Latin words; use an Arabic comma instead.</li>
 </ul>
 <div class="note">Work in passes. Write segments and narration first, render a draft with <code>-q draft</code>, look at it with <code>check</code>, then add zooms and captions. Change one kind of thing at a time.</div>
-<nav class="pager" aria-label="Pager"><a href="tools.html" rel="prev"><small>Previous</small>MCP tools</a><a href="agent-drive.html" rel="next"><small>Next</small>Let the agent drive</a></nav></article>
-  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#basics">The three rules</a><a href="#top-level">Top-level fields</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#narration">Narration</a><a href="#cards">Intro and outro</a><a href="#music">Music</a><a href="#views">Screens and views</a><a href="#output">Output and voice</a><a href="#theme">Theme</a><a href="#example">A complete example</a><a href="#style">Style guidance</a></aside>
+<nav class="pager" aria-label="Pager"><a href="tools.html" rel="prev"><small>Previous</small>MCP tools</a><a href="sequence.html" rel="next"><small>Next</small>Combine recordings</a></nav></article>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#basics">The three rules</a><a href="#top-level">Top-level fields</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#narration">Narration</a><a href="#cards">Intro and outro</a><a href="#chapter-cards">Chapter cards</a><a href="#overlays">Overlays</a><a href="#music">Music</a><a href="#extends">Share a look with extends</a><a href="#views">Screens and views</a><a href="#output">Output and voice</a><a href="#theme">Theme</a><a href="#example">A complete example</a><a href="#lint">Style warnings</a><a href="#style">Style guidance</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>

@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MCP tools · ScreenPilot</title>
-<meta name="description" content="The tools ScreenPilot gives an AI app, grouped by job: recording, footage, storyboard, render, desktop control and diagnostics.">
+<meta name="description" content="The tools ScreenPilot gives an AI app, grouped by job: recording, footage, storyboard, render, combining recordings, desktop control and diagnostics.">
 <link rel="canonical" href="https://mohamedeslam04.github.io/screenpilot/guide/tools.html">
 <link rel="alternate" hreflang="en" href="https://mohamedeslam04.github.io/screenpilot/guide/tools.html">
 <link rel="alternate" hreflang="ar" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/tools.html">
 <link rel="alternate" hreflang="x-default" href="https://mohamedeslam04.github.io/screenpilot/guide/tools.html">
-<meta property="og:type" content="article"><meta property="og:title" content="MCP tools · ScreenPilot"><meta property="og:description" content="The tools ScreenPilot gives an AI app, grouped by job: recording, footage, storyboard, render, desktop control and diagnostics.">
+<meta property="og:type" content="article"><meta property="og:title" content="MCP tools · ScreenPilot"><meta property="og:description" content="The tools ScreenPilot gives an AI app, grouped by job: recording, footage, storyboard, render, combining recordings, desktop control and diagnostics.">
 <meta property="og:url" content="https://mohamedeslam04.github.io/screenpilot/guide/tools.html"><meta property="og:image" content="https://mohamedeslam04.github.io/screenpilot/assets/og.png"><meta property="og:site_name" content="ScreenPilot"><meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0b132b">
@@ -27,8 +27,8 @@
   <nav class="nav" aria-label="Main"><a href="../guide/index.html" aria-current=page>Docs</a><a href="../guide/install.html" class="hide-s">Install</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../ar/guide/tools.html" lang="ar" hreflang="ar">العربية</a><button class="theme" type="button" aria-label="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
 </div></header>
 <main id="main"><div class="wrap docs">
-  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html" aria-current=page>MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
-  <article class="doc"><h1>MCP tools</h1><p class="summary">The tools ScreenPilot gives an AI app, grouped by job: recording, footage, storyboard, render, desktop control and diagnostics.</p><p>ScreenPilot runs as an MCP server. Your AI app sees the tools below and calls them for you, so you ask for a video in plain words and the app picks the tools. This page is for developers who want to know exactly what each tool does. The server also sends the workflow to every client when it connects, so apps without a skill know the loop too.</p>
+  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html" aria-current=page>MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="sequence.html">Combine recordings</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
+  <article class="doc"><h1>MCP tools</h1><p class="summary">The tools ScreenPilot gives an AI app, grouped by job: recording, footage, storyboard, render, combining recordings, desktop control and diagnostics.</p><p>ScreenPilot runs as an MCP server. Your AI app sees the tools below and calls them for you, so you ask for a video in plain words and the app picks the tools. This page is for developers who want to know exactly what each tool does. The server also sends the workflow to every client when it connects, so apps without a skill know the loop too.</p>
 <p>Times in storyboard tools are source seconds (the raw recording). Positions are normalized 0..1, with x from the left and y from the top. Only <code>check_output</code> uses output seconds.</p>
 
 <h2 id="recording">Recording<a class="a" href="#recording" aria-label="Link to this section">#</a></h2>
@@ -67,10 +67,23 @@
 <table>
 <thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
 <tbody>
-<tr><td><code>render</code></td><td>Renders a storyboard to MP4. It takes minutes. When a narration line is longer than its slot, the video freezes automatically (see <code>autoHolds</code> in the result). Use <code>draft</code> while iterating, <code>looks</code> for a normal render, and <code>delivery</code> only for the final file.</td><td><code>storyboard</code>, <code>output</code>, <code>quality</code> (<code>draft</code>, <code>looks</code>, <code>delivery</code>; default <code>looks</code>)</td></tr>
+<tr><td><code>render</code></td><td>Renders a storyboard to MP4. It takes minutes. When a narration line is longer than its slot, the video freezes automatically (see <code>autoHolds</code> in the result). Use <code>draft</code> while iterating, <code>looks</code> for a normal render, and <code>delivery</code> only for the final file. Pass <code>from</code> and <code>to</code> (output seconds) to re-render only that window for a fast review: the file is <code>&lt;storyboard&gt;.part-&lt;from&gt;-&lt;to&gt;.mp4</code>. Pass <code>formats</code> to render one file per format, narration generated once.</td><td><code>storyboard</code>, <code>output</code>, <code>quality</code> (<code>draft</code>, <code>looks</code>, <code>delivery</code>; default <code>looks</code>), <code>from</code>, <code>to</code>, <code>formats</code></td></tr>
 <tr><td><code>check_output</code></td><td>Returns frames of a rendered video as images, at most 12 per call. Times here are output seconds. Without <code>times</code> you get 8 evenly spaced frames. Look for clipped captions, zooms on the wrong spot and awkward freezes.</td><td><code>video</code>, <code>times</code></td></tr>
 <tr><td><code>build</code></td><td>Generates the voice, cuts the video and writes the HyperFrames project without rendering. Reports the output duration, automatic freezes and warnings.</td><td><code>storyboard</code></td></tr>
 <tr><td><code>preview</code></td><td>Builds the storyboard and opens HyperFrames Studio so a person can scrub through it.</td><td><code>storyboard</code></td></tr>
+</tbody>
+</table>
+
+<p>The <code>formats</code> input is a list of strings, each <code>"16:9"</code>, <code>"9:16"</code>, <code>"1:1"</code> or <code>"WxH"</code> such as <code>"1280x720"</code>. It writes <code>&lt;storyboard&gt;.&lt;format&gt;.mp4</code> (labels <code>16x9</code>, <code>9x16</code>, <code>1x1</code>, <code>WxH</code>), and then <code>output</code> becomes the base name. The result is one entry per format. A portrait export crops landscape views that frame a window. See <a href="../guide/cli.html#formats">Several formats</a>.</p>
+
+<h2 id="sequence">Combine recordings<a class="a" href="#sequence" aria-label="Link to this section">#</a></h2>
+<p>These tools join several storyboards, each with its own recording, into one video, for example to insert a feature clip into an existing demo without re-recording it. The file format is in <a href="../guide/sequence.html">Combine recordings</a>.</p>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
+<tbody>
+<tr><td><code>sequence_schema</code></td><td>Returns the JSON Schema of <code>sequence.json</code>. Read it before you write a sequence.</td><td>none</td></tr>
+<tr><td><code>sequence_validate</code></td><td>Validates a sequence and every storyboard it uses. Returns <code>valid</code> with warnings, or the issues. It never throws.</td><td><code>path</code></td></tr>
+<tr><td><code>sequence_render</code></td><td>Renders each part like a storyboard (unchanged parts are reused), all at one output size, with the intro of the first part and the outro of the last, then joins them into one MP4. It takes minutes. Follow it with <code>check_output</code>.</td><td><code>sequence</code>, <code>output</code> (default <code>&lt;sequence&gt;.mp4</code>), <code>quality</code></td></tr>
 </tbody>
 </table>
 
@@ -145,7 +158,7 @@
 </table>
 <p>Run <code>doctor</code> first on a new machine.</p>
 <nav class="pager" aria-label="Pager"><a href="cli.html" rel="prev"><small>Previous</small>Command line</a><a href="storyboard.html" rel="next"><small>Next</small>Storyboard reference</a></nav></article>
-  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#recording">Recording</a><a href="#looking">Looking at footage</a><a href="#storyboard">Storyboard</a><a href="#render-check">Render and check</a><a href="#desktop">See and drive the desktop</a><a href="#diagnose">Diagnose</a></aside>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#recording">Recording</a><a href="#looking">Looking at footage</a><a href="#storyboard">Storyboard</a><a href="#render-check">Render and check</a><a href="#sequence">Combine recordings</a><a href="#desktop">See and drive the desktop</a><a href="#diagnose">Diagnose</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>

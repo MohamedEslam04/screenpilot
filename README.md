@@ -206,6 +206,16 @@ screenpilot render sessions/<ts>/storyboard.json -q delivery -o demo.mp4
 
 `screenpilot voices --lang ar-EG` lists voices. `screenpilot schema` prints the JSON Schema. `screenpilot preview` opens HyperFrames Studio.
 
+More render options:
+
+```sh
+screenpilot render sessions/<ts>/storyboard.json -q draft --from 12 --to 20   # review only OUTPUT seconds 12-20 (writes storyboard.part-12-20.mp4)
+screenpilot render sessions/<ts>/storyboard.json --formats 16:9,9:16,1:1      # one file per format: storyboard.16x9.mp4, .9x16.mp4, .1x1.mp4
+screenpilot sequence sequence.json                                            # join several storyboards into one video (see Combine recordings)
+```
+
+`--formats` takes `16:9`, `9:16`, `1:1` or any `WxH` (even sizes), comma separated; `-o` then sets the base name and `--build-dir` is not allowed. Narration is synthesized once for all formats. A portrait or square export crops window-framed views from a landscape recording (they fill the frame); monitor views show the whole monitor.
+
 ## MCP setup
 
 `screenpilot setup` does this for you:
@@ -256,8 +266,9 @@ Copy or symlink `skill/` to `~/.claude/skills/screenpilot` to give Claude Code t
 | `storyboard_validate` | Schema errors and lint warnings |
 | `voices` | List Edge TTS voices |
 | `build` | Voice + cut + HyperFrames project, no render |
-| `render` | Render to MP4 (`draft` / `looks` / `delivery`) |
+| `render` | Render to MP4 (`draft` / `looks` / `delivery`); `from`/`to` (OUTPUT seconds) render only that window for a fast review; `formats` (`["16:9","9:16"]`, `"WxH"`) writes one file per format |
 | `preview` | Open HyperFrames Studio |
+| `sequence_schema`, `sequence_validate`, `sequence_render` | Join several storyboards (each with its own recording) into one video: schema of `sequence.json`, check it and every storyboard it uses, render it |
 | `check_output` | Frames of the rendered video for review |
 | `screenshot`, `windows` | See the desktop: per-monitor images (optional 0..1 grid) and the KWin window list |
 | `focus_window`, `pointer_move`, `click`, `drag`, `scroll`, `key`, `type_text` | Drive the real mouse and keyboard (coordinates normalized 0..1 per monitor) |
@@ -328,6 +339,37 @@ Renders use 2 headless-Chrome workers by default (`--workers`): more is faster b
 
 ScreenPilot has no house style. The defaults are only a fallback: the MCP server tells every connected AI app to design each video for its purpose and audience. That covers the output size (16:9, 9:16 for Reels/TikTok, 1:1), the theme, any Google Font, its own CSS for captions and cards, bilingual captions (`"English\nعربي"`), and the shot (which monitors to record, and whether the camera follows the window, the whole screen or all screens side by side, switching per moment). [`assets/demo`](assets/demo) has the README video's take, storyboard and theme as an example.
 
+## Combine recordings
+
+A `sequence.json` joins several storyboards, each with its own recording, into one MP4. Its main use: **insert a feature clip into the middle of an existing demo without re-recording the demo.** Record only the new feature, give it a storyboard, and split the demo's storyboard at the second where the feature belongs:
+
+```json
+{
+  "version": 1,
+  "parts": [
+    { "storyboard": "demo.json", "to": 42 },
+    { "storyboard": "feature/feature.json", "transition": { "type": "crossfade" } },
+    { "storyboard": "demo.json", "from": 42, "transition": { "type": "crossfade" } }
+  ]
+}
+```
+
+`feature.json` can take the demo's look with `"extends": "../demo.json"` (it inherits `theme`, `voice`, `output`, `music` and `keepSourceAudio`) and only adds its own `source`, `segments`, captions and narration. Then:
+
+```sh
+screenpilot sequence-validate sequence.json   # checks the sequence and every storyboard it uses
+screenpilot sequence sequence.json -q draft   # writes sequence.mp4 (-o to change it)
+```
+
+- `parts`: storyboards in playing order. Paths are relative to `sequence.json`. The same storyboard can appear more than once.
+- `from` / `to` on a part: a source range `[from, to)` of that storyboard, in source seconds. The slices `{to: 42}` and `{from: 42}` together keep everything once. Narration that started before `from` is dropped; zooms, captions and highlights that straddle an edge are cut to the range (dropped if under 0.5 s is left); the camera view in force at `from` carries in; cards and overlays are clipped too.
+- `transition` on a part: how it enters from the previous one: `cut` (default), `crossfade`, `fade-black`, `wipe-left`, `wipe-right`, `slide-left`, `slide-right`; `dur` defaults to 0.5 s and is clamped to half of either neighbouring part. Ignored on the first part.
+- `output` (optional): `width`, `height`, `fps` for every part. Default: the first part's `output`. All parts are rendered at that one size.
+- `intro` plays only on the first part and `outro` only on the last; the others are ignored.
+- Each part is rendered like a storyboard and cached in `sequence.build/`; unchanged parts are reused on the next run. The join is a stream copy when all parts are cut together with the same encoding, otherwise a re-encode.
+
+`screenpilot sequence-schema` (MCP `sequence_schema`) prints the JSON Schema; `sequence_validate` and `sequence_render` are the MCP equivalents of the two commands above (`sequence_render` takes `sequence`, `output`, `quality`).
+
 ## Storyboard reference
 
 Times are source seconds; positions are normalized 0..1 (x from left, y from top). Paths are relative to the storyboard file. `screenpilot schema` is authoritative.
@@ -337,6 +379,7 @@ Top level
 | Field | Type | Default | Notes |
 | --- | --- | --- | --- |
 | `version` | `1` | 1 | |
+| `extends` | string | | Base storyboard (relative path; it may extend another, cycles are an error) to take `theme`, `voice`, `output`, `music` and `keepSourceAudio` from. Objects merge key by key with this file winning, arrays replace; `music.src` is rebased. Nothing else is inherited |
 | `source` | string | required | Raw recording |
 | `events` | string | | `events.jsonl` from `record` (click ripples) |
 | `keepSourceAudio` | boolean | false | |
@@ -347,26 +390,32 @@ Top level
 | `highlights` | Highlight[] | [] | |
 | `narration` | Narration[] | [] | |
 | `intro`, `outro` | Card | | Title cards |
-| `music` | Music | | |
+| `cards` | ChapterCard[] | [] | Chapter cards in the middle of the video |
+| `overlays` | Overlay[] | [] | Images, video or logos on top of the output frame |
+| `music` | Music | | Background music |
 | `output`, `theme`, `voice` | objects | defaults | |
 
 Items
 
 | Item | Fields |
 | --- | --- |
-| Segment | `in`, `out` (out > in), `speed` 0.25..16 (1) |
+| Segment | `in`, `out` (out > in), `speed` 0.25..16 (1), `volume` 0..4 and `mute` (source audio of this segment; need `keepSourceAudio` and a recording with sound) |
 | Hold | `at`, `dur` |
 | Zoom | `at` (fully in), `dur`, `x`, `y`, `scale` 1..4 (1.8) |
 | Caption | `at`, `dur` (3), `text`, `position` bottom/top/center (bottom), `style` pill/title/callout (pill), `x`,`y` (callout anchor) |
 | Highlight | `at`, `dur` (2), `x`, `y`, `w`, `h`, `label?` |
 | Narration | `at`, `text`, `voice?`, `caption?` |
 | Card | `title`, `subtitle?`, `dur` (3) |
-| Music | `src`, `volume` 0..1 (0.12) |
+| ChapterCard | `at` (source time; the video freezes there), `dur` (2.5), `title`, `subtitle?`. A full card with fades; dropped with a warning if `at` is in a cut region |
+| Overlay | `src` (image or video), `x`, `y`, `w`, `h` (0..1 of the OUTPUT frame), `at?`, `dur?` (source time; omit both for the whole video, `at` alone = until the end), `fit` contain/cover (contain), `opacity` 0..1 (1), `radius?` (output px), `shadow?`, `motion?` (default fade), `mute` (true), `loop` (false) |
+| Music | `src`, `volume` 0..1 (0.12), `duck?` (`amount` 0..1 (0.6), `attack` 0..5 s (0.2), `release` 0..5 s (0.5)) lowers the music under narration |
 | output | `width` 1920, `height` 1080, `fps` 30 |
 | voice | `provider` edge, `name` en-US-AndrewNeural, `rate` +0%, `subtitles` true, `gap` 0.3, `volume` 1 |
 | theme | `background`, `padding` 0.05, `radius` 16, `shadow`, `accent`, `font`, `captionColor`, `captionBackground`, `clickRipples` true, `fonts` (extra Google Fonts), `css` (your own CSS; classes listed in `storyboard_schema`) |
 
 When a narration line is longer than its slot, the render freezes the video automatically so lines never overlap.
+
+`validate` also warns about style problems (it never blocks a render): narration over 12 words or too fast to speak, captions over 6 words, captions or zooms that overlap, zoom scale outside 1.4-2.5, a zoom, highlight and callout stacked on one point, segment speed over 8x, an output shorter than 15 s or longer than 90 s, and cards in cut regions.
 
 ## Windows notes
 
@@ -420,6 +469,7 @@ CI: GitHub Actions. `.github/workflows/ci.yml` (Linux: typecheck, tests, build; 
 - Click capture on KDE Wayland needs the `input` group; on macOS the app that starts ScreenPilot needs Accessibility (and Input Monitoring).
 - Rendering is not fast: use `draft` while iterating.
 - Narration in cut regions is dropped; the agent must keep lines inside kept segments.
+- `sequence` has no `--from`/`--to` or `--formats`: render a part's storyboard for those, or run it per format with a `sequence.json` whose `output` has that size.
 
 ## Contributing
 
@@ -431,4 +481,4 @@ Bug reports, ideas and pull requests are welcome. Fork the repository and open a
 
 ---
 
-Docs synced to commit 67bd7a6 ("chore: v0.3.0", 2026-10-28).
+Docs synced to commit c0088eb ("docs: agent guide, skill and MCP instructions for sequence, cards, overlays, audio, partial render, formats", 2026-10-28).

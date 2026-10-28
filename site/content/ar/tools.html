@@ -1,6 +1,6 @@
 <!--
 title: أدوات MCP
-summary: الأدوات التي يمنحها ScreenPilot لتطبيق الذكاء الاصطناعي، مجمّعة حسب المهمة: التسجيل والمقاطع وstoryboard والتصيير والتحكم بسطح المكتب والتشخيص.
+summary: الأدوات التي يمنحها ScreenPilot لتطبيق الذكاء الاصطناعي، مجمّعة حسب المهمة: التسجيل والمقاطع وstoryboard والتصيير ودمج التسجيلات والتحكم بسطح المكتب والتشخيص.
 -->
 <p>يعمل ScreenPilot كخادم MCP. يرى تطبيق الذكاء الاصطناعي الأدوات أدناه ويستدعيها عنك، فتطلب الفيديو بكلمات عادية ويختار التطبيق الأدوات. هذه الصفحة للمطورين الذين يريدون معرفة ما تفعله كل أداة بالضبط. ويرسل الخادم سير العمل إلى كل عميل عند الاتصال، فتعرف حتى التطبيقات التي بلا skill الدورة كاملة.</p>
 <p>الأزمنة في أدوات الـ storyboard بثواني المصدر (التسجيل الخام). المواضع مُطبَّعة بين 0 و1، حيث x من اليسار وy من الأعلى. الأداة <code>check_output</code> وحدها تستخدم ثواني الخرج.</p>
@@ -41,10 +41,23 @@ summary: الأدوات التي يمنحها ScreenPilot لتطبيق الذك�
 <table>
 <thead><tr><th>الأداة</th><th>وظيفتها</th><th>أهم المدخلات</th></tr></thead>
 <tbody>
-<tr><td><code>render</code></td><td>تصيّر storyboard إلى MP4. تستغرق دقائق. إذا كان سطر التعليق الصوتي أطول من مكانه يتجمد الفيديو تلقائيًا (انظر <code>autoHolds</code> في النتيجة). استخدم <code>draft</code> أثناء التكرار، و<code>looks</code> للتصيير العادي، و<code>delivery</code> للملف النهائي فقط.</td><td><code>storyboard</code>, <code>output</code>, <code>quality</code> (<code>draft</code> أو <code>looks</code> أو <code>delivery</code>؛ الافتراضي <code>looks</code>)</td></tr>
+<tr><td><code>render</code></td><td>تصيّر storyboard إلى MP4. تستغرق دقائق. إذا كان سطر التعليق الصوتي أطول من مكانه يتجمد الفيديو تلقائيًا (انظر <code>autoHolds</code> في النتيجة). استخدم <code>draft</code> أثناء التكرار، و<code>looks</code> للتصيير العادي، و<code>delivery</code> للملف النهائي فقط. مرّر <code>from</code> و<code>to</code> (بثواني الخرج) لتصيّر تلك النافذة فقط للمراجعة السريعة: الملف هو <code>&lt;storyboard&gt;.part-&lt;from&gt;-&lt;to&gt;.mp4</code>. ومرّر <code>formats</code> لتصيّر ملفًا لكل صيغة، مع توليد الصوت مرة واحدة.</td><td><code>storyboard</code>, <code>output</code>, <code>quality</code> (<code>draft</code> أو <code>looks</code> أو <code>delivery</code>؛ الافتراضي <code>looks</code>), <code>from</code>, <code>to</code>, <code>formats</code></td></tr>
 <tr><td><code>check_output</code></td><td>تعيد لقطات من فيديو مصيَّر على شكل صور، بحد أقصى 12 في الاستدعاء. الأزمنة هنا بثواني الخرج. بدون <code>times</code> تحصل على 8 لقطات موزعة بالتساوي. ابحث عن تعليقات مقطوعة، وzoom على موضع خاطئ، وتجميد غير مريح.</td><td><code>video</code>, <code>times</code></td></tr>
 <tr><td><code>build</code></td><td>تولّد الصوت وتقصّ الفيديو وتكتب مشروع HyperFrames بدون تصيير. تعرض مدة الخرج وفترات التجميد التلقائية والتحذيرات.</td><td><code>storyboard</code></td></tr>
 <tr><td><code>preview</code></td><td>تبني الـ storyboard وتفتح HyperFrames Studio ليتنقل الشخص داخل الفيديو.</td><td><code>storyboard</code></td></tr>
+</tbody>
+</table>
+
+<p>المدخل <code>formats</code> قائمة نصوص، كل نص هو <code>"16:9"</code> أو <code>"9:16"</code> أو <code>"1:1"</code> أو <code>"WxH"</code> مثل <code>"1280x720"</code>. يكتب <code>&lt;storyboard&gt;.&lt;format&gt;.mp4</code> (الوسوم <code>16x9</code> و<code>9x16</code> و<code>1x1</code> و<code>WxH</code>)، ويصبح <code>output</code> عندها الاسم الأساسي. والنتيجة عنصر لكل صيغة. التصدير الطولي يقصّ الـ views العرضية التي تؤطر نافذة. انظر <a href="@guide/cli.html#formats">عدة صيغ</a>.</p>
+
+<h2 id="sequence">دمج التسجيلات</h2>
+<p>تجمع هذه الأدوات عدة storyboards، لكل منها تسجيله، في فيديو واحد، مثلًا لإدخال مقطع ميزة في عرض موجود دون إعادة تسجيله. صيغة الملف في صفحة <a href="@guide/sequence.html">دمج التسجيلات</a>.</p>
+<table>
+<thead><tr><th>الأداة</th><th>وظيفتها</th><th>أهم المدخلات</th></tr></thead>
+<tbody>
+<tr><td><code>sequence_schema</code></td><td>تعيد JSON Schema الخاص بـ <code>sequence.json</code>. اقرأها قبل أن تكتب sequence.</td><td>لا شيء</td></tr>
+<tr><td><code>sequence_validate</code></td><td>تتحقق من sequence وكل storyboard يستخدمه. تعيد <code>valid</code> مع التحذيرات، أو المشكلات. لا ترمي خطأ أبدًا.</td><td><code>path</code></td></tr>
+<tr><td><code>sequence_render</code></td><td>تصيّر كل جزء مثل storyboard (الأجزاء التي لم تتغير يُعاد استخدامها)، كلها بحجم خرج واحد، مع intro الجزء الأول وoutro الجزء الأخير، ثم تجمعها في MP4 واحد. تستغرق دقائق. أتبعها بـ <code>check_output</code>.</td><td><code>sequence</code>, <code>output</code> (الافتراضي <code>&lt;sequence&gt;.mp4</code>), <code>quality</code></td></tr>
 </tbody>
 </table>
 

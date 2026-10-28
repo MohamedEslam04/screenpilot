@@ -83,6 +83,12 @@ summary: Short answers to common questions about ScreenPilot, plus fixes for the
 <h3 id="ninety-seconds">How do I keep the video under about 90 seconds?</h3>
 <p>Aim for 30 to 90 seconds. Cut or speed up idle time and loading, keep narration to one short sentence per step, and caption with two to six words. When the agent drives the desktop, keep the take itself under about 90 seconds and use <code>waitFor</code> instead of long waits. A video that is too long is usually one that shows every step: show the main path and skip the rest. See <a href="@guide/agent-drive.html#tips">the tips for takes</a>.</p>
 
+<h3 id="add-feature">How do I add a new feature to a demo I already made?</h3>
+<p>Do not re-record the demo. Record only the new feature, give it a storyboard that <code>extends</code> the demo's, and join them with a <code>sequence.json</code> that splits the demo at the right second: <code>[{demo, to: 42}, {feature}, {demo, from: 42}]</code>. See <a href="@guide/sequence.html#insert-feature">Insert a feature clip into a demo</a>.</p>
+
+<h3 id="vertical">How do I get a vertical or square version?</h3>
+<p>Render with <code>--formats</code>, for example <code>screenpilot render storyboard.json --formats 16:9,9:16,1:1</code>. You get one file per format from the same edit. A portrait cut of a landscape recording crops views that frame a window, so look at a draft first. See <a href="@guide/cli.html#formats">Several formats</a>.</p>
+
 <h2 id="troubleshooting">Troubleshooting</h2>
 
 <h3 id="not-found">My AI app does not know ScreenPilot</h3>
