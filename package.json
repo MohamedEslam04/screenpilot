@@ -1,6 +1,6 @@
 {
   "name": "screenpilot",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "AI pilot for screen videos: records any desktop app (or drives it), then edits it into a polished video with zooms, captions and voiceover.",
   "type": "module",
   "license": "MIT",
