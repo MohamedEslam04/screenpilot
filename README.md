@@ -10,6 +10,8 @@ ScreenPilot works inside the AI app you already use: Claude, ChatGPT Codex, Curs
 
 *This video was made by ScreenPilot itself: the AI drove the browser, recorded the screen, then chose the look and edited it ([full-quality MP4](assets/demo/screenpilot-demo.mp4), [how it was made](assets/demo)).*
 
+**Website and docs:** https://mohamedeslam04.github.io/screenpilot/ (English and Arabic)
+
 ## Install
 
 Pick the download for your computer. Everything ScreenPilot needs is inside it; you don't need to install anything else.
