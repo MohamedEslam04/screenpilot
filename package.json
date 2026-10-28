@@ -28,6 +28,7 @@
   "files": [
     "dist",
     "skill",
+    "python",
     "AGENTS.md",
     "README.md",
     "LICENSE",

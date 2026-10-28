@@ -54,7 +54,12 @@ export const TakeSchema = z.object({
   name: z.string().optional(),
   screens: z.union([z.literal("all"), z.array(z.string()).min(1)]).default("all"),
   voice: z
-    .object({ name: z.string().default("en-US-AndrewNeural"), rate: z.string().default("+0%"), gap: z.number().min(0).default(0.35) })
+    .object({
+      provider: z.enum(["edge", "local", "command"]).default("edge"),
+      name: z.string().default("en-US-AndrewNeural"),
+      rate: z.string().default("+0%"),
+      gap: z.number().min(0).default(0.35),
+    })
     .prefault({}),
   /** Done before the recording starts (open apps, position windows). */
   setup: z.array(StepSchema).default([]),

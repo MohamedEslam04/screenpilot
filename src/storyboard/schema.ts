@@ -154,8 +154,11 @@ export const ThemeSchema = z.object({
 });
 
 export const VoiceSchema = z.object({
-  provider: z.enum(["edge"]).default("edge"),
-  name: z.string().default("en-US-AndrewNeural"),
+  provider: z
+    .enum(["edge", "local", "command"])
+    .default("edge")
+    .describe("edge: Microsoft voices over the internet. local: models on this computer (name \"voicetut:Sarah\" or \"namaa\"). command: a voice you defined in voices.json (name = its key)"),
+  name: z.string().default("en-US-AndrewNeural").describe("Edge voice, local model[:voice], or the key of a command voice"),
   rate: z.string().default("+0%").describe("SSML rate, e.g. +10% or -5%"),
   subtitles: z.boolean().default(true).describe("Show narration lines as subtitles"),
   gap: z.number().min(0).default(0.3).describe("Min silence between lines; video freezes to make room"),

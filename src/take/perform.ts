@@ -66,7 +66,7 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
   log("voice: synthesizing lines");
   const says = take.steps.filter((s): s is Extract<Step, { say: string }> => "say" in s);
   const clips = await synthesizeLines(
-    "edge",
+    take.voice.provider,
     says.map((s) => ({ text: s.say, voice: s.voice ?? take.voice.name, rate: take.voice.rate })),
     join(baseDir, CACHE_DIR, "voice"),
   );
