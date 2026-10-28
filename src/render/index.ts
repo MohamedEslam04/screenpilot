@@ -12,7 +12,8 @@ import { ffmpegFilterScriptFlag, probeVideo, type VideoInfo } from "../util/medi
 import { synthesizeLines } from "../voice/index.js";
 import { buildCutArgs, buildCutFilter } from "./cut.js";
 import { renderHtml } from "./html.js";
-import { buildPlan, type RenderPlan } from "./plan.js";
+import { overlayKind } from "./overlay.js";
+import { buildPlan, type OverlayAsset, type RenderPlan } from "./plan.js";
 import { CACHE_DIR } from "../brand.js";
 
 const require = createRequire(import.meta.url);
@@ -61,20 +62,32 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
 
   // 2. Timeline, with freezes so narration never overlaps.
   const offset = sb.intro?.dur ?? 0;
-  const base = { segments: sb.segments, holds: sb.holds, sourceDuration: source.duration, offset };
+  // Chapter cards are holds too, so later times shift and narration holds keep working.
+  const cardHolds = sb.cards.map((c, card) => ({ at: c.at, dur: c.dur, card }));
+  const userHolds = [...sb.holds, ...cardHolds];
+  const base = { segments: sb.segments, holds: userHolds, sourceDuration: source.duration, offset };
   const autoHolds = planNarrationHolds({
     ...base,
     gap: sb.voice.gap,
     lines: narration.map((l) => ({ at: l.at, duration: l.duration })),
   });
-  const timeline = buildTimeline({ ...base, holds: [...sb.holds, ...autoHolds] });
-  for (const h of timeline.ignoredHolds) warnings.push(`hold at ${h.at}s is outside every segment and was ignored`);
+  const timeline = buildTimeline({ ...base, holds: [...userHolds, ...autoHolds] });
+  for (const h of timeline.ignoredHolds) {
+    warnings.push(
+      h.card !== undefined
+        ? `cards[${h.card}] at ${h.at}s is cut out (outside every segment) and was dropped`
+        : `hold at ${h.at}s is outside every segment and was ignored`,
+    );
+  }
   for (const l of narration) {
     if (timeline.toOutput(l.at) === null) warnings.push(`narration at ${l.at}s falls in a cut region and was dropped`);
   }
 
   // 3. Cut the recording (cached on source + pieces).
   const keepAudio = sb.keepSourceAudio && source.hasAudio;
+  if (!keepAudio && sb.segments.some((s) => s.mute || (s.volume !== undefined && s.volume !== 1))) {
+    warnings.push("segment volume/mute has no effect: the source audio is not kept (set keepSourceAudio: true and use a recording with sound)");
+  }
   await cutVideo(sourcePath, buildDir, timeline, sb, source, keepAudio, log);
 
   // 4. Events → click ripples.
@@ -95,6 +108,27 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     } else warnings.push(`music file not found: ${m}`);
   }
 
+  // 5b. Overlay images and videos.
+  await mkdir(join(buildDir, "overlays"), { recursive: true });
+  const overlays: (OverlayAsset | undefined)[] = [];
+  for (const [i, o] of sb.overlays.entries()) {
+    const file = resolve(baseDir, o.src);
+    const kind = overlayKind(o.src);
+    if (!kind) warnings.push(`overlays[${i}] "${o.src}" is not a known image or video type and was skipped`);
+    else if (!existsSync(file)) warnings.push(`overlays[${i}] file not found: ${file}`);
+    if (!kind || !existsSync(file)) {
+      overlays.push(undefined);
+      continue;
+    }
+    const src = `overlays/${i}${extname(file).toLowerCase()}`;
+    await copyFile(file, join(buildDir, src));
+    if (kind === "image") overlays.push({ src, kind });
+    else {
+      const info = await probeVideo(file);
+      overlays.push({ src, kind, duration: info.duration, hasAudio: info.hasAudio });
+    }
+  }
+
   // 6. Composition.
   const plan = buildPlan({
     sb,
@@ -105,6 +139,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     narration,
     clicks,
     musicSrc,
+    overlays,
   });
   await copyFile(require.resolve("gsap/dist/gsap.min.js"), join(buildDir, "gsap.min.js"));
   await writeFile(join(buildDir, "index.html"), renderHtml(plan, { gsapSrc: "gsap.min.js" }));

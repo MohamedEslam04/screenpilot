@@ -1,6 +1,7 @@
-import type { Motion, Storyboard, Theme, View } from "../storyboard/schema.js";
+import type { Motion, Overlay, Storyboard, Theme, View } from "../storyboard/schema.js";
 import type { Timeline } from "../storyboard/timeline.js";
 import type { VoiceClip } from "../voice/index.js";
+import { type DuckTween, planDuck } from "./duck.js";
 import { type CamTween, FULL, planCamera, planViewCamera, type Rect, type ViewSpan, type ZoomSpan } from "./zoom.js";
 
 // Everything the HTML generator needs, already in OUTPUT seconds.
@@ -46,6 +47,8 @@ export interface AudioItem {
   volume: number;
   fadeIn?: number;
   fadeOut?: number;
+  /** Volume ramps (output seconds) that duck this item under the narration. */
+  duck?: DuckTween[];
 }
 
 export interface CardItem {
@@ -53,8 +56,38 @@ export interface CardItem {
   dur: number;
   /** Seconds the card cross-fades in over the previous picture (outro). */
   fadeIn: number;
+  /** Seconds the card cross-fades out over the picture (chapter cards). */
+  fadeOut?: number;
   title: string;
   subtitle?: string;
+}
+
+export interface OverlayItem {
+  /** Path inside the build dir. */
+  src: string;
+  kind: "image" | "video";
+  start: number;
+  end: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  fit: Overlay["fit"];
+  opacity: number;
+  radius?: number;
+  shadow?: boolean;
+  motion?: Motion;
+  /** Timed media elements: one for an image or a video that plays once, repeats when looping. */
+  clips: { start: number; duration: number }[];
+}
+
+/** An overlay file copied into the build dir. */
+export interface OverlayAsset {
+  src: string;
+  kind: "image" | "video";
+  /** Video length (s). */
+  duration?: number;
+  hasAudio?: boolean;
 }
 
 export interface RenderPlan {
@@ -73,6 +106,7 @@ export interface RenderPlan {
   ripples: Ripple[];
   audio: AudioItem[];
   cards: CardItem[];
+  overlays: OverlayItem[];
 }
 
 export interface ClickEvent {
@@ -90,6 +124,8 @@ export interface PlanInput {
   narration: (VoiceClip & { at: number; caption: boolean; src: string })[];
   clicks: ClickEvent[];
   musicSrc?: string;
+  /** One entry per storyboard.overlays item; undefined when its file is missing. */
+  overlays?: (OverlayAsset | undefined)[];
 }
 
 /** Fit the recording inside the output with the theme's padding. */
@@ -163,8 +199,56 @@ export function buildPlan(input: PlanInput): RenderPlan {
     }
   }
   if (input.musicSrc && sb.music) {
-    audio.push({ src: input.musicSrc, start: 0, duration, volume: sb.music.volume, fadeIn: 1, fadeOut: 2 });
+    const item: AudioItem = { src: input.musicSrc, start: 0, duration, volume: sb.music.volume, fadeIn: 1, fadeOut: 2 };
+    if (sb.music.duck) {
+      // Duck under the narration only; overlay sound is not part of this list yet.
+      const voice = audio.map((a) => ({ start: a.start, end: a.start + a.duration }));
+      const duck = planDuck(voice, sb.music.volume, sb.music.duck, duration);
+      if (duck.length > 0) item.duck = duck;
+    }
+    audio.push(item);
   }
+
+  const overlays: OverlayItem[] = [];
+  const firstIn = tl.pieces.find((p) => p.kind === "play")?.in ?? 0;
+  sb.overlays.forEach((o, i) => {
+    const asset = input.overlays?.[i];
+    if (!asset) return;
+    let start: number;
+    let end: number;
+    if (o.at === undefined && o.dur === undefined) {
+      start = tl.offset;
+      end = tl.videoEnd;
+    } else {
+      const m = tl.mapSpan(o.at ?? firstIn, o.dur ?? 0);
+      if (!m) return;
+      start = m.start;
+      end = o.dur === undefined ? tl.videoEnd : m.end;
+    }
+    start = round(start);
+    end = round(end);
+    if (end <= start) return;
+    const clips = overlayClips(start, end, asset, o.loop);
+    overlays.push({
+      src: asset.src,
+      kind: asset.kind,
+      start,
+      end,
+      x: o.x,
+      y: o.y,
+      w: o.w,
+      h: o.h,
+      fit: o.fit,
+      opacity: o.opacity,
+      radius: o.radius,
+      shadow: o.shadow,
+      motion: o.motion,
+      clips,
+    });
+    if (asset.kind === "video" && asset.hasAudio && !o.mute) {
+      for (const c of clips) audio.push({ src: asset.src, start: c.start, duration: c.duration, volume: 1 });
+    }
+  });
 
   const highlights: HighlightItem[] = [];
   for (const h of sb.highlights) {
@@ -182,6 +266,12 @@ export function buildPlan(input: PlanInput): RenderPlan {
 
   const cards: CardItem[] = [];
   if (sb.intro) cards.push({ start: 0, dur: sb.intro.dur, fadeIn: 0, title: sb.intro.title, subtitle: sb.intro.subtitle });
+  for (const span of tl.cardSpans()) {
+    const c = sb.cards[span.card]!;
+    // The video is frozen under the card, so it fades in and out over the held frame.
+    const fade = round(Math.min(0.3, (span.end - span.start) / 3));
+    cards.push({ start: round(span.start), dur: round(span.end - span.start), fadeIn: fade, fadeOut: fade, title: c.title, subtitle: c.subtitle });
+  }
   if (sb.outro) {
     // Overlap the last moment of the video so the outro cross-fades in.
     const fadeIn = round(Math.min(0.5, tl.videoDuration / 4));
@@ -209,7 +299,19 @@ export function buildPlan(input: PlanInput): RenderPlan {
     ripples,
     audio,
     cards,
+    overlays,
   };
+}
+
+/** A video plays once, or repeats while looping; an image (or a video of unknown length) just spans. */
+function overlayClips(start: number, end: number, asset: OverlayAsset, loop: boolean): { start: number; duration: number }[] {
+  const len = asset.kind === "video" && asset.duration && asset.duration > 0 ? asset.duration : end - start;
+  const clips: { start: number; duration: number }[] = [];
+  for (let t = start; t < end - 1e-6; t += len) {
+    clips.push({ start: round(t), duration: round(Math.min(len, end - t)) });
+    if (!loop || len >= end - start) break;
+  }
+  return clips;
 }
 
 function round(n: number): number {

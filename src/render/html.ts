@@ -55,6 +55,26 @@ export function renderHtml(plan: RenderPlan, opts: { gsapSrc: string }): string 
     if (i === 0 && c.start === 0 && plan.video.start > 0) {
       js.push(`tl.to("#card${i}", { opacity: 0, duration: 0.4 }, ${n(end - 0.4)});`);
     }
+    if (c.fadeOut) js.push(`tl.to("#card${i}", { opacity: 0, duration: ${n(c.fadeOut)} }, ${n(end - c.fadeOut)});`);
+  });
+
+  // Overlays: an untimed box carries the motion; the timed media inside shows only while it plays.
+  const overlayEls: string[] = [];
+  plan.overlays.forEach((o, i) => {
+    const box = `left:${n(o.x * W)}px;top:${n(o.y * H)}px;width:${n(o.w * W)}px;height:${n(o.h * H)}px`;
+    const look =
+      `object-fit:${o.fit};opacity:${n(o.opacity)};` +
+      `${o.radius ? `border-radius:${n(o.radius)}px;` : ""}${o.shadow ? "box-shadow:0 12px 40px rgba(0,0,0,.45);" : ""}`;
+    const media = o.clips.map((c, k) => {
+      const attrs = `id="ov${i}m${k}" class="clip ov-media" ${timed(c.start, c.start + c.duration)} src="${esc(o.src)}"`;
+      return o.kind === "video" ? `<video ${attrs} muted playsinline style="${look}"></video>` : `<img ${attrs} alt="" style="${look}" />`;
+    });
+    overlayEls.push(`<div id="ov${i}" class="ov" style="${box}">${media.join("")}</div>`);
+    // words/lines/wipe need text markup; an overlay fades instead.
+    const m = { in: "fade", out: "fade", ...o.motion } as Motion;
+    if (m.in === "words" || m.in === "lines" || m.in === "wipe") m.in = "fade";
+    if (m.out === "words" || m.out === "lines" || m.out === "wipe") m.out = "fade";
+    js.push(...motionJs(`#ov${i}`, m, o.start, o.end, "text", ""));
   });
 
   // Ripples
@@ -115,6 +135,15 @@ export function renderHtml(plan: RenderPlan, opts: { gsapSrc: string }): string 
     );
   }
 
+  // Music ducking: HyperFrames samples an audio element's volume from the timeline.
+  plan.audio.forEach((a, i) => {
+    for (const d of a.duck ?? []) {
+      js.push(
+        `tl.fromTo("#au${i}", { volume: ${n(d.from)} }, { volume: ${n(d.to)}, duration: ${n(d.dur)}, ease: "none", immediateRender: false }, ${n(d.t)});`,
+      );
+    }
+  });
+
   const audioEls = plan.audio.map(
     (a, i) =>
       `<audio id="au${i}" ${timed(a.start, a.start + a.duration)} data-volume="${n(a.volume)}"` +
@@ -166,6 +195,8 @@ html, body { width: ${W}px; height: ${H}px; overflow: hidden; background: #000; 
 .pos-bottom-raised { bottom: ${subtitleBottom + 110}px; }
 .pos-top { top: ${frame.top + Math.round(H * 0.045)}px; }
 .pos-center { top: 50%; margin-top: -60px; }
+.ov { position: absolute; }
+.ov-media { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .card { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: ${theme.background}; }
 .card-inner { text-align: center; color: #fff; padding: 0 8%; }
 .card h1 { font-size: 104px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
@@ -181,6 +212,7 @@ ${theme.css.trim() ? `<style id="theme-css">\n${theme.css.replace(/<\/style/gi, 
 ${camEls.join("\n")}
 </div>
 </div>
+${overlayEls.join("\n")}
 ${els.join("\n")}
 ${audioEls.join("\n")}
 </div>
