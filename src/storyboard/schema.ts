@@ -96,6 +96,23 @@ export const CardSchema = z.object({
   dur: z.number().positive().default(3),
 });
 
+export const OverlaySchema = z.object({
+  src: z.string().min(1).describe("Image or video, relative to the storyboard file"),
+  at: time.optional().describe("Source time it appears. Omit both at and dur for the whole video (watermark, logo)"),
+  dur: z.number().positive().optional().describe("How long it stays (s of source time); omitted with at set = until the end"),
+  x: norm.describe("Left edge, 0..1 of the OUTPUT frame"),
+  y: norm.describe("Top edge, 0..1 of the OUTPUT frame"),
+  w: norm.refine((v) => v > 0, { message: "overlay.w must be > 0" }).describe("Width, 0..1 of the output frame"),
+  h: norm.refine((v) => v > 0, { message: "overlay.h must be > 0" }).describe("Height, 0..1 of the output frame"),
+  fit: z.enum(["contain", "cover"]).default("contain"),
+  opacity: z.number().min(0).max(1).default(1),
+  radius: z.number().min(0).optional().describe("Corner radius in output pixels"),
+  shadow: z.boolean().optional(),
+  motion: MotionSchema.optional().describe("Entrance and exit (default fade); words/lines/wipe fall back to fade"),
+  mute: z.boolean().default(true).describe("Video only: false plays its sound too"),
+  loop: z.boolean().default(false).describe("Video only: repeat until the overlay ends"),
+});
+
 export const ChapterCardSchema = z.object({
   at: time.describe("Source time the video freezes and the card shows"),
   dur: z.number().positive().default(2.5).describe("How long the card stays (s); the video is frozen meanwhile"),
@@ -172,6 +189,7 @@ export const StoryboardSchema = z.object({
   narration: z.array(NarrationSchema).default([]),
   intro: CardSchema.optional(),
   outro: CardSchema.optional(),
+  overlays: z.array(OverlaySchema).default([]).describe("Images or videos placed on top of the output frame (logos, picture-in-picture)"),
   cards: z.array(ChapterCardSchema).default([]).describe("Chapter cards in the middle of the video; each freezes the picture for dur seconds"),
   music: MusicSchema.optional(),
 });
@@ -187,6 +205,7 @@ export type Caption = z.output<typeof CaptionSchema>;
 export type Motion = z.output<typeof MotionSchema>;
 export type Narration = z.output<typeof NarrationSchema>;
 export type Highlight = z.output<typeof HighlightSchema>;
+export type Overlay = z.output<typeof OverlaySchema>;
 export type Theme = z.output<typeof ThemeSchema>;
 
 export function storyboardJsonSchema(): unknown {

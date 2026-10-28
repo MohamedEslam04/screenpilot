@@ -12,7 +12,8 @@ import { ffmpegFilterScriptFlag, probeVideo, type VideoInfo } from "../util/medi
 import { synthesizeLines } from "../voice/index.js";
 import { buildCutArgs, buildCutFilter } from "./cut.js";
 import { renderHtml } from "./html.js";
-import { buildPlan, type RenderPlan } from "./plan.js";
+import { overlayKind } from "./overlay.js";
+import { buildPlan, type OverlayAsset, type RenderPlan } from "./plan.js";
 import { CACHE_DIR } from "../brand.js";
 
 const require = createRequire(import.meta.url);
@@ -104,6 +105,27 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     } else warnings.push(`music file not found: ${m}`);
   }
 
+  // 5b. Overlay images and videos.
+  await mkdir(join(buildDir, "overlays"), { recursive: true });
+  const overlays: (OverlayAsset | undefined)[] = [];
+  for (const [i, o] of sb.overlays.entries()) {
+    const file = resolve(baseDir, o.src);
+    const kind = overlayKind(o.src);
+    if (!kind) warnings.push(`overlays[${i}] "${o.src}" is not a known image or video type and was skipped`);
+    else if (!existsSync(file)) warnings.push(`overlays[${i}] file not found: ${file}`);
+    if (!kind || !existsSync(file)) {
+      overlays.push(undefined);
+      continue;
+    }
+    const src = `overlays/${i}${extname(file).toLowerCase()}`;
+    await copyFile(file, join(buildDir, src));
+    if (kind === "image") overlays.push({ src, kind });
+    else {
+      const info = await probeVideo(file);
+      overlays.push({ src, kind, duration: info.duration, hasAudio: info.hasAudio });
+    }
+  }
+
   // 6. Composition.
   const plan = buildPlan({
     sb,
@@ -114,6 +136,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     narration,
     clicks,
     musicSrc,
+    overlays,
   });
   await copyFile(require.resolve("gsap/dist/gsap.min.js"), join(buildDir, "gsap.min.js"));
   await writeFile(join(buildDir, "index.html"), renderHtml(plan, { gsapSrc: "gsap.min.js" }));
