@@ -20,7 +20,8 @@ jobs:
       fail-fast: false
       matrix:
         # macOS minutes cost 10x on private repos: these jobs only run for releases and by hand.
-        os: [windows-latest, ubuntu-latest, macos-latest, macos-15-intel]
+        # macOS is off until the Actions minutes reset: add macos-latest and macos-15-intel back to release the Mac builds.
+        os: [windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     steps:

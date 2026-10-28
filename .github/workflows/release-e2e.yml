@@ -29,10 +29,11 @@ jobs:
             asset: ScreenPilot-windows-setup.exe
           - os: ubuntu-latest
             asset: ScreenPilot-linux.tar.gz
-          - os: macos-latest
-            asset: ScreenPilot-macos-arm64.zip
-          - os: macos-15-intel
-            asset: ScreenPilot-macos-x64.zip
+          # macOS is off until the Actions minutes reset (10x cost): add its rows back with the Release matrix.
+          # - os: macos-latest
+          #   asset: ScreenPilot-macos-arm64.zip
+          # - os: macos-15-intel
+          #   asset: ScreenPilot-macos-x64.zip
     runs-on: ${{ matrix.os }}
     # Counts queue time too (Apple Silicon runners can queue for a while).
     timeout-minutes: 60
