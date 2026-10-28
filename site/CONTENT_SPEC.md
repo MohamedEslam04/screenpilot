@@ -54,7 +54,7 @@ Write natural Modern Standard Arabic that a developer in Egypt or the Gulf reads
 
 Every statement must be backed by the repository: `README.md`, `CONTRIBUTING.md` (developer reference: CLI, MCP tools, storyboard), `AGENTS.md`, `skill/SKILL.md`, `src/mcp.ts` (tool names and descriptions), `src/cli.ts` (commands and flags), `src/storyboard/schema.ts`, `src/sequence/schema.ts`, `src/storyboard/lint.ts`, `src/take/schema.ts`, `src/setup/`, `src/drive/guard.ts`. Read the source for the page you write. Do not invent flags, tools, defaults or platform support. If the README and the code disagree, trust the code and say nothing about the disagreement. Known facts that the README may lag on:
 
-- v0.3.0 (current release) has Windows and Linux builds only. The two Mac downloads are missing from it until the next release; the last Mac builds are on the v0.2.3 release.
+- v0.4.0 (current release) has Windows and Linux builds only. The two Mac downloads are missing from it until the next release; the last Mac builds are on the v0.2.3 release.
 - New MCP tools: `resume`, `wait_for`, `page_text`.
 - New environment variables: `SCREENPILOT_INTERRUPT=off`, `SCREENPILOT_ALLOW_APPS`, `SCREENPILOT_ALLOW_ENV`, `SCREENPILOT_PERFORM_TIMEOUT`. Drive actions are logged to `audit.jsonl` in the config folder (typed text is never logged).
 - `screenpilot setup --allow-tools` adds `mcp__screenpilot` to Claude Code's `permissions.allow`.

@@ -23,7 +23,7 @@ Download the file for your computer. It contains everything ScreenPilot needs.
 
 Not sure which Mac you have? Apple menu → **About This Mac**: "Chip: Apple M…" means Apple Silicon, "Processor: Intel" means Intel. All versions are on the [Releases](https://github.com/MohamedEslam04/screenpilot/releases) page.
 
-> **Mac downloads:** v0.3.0 (Windows and Linux) has no Mac build yet, so the two Mac links above don't work until the next release. The last Mac builds are on the [v0.2.3 release](https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.2.3).
+> **Mac downloads:** v0.4.0 (Windows and Linux) has no Mac build yet, so the two Mac links above don't work until the next release. The last Mac builds are on the [v0.2.3 release](https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.2.3).
 
 Install your AI app first and open it once, then install ScreenPilot. The installer adds ScreenPilot to every AI app it finds. If you install another AI app later, run the ScreenPilot installer again.
 
