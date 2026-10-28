@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { lintStyle } from "./lint.js";
 import { type Storyboard, StoryboardSchema } from "./schema.js";
+import { normalizeSegments, Timeline } from "./timeline.js";
 
 export interface LoadedStoryboard {
   sb: Storyboard;
@@ -40,6 +41,10 @@ export function lintStoryboard(sb: Storyboard, sourceDuration?: number): string[
     sb.narration.forEach((c, i) => check(`narration[${i}]`, c.at));
     sb.highlights.forEach((c, i) => check(`highlights[${i}]`, c.at));
     sb.views.forEach((c, i) => check(`views[${i}]`, c.at));
+    const kept = normalizeSegments(sb.segments, sourceDuration);
+    sb.cards.forEach((c, i) => {
+      if (Timeline.segmentIndexOf(kept, c.at) < 0) warnings.push(`cards[${i}] at ${c.at}s is in a cut region and will be dropped`);
+    });
   }
   const names = new Set(sb.screens.map((s) => s.name));
   sb.views.forEach((v, i) => {

@@ -178,3 +178,16 @@ describe("lintTimeline", () => {
     expect(lintTimeline(sbOf({ intro: { title: "Hi", dur: 3 } }), tl(13, 3))).toEqual([]);
   });
 });
+
+describe("lintStoryboard cards", () => {
+  const sb = (cards: unknown[]) =>
+    StoryboardSchema.parse({ source: "a.mp4", segments: [{ in: 0, out: 10 }, { in: 20, out: 30 }], cards });
+
+  it("warns when a card sits in a cut region", () => {
+    expect(lintStoryboard(sb([{ at: 15, title: "Step" }]), 40)).toContainEqual(expect.stringMatching(/cards\[0\].*cut/));
+  });
+
+  it("is quiet when the card is inside a segment", () => {
+    expect(lintStoryboard(sb([{ at: 5, title: "Step" }]), 40).filter((w) => w.startsWith("cards["))).toEqual([]);
+  });
+});

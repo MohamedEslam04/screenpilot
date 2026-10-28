@@ -42,6 +42,7 @@ const plan: RenderPlan = {
     { start: 0, dur: 3, fadeIn: 0, title: "Intro" },
     { start: 22.5, dur: 2, fadeIn: 0.5, title: "Outro" },
   ],
+  overlays: [],
 };
 
 describe("parseWindow", () => {
@@ -179,5 +180,102 @@ describe("renderHtml media offsets", () => {
     expect(html).toMatch(/<audio id="au0"[^>]*data-media-start="3"/);
     expect(html).not.toMatch(/<audio id="au1"[^>]*data-media-start/);
     expect(renderHtml(plan, { gsapSrc: "g.js" })).not.toContain("data-media-start");
+  });
+});
+
+describe("windowPlan with overlays, ducking and chapter cards", () => {
+  const rich: RenderPlan = {
+    ...plan,
+    overlays: [
+      {
+        src: "overlays/0.png",
+        kind: "image",
+        start: 3,
+        end: 23,
+        x: 0.8,
+        y: 0.05,
+        w: 0.15,
+        h: 0.1,
+        fit: "contain",
+        opacity: 1,
+        motion: { in: "pop", out: "fade" },
+        clips: [{ start: 3, duration: 20 }],
+      },
+      {
+        src: "overlays/1.mp4",
+        kind: "video",
+        start: 8,
+        end: 16,
+        x: 0.6,
+        y: 0.6,
+        w: 0.3,
+        h: 0.3,
+        fit: "cover",
+        opacity: 1,
+        clips: [{ start: 8, duration: 8 }],
+      },
+    ],
+    audio: [
+      {
+        src: "music.mp3",
+        start: 0,
+        duration: 24.5,
+        volume: 0.1,
+        duck: [
+          { t: 8.8, dur: 0.2, from: 0.1, to: 0.04 },
+          { t: 13, dur: 0.5, from: 0.04, to: 0.1 },
+        ],
+      },
+    ],
+    cards: [{ start: 12, dur: 4, fadeIn: 0.3, fadeOut: 0.3, title: "Step 2" }],
+  };
+
+  it("shifts and clips overlays into the window", () => {
+    const w = windowPlan(rich, { from: 10, to: 14 });
+    const [logo, pip] = w.overlays;
+    expect(logo).toMatchObject({ start: 0, end: 4, clips: [{ start: 0, duration: 4 }] });
+    expect(pip).toMatchObject({ start: 0, end: 4, clips: [{ start: 0, duration: 4, mediaStart: 2 }] });
+  });
+
+  it("drops overlays fully outside the window", () => {
+    const w = windowPlan(rich, { from: 17, to: 20 });
+    expect(w.overlays).toHaveLength(1);
+    expect(w.overlays[0]!.src).toBe("overlays/0.png");
+  });
+
+  it("does not replay an entrance when the window starts mid-overlay", () => {
+    const w = windowPlan(rich, { from: 10, to: 14 });
+    expect(w.overlays[0]!.motion?.in).toBe("none");
+    expect(w.overlays[0]!.motion?.out).toBe("none");
+  });
+
+  it("keeps the entrance when the window starts with the overlay", () => {
+    const w = windowPlan(rich, { from: 3, to: 14 });
+    expect(w.overlays[0]!.motion?.in).toBe("pop");
+  });
+
+  it("starts the music at the ducked level when the window opens during a duck", () => {
+    const w = windowPlan(rich, { from: 10, to: 20 });
+    const music = w.audio[0]!;
+    expect(music.volume).toBeCloseTo(0.04);
+    expect(music.duck).toEqual([{ t: 3, dur: 0.5, from: 0.04, to: 0.1 }]);
+  });
+
+  it("finishes a ramp that is in progress at the window start", () => {
+    const w = windowPlan(rich, { from: 13.25, to: 20 });
+    const music = w.audio[0]!;
+    expect(music.volume).toBeCloseTo(0.07);
+    expect(music.duck).toEqual([{ t: 0, dur: 0.25, from: 0.07, to: 0.1 }]);
+  });
+
+  it("drops the card fade-out when the window cuts the card's tail", () => {
+    const w = windowPlan(rich, { from: 10, to: 14 });
+    expect(w.cards[0]).toMatchObject({ start: 2, dur: 2, fadeIn: 0.3 });
+    expect(w.cards[0]!.fadeOut).toBe(0);
+  });
+
+  it("renders the overlay media offset into the html", () => {
+    const html = renderHtml(windowPlan(rich, { from: 10, to: 14 }), { gsapSrc: "gsap.min.js" });
+    expect(html).toMatch(/id="ov1m0"[^>]*data-media-start="2"/);
   });
 });

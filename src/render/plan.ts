@@ -80,7 +80,7 @@ export interface OverlayItem {
   shadow?: boolean;
   motion?: Motion;
   /** Timed media elements: one for an image or a video that plays once, repeats when looping. */
-  clips: { start: number; duration: number }[];
+  clips: { start: number; duration: number; /** Seconds to skip in the file (partial renders). */ mediaStart?: number }[];
 }
 
 /** An overlay file copied into the build dir. */

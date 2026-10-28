@@ -67,7 +67,7 @@ export function renderHtml(plan: RenderPlan, opts: { gsapSrc: string }): string 
       `object-fit:${o.fit};opacity:${n(o.opacity)};` +
       `${o.radius ? `border-radius:${n(o.radius)}px;` : ""}${o.shadow ? "box-shadow:0 12px 40px rgba(0,0,0,.45);" : ""}`;
     const media = o.clips.map((c, k) => {
-      const attrs = `id="ov${i}m${k}" class="clip ov-media" ${timed(c.start, c.start + c.duration)} src="${esc(o.src)}"`;
+      const attrs = `id="ov${i}m${k}" class="clip ov-media" ${timed(c.start, c.start + c.duration)}${mediaStart(c.mediaStart)} src="${esc(o.src)}"`;
       return o.kind === "video" ? `<video ${attrs} muted playsinline style="${look}"></video>` : `<img ${attrs} alt="" style="${look}" />`;
     });
     overlayEls.push(`<div id="ov${i}" class="ov" style="${box}">${media.join("")}</div>`);

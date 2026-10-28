@@ -1,4 +1,5 @@
-import type { AudioItem, CardItem, RenderPlan } from "./plan.js";
+import type { DuckTween } from "./duck.js";
+import type { AudioItem, CardItem, OverlayItem, RenderPlan } from "./plan.js";
 import type { CamState, CamTween } from "./zoom.js";
 import { IDENTITY } from "./zoom.js";
 
@@ -56,9 +57,11 @@ export function windowPlan(plan: RenderPlan, win: Window): RenderPlan {
   for (const a of plan.audio) {
     const c = clip(a.start, a.start + a.duration, from, to);
     if (!c) continue;
-    const { fadeIn, fadeOut, ...rest } = a;
+    const { fadeIn, fadeOut, duck, ...rest } = a;
+    const ducked = duck ? windowDuck(duck, a.volume, from, to) : undefined;
     audio.push({
       ...rest,
+      ...(ducked ? { volume: ducked.volume, ...(ducked.ramps.length > 0 ? { duck: ducked.ramps } : {}) } : {}),
       start: c.start,
       duration: c.dur,
       ...(c.headCut > 0 ? { mediaStart: round((a.mediaStart ?? 0) + c.headCut) } : {}),
@@ -70,7 +73,28 @@ export function windowPlan(plan: RenderPlan, win: Window): RenderPlan {
   const cards: CardItem[] = [];
   for (const card of plan.cards) {
     const c = clip(card.start, card.start + card.dur, from, to);
-    if (c) cards.push({ ...card, start: c.start, dur: c.dur, fadeIn: c.headCut > 0 ? 0 : card.fadeIn });
+    if (c) {
+      cards.push({
+        ...card,
+        start: c.start,
+        dur: c.dur,
+        fadeIn: c.headCut > 0 ? 0 : card.fadeIn,
+        ...(card.fadeOut !== undefined ? { fadeOut: c.tailCut ? 0 : card.fadeOut } : {}),
+      });
+    }
+  }
+
+  const overlays: OverlayItem[] = [];
+  for (const o of plan.overlays) {
+    const c = clip(o.start, o.end, from, to);
+    if (!c) continue;
+    const clips = o.clips.flatMap((k) => {
+      const kc = clip(k.start, k.start + k.duration, from, to);
+      return kc ? [{ start: kc.start, duration: kc.dur, ...(kc.headCut > 0 ? { mediaStart: round((k.mediaStart ?? 0) + kc.headCut) } : k.mediaStart ? { mediaStart: k.mediaStart } : {}) }] : [];
+    });
+    // An entrance or exit the window cut off would replay from nothing, so skip it.
+    const motion = { ...o.motion, ...(c.headCut > 0 ? { in: "none" as const } : {}), ...(c.tailCut ? { out: "none" as const } : {}) };
+    overlays.push({ ...o, start: c.start, end: round(c.start + c.dur), clips, ...(Object.keys(motion).length > 0 ? { motion } : {}) });
   }
 
   return {
@@ -79,6 +103,7 @@ export function windowPlan(plan: RenderPlan, win: Window): RenderPlan {
     video,
     audio,
     cards,
+    overlays,
     camera: windowCamera(plan.camera, from, to),
     texts: plan.texts.flatMap((t) => {
       const c = clip(t.start, t.end, from, to);
@@ -119,4 +144,19 @@ function windowCamera(camera: CamTween[], from: number, to: number): CamTween[] 
     }
   }
   return moved ? [{ t: 0, dur: 0, ...state }, ...out] : out;
+}
+
+/** Music ducking for the window: the level it opens at, and the ramps still to come. */
+function windowDuck(duck: DuckTween[], base: number, from: number, to: number): { volume: number; ramps: DuckTween[] } {
+  let volume = base;
+  const ramps: DuckTween[] = [];
+  for (const d of [...duck].sort((a, b) => a.t - b.t)) {
+    const end = d.t + d.dur;
+    if (end <= from) volume = d.to;
+    else if (d.t < from) {
+      volume = round(d.from + (d.to - d.from) * ((from - d.t) / d.dur));
+      ramps.push({ t: 0, dur: round(end - from), from: volume, to: d.to });
+    } else if (d.t < to) ramps.push({ ...d, t: round(d.t - from) });
+  }
+  return { volume, ramps };
 }
