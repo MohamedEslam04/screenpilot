@@ -64,6 +64,15 @@ summary: ثبّت ScreenPilot على Windows أو macOS أو Linux، وأضفه 
 <div class="warn">لا تشغّل المثبّت بـ <code>sudo</code>. يثبّت لمستخدمك فقط ولا يحتاج إلى صلاحيات المسؤول. إذا شغّلته بـ <code>sudo</code> يتوقف ويطلب منك إعادة تشغيله بحسابك العادي.</div>
 <p>ما يعمل يعتمد على سطح المكتب. راجع <a href="@guide/platforms.html#support">دعم المنصات</a> للجدول الكامل.</p>
 
+<h2 id="verify">تأكد أنه يعمل</h2>
+<ol>
+  <li>أغلق تطبيق الذكاء الاصطناعي تمامًا ثم افتحه من جديد.</li>
+  <li>قل له: "Run the ScreenPilot doctor." يعرض حالة المسجّل والأذونات والأصوات ومحرّك الفيديو، ويشرح كيف تصلح الناقص. إذا ظهر لك هذا التقرير فـ ScreenPilot متصل.</li>
+  <li>للتأكد مرة أخرى، ابحث عن <code>screenpilot</code> في قائمة أدوات التطبيق أو إعدادات MCP. في Claude Code اكتب <code>/mcp</code> (أو <code>claude mcp list</code> في الطرفية)، ويجب أن تظهر كلمة <strong>Connected</strong>.</li>
+  <li>جرّب طلبًا حقيقيًا: "Take a screenshot of my screen." قد يطلب سطح المكتب في المرة الأولى السماح بمشاركة الشاشة. اسمح له.</li>
+</ol>
+<p>لم يظهر شيء؟ راجع <a href="#troubleshooting">إذا حدثت مشكلة</a>.</p>
+
 <h2 id="installer">ماذا يفعل المثبّت</h2>
 <ul>
   <li>ينسخ ScreenPilot إلى مجلد المستخدم: <code>%LOCALAPPDATA%\ScreenPilot</code> على Windows، و<code>~/Library/Application Support/ScreenPilot</code> على macOS، و<code>~/.local/share/screenpilot</code> على Linux.</li>

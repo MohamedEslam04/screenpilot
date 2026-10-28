@@ -27,7 +27,7 @@
   <nav class="nav" aria-label="Main"><a href="../../ar/guide/index.html" aria-current=page>التوثيق</a><a href="../../ar/guide/install.html" class="hide-s">التثبيت</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../../guide/storyboard.html" lang="en" hreflang="en">English</a><button class="theme" type="button" aria-label="تبديل المظهر"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
 </div></header>
 <main id="main"><div class="wrap docs">
-  <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html">سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html" aria-current=page>مرجع الـ storyboard</a><a href="sequence.html">دمج التسجيلات</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html">الأسئلة الشائعة وحل المشكلات</a></details></nav>
+  <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html">سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html" aria-current=page>مرجع الـ storyboard</a><a href="voices.html">الأصوات</a><a href="sequence.html">دمج التسجيلات</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html">الأسئلة الشائعة وحل المشكلات</a></details></nav>
   <article class="doc"><h1>مرجع الـ storyboard</h1><p class="summary">صيغة storyboard.json: segments وholds وzooms وcaptions وhighlights وnarration وcards وoverlays وmusic وextends وtheme وحجم الخرج، مع مثال كامل.</p><p>الـ storyboard ملف JSON يصف المونتاج. يكتبه لك تطبيق الذكاء الاصطناعي، لكن يمكنك قراءته وتعديله وتصييره بنفسك. الأمر <code>screenpilot schema</code> (أو الأداة <code>storyboard_schema</code>) يطبع JSON Schema المعتمد. وتشرح هذه الصفحة كل حقل.</p>
 
 <h2 id="basics">القواعد الثلاث<a class="a" href="#basics" aria-label="رابط إلى هذا القسم">#</a></h2>
@@ -135,13 +135,13 @@
 </table>
 
 <h2 id="narration">Narration<a class="a" href="#narration" aria-label="رابط إلى هذا القسم">#</a></h2>
-<p>يقرأ كل سطر صوتُ Edge TTS ويُمزج في الفيديو. التعليق الصوتي لا يتداخل أبدًا: إذا تجاوز سطر مكانه، يتجمد الفيديو ليفسح له.</p>
+<p>يقرأ كل سطر صوتُ الـ storyboard ويُمزج في الفيديو. الافتراضي صوت Edge؛ انظر <a href="../../ar/guide/voices.html">الأصوات</a> للنماذج المحلية ولبرامجك الخاصة. التعليق الصوتي لا يتداخل أبدًا: إذا تجاوز سطر مكانه، يتجمد الفيديو ليفسح له.</p>
 <table>
 <thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
 <tbody>
 <tr><td><code>at</code></td><td>مطلوب</td><td>زمن المصدر الذي يبدأ عنده السطر.</td></tr>
 <tr><td><code>text</code></td><td>مطلوب</td><td>ما يقوله الصوت.</td></tr>
-<tr><td><code>voice</code></td><td><code>voice.name</code></td><td>صوت لهذا السطر وحده، مثل <code>ar-EG-ShakirNeural</code>. استخدمه للمزج بين لغتين.</td></tr>
+<tr><td><code>voice</code></td><td><code>voice.name</code></td><td>صوت لهذا السطر وحده، مثل <code>ar-EG-ShakirNeural</code>. يستبدل <code>voice.name</code> ويُبقي <code>voice.provider</code>، فيجب أن يكون صوتًا من المزوّد نفسه. استخدمه للمزج بين لغتين.</td></tr>
 <tr><td><code>caption</code></td><td><code>voice.subtitles</code></td><td>إظهار هذا السطر كترجمة أيضًا (<code>true</code>) أو عدم إظهاره (<code>false</code>).</td></tr>
 </tbody>
 </table>
@@ -243,9 +243,18 @@
 <thead><tr><th>الكائن</th><th>الحقول والقيم الافتراضية</th></tr></thead>
 <tbody>
 <tr><td><code>output</code></td><td><code>width</code> 1920 و<code>height</code> 1080 و<code>fps</code> 30 (من 1 إلى 120)</td></tr>
-<tr><td><code>voice</code></td><td><code>provider</code> <code>edge</code>، <code>name</code> <code>en-US-AndrewNeural</code>، <code>rate</code> <code>+0%</code> (مثل <code>+10%</code> أو <code>-5%</code>)، <code>subtitles</code> <code>true</code> (إظهار أسطر التعليق كترجمة)، <code>gap</code> 0.3 (أقل صمت بين الأسطر؛ يتجمد الفيديو ليفسح له)، <code>volume</code> 1 (من 0 إلى 4)</td></tr>
+<tr><td><code>voice</code></td><td><code>provider</code> <code>edge</code> (أو <code>local</code> أو <code>command</code>)، <code>name</code> <code>en-US-AndrewNeural</code>، <code>rate</code> <code>+0%</code> (مثل <code>+10%</code> أو <code>-5%</code>)، <code>subtitles</code> <code>true</code> (إظهار أسطر التعليق كترجمة)، <code>gap</code> 0.3 (أقل صمت بين الأسطر؛ يتجمد الفيديو ليفسح له)، <code>volume</code> 1 (من 0 إلى 4)</td></tr>
 </tbody>
 </table>
+<table>
+<thead><tr><th><code>voice.provider</code></th><th>معنى <code>voice.name</code></th></tr></thead>
+<tbody>
+<tr><td><code>edge</code> (افتراضي)</td><td>صوت Edge، مثل <code>ar-EG-SalmaNeural</code>. يحتاج إلى الإنترنت.</td></tr>
+<tr><td><code>local</code></td><td>نموذج على هذا الجهاز: <code>voicetut</code> أو <code>voicetut:&lt;Voice&gt;</code> مثل <code>voicetut:Sarah</code> أو <code>namaa</code>. الحقل <code>rate</code> يتحول إلى معامل سرعة في <code>voicetut</code>؛ أما <code>namaa</code> فيتجاهله.</td></tr>
+<tr><td><code>command</code></td><td>مفتاح صوت عرّفته في <code>voices.json</code>.</td></tr>
+</tbody>
+</table>
+<p>الحقل <code>voice</code> الخاص بسطر التعليق يعمل داخل المزوّد نفسه. فمثلًا مع <code>"provider": "local"</code> يمكن لسطر أن يستخدم <code>namaa</code> ولآخر أن يستخدم <code>voicetut:Sarah</code>. الإعداد والحدود والأمثلة في <a href="../../ar/guide/voices.html">الأصوات</a>.</p>
 <p>اختر حجم الخرج بحسب مكان العرض: 1920x1080 ليوتيوب أو README أو الشرائح؛ 1080x1920 لـ Reels وTikTok وShorts؛ 1080x1080 للخلاصات.</p>
 
 <h2 id="theme">القالب (theme)<a class="a" href="#theme" aria-label="رابط إلى هذا القسم">#</a></h2>
@@ -373,7 +382,7 @@
 <li><strong>الـ captions بلغتين:</strong> استخدم caption واحدًا بسطرين (<code>"English\nعربي"</code>). تجنّب حرف الواو وحده بين كلمات لاتينية؛ استخدم فاصلة عربية بدلًا منه.</li>
 </ul>
 <div class="note">اعمل على مراحل. اكتب segments والتعليق الصوتي أولًا، وصيّر مسودة بـ <code>-q draft</code>، وراجعها بـ <code>check</code>، ثم أضف zooms وcaptions. غيّر نوعًا واحدًا من الأشياء في كل مرة.</div>
-<nav class="pager" aria-label="Pager"><a href="tools.html" rel="prev"><small>السابق</small>أدوات MCP</a><a href="sequence.html" rel="next"><small>التالي</small>دمج التسجيلات</a></nav></article>
+<nav class="pager" aria-label="Pager"><a href="tools.html" rel="prev"><small>السابق</small>أدوات MCP</a><a href="voices.html" rel="next"><small>التالي</small>الأصوات</a></nav></article>
   <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#basics">القواعد الثلاث</a><a href="#top-level">حقول المستوى الأعلى</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#narration">Narration</a><a href="#cards">Intro وoutro</a><a href="#chapter-cards">بطاقات الفصول</a><a href="#overlays">Overlays</a><a href="#music">Music</a><a href="#extends">مشاركة المظهر بـ extends</a><a href="#views">الشاشات والزوايا</a><a href="#output">الخرج والصوت</a><a href="#theme">القالب (theme)</a><a href="#example">مثال كامل</a><a href="#lint">تحذيرات الأسلوب</a><a href="#style">إرشادات الأسلوب</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">

@@ -109,13 +109,13 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 </table>
 
 <h2 id="narration">Narration</h2>
-<p>Each line is spoken by an Edge TTS voice and mixed into the video. Narration never overlaps: when a line overruns its slot, the video freezes to make room.</p>
+<p>Each line is spoken by the storyboard's voice and mixed into the video. By default that is an Edge voice; see <a href="@guide/voices.html">Voices</a> for local models and your own programs. Narration never overlaps: when a line overruns its slot, the video freezes to make room.</p>
 <table>
 <thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
 <tbody>
 <tr><td><code>at</code></td><td>required</td><td>Source time the line starts.</td></tr>
 <tr><td><code>text</code></td><td>required</td><td>What the voice says.</td></tr>
-<tr><td><code>voice</code></td><td><code>voice.name</code></td><td>Voice for this line only, for example <code>ar-EG-ShakirNeural</code>. Use it to mix languages.</td></tr>
+<tr><td><code>voice</code></td><td><code>voice.name</code></td><td>Voice for this line only, for example <code>ar-EG-ShakirNeural</code>. It replaces <code>voice.name</code> and keeps <code>voice.provider</code>, so it must be a voice of the same provider. Use it to mix languages.</td></tr>
 <tr><td><code>caption</code></td><td><code>voice.subtitles</code></td><td>Also show this line as a subtitle (<code>true</code>) or not (<code>false</code>).</td></tr>
 </tbody>
 </table>
@@ -217,9 +217,18 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 <thead><tr><th>Object</th><th>Fields and defaults</th></tr></thead>
 <tbody>
 <tr><td><code>output</code></td><td><code>width</code> 1920, <code>height</code> 1080, <code>fps</code> 30 (1 to 120)</td></tr>
-<tr><td><code>voice</code></td><td><code>provider</code> <code>edge</code>, <code>name</code> <code>en-US-AndrewNeural</code>, <code>rate</code> <code>+0%</code> (for example <code>+10%</code> or <code>-5%</code>), <code>subtitles</code> <code>true</code> (show narration lines as subtitles), <code>gap</code> 0.3 (minimum silence between lines; the video freezes to make room), <code>volume</code> 1 (0 to 4)</td></tr>
+<tr><td><code>voice</code></td><td><code>provider</code> <code>edge</code> (or <code>local</code> or <code>command</code>), <code>name</code> <code>en-US-AndrewNeural</code>, <code>rate</code> <code>+0%</code> (for example <code>+10%</code> or <code>-5%</code>), <code>subtitles</code> <code>true</code> (show narration lines as subtitles), <code>gap</code> 0.3 (minimum silence between lines; the video freezes to make room), <code>volume</code> 1 (0 to 4)</td></tr>
 </tbody>
 </table>
+<table>
+<thead><tr><th><code>voice.provider</code></th><th>What <code>voice.name</code> means</th></tr></thead>
+<tbody>
+<tr><td><code>edge</code> (default)</td><td>An Edge voice, for example <code>ar-EG-SalmaNeural</code>. Needs the internet.</td></tr>
+<tr><td><code>local</code></td><td>A model on this computer: <code>voicetut</code>, <code>voicetut:&lt;Voice&gt;</code> such as <code>voicetut:Sarah</code>, or <code>namaa</code>. <code>rate</code> becomes a speed factor for <code>voicetut</code>; <code>namaa</code> ignores it.</td></tr>
+<tr><td><code>command</code></td><td>The key of a voice you defined in <code>voices.json</code>.</td></tr>
+</tbody>
+</table>
+<p>A narration line's own <code>voice</code> works inside the provider. For example, with <code>"provider": "local"</code>, one line can use <code>namaa</code> and another <code>voicetut:Sarah</code>. Setup, limits and examples are on <a href="@guide/voices.html">Voices</a>.</p>
 <p>Pick the output size from where the video will be shown: 1920x1080 for YouTube, a README or slides; 1080x1920 for Reels, TikTok and Shorts; 1080x1080 for feeds.</p>
 
 <h2 id="theme">Theme</h2>

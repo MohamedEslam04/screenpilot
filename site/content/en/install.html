@@ -64,6 +64,15 @@ summary: Install ScreenPilot on Windows, macOS or Linux, add it to your AI apps,
 <div class="warn">Do not run the installer with <code>sudo</code>. It installs for your user only and needs no admin rights. With <code>sudo</code> it stops and tells you to run it again as yourself.</div>
 <p>What works depends on your desktop. See <a href="@guide/platforms.html#support">Platform support</a> for the full table.</p>
 
+<h2 id="verify">Check that it works</h2>
+<ol>
+  <li>Quit your AI app completely and open it again.</li>
+  <li>Ask it: "Run the ScreenPilot doctor." It reports the recorder, permissions, voices and video renderer, and says how to fix what is missing. If you get that report, ScreenPilot is connected.</li>
+  <li>To double-check, look for <code>screenpilot</code> in your AI app's tools or MCP list. In Claude Code, run <code>/mcp</code> (or <code>claude mcp list</code> in a terminal). It should say <strong>Connected</strong>.</li>
+  <li>Try a real request: "Take a screenshot of my screen." The first time, your desktop may ask to allow screen sharing. Allow it.</li>
+</ol>
+<p>Nothing shows up? See <a href="#troubleshooting">If something goes wrong</a>.</p>
+
 <h2 id="installer">What the installer does</h2>
 <ul>
   <li>Copies ScreenPilot to your user folder: <code>%LOCALAPPDATA%\ScreenPilot</code> on Windows, <code>~/Library/Application Support/ScreenPilot</code> on macOS, and <code>~/.local/share/screenpilot</code> on Linux.</li>

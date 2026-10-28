@@ -27,7 +27,7 @@
   <nav class="nav" aria-label="Main"><a href="../guide/index.html" aria-current=page>Docs</a><a href="../guide/install.html" class="hide-s">Install</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../ar/guide/platforms.html" lang="ar" hreflang="ar">العربية</a><button class="theme" type="button" aria-label="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
 </div></header>
 <main id="main"><div class="wrap docs">
-  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="sequence.html">Combine recordings</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html" aria-current=page>Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
+  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="voices.html">Voices</a><a href="sequence.html">Combine recordings</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html" aria-current=page>Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
   <article class="doc"><h1>Platforms</h1><p class="summary">What ScreenPilot can do on each desktop: recording, driving, window control and click logging, plus requirements, per-OS notes and limits.</p><p>ScreenPilot picks the right backend for your desktop by itself. Recording works on every supported desktop. Whether the AI can use your apps for you (move the mouse, click, type) depends on the desktop. Ask your AI app to run the ScreenPilot doctor to see which backend it chose and what works on your machine.</p>
 
 <h2 id="support">Platform support<a class="a" href="#support" aria-label="Link to this section">#</a></h2>
@@ -55,7 +55,7 @@
   <li>ffmpeg and ffprobe on your <code>PATH</code>.</li>
   <li>A screen recorder. The built-in one is the default. On Wayland (KDE, GNOME, wlroots) it records the PipeWire streams from the screen-cast portal with GStreamer, which needs <code>gst-launch-1.0</code> with <code>pipewiresrc</code> and an H.264 encoder (<code>x264enc</code>, <code>openh264enc</code> or VA-API). On X11 and Windows it records with ffmpeg. On macOS it uses ffmpeg with avfoundation.</li>
   <li>Optional: OBS Studio 28 or newer with the WebSocket server enabled, if you prefer OBS's encoders. Use <code>--recorder obs</code>.</li>
-  <li>Internet access for the voiceover (Edge TTS) and for the voice list.</li>
+  <li>Internet access for the default voiceover (Edge voices) and for its voice list. Local voices need none once installed, but installing them needs <code>uv</code> and the internet (see <a href="../guide/voices.html">Voices</a>).</li>
   <li><code>wl-clipboard</code> (<code>wl-copy</code>) to type non-Latin text on Wayland. X11 and Windows type any Unicode directly.</li>
 </ul>
 <p>If a GStreamer piece is missing, <code>screenpilot doctor</code> prints the install command for your distribution. For example:</p>
@@ -111,7 +111,8 @@ sudo apt install gstreamer1.0-tools gstreamer1.0-pipewire gstreamer1.0-plugins-u
 <ul>
   <li>Driving the desktop works on KDE Wayland, X11, GNOME Wayland (without window control), Windows and macOS. It does not work on wlroots desktops (sway, Hyprland). Recording still works there.</li>
   <li>Wayland desktops other than KDE expose no window list and no pointer position. That means no window framing, no <code>{web}</code> or <code>{window}</code> targets, and no pointer log for your own recordings.</li>
-  <li>The voiceover uses Edge TTS only. It needs the internet, and it is an unofficial service that may change.</li>
+  <li>The default Edge voices need the internet, and they are an unofficial service that may change.</li>
+  <li>Local voices (VoiceTut and NAMAA) are tested on Linux with an NVIDIA graphics card only. Windows, macOS and CPU-only machines are not tested.</li>
   <li>Rendering is not fast. Use a draft render while you iterate.</li>
   <li>Narration inside cut parts of the video is dropped, so lines must sit inside the parts you keep.</li>
 </ul>

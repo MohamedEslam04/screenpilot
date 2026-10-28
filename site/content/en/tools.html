@@ -30,12 +30,12 @@ summary: The tools ScreenPilot gives an AI app, grouped by job: recording, foota
 <thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
 <tbody>
 <tr><td><code>storyboard_schema</code></td><td>Returns the JSON Schema of <code>storyboard.json</code>. Read it before you write a storyboard.</td><td>none</td></tr>
-<tr><td><code>storyboard_init</code></td><td>Writes a starter <code>storyboard.json</code> for a recording or a session. With <code>suggest</code>, it pre-fills segments (idle time cut) and zooms (from clicks).</td><td><code>target</code>, <code>suggest</code>, <code>out</code>, <code>voice</code>, <code>force</code></td></tr>
+<tr><td><code>storyboard_init</code></td><td>Writes a starter <code>storyboard.json</code> for a recording or a session. With <code>suggest</code>, it pre-fills segments (idle time cut) and zooms (from clicks). <code>provider</code> is <code>edge</code> (default), <code>local</code> or <code>command</code>, and <code>voice</code> is the voice name for it, for example <code>voicetut:Sarah</code>.</td><td><code>target</code>, <code>suggest</code>, <code>out</code>, <code>voice</code>, <code>provider</code>, <code>force</code></td></tr>
 <tr><td><code>storyboard_validate</code></td><td>Validates a storyboard against the schema and the source video. Returns <code>valid</code> with warnings, or the schema issues. It never throws. Run it before every render.</td><td><code>path</code></td></tr>
-<tr><td><code>voices</code></td><td>Lists Edge TTS voices. It needs a network connection. Filter by locale, for example <code>ar-EG</code> or <code>en-US</code>.</td><td><code>lang</code></td></tr>
+<tr><td><code>voices</code></td><td>Lists voices. With <code>provider</code> <code>edge</code> (default) it lists Edge voices and needs a network connection; filter by locale, for example <code>ar-EG</code> or <code>en-US</code>. With <code>local</code> it lists the installed local models. With <code>command</code> it lists the voices defined in <code>voices.json</code>. Installing a local model has no tool: run <code>screenpilot voice-setup</code> in a terminal.</td><td><code>lang</code>, <code>provider</code></td></tr>
 </tbody>
 </table>
-<p>The file format is in <a href="@guide/storyboard.html">the storyboard reference</a>.</p>
+<p>The file format is in <a href="@guide/storyboard.html">the storyboard reference</a>. The voice providers are in <a href="@guide/voices.html">Voices</a>.</p>
 
 <h2 id="render-check">Render and check</h2>
 <table>
@@ -127,7 +127,7 @@ summary: The tools ScreenPilot gives an AI app, grouped by job: recording, foota
 <table>
 <thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
 <tbody>
-<tr><td><code>doctor</code></td><td>Checks the machine and returns <code>{summary, checks}</code>: node, ffmpeg, desktop, monitors, windows, OBS, demo browser and voices. It never fails, so read the report. With <code>input</code> on, it also tests input injection and briefly moves the real pointer.</td><td><code>input</code></td></tr>
+<tr><td><code>doctor</code></td><td>Checks the machine and returns <code>{summary, checks}</code>: node, ffmpeg, desktop, monitors, windows, OBS, demo browser and voices, including a "local voice" check that is skipped when no local voice is set up. It never fails, so read the report. With <code>input</code> on, it also tests input injection and briefly moves the real pointer.</td><td><code>input</code></td></tr>
 </tbody>
 </table>
 <p>Run <code>doctor</code> first on a new machine.</p>

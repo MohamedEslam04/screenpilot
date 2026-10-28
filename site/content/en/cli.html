@@ -82,7 +82,8 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
 <tbody>
 <tr><td><code>--suggest</code></td><td>Pre-fill segments, zooms and camera views from <code>analyze</code>.</td></tr>
-<tr><td><code>--voice &lt;name&gt;</code></td><td>Default Edge TTS voice. Default <code>en-US-AndrewNeural</code>.</td></tr>
+<tr><td><code>--voice &lt;name&gt;</code></td><td>Default voice name: an Edge voice, a local model (<code>voicetut:Sarah</code>, <code>namaa</code>) or the key of a command voice. Default <code>en-US-AndrewNeural</code>.</td></tr>
+<tr><td><code>--provider &lt;id&gt;</code></td><td>Voice provider written into the storyboard: <code>edge</code> (default), <code>local</code> or <code>command</code>. See <a href="@guide/voices.html">Voices</a>.</td></tr>
 <tr><td><code>--frame &lt;how&gt;</code></td><td>Camera for suggested views: <code>window</code> (default), <code>screen</code> or <code>all</code>.</td></tr>
 <tr><td><code>-o, --out &lt;file&gt;</code></td><td>Storyboard path.</td></tr>
 <tr><td><code>-f, --force</code></td><td>Overwrite an existing storyboard.</td></tr>
@@ -96,12 +97,24 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 <p><code>screenpilot schema</code> prints the storyboard JSON Schema. It is the authority on every field.</p>
 
 <h3 id="voices">voices</h3>
-<p><code>screenpilot voices</code> lists the available voices. It needs a network connection.</p>
+<p><code>screenpilot voices</code> lists the voices of one provider. With <code>edge</code> (the default) it needs a network connection. With <code>local</code> it lists the installed models and their voices. With <code>command</code> it lists the voices defined in <code>voices.json</code>. <a href="@guide/voices.html">Voices</a> explains the providers.</p>
 <table>
 <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
 <tbody>
 <tr><td><code>--lang &lt;prefix&gt;</code></td><td>Filter by locale prefix, for example <code>ar</code>, <code>ar-EG</code> or <code>en-US</code>.</td></tr>
-<tr><td><code>--provider &lt;id&gt;</code></td><td>Voice provider. Default <code>edge</code>.</td></tr>
+<tr><td><code>--provider &lt;id&gt;</code></td><td>Voice provider: <code>edge</code> (default), <code>local</code> or <code>command</code>.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-sh">screenpilot voices --provider local
+screenpilot voices --provider edge --lang ar</code></pre>
+
+<h3 id="voice-setup">voice-setup</h3>
+<p><code>screenpilot voice-setup [voicetut|namaa]</code> installs a local voice model. The default is <code>voicetut</code>. It needs <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>, which also fetches Python 3.11. It creates a Python environment, installs PyTorch and third-party code pinned to tested commits, downloads the model, speaks one test line, and saves the Python path in <code>voices.json</code>. Run it in a terminal: it downloads several GB, and there is no MCP tool for it on purpose. <a href="@guide/voices.html#setup">Voices</a> has the sizes, the folders and the steps.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--dir &lt;path&gt;</code></td><td>Folder for the environment and the models. Default: next to the app folder.</td></tr>
+<tr><td><code>-y, --yes</code></td><td>Do not ask before downloading.</td></tr>
 </tbody>
 </table>
 
@@ -261,5 +274,5 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 </table>
 
 <h3 id="doctor">doctor</h3>
-<p><code>screenpilot doctor</code> checks this machine: ffmpeg, desktop, monitors, OBS, the demo browser and voices. It prints a JSON report and a one-line summary. The exit code is always 0, so read the report. Add <code>--input</code> to also test input injection; this moves the real pointer for a moment.</p>
+<p><code>screenpilot doctor</code> checks this machine: ffmpeg, desktop, monitors, OBS, the demo browser and voices, including a "local voice" check that is skipped when you have not set up a local voice (it is optional). It prints a JSON report and a one-line summary. The exit code is always 0, so read the report. Add <code>--input</code> to also test input injection; this moves the real pointer for a moment.</p>
 <div class="note">Run <code>screenpilot doctor</code> first on a new machine, and again whenever recording or driving fails.</div>

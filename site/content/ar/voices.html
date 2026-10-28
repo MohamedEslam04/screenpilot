@@ -1,0 +1,204 @@
+<!--
+title: الأصوات
+summary: اختر صوت التعليق: أصوات Edge عبر الإنترنت، أو نماذج كلام على جهازك، أو أي برنامج تعرّفه بنفسك. الإعداد والحدود والحلول.
+-->
+<p>يقرأ ScreenPilot كل سطر تعليق بواسطة مزوّد صوت. هناك ثلاثة مزوّدين. <code>edge</code> هو الافتراضي ولا يحتاج إعدادًا. <code>local</code> يشغّل نماذج كلام على جهازك. <code>command</code> يشغّل أي برنامج تعرّفه يحوّل النص إلى ملف صوت. الـ storyboard الموجودة تعمل كما هي: إذا لم يكن في الـ storyboard حقل <code>provider</code> فالمزوّد هو <code>edge</code>.</p>
+
+<h2 id="choose">اختر المزوّد</h2>
+<table>
+<thead><tr><th>المزوّد</th><th>ما هو</th><th>الإنترنت</th><th>التكلفة</th><th>ملاحظة عن الجودة</th></tr></thead>
+<tbody>
+<tr><td><code>edge</code></td><td>أصوات Microsoft Edge بلغات كثيرة، منها العربية المصرية.</td><td>مطلوب عند كل تصيير لأسطر جديدة.</td><td>لا شيء.</td><td>يعمل بلا إعداد. هذه خدمة غير رسمية وقد تتغير.</td></tr>
+<tr><td><code>local</code></td><td>نماذج كلام تعمل على جهازك: VoiceTut وNAMAA.</td><td>للتنزيل أثناء الإعداد فقط. لا حاجة له بعد ذلك.</td><td>مجاني. يستهلك نحو 10 إلى 16 GB من القرص.</td><td>العربية المصرية والإنجليزية. العربية أقل دقة من الإنجليزية. جُرّب على Linux مع كرت NVIDIA فقط.</td></tr>
+<tr><td><code>command</code></td><td>برنامج تعرّفه في <code>voices.json</code>، مثل Piper.</td><td>يعتمد على البرنامج.</td><td>يعتمد على البرنامج.</td><td>ما ينتجه البرنامج.</td></tr>
+</tbody>
+</table>
+<p>اختر <code>edge</code> إذا أردت أن يعمل الآن. اختر <code>local</code> إذا أردت تصييرًا بلا إنترنت. اختر <code>command</code> إذا كان عندك نموذج كلام خاص بك.</p>
+<p>حدّد المزوّد مرة واحدة للـ storyboard كلها في <code>voice</code>. الحقول كلها في <a href="@guide/storyboard.html#output">الخرج والصوت</a>.</p>
+
+<h2 id="edge">أصوات Edge</h2>
+<p>Edge هو المزوّد الافتراضي. الأصوات هي أصوات Microsoft Edge وتُجلب عبر الإنترنت. الخدمة غير رسمية، فقد تتغير أو تتوقف دون إشعار. الفيديو الذي بلا أسطر تعليق لا يحتاج إلى صوت، والمقاطع المولَّدة تُخزَّن مؤقتًا، فلا يُطلب السطر غير المتغير مرة أخرى.</p>
+<pre><code class="language-json">"voice": { "name": "ar-EG-SalmaNeural", "rate": "+0%" }</code></pre>
+<p>اعرض الأصوات، ويمكنك تحديد لغة واحدة:</p>
+<pre><code class="language-sh">screenpilot voices --lang ar-EG</code></pre>
+<p>أمثلة: <code>ar-EG-SalmaNeural</code> و<code>ar-EG-ShakirNeural</code> و<code>en-US-AndrewNeural</code> (الافتراضي) و<code>en-US-AriaNeural</code>.</p>
+
+<h2 id="local-models">النماذج المحلية</h2>
+<p>الأصوات المحلية نماذج كلام تعمل على جهازك. هي مجانية ولا تحتاج إنترنت بعد الإعداد. ثبّت نموذجًا بالأمر <code>screenpilot voice-setup</code>، ثم استخدمه في الـ storyboard.</p>
+
+<h3 id="which-model">أي نموذج تثبّت</h3>
+<ul>
+<li><strong>VoiceTut</strong> يتكلم العربية المصرية والإنجليزية وفيه 19 صوتًا جاهزًا. ابدأ به. الكود مرخّص Apache-2.0؛ راجع صفحة النموذج لمعرفة ترخيص الأوزان. يذكر مؤلفوه معدل خطأ كلمات 0.40 للعربية مقابل 0.07 للإنجليزية، فاسمع الأسطر العربية قبل التسليم. جُرّب هنا الصوتان Sarah وMohammed.</li>
+<li><strong>NAMAA</strong> يتكلم العربية المصرية فقط وله صوت واحد. ترخيصه MIT. تذكر بطاقة النموذج أنه قد يفوّت صوت "ق" وقد يخطئ في قراءة الأرقام.</li>
+</ul>
+
+<h3 id="setup">تثبيت نموذج</h3>
+<p>نفّذ هذا في الطرفية. خادم MCP لا يوفّر أداة لهذا عمدًا، لأن الأمر ينزّل عدة غيغابايت ويثبّت كودًا من أطراف أخرى.</p>
+<pre><code class="language-sh">screenpilot voice-setup voicetut
+screenpilot voice-setup namaa</code></pre>
+<p>ما تحتاجه وما يحدث:</p>
+<ol>
+<li>ثبّت <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>. وهو يجلب Python 3.11 أيضًا، فلا تحتاج إلى Python خاص بك.</li>
+<li>نفّذ الأمر. يفحص المساحة الحرة على القرص أولًا، ويطلب تأكيدك إلا إذا مررت <code>--yes</code>.</li>
+<li>ينشئ بيئة Python خاصة به ويثبّت PyTorch: نسخة CUDA على كروت NVIDIA، ونسخة CPU فقط على بقية أجهزة Windows وLinux.</li>
+<li>يثبّت كودًا من أطراف أخرى مثبّتًا على الإصدارات التي جُرّب معها: OmniVoice وVoiceTut من GitHub لنموذج VoiceTut، و<code>chatterbox-tts</code> لنموذج NAMAA.</li>
+<li>ينزّل النموذج وينطق سطر اختبار واحدًا.</li>
+<li>يحفظ مسار Python في <code>voices.json</code> (المفتاحان <code>local.python</code> و<code>local.env.HF_HOME</code>).</li>
+</ol>
+<table>
+<thead><tr><th>النموذج</th><th>القرص</th></tr></thead>
+<tbody>
+<tr><td><code>voicetut</code></td><td>نحو 10.5 GB، وحتى 15 GB أثناء التثبيت.</td></tr>
+<tr><td><code>namaa</code></td><td>نحو 5.5 GB إضافية فوق VoiceTut.</td></tr>
+</tbody>
+</table>
+<p>توضع النماذج في مجلد بجوار مجلد التطبيق، فلا يحذفها تحديث التطبيق:</p>
+<ul>
+<li>Linux: <code>~/.local/share/screenpilot-voices</code></li>
+<li>Windows: <code>%LOCALAPPDATA%\ScreenPilot-voices</code></li>
+<li>macOS: <code>~/Library/Application Support/ScreenPilot-voices</code></li>
+</ul>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--dir &lt;path&gt;</code></td><td>يستخدم مجلدًا أو قرصًا آخر.</td></tr>
+<tr><td><code>-y, --yes</code></td><td>لا يسأل قبل التنزيل.</td></tr>
+</tbody>
+</table>
+<div class="warn">قد يستغرق 30 دقيقة أو أكثر على اتصال بطيء. لا تغلق الطرفية.</div>
+<p>لاستخدام Python موجود عندك، اضبط <code>SCREENPILOT_LOCAL_PYTHON</code> على Python مثبّتة فيه حزم النموذج. واضبط <code>SCREENPILOT_LOCAL_DEVICE</code> على <code>auto</code> (الافتراضي) أو <code>cuda</code> أو <code>cpu</code> أو <code>mps</code> لتحديد مكان تشغيل النموذج.</p>
+<p>تحقق من النتيجة:</p>
+<pre><code class="language-sh">screenpilot voices --provider local
+screenpilot doctor</code></pre>
+<p>الأمر <code>voices --provider local</code> يعرض النماذج المثبّتة وأصواتها. وفي <code>doctor</code> فحص اسمه "local voice". يُتخطّى هذا الفحص إذا لم تُعدّ صوتًا محليًا، لأن الأصوات المحلية اختيارية.</p>
+
+<h3 id="use">استخدام صوت محلي</h3>
+<p>حدّد المزوّد والاسم في الـ storyboard:</p>
+<pre><code class="language-json">"voice": { "provider": "local", "name": "voicetut:Sarah", "rate": "+0%" }</code></pre>
+<p>مع المزوّد المحلي يكون <code>name</code> واحدًا مما يلي:</p>
+<ul>
+<li><code>voicetut</code>: الصوت الافتراضي لهذا النموذج.</li>
+<li><code>voicetut:&lt;Voice&gt;</code>: أحد أصواته، مثل <code>voicetut:Sarah</code>.</li>
+<li><code>namaa</code>: صوت NAMAA الوحيد.</li>
+</ul>
+<p>لغة كل سطر تُكتشف تلقائيًا. السطر الذي فيه حروف عربية يُقرأ بالعربية، وأي سطر آخر يُقرأ بالإنجليزية. الحقل <code>rate</code> (مثل <code>+10%</code>) يتحول إلى معامل سرعة في VoiceTut. أما NAMAA فيتجاهله.</p>
+<p>لبدء storyboard بصوت محلي:</p>
+<pre><code class="language-sh">screenpilot init sessions/2026-10-27_14-02 --provider local --voice voicetut:Sarah</code></pre>
+<p>أداتا MCP <code>voices</code> و<code>storyboard_init</code> تقبلان الوسيط <code>provider</code> أيضًا، وكذلك الكائن <code>voice</code> في <code>take.json</code>.</p>
+
+<h3 id="mixing">المزج بين النماذج في فيديو واحد</h3>
+<p>يمكن لسطر التعليق أن يحدد <code>voice</code> خاصًا به. هذا يستبدل الاسم ويُبقي المزوّد. فيمكنك قراءة الأسطر العربية بـ NAMAA والإنجليزية بـ VoiceTut:</p>
+<pre><code class="language-json">"voice": { "provider": "local", "name": "voicetut:Sarah" },
+"narration": [
+  { "at": 1, "text": "Invoices can now repeat on a schedule." },
+  { "at": 6, "text": "ويمكنك إيقافها في أي وقت.", "voice": "namaa" }
+]</code></pre>
+
+<h3 id="tips">نصائح</h3>
+<ul>
+<li>اجعل الأسطر قصيرة. السطر الطويل يجمّد الفيديو ليفسح له.</li>
+<li>المقاطع المولَّدة تُخزَّن مؤقتًا، فإعادة التصيير سريعة. تُنطق من جديد الأسطر التي غيّرتها فقط.</li>
+<li>اسمع الأسطر العربية قبل التسليم، وراجع الأرقام.</li>
+</ul>
+
+<h3 id="limits">الحدود والأرقام المقيسة</h3>
+<p>قيست هذه الأرقام على جهاز واحد: NVIDIA RTX 2050 بذاكرة 4 GB.</p>
+<table>
+<thead><tr><th>النموذج</th><th>ذروة ذاكرة الكرت</th><th>السرعة</th></tr></thead>
+<tbody>
+<tr><td>VoiceTut</td><td>2.1 GB</td><td>أبطأ من الزمن الحقيقي بنحو 1.4 مرة: سطر مدته 3 ثوانٍ يستغرق نحو 4 إلى 5 ثوانٍ.</td></tr>
+<tr><td>NAMAA</td><td>3.2 GB، وهذا ضيق على كرت 4 GB يشغّل سطح المكتب أيضًا.</td><td>مماثلة لـ VoiceTut.</td></tr>
+</tbody>
+</table>
+<ul>
+<li>يُحمَّل النموذج مرة واحدة في كل تصيير. يستغرق ذلك نحو 20 ثانية.</li>
+<li>على المعالج (CPU) يكون أبطأ بكثير. لم يُقَس ذلك.</li>
+<li>العربية أقل دقة من الإنجليزية. قد يفوّت NAMAA صوت "ق" وقد يخطئ في الأرقام.</li>
+</ul>
+<div class="warn">جُرّب على Linux مع كرت NVIDIA فقط. لم يُجرَّب على Windows ولا على macOS.</div>
+
+<h2 id="own-model">نموذجك الخاص</h2>
+<p>صوت <code>command</code> يشغّل برنامجًا تختاره. يستلم البرنامج النص ويكتب ملف صوت. يصلح لذلك Piper أو Kokoro أو سكربت يستدعي نموذجًا تثق به.</p>
+<p>عرّف الصوت في <code>voices.json</code> داخل مجلد الإعدادات:</p>
+<ul>
+<li>Linux وmacOS: <code>~/.config/screenpilot/voices.json</code></li>
+<li>Windows: <code>%APPDATA%\screenpilot\voices.json</code></li>
+</ul>
+<p>اضبط <code>SCREENPILOT_VOICES_FILE</code> لاستخدام مسار آخر. هذا الملف ملكك. وهو خارج الـ storyboard عمدًا: فالـ storyboard القادم من ذكاء اصطناعي أو من شخص آخر يجب ألا يستطيع تشغيل برامج أبدًا.</p>
+
+<h3 id="command-fields">الحقول</h3>
+<pre><code class="language-json">{
+  "commands": {
+    "my-voice": {
+      "command": ["program", "arg", "{out}"],
+      "stdin": "{text}",
+      "ext": "wav",
+      "timeout": 120,
+      "env": {}
+    }
+  }
+}</code></pre>
+<table>
+<thead><tr><th>الحقل</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>command</code></td><td>البرنامج ووسائطه. لا يُستخدم shell، فلا يستطيع النص حقن أوامر. البادئة <code>~/</code> في أول وسيط تعني مجلدك الرئيسي.</td></tr>
+<tr><td><code>stdin</code></td><td>اختياري. نص يُمرَّر إلى البرنامج، وهو عادةً <code>{text}</code>.</td></tr>
+<tr><td><code>ext</code></td><td>امتداد الملف الذي يكتبه البرنامج. الافتراضي <code>wav</code>. يصلح أي صيغة يقرؤها ffmpeg.</td></tr>
+<tr><td><code>timeout</code></td><td>الثواني المسموحة لسطر واحد. الافتراضي 120.</td></tr>
+<tr><td><code>env</code></td><td>اختياري. متغيرات بيئة إضافية للبرنامج.</td></tr>
+</tbody>
+</table>
+<p>العناصر النائبة التي يمكنك استخدامها في <code>command</code> و<code>stdin</code>:</p>
+<table>
+<thead><tr><th>العنصر</th><th>يُستبدل بـ</th></tr></thead>
+<tbody>
+<tr><td><code>{text}</code></td><td>سطر التعليق.</td></tr>
+<tr><td><code>{rate}</code></td><td>معدل الصوت، مثل <code>+10%</code>.</td></tr>
+<tr><td><code>{speed}</code></td><td>المعدل كمعامل سرعة، مثل <code>1.1</code>.</td></tr>
+<tr><td><code>{lang}</code></td><td><code>ar</code> للسطر الذي فيه حروف عربية، وإلا <code>en</code>.</td></tr>
+<tr><td><code>{out}</code></td><td>المسار الذي يجب أن يكتب البرنامج الصوت فيه.</td></tr>
+</tbody>
+</table>
+<p>يجب أن يكتب البرنامج الصوت في <code>{out}</code>.</p>
+
+<h3 id="piper">مثال: Piper</h3>
+<p>يوضح هذا المثال شكل الملف. لم يُشغَّل هنا، فراجع المسارات والخيارات مقابل تثبيت Piper عندك.</p>
+<pre><code class="language-json">{
+  "commands": {
+    "piper-amy": {
+      "command": ["piper", "--model", "~/models/en_US-amy-medium.onnx", "--output_file", "{out}"],
+      "stdin": "{text}"
+    }
+  }
+}</code></pre>
+<p>ثم استخدمه في الـ storyboard. الحقل <code>name</code> هو المفتاح الذي عرّفته:</p>
+<pre><code class="language-json">"voice": { "provider": "command", "name": "piper-amy" }</code></pre>
+<p>الأمر <code>screenpilot voices --provider command</code> يعرض الأصوات المعرّفة في <code>voices.json</code>.</p>
+
+<h3 id="wrap-any-model">لف أي نموذج بسكربت</h3>
+<p>إذا لم يكن للنموذج سطر أوامر، اكتب سكربتًا صغيرًا خاصًا بك ووجّه <code>command</code> إليه:</p>
+<pre><code class="language-json">{
+  "commands": {
+    "my-model": {
+      "command": ["python3", "~/tts/say.py", "{lang}", "{out}"],
+      "stdin": "{text}",
+      "timeout": 300
+    }
+  }
+}</code></pre>
+<p>السكربت <code>~/tts/say.py</code> من كتابتك. يقرأ النص من stdin، ويقرأ اللغة من وسيطه الأول، ويكتب ملف الصوت في المسار الموجود في وسيطه الثاني. ارفع <code>timeout</code> للنموذج البطيء.</p>
+
+<h2 id="troubleshooting">حل المشكلات</h2>
+<table>
+<thead><tr><th>ما تراه</th><th>ما تفعله</th></tr></thead>
+<tbody>
+<tr><td>لا يوجد محرك صوت محلي مُعَدّ، وتطلب الرسالة تنفيذ <code>voice-setup</code>.</td><td>نفّذ <code>screenpilot voice-setup voicetut</code>. أو اضبط <code>SCREENPILOT_LOCAL_PYTHON</code> على Python مثبّت فيه نموذج.</td></tr>
+<tr><td>نفدت ذاكرة كرت الشاشة، وتقترح الرسالة <code>SCREENPILOT_LOCAL_DEVICE=cpu</code>.</td><td>اضبط <code>SCREENPILOT_LOCAL_DEVICE=cpu</code>. سيكون أبطأ. أو استخدم <code>voicetut</code> فهو يحتاج ذاكرة كرت أقل من <code>namaa</code>.</td></tr>
+<tr><td>صوت محلي غير معروف، مع قائمة بالنماذج الصالحة.</td><td>استخدم <code>voicetut</code> أو <code>voicetut:&lt;Voice&gt;</code> أو <code>namaa</code>. اعرض المثبّت بالأمر <code>screenpilot voices --provider local</code>.</td></tr>
+<tr><td>انتهى أمر صوت <code>command</code> دون أن يكتب صوتًا، وتذكر الرسالة <code>voices.json</code>.</td><td>تأكد أن البرنامج يكتب الصوت في <code>{out}</code> وأن <code>ext</code> يطابق الملف الذي يكتبه. شغّل البرنامج بيدك بمسار حقيقي.</td></tr>
+<tr><td>توقف محرك الصوت، متبوعًا بآخر أسطر طبعها.</td><td>اقرأ تلك الأسطر: هي ما طبعه المحرك قبل أن يتوقف. نفّذ <code>screenpilot doctor</code> واقرأ فحص "local voice".</td></tr>
+<tr><td>يقول <code>voice-setup</code> إنه يحتاج <code>uv</code>.</td><td>ثبّت <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> ثم أعد تنفيذ الأمر.</td></tr>
+<tr><td>يقول <code>voice-setup</code> إن مساحة القرص غير كافية.</td><td>حرّر مساحة، أو مرّر <code>--dir</code> لاستخدام قرص آخر.</td></tr>
+</tbody>
+</table>
+<div class="note">إجابات أخرى في <a href="@guide/faq.html">الأسئلة الشائعة</a>. سطر الأوامر في <a href="@guide/cli.html#voice-setup">voice-setup</a> و<a href="@guide/cli.html#voices">voices</a>.</div>

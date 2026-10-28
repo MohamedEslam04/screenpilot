@@ -1,0 +1,204 @@
+<!--
+title: Voices
+summary: Choose a narration voice: Edge voices over the internet, speech models on your own computer, or any program you define. Setup, limits and fixes.
+-->
+<p>ScreenPilot speaks each narration line with a voice provider. There are three. <code>edge</code> is the default and needs no setup. <code>local</code> runs speech models on your own computer. <code>command</code> runs any program you define that turns text into an audio file. Existing storyboards keep working: when a storyboard has no <code>provider</code>, it is <code>edge</code>.</p>
+
+<h2 id="choose">Choose a provider</h2>
+<table>
+<thead><tr><th>Provider</th><th>What it is</th><th>Internet</th><th>Cost</th><th>Quality note</th></tr></thead>
+<tbody>
+<tr><td><code>edge</code></td><td>Microsoft Edge voices, in many languages, including Egyptian Arabic.</td><td>Needed for every render of new lines.</td><td>None.</td><td>Works with no setup. It is an unofficial service and may change.</td></tr>
+<tr><td><code>local</code></td><td>Speech models that run on your computer: VoiceTut and NAMAA.</td><td>Only for the setup download. Not needed after.</td><td>Free. Uses about 10 to 16 GB of disk.</td><td>Egyptian Arabic and English. Arabic is less accurate than English. Tested on Linux with an NVIDIA GPU only.</td></tr>
+<tr><td><code>command</code></td><td>A program you define in <code>voices.json</code>, for example Piper.</td><td>Depends on the program.</td><td>Depends on the program.</td><td>Whatever the program produces.</td></tr>
+</tbody>
+</table>
+<p>Pick <code>edge</code> if you want it to work now. Pick <code>local</code> if you want no internet at render time. Pick <code>command</code> if you already have a speech model of your own.</p>
+<p>Set the provider once for the whole storyboard in <code>voice</code>. See <a href="@guide/storyboard.html#output">Output and voice</a> for every field.</p>
+
+<h2 id="edge">Edge voices</h2>
+<p>Edge is the default provider. The voices are Microsoft Edge voices, fetched over the internet. The service is unofficial, so it can change or stop without notice. A video with no narration lines needs no voice, and generated clips are cached, so an unchanged line is not requested again.</p>
+<pre><code class="language-json">"voice": { "name": "ar-EG-SalmaNeural", "rate": "+0%" }</code></pre>
+<p>List the voices, optionally for one language:</p>
+<pre><code class="language-sh">screenpilot voices --lang ar-EG</code></pre>
+<p>Examples: <code>ar-EG-SalmaNeural</code>, <code>ar-EG-ShakirNeural</code>, <code>en-US-AndrewNeural</code> (the default), <code>en-US-AriaNeural</code>.</p>
+
+<h2 id="local-models">Local models</h2>
+<p>Local voices are speech models that run on your own computer. They are free and need no internet after setup. Install one with <code>screenpilot voice-setup</code>, then use it in a storyboard.</p>
+
+<h3 id="which-model">Which model to install</h3>
+<ul>
+<li><strong>VoiceTut</strong> speaks Egyptian Arabic and English and has 19 built-in voices. Start here. Its code is Apache-2.0; check the model page for the weights license. Its authors report a word error rate of 0.40 for Arabic against 0.07 for English, so listen to Arabic lines before you deliver. Sarah and Mohammed were tested here.</li>
+<li><strong>NAMAA</strong> speaks Egyptian Arabic only and has one voice. It is MIT licensed. Its model card says it can miss the "ق" sound and misread numbers.</li>
+</ul>
+
+<h3 id="setup">Install a model</h3>
+<p>Run this in a terminal. The MCP server has no tool for it on purpose, because it downloads many gigabytes and installs third-party code.</p>
+<pre><code class="language-sh">screenpilot voice-setup voicetut
+screenpilot voice-setup namaa</code></pre>
+<p>What you need and what happens:</p>
+<ol>
+<li>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>. It also fetches Python 3.11, so you do not need your own Python.</li>
+<li>Run the command. It checks the free disk space first, and asks you to confirm unless you pass <code>--yes</code>.</li>
+<li>It creates a Python environment of its own and installs PyTorch: the CUDA build on NVIDIA GPUs, the CPU-only build on other Windows and Linux machines.</li>
+<li>It installs third-party code pinned to the commits it was tested with: OmniVoice and VoiceTut from GitHub for VoiceTut, and <code>chatterbox-tts</code> for NAMAA.</li>
+<li>It downloads the model and speaks one test line.</li>
+<li>It saves the Python path in <code>voices.json</code> (keys <code>local.python</code> and <code>local.env.HF_HOME</code>).</li>
+</ol>
+<table>
+<thead><tr><th>Model</th><th>Disk</th></tr></thead>
+<tbody>
+<tr><td><code>voicetut</code></td><td>About 10.5 GB, up to 15 GB while installing.</td></tr>
+<tr><td><code>namaa</code></td><td>About 5.5 GB more, on top of VoiceTut.</td></tr>
+</tbody>
+</table>
+<p>The models go in a folder next to the app folder, so an app update does not remove them:</p>
+<ul>
+<li>Linux: <code>~/.local/share/screenpilot-voices</code></li>
+<li>Windows: <code>%LOCALAPPDATA%\ScreenPilot-voices</code></li>
+<li>macOS: <code>~/Library/Application Support/ScreenPilot-voices</code></li>
+</ul>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--dir &lt;path&gt;</code></td><td>Use another folder or drive.</td></tr>
+<tr><td><code>-y, --yes</code></td><td>Do not ask before downloading.</td></tr>
+</tbody>
+</table>
+<div class="warn">It can take 30 minutes or more on a slow connection. Do not close the terminal.</div>
+<p>To use a Python you already have, set <code>SCREENPILOT_LOCAL_PYTHON</code> to a Python that has the model packages installed. Set <code>SCREENPILOT_LOCAL_DEVICE</code> to <code>auto</code> (default), <code>cuda</code>, <code>cpu</code> or <code>mps</code> to choose where the model runs.</p>
+<p>Check the result:</p>
+<pre><code class="language-sh">screenpilot voices --provider local
+screenpilot doctor</code></pre>
+<p><code>voices --provider local</code> lists the installed models and their voices. <code>doctor</code> has a "local voice" check. It is skipped when you have not set up a local voice, because local voices are optional.</p>
+
+<h3 id="use">Use a local voice</h3>
+<p>Set the provider and the name in the storyboard:</p>
+<pre><code class="language-json">"voice": { "provider": "local", "name": "voicetut:Sarah", "rate": "+0%" }</code></pre>
+<p>For a local provider, <code>name</code> is one of:</p>
+<ul>
+<li><code>voicetut</code>: the default voice of that model.</li>
+<li><code>voicetut:&lt;Voice&gt;</code>: one of its voices, for example <code>voicetut:Sarah</code>.</li>
+<li><code>namaa</code>: the only NAMAA voice.</li>
+</ul>
+<p>The language of each line is detected for you. A line with Arabic letters is Arabic. Any other line is English. <code>rate</code> (for example <code>+10%</code>) becomes a speed factor for VoiceTut. NAMAA ignores it.</p>
+<p>To start a storyboard with a local voice:</p>
+<pre><code class="language-sh">screenpilot init sessions/2026-10-27_14-02 --provider local --voice voicetut:Sarah</code></pre>
+<p>The MCP tools <code>voices</code> and <code>storyboard_init</code> take a <code>provider</code> argument too, and so does the <code>voice</code> object in a <code>take.json</code>.</p>
+
+<h3 id="mixing">Mix models in one video</h3>
+<p>A narration line can set its own <code>voice</code>. It replaces the name and keeps the provider. So you can speak Arabic lines with NAMAA and English lines with VoiceTut:</p>
+<pre><code class="language-json">"voice": { "provider": "local", "name": "voicetut:Sarah" },
+"narration": [
+  { "at": 1, "text": "Invoices can now repeat on a schedule." },
+  { "at": 6, "text": "ويمكنك إيقافها في أي وقت.", "voice": "namaa" }
+]</code></pre>
+
+<h3 id="tips">Tips</h3>
+<ul>
+<li>Keep lines short. A long line freezes the video to make room.</li>
+<li>Generated clips are cached, so rendering again is fast. Only lines you change are spoken again.</li>
+<li>Listen to Arabic lines before you deliver, and check any numbers.</li>
+</ul>
+
+<h3 id="limits">Limits and measured numbers</h3>
+<p>These numbers were measured on one machine: an NVIDIA RTX 2050 with 4 GB of memory.</p>
+<table>
+<thead><tr><th>Model</th><th>Peak GPU memory</th><th>Speed</th></tr></thead>
+<tbody>
+<tr><td>VoiceTut</td><td>2.1 GB</td><td>About 1.4 times slower than real time: a 3 s line takes about 4 to 5 s.</td></tr>
+<tr><td>NAMAA</td><td>3.2 GB, tight on a 4 GB card that also runs the desktop.</td><td>Similar to VoiceTut.</td></tr>
+</tbody>
+</table>
+<ul>
+<li>The model loads once per render. That takes about 20 s.</li>
+<li>On a CPU it is much slower. This was not measured.</li>
+<li>Arabic is less accurate than English. NAMAA can miss the "ق" sound and misread numbers.</li>
+</ul>
+<div class="warn">Tested on Linux with an NVIDIA GPU only. Windows and macOS were not tested.</div>
+
+<h2 id="own-model">Your own model</h2>
+<p>A <code>command</code> voice runs a program of your choice. The program receives the text and writes an audio file. Piper, Kokoro or a script that calls a model you trust all work.</p>
+<p>Define the voice in <code>voices.json</code>, in the config folder:</p>
+<ul>
+<li>Linux and macOS: <code>~/.config/screenpilot/voices.json</code></li>
+<li>Windows: <code>%APPDATA%\screenpilot\voices.json</code></li>
+</ul>
+<p>Set <code>SCREENPILOT_VOICES_FILE</code> to use another path. This file is yours. It lives outside the storyboard on purpose: a storyboard from an AI or from someone else must never be able to run programs.</p>
+
+<h3 id="command-fields">The fields</h3>
+<pre><code class="language-json">{
+  "commands": {
+    "my-voice": {
+      "command": ["program", "arg", "{out}"],
+      "stdin": "{text}",
+      "ext": "wav",
+      "timeout": 120,
+      "env": {}
+    }
+  }
+}</code></pre>
+<table>
+<thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>command</code></td><td>The program and its arguments. No shell is used, so the text cannot inject commands. A leading <code>~/</code> in an argument means your home folder.</td></tr>
+<tr><td><code>stdin</code></td><td>Optional. Text piped to the program, usually <code>{text}</code>.</td></tr>
+<tr><td><code>ext</code></td><td>Extension of the file the program writes. Default <code>wav</code>. Any format ffmpeg reads works.</td></tr>
+<tr><td><code>timeout</code></td><td>Seconds allowed for one line. Default 120.</td></tr>
+<tr><td><code>env</code></td><td>Optional. Extra environment variables for the program.</td></tr>
+</tbody>
+</table>
+<p>The placeholders you can use in <code>command</code> and <code>stdin</code>:</p>
+<table>
+<thead><tr><th>Placeholder</th><th>Replaced with</th></tr></thead>
+<tbody>
+<tr><td><code>{text}</code></td><td>The narration line.</td></tr>
+<tr><td><code>{rate}</code></td><td>The voice rate, for example <code>+10%</code>.</td></tr>
+<tr><td><code>{speed}</code></td><td>The rate as a speed factor, for example <code>1.1</code>.</td></tr>
+<tr><td><code>{lang}</code></td><td><code>ar</code> for a line with Arabic letters, otherwise <code>en</code>.</td></tr>
+<tr><td><code>{out}</code></td><td>The path the program must write the audio to.</td></tr>
+</tbody>
+</table>
+<p>The program must write the audio to <code>{out}</code>.</p>
+
+<h3 id="piper">Example: Piper</h3>
+<p>This example shows the shape of the file. It was not run here, so check the paths and flags against your Piper install.</p>
+<pre><code class="language-json">{
+  "commands": {
+    "piper-amy": {
+      "command": ["piper", "--model", "~/models/en_US-amy-medium.onnx", "--output_file", "{out}"],
+      "stdin": "{text}"
+    }
+  }
+}</code></pre>
+<p>Then use it in the storyboard. The <code>name</code> is the key you defined:</p>
+<pre><code class="language-json">"voice": { "provider": "command", "name": "piper-amy" }</code></pre>
+<p><code>screenpilot voices --provider command</code> lists the voices defined in your <code>voices.json</code>.</p>
+
+<h3 id="wrap-any-model">Wrap any model in a script</h3>
+<p>If a model has no command line, write a small script of your own and point <code>command</code> at it:</p>
+<pre><code class="language-json">{
+  "commands": {
+    "my-model": {
+      "command": ["python3", "~/tts/say.py", "{lang}", "{out}"],
+      "stdin": "{text}",
+      "timeout": 300
+    }
+  }
+}</code></pre>
+<p>The script <code>~/tts/say.py</code> is yours. It reads the text from stdin, reads the language from its first argument, and writes the audio file to the path in its second argument. Raise <code>timeout</code> for a slow model.</p>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table>
+<thead><tr><th>You see</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>No local voice engine is set up, and it says to run <code>voice-setup</code>.</td><td>Run <code>screenpilot voice-setup voicetut</code>. Or set <code>SCREENPILOT_LOCAL_PYTHON</code> to a Python that has a model installed.</td></tr>
+<tr><td>The GPU ran out of memory. The message suggests <code>SCREENPILOT_LOCAL_DEVICE=cpu</code>.</td><td>Set <code>SCREENPILOT_LOCAL_DEVICE=cpu</code>. It is slower. Or use <code>voicetut</code>, which needs less GPU memory than <code>namaa</code>.</td></tr>
+<tr><td>An unknown local voice, with a list of the valid models.</td><td>Use <code>voicetut</code>, <code>voicetut:&lt;Voice&gt;</code> or <code>namaa</code>. List what is installed with <code>screenpilot voices --provider local</code>.</td></tr>
+<tr><td>A command voice finished but wrote no audio, and the message names <code>voices.json</code>.</td><td>Check that the program writes its audio to <code>{out}</code> and that <code>ext</code> matches the file it writes. Run the program by hand with a real path.</td></tr>
+<tr><td>The voice engine stopped, followed by its last lines of output.</td><td>Read those lines: they are what the engine printed before it stopped. Run <code>screenpilot doctor</code> and read the "local voice" check.</td></tr>
+<tr><td><code>voice-setup</code> says it needs <code>uv</code>.</td><td>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> and run the command again.</td></tr>
+<tr><td><code>voice-setup</code> says there is not enough disk space.</td><td>Free space, or pass <code>--dir</code> to use another drive.</td></tr>
+</tbody>
+</table>
+<div class="note">More answers are on the <a href="@guide/faq.html">FAQ</a>. The command line is in <a href="@guide/cli.html#voice-setup">voice-setup</a> and <a href="@guide/cli.html#voices">voices</a>.</div>

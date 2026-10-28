@@ -27,7 +27,7 @@
   <nav class="nav" aria-label="Main"><a href="../guide/index.html" aria-current=page>Docs</a><a href="../guide/install.html" class="hide-s">Install</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../ar/guide/cli.html" lang="ar" hreflang="ar">العربية</a><button class="theme" type="button" aria-label="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
 </div></header>
 <main id="main"><div class="wrap docs">
-  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html" aria-current=page>Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="sequence.html">Combine recordings</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
+  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html" aria-current=page>Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="voices.html">Voices</a><a href="sequence.html">Combine recordings</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
   <article class="doc"><h1>Command line</h1><p class="summary">Every screenpilot command and its useful flags, grouped by job: record, edit, render, combine recordings, drive the desktop and set up, with the full workflow in one block.</p><p>The command line does the same steps as the MCP tools. Run it as <code>screenpilot</code>, or as <code>node dist/cli.js</code> from a source checkout. Most people never need it, because their AI app calls the <a href="../guide/tools.html">tools</a> for them. Use the CLI to script a render, to check a machine, or to repair a setup.</p>
 <p>Run <code>screenpilot --help</code> for the list of commands and <code>screenpilot &lt;command&gt; --help</code> for the flags of one command. Commands print their result as JSON on stdout and progress messages on stderr.</p>
 
@@ -108,7 +108,8 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
 <tbody>
 <tr><td><code>--suggest</code></td><td>Pre-fill segments, zooms and camera views from <code>analyze</code>.</td></tr>
-<tr><td><code>--voice &lt;name&gt;</code></td><td>Default Edge TTS voice. Default <code>en-US-AndrewNeural</code>.</td></tr>
+<tr><td><code>--voice &lt;name&gt;</code></td><td>Default voice name: an Edge voice, a local model (<code>voicetut:Sarah</code>, <code>namaa</code>) or the key of a command voice. Default <code>en-US-AndrewNeural</code>.</td></tr>
+<tr><td><code>--provider &lt;id&gt;</code></td><td>Voice provider written into the storyboard: <code>edge</code> (default), <code>local</code> or <code>command</code>. See <a href="../guide/voices.html">Voices</a>.</td></tr>
 <tr><td><code>--frame &lt;how&gt;</code></td><td>Camera for suggested views: <code>window</code> (default), <code>screen</code> or <code>all</code>.</td></tr>
 <tr><td><code>-o, --out &lt;file&gt;</code></td><td>Storyboard path.</td></tr>
 <tr><td><code>-f, --force</code></td><td>Overwrite an existing storyboard.</td></tr>
@@ -122,12 +123,24 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 <p><code>screenpilot schema</code> prints the storyboard JSON Schema. It is the authority on every field.</p>
 
 <h3 id="voices">voices<a class="a" href="#voices" aria-label="Link to this section">#</a></h3>
-<p><code>screenpilot voices</code> lists the available voices. It needs a network connection.</p>
+<p><code>screenpilot voices</code> lists the voices of one provider. With <code>edge</code> (the default) it needs a network connection. With <code>local</code> it lists the installed models and their voices. With <code>command</code> it lists the voices defined in <code>voices.json</code>. <a href="../guide/voices.html">Voices</a> explains the providers.</p>
 <table>
 <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
 <tbody>
 <tr><td><code>--lang &lt;prefix&gt;</code></td><td>Filter by locale prefix, for example <code>ar</code>, <code>ar-EG</code> or <code>en-US</code>.</td></tr>
-<tr><td><code>--provider &lt;id&gt;</code></td><td>Voice provider. Default <code>edge</code>.</td></tr>
+<tr><td><code>--provider &lt;id&gt;</code></td><td>Voice provider: <code>edge</code> (default), <code>local</code> or <code>command</code>.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-sh">screenpilot voices --provider local
+screenpilot voices --provider edge --lang ar</code></pre>
+
+<h3 id="voice-setup">voice-setup<a class="a" href="#voice-setup" aria-label="Link to this section">#</a></h3>
+<p><code>screenpilot voice-setup [voicetut|namaa]</code> installs a local voice model. The default is <code>voicetut</code>. It needs <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>, which also fetches Python 3.11. It creates a Python environment, installs PyTorch and third-party code pinned to tested commits, downloads the model, speaks one test line, and saves the Python path in <code>voices.json</code>. Run it in a terminal: it downloads several GB, and there is no MCP tool for it on purpose. <a href="../guide/voices.html#setup">Voices</a> has the sizes, the folders and the steps.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--dir &lt;path&gt;</code></td><td>Folder for the environment and the models. Default: next to the app folder.</td></tr>
+<tr><td><code>-y, --yes</code></td><td>Do not ask before downloading.</td></tr>
 </tbody>
 </table>
 
@@ -287,7 +300,7 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 </table>
 
 <h3 id="doctor">doctor<a class="a" href="#doctor" aria-label="Link to this section">#</a></h3>
-<p><code>screenpilot doctor</code> checks this machine: ffmpeg, desktop, monitors, OBS, the demo browser and voices. It prints a JSON report and a one-line summary. The exit code is always 0, so read the report. Add <code>--input</code> to also test input injection; this moves the real pointer for a moment.</p>
+<p><code>screenpilot doctor</code> checks this machine: ffmpeg, desktop, monitors, OBS, the demo browser and voices, including a "local voice" check that is skipped when you have not set up a local voice (it is optional). It prints a JSON report and a one-line summary. The exit code is always 0, so read the report. Add <code>--input</code> to also test input injection; this moves the real pointer for a moment.</p>
 <div class="note">Run <code>screenpilot doctor</code> first on a new machine, and again whenever recording or driving fails.</div>
 <nav class="pager" aria-label="Pager"><a href="install.html" rel="prev"><small>Previous</small>Install ScreenPilot</a><a href="tools.html" rel="next"><small>Next</small>MCP tools</a></nav></article>
   <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#workflow">The whole workflow</a><a href="#record-and-look">Record and look</a><a href="#edit">Edit</a><a href="#render-and-check">Render and check</a><a href="#combine">Combine recordings</a><a href="#drive">See and drive the desktop</a><a href="#setup-and-checks">Set up and check this machine</a></aside>

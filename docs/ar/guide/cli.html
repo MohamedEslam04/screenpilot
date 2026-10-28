@@ -27,7 +27,7 @@
   <nav class="nav" aria-label="Main"><a href="../../ar/guide/index.html" aria-current=page>التوثيق</a><a href="../../ar/guide/install.html" class="hide-s">التثبيت</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../../guide/cli.html" lang="en" hreflang="en">English</a><button class="theme" type="button" aria-label="تبديل المظهر"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
 </div></header>
 <main id="main"><div class="wrap docs">
-  <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html" aria-current=page>سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html">مرجع الـ storyboard</a><a href="sequence.html">دمج التسجيلات</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html">الأسئلة الشائعة وحل المشكلات</a></details></nav>
+  <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html" aria-current=page>سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html">مرجع الـ storyboard</a><a href="voices.html">الأصوات</a><a href="sequence.html">دمج التسجيلات</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html">الأسئلة الشائعة وحل المشكلات</a></details></nav>
   <article class="doc"><h1>سطر الأوامر</h1><p class="summary">كل أوامر screenpilot وأهم خياراتها مجمّعة حسب المهمة: التسجيل والتحرير والتصيير ودمج التسجيلات والتحكم بسطح المكتب والإعداد، مع الخطوات كاملة في كتلة واحدة.</p><p>سطر الأوامر ينفّذ الخطوات نفسها التي تنفّذها أدوات MCP. شغّله بالاسم <code>screenpilot</code>، أو بالأمر <code>node dist/cli.js</code> من نسخة المصدر. أغلب المستخدمين لا يحتاجونه، لأن تطبيق الذكاء الاصطناعي عندهم يستدعي <a href="../../ar/guide/tools.html">الأدوات</a> بدلًا منهم. استخدم سطر الأوامر لأتمتة عملية التصيير، أو لفحص جهاز، أو لإصلاح الإعداد.</p>
 <p>نفّذ <code>screenpilot --help</code> لعرض قائمة الأوامر، و<code>screenpilot &lt;command&gt; --help</code> لعرض خيارات أمر واحد. تطبع الأوامر نتيجتها بصيغة JSON على stdout، ورسائل التقدّم على stderr.</p>
 
@@ -108,7 +108,8 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 <thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
 <tbody>
 <tr><td><code>--suggest</code></td><td>يملأ segments وzooms وزوايا الكاميرا مسبقًا من نتيجة <code>analyze</code>.</td></tr>
-<tr><td><code>--voice &lt;name&gt;</code></td><td>صوت Edge TTS الافتراضي. الافتراضي <code>en-US-AndrewNeural</code>.</td></tr>
+<tr><td><code>--voice &lt;name&gt;</code></td><td>اسم الصوت الافتراضي: صوت Edge، أو نموذج محلي (<code>voicetut:Sarah</code> أو <code>namaa</code>)، أو مفتاح صوت <code>command</code>. الافتراضي <code>en-US-AndrewNeural</code>.</td></tr>
+<tr><td><code>--provider &lt;id&gt;</code></td><td>مزوّد الصوت الذي يُكتب في الـ storyboard: <code>edge</code> (افتراضي) أو <code>local</code> أو <code>command</code>. انظر <a href="../../ar/guide/voices.html">الأصوات</a>.</td></tr>
 <tr><td><code>--frame &lt;how&gt;</code></td><td>الكاميرا في الزوايا المقترحة: <code>window</code> (افتراضي) أو <code>screen</code> أو <code>all</code>.</td></tr>
 <tr><td><code>-o, --out &lt;file&gt;</code></td><td>مسار ملف الـ storyboard.</td></tr>
 <tr><td><code>-f, --force</code></td><td>يستبدل storyboard موجودًا.</td></tr>
@@ -122,12 +123,24 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 <p>الأمر <code>screenpilot schema</code> يطبع JSON Schema الخاص بالـ storyboard. هو المرجع النهائي لكل حقل.</p>
 
 <h3 id="voices">voices<a class="a" href="#voices" aria-label="رابط إلى هذا القسم">#</a></h3>
-<p>الأمر <code>screenpilot voices</code> يعرض الأصوات المتاحة. يحتاج إلى اتصال بالشبكة.</p>
+<p>الأمر <code>screenpilot voices</code> يعرض أصوات مزوّد واحد. مع <code>edge</code> (الافتراضي) يحتاج إلى اتصال بالشبكة. ومع <code>local</code> يعرض النماذج المثبّتة وأصواتها. ومع <code>command</code> يعرض الأصوات المعرّفة في <code>voices.json</code>. شرح المزوّدين في <a href="../../ar/guide/voices.html">الأصوات</a>.</p>
 <table>
 <thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
 <tbody>
 <tr><td><code>--lang &lt;prefix&gt;</code></td><td>تصفية ببادئة اللغة، مثل <code>ar</code> أو <code>ar-EG</code> أو <code>en-US</code>.</td></tr>
-<tr><td><code>--provider &lt;id&gt;</code></td><td>مزوّد الصوت. الافتراضي <code>edge</code>.</td></tr>
+<tr><td><code>--provider &lt;id&gt;</code></td><td>مزوّد الصوت: <code>edge</code> (افتراضي) أو <code>local</code> أو <code>command</code>.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-sh">screenpilot voices --provider local
+screenpilot voices --provider edge --lang ar</code></pre>
+
+<h3 id="voice-setup">voice-setup<a class="a" href="#voice-setup" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>الأمر <code>screenpilot voice-setup [voicetut|namaa]</code> يثبّت نموذج صوت محليًا. الافتراضي <code>voicetut</code>. يحتاج إلى <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> وهو يجلب Python 3.11 أيضًا. ينشئ بيئة Python، ويثبّت PyTorch وكودًا من أطراف أخرى مثبّتًا على إصدارات مجرَّبة، وينزّل النموذج، وينطق سطر اختبار واحدًا، ويحفظ مسار Python في <code>voices.json</code>. نفّذه في الطرفية: ينزّل عدة غيغابايت، ولا توجد أداة MCP له عمدًا. الأحجام والمجلدات والخطوات في <a href="../../ar/guide/voices.html#setup">الأصوات</a>.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--dir &lt;path&gt;</code></td><td>مجلد البيئة والنماذج. الافتراضي: بجوار مجلد التطبيق.</td></tr>
+<tr><td><code>-y, --yes</code></td><td>لا يسأل قبل التنزيل.</td></tr>
 </tbody>
 </table>
 
@@ -287,7 +300,7 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 </table>
 
 <h3 id="doctor">doctor<a class="a" href="#doctor" aria-label="رابط إلى هذا القسم">#</a></h3>
-<p>الأمر <code>screenpilot doctor</code> يفحص هذا الجهاز: ffmpeg وسطح المكتب والشاشات وOBS ومتصفح العرض والأصوات. يطبع تقريرًا بصيغة JSON وسطر ملخص. رمز الخروج دائمًا 0، فاقرأ التقرير. أضف <code>--input</code> لاختبار حقن الإدخال أيضًا، وهو يحرّك المؤشر الفعلي لحظة.</p>
+<p>الأمر <code>screenpilot doctor</code> يفحص هذا الجهاز: ffmpeg وسطح المكتب والشاشات وOBS ومتصفح العرض والأصوات، ومنها فحص "local voice" الذي يُتخطّى إذا لم تُعدّ صوتًا محليًا (فهو اختياري). يطبع تقريرًا بصيغة JSON وسطر ملخص. رمز الخروج دائمًا 0، فاقرأ التقرير. أضف <code>--input</code> لاختبار حقن الإدخال أيضًا، وهو يحرّك المؤشر الفعلي لحظة.</p>
 <div class="note">نفّذ <code>screenpilot doctor</code> أولًا على أي جهاز جديد، وأعد تنفيذه كلما فشل التسجيل أو التحكم.</div>
 <nav class="pager" aria-label="Pager"><a href="install.html" rel="prev"><small>السابق</small>تثبيت ScreenPilot</a><a href="tools.html" rel="next"><small>التالي</small>أدوات MCP</a></nav></article>
   <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#workflow">سير العمل كاملًا</a><a href="#record-and-look">التسجيل والمعاينة</a><a href="#edit">التحرير</a><a href="#render-and-check">التصيير والفحص</a><a href="#combine">دمج التسجيلات</a><a href="#drive">رؤية سطح المكتب والتحكم فيه</a><a href="#setup-and-checks">إعداد الجهاز وفحصه</a></aside>

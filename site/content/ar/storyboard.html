@@ -109,13 +109,13 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 </table>
 
 <h2 id="narration">Narration</h2>
-<p>يقرأ كل سطر صوتُ Edge TTS ويُمزج في الفيديو. التعليق الصوتي لا يتداخل أبدًا: إذا تجاوز سطر مكانه، يتجمد الفيديو ليفسح له.</p>
+<p>يقرأ كل سطر صوتُ الـ storyboard ويُمزج في الفيديو. الافتراضي صوت Edge؛ انظر <a href="@guide/voices.html">الأصوات</a> للنماذج المحلية ولبرامجك الخاصة. التعليق الصوتي لا يتداخل أبدًا: إذا تجاوز سطر مكانه، يتجمد الفيديو ليفسح له.</p>
 <table>
 <thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
 <tbody>
 <tr><td><code>at</code></td><td>مطلوب</td><td>زمن المصدر الذي يبدأ عنده السطر.</td></tr>
 <tr><td><code>text</code></td><td>مطلوب</td><td>ما يقوله الصوت.</td></tr>
-<tr><td><code>voice</code></td><td><code>voice.name</code></td><td>صوت لهذا السطر وحده، مثل <code>ar-EG-ShakirNeural</code>. استخدمه للمزج بين لغتين.</td></tr>
+<tr><td><code>voice</code></td><td><code>voice.name</code></td><td>صوت لهذا السطر وحده، مثل <code>ar-EG-ShakirNeural</code>. يستبدل <code>voice.name</code> ويُبقي <code>voice.provider</code>، فيجب أن يكون صوتًا من المزوّد نفسه. استخدمه للمزج بين لغتين.</td></tr>
 <tr><td><code>caption</code></td><td><code>voice.subtitles</code></td><td>إظهار هذا السطر كترجمة أيضًا (<code>true</code>) أو عدم إظهاره (<code>false</code>).</td></tr>
 </tbody>
 </table>
@@ -217,9 +217,18 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <thead><tr><th>الكائن</th><th>الحقول والقيم الافتراضية</th></tr></thead>
 <tbody>
 <tr><td><code>output</code></td><td><code>width</code> 1920 و<code>height</code> 1080 و<code>fps</code> 30 (من 1 إلى 120)</td></tr>
-<tr><td><code>voice</code></td><td><code>provider</code> <code>edge</code>، <code>name</code> <code>en-US-AndrewNeural</code>، <code>rate</code> <code>+0%</code> (مثل <code>+10%</code> أو <code>-5%</code>)، <code>subtitles</code> <code>true</code> (إظهار أسطر التعليق كترجمة)، <code>gap</code> 0.3 (أقل صمت بين الأسطر؛ يتجمد الفيديو ليفسح له)، <code>volume</code> 1 (من 0 إلى 4)</td></tr>
+<tr><td><code>voice</code></td><td><code>provider</code> <code>edge</code> (أو <code>local</code> أو <code>command</code>)، <code>name</code> <code>en-US-AndrewNeural</code>، <code>rate</code> <code>+0%</code> (مثل <code>+10%</code> أو <code>-5%</code>)، <code>subtitles</code> <code>true</code> (إظهار أسطر التعليق كترجمة)، <code>gap</code> 0.3 (أقل صمت بين الأسطر؛ يتجمد الفيديو ليفسح له)، <code>volume</code> 1 (من 0 إلى 4)</td></tr>
 </tbody>
 </table>
+<table>
+<thead><tr><th><code>voice.provider</code></th><th>معنى <code>voice.name</code></th></tr></thead>
+<tbody>
+<tr><td><code>edge</code> (افتراضي)</td><td>صوت Edge، مثل <code>ar-EG-SalmaNeural</code>. يحتاج إلى الإنترنت.</td></tr>
+<tr><td><code>local</code></td><td>نموذج على هذا الجهاز: <code>voicetut</code> أو <code>voicetut:&lt;Voice&gt;</code> مثل <code>voicetut:Sarah</code> أو <code>namaa</code>. الحقل <code>rate</code> يتحول إلى معامل سرعة في <code>voicetut</code>؛ أما <code>namaa</code> فيتجاهله.</td></tr>
+<tr><td><code>command</code></td><td>مفتاح صوت عرّفته في <code>voices.json</code>.</td></tr>
+</tbody>
+</table>
+<p>الحقل <code>voice</code> الخاص بسطر التعليق يعمل داخل المزوّد نفسه. فمثلًا مع <code>"provider": "local"</code> يمكن لسطر أن يستخدم <code>namaa</code> ولآخر أن يستخدم <code>voicetut:Sarah</code>. الإعداد والحدود والأمثلة في <a href="@guide/voices.html">الأصوات</a>.</p>
 <p>اختر حجم الخرج بحسب مكان العرض: 1920x1080 ليوتيوب أو README أو الشرائح؛ 1080x1920 لـ Reels وTikTok وShorts؛ 1080x1080 للخلاصات.</p>
 
 <h2 id="theme">القالب (theme)</h2>

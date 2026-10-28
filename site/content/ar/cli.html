@@ -82,7 +82,8 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 <thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
 <tbody>
 <tr><td><code>--suggest</code></td><td>يملأ segments وzooms وزوايا الكاميرا مسبقًا من نتيجة <code>analyze</code>.</td></tr>
-<tr><td><code>--voice &lt;name&gt;</code></td><td>صوت Edge TTS الافتراضي. الافتراضي <code>en-US-AndrewNeural</code>.</td></tr>
+<tr><td><code>--voice &lt;name&gt;</code></td><td>اسم الصوت الافتراضي: صوت Edge، أو نموذج محلي (<code>voicetut:Sarah</code> أو <code>namaa</code>)، أو مفتاح صوت <code>command</code>. الافتراضي <code>en-US-AndrewNeural</code>.</td></tr>
+<tr><td><code>--provider &lt;id&gt;</code></td><td>مزوّد الصوت الذي يُكتب في الـ storyboard: <code>edge</code> (افتراضي) أو <code>local</code> أو <code>command</code>. انظر <a href="@guide/voices.html">الأصوات</a>.</td></tr>
 <tr><td><code>--frame &lt;how&gt;</code></td><td>الكاميرا في الزوايا المقترحة: <code>window</code> (افتراضي) أو <code>screen</code> أو <code>all</code>.</td></tr>
 <tr><td><code>-o, --out &lt;file&gt;</code></td><td>مسار ملف الـ storyboard.</td></tr>
 <tr><td><code>-f, --force</code></td><td>يستبدل storyboard موجودًا.</td></tr>
@@ -96,12 +97,24 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 <p>الأمر <code>screenpilot schema</code> يطبع JSON Schema الخاص بالـ storyboard. هو المرجع النهائي لكل حقل.</p>
 
 <h3 id="voices">voices</h3>
-<p>الأمر <code>screenpilot voices</code> يعرض الأصوات المتاحة. يحتاج إلى اتصال بالشبكة.</p>
+<p>الأمر <code>screenpilot voices</code> يعرض أصوات مزوّد واحد. مع <code>edge</code> (الافتراضي) يحتاج إلى اتصال بالشبكة. ومع <code>local</code> يعرض النماذج المثبّتة وأصواتها. ومع <code>command</code> يعرض الأصوات المعرّفة في <code>voices.json</code>. شرح المزوّدين في <a href="@guide/voices.html">الأصوات</a>.</p>
 <table>
 <thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
 <tbody>
 <tr><td><code>--lang &lt;prefix&gt;</code></td><td>تصفية ببادئة اللغة، مثل <code>ar</code> أو <code>ar-EG</code> أو <code>en-US</code>.</td></tr>
-<tr><td><code>--provider &lt;id&gt;</code></td><td>مزوّد الصوت. الافتراضي <code>edge</code>.</td></tr>
+<tr><td><code>--provider &lt;id&gt;</code></td><td>مزوّد الصوت: <code>edge</code> (افتراضي) أو <code>local</code> أو <code>command</code>.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-sh">screenpilot voices --provider local
+screenpilot voices --provider edge --lang ar</code></pre>
+
+<h3 id="voice-setup">voice-setup</h3>
+<p>الأمر <code>screenpilot voice-setup [voicetut|namaa]</code> يثبّت نموذج صوت محليًا. الافتراضي <code>voicetut</code>. يحتاج إلى <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> وهو يجلب Python 3.11 أيضًا. ينشئ بيئة Python، ويثبّت PyTorch وكودًا من أطراف أخرى مثبّتًا على إصدارات مجرَّبة، وينزّل النموذج، وينطق سطر اختبار واحدًا، ويحفظ مسار Python في <code>voices.json</code>. نفّذه في الطرفية: ينزّل عدة غيغابايت، ولا توجد أداة MCP له عمدًا. الأحجام والمجلدات والخطوات في <a href="@guide/voices.html#setup">الأصوات</a>.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--dir &lt;path&gt;</code></td><td>مجلد البيئة والنماذج. الافتراضي: بجوار مجلد التطبيق.</td></tr>
+<tr><td><code>-y, --yes</code></td><td>لا يسأل قبل التنزيل.</td></tr>
 </tbody>
 </table>
 
@@ -261,5 +274,5 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 </table>
 
 <h3 id="doctor">doctor</h3>
-<p>الأمر <code>screenpilot doctor</code> يفحص هذا الجهاز: ffmpeg وسطح المكتب والشاشات وOBS ومتصفح العرض والأصوات. يطبع تقريرًا بصيغة JSON وسطر ملخص. رمز الخروج دائمًا 0، فاقرأ التقرير. أضف <code>--input</code> لاختبار حقن الإدخال أيضًا، وهو يحرّك المؤشر الفعلي لحظة.</p>
+<p>الأمر <code>screenpilot doctor</code> يفحص هذا الجهاز: ffmpeg وسطح المكتب والشاشات وOBS ومتصفح العرض والأصوات، ومنها فحص "local voice" الذي يُتخطّى إذا لم تُعدّ صوتًا محليًا (فهو اختياري). يطبع تقريرًا بصيغة JSON وسطر ملخص. رمز الخروج دائمًا 0، فاقرأ التقرير. أضف <code>--input</code> لاختبار حقن الإدخال أيضًا، وهو يحرّك المؤشر الفعلي لحظة.</p>
 <div class="note">نفّذ <code>screenpilot doctor</code> أولًا على أي جهاز جديد، وأعد تنفيذه كلما فشل التسجيل أو التحكم.</div>

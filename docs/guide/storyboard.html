@@ -27,7 +27,7 @@
   <nav class="nav" aria-label="Main"><a href="../guide/index.html" aria-current=page>Docs</a><a href="../guide/install.html" class="hide-s">Install</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../ar/guide/storyboard.html" lang="ar" hreflang="ar">العربية</a><button class="theme" type="button" aria-label="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
 </div></header>
 <main id="main"><div class="wrap docs">
-  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html" aria-current=page>Storyboard reference</a><a href="sequence.html">Combine recordings</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
+  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html" aria-current=page>Storyboard reference</a><a href="voices.html">Voices</a><a href="sequence.html">Combine recordings</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
   <article class="doc"><h1>Storyboard reference</h1><p class="summary">The storyboard.json format: segments, holds, zooms, captions, highlights, narration, cards, overlays, music, extends, theme and output, with a full example.</p><p>A storyboard is a JSON file that describes the edit. The AI app writes it for you, but you can read it, change it and render it yourself. <code>screenpilot schema</code> (or the <code>storyboard_schema</code> tool) prints the authoritative JSON Schema. This page explains each field.</p>
 
 <h2 id="basics">The three rules<a class="a" href="#basics" aria-label="Link to this section">#</a></h2>
@@ -135,13 +135,13 @@
 </table>
 
 <h2 id="narration">Narration<a class="a" href="#narration" aria-label="Link to this section">#</a></h2>
-<p>Each line is spoken by an Edge TTS voice and mixed into the video. Narration never overlaps: when a line overruns its slot, the video freezes to make room.</p>
+<p>Each line is spoken by the storyboard's voice and mixed into the video. By default that is an Edge voice; see <a href="../guide/voices.html">Voices</a> for local models and your own programs. Narration never overlaps: when a line overruns its slot, the video freezes to make room.</p>
 <table>
 <thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
 <tbody>
 <tr><td><code>at</code></td><td>required</td><td>Source time the line starts.</td></tr>
 <tr><td><code>text</code></td><td>required</td><td>What the voice says.</td></tr>
-<tr><td><code>voice</code></td><td><code>voice.name</code></td><td>Voice for this line only, for example <code>ar-EG-ShakirNeural</code>. Use it to mix languages.</td></tr>
+<tr><td><code>voice</code></td><td><code>voice.name</code></td><td>Voice for this line only, for example <code>ar-EG-ShakirNeural</code>. It replaces <code>voice.name</code> and keeps <code>voice.provider</code>, so it must be a voice of the same provider. Use it to mix languages.</td></tr>
 <tr><td><code>caption</code></td><td><code>voice.subtitles</code></td><td>Also show this line as a subtitle (<code>true</code>) or not (<code>false</code>).</td></tr>
 </tbody>
 </table>
@@ -243,9 +243,18 @@
 <thead><tr><th>Object</th><th>Fields and defaults</th></tr></thead>
 <tbody>
 <tr><td><code>output</code></td><td><code>width</code> 1920, <code>height</code> 1080, <code>fps</code> 30 (1 to 120)</td></tr>
-<tr><td><code>voice</code></td><td><code>provider</code> <code>edge</code>, <code>name</code> <code>en-US-AndrewNeural</code>, <code>rate</code> <code>+0%</code> (for example <code>+10%</code> or <code>-5%</code>), <code>subtitles</code> <code>true</code> (show narration lines as subtitles), <code>gap</code> 0.3 (minimum silence between lines; the video freezes to make room), <code>volume</code> 1 (0 to 4)</td></tr>
+<tr><td><code>voice</code></td><td><code>provider</code> <code>edge</code> (or <code>local</code> or <code>command</code>), <code>name</code> <code>en-US-AndrewNeural</code>, <code>rate</code> <code>+0%</code> (for example <code>+10%</code> or <code>-5%</code>), <code>subtitles</code> <code>true</code> (show narration lines as subtitles), <code>gap</code> 0.3 (minimum silence between lines; the video freezes to make room), <code>volume</code> 1 (0 to 4)</td></tr>
 </tbody>
 </table>
+<table>
+<thead><tr><th><code>voice.provider</code></th><th>What <code>voice.name</code> means</th></tr></thead>
+<tbody>
+<tr><td><code>edge</code> (default)</td><td>An Edge voice, for example <code>ar-EG-SalmaNeural</code>. Needs the internet.</td></tr>
+<tr><td><code>local</code></td><td>A model on this computer: <code>voicetut</code>, <code>voicetut:&lt;Voice&gt;</code> such as <code>voicetut:Sarah</code>, or <code>namaa</code>. <code>rate</code> becomes a speed factor for <code>voicetut</code>; <code>namaa</code> ignores it.</td></tr>
+<tr><td><code>command</code></td><td>The key of a voice you defined in <code>voices.json</code>.</td></tr>
+</tbody>
+</table>
+<p>A narration line's own <code>voice</code> works inside the provider. For example, with <code>"provider": "local"</code>, one line can use <code>namaa</code> and another <code>voicetut:Sarah</code>. Setup, limits and examples are on <a href="../guide/voices.html">Voices</a>.</p>
 <p>Pick the output size from where the video will be shown: 1920x1080 for YouTube, a README or slides; 1080x1920 for Reels, TikTok and Shorts; 1080x1080 for feeds.</p>
 
 <h2 id="theme">Theme<a class="a" href="#theme" aria-label="Link to this section">#</a></h2>
@@ -373,7 +382,7 @@
 <li><strong>Bilingual captions:</strong> use one caption with two lines (<code>"English\nعربي"</code>). Avoid a lone Arabic <em>waw</em> between Latin words; use an Arabic comma instead.</li>
 </ul>
 <div class="note">Work in passes. Write segments and narration first, render a draft with <code>-q draft</code>, look at it with <code>check</code>, then add zooms and captions. Change one kind of thing at a time.</div>
-<nav class="pager" aria-label="Pager"><a href="tools.html" rel="prev"><small>Previous</small>MCP tools</a><a href="sequence.html" rel="next"><small>Next</small>Combine recordings</a></nav></article>
+<nav class="pager" aria-label="Pager"><a href="tools.html" rel="prev"><small>Previous</small>MCP tools</a><a href="voices.html" rel="next"><small>Next</small>Voices</a></nav></article>
   <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#basics">The three rules</a><a href="#top-level">Top-level fields</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#narration">Narration</a><a href="#cards">Intro and outro</a><a href="#chapter-cards">Chapter cards</a><a href="#overlays">Overlays</a><a href="#music">Music</a><a href="#extends">Share a look with extends</a><a href="#views">Screens and views</a><a href="#output">Output and voice</a><a href="#theme">Theme</a><a href="#example">A complete example</a><a href="#lint">Style warnings</a><a href="#style">Style guidance</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">

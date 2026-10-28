@@ -30,12 +30,12 @@ summary: الأدوات التي يمنحها ScreenPilot لتطبيق الذك�
 <thead><tr><th>الأداة</th><th>وظيفتها</th><th>أهم المدخلات</th></tr></thead>
 <tbody>
 <tr><td><code>storyboard_schema</code></td><td>تعيد JSON Schema الخاص بـ <code>storyboard.json</code>. اقرأه قبل أن تكتب storyboard.</td><td>لا شيء</td></tr>
-<tr><td><code>storyboard_init</code></td><td>تكتب <code>storyboard.json</code> مبدئيًا لتسجيل أو جلسة. مع <code>suggest</code> تملأ segments (بقصّ وقت الخمول) وzooms (من النقرات) مسبقًا.</td><td><code>target</code>, <code>suggest</code>, <code>out</code>, <code>voice</code>, <code>force</code></td></tr>
+<tr><td><code>storyboard_init</code></td><td>تكتب <code>storyboard.json</code> مبدئيًا لتسجيل أو جلسة. مع <code>suggest</code> تملأ segments (بقصّ وقت الخمول) وzooms (من النقرات) مسبقًا. الوسيط <code>provider</code> هو <code>edge</code> (افتراضي) أو <code>local</code> أو <code>command</code>، والوسيط <code>voice</code> هو اسم الصوت لهذا المزوّد، مثل <code>voicetut:Sarah</code>.</td><td><code>target</code>, <code>suggest</code>, <code>out</code>, <code>voice</code>, <code>provider</code>, <code>force</code></td></tr>
 <tr><td><code>storyboard_validate</code></td><td>تتحقق من الـ storyboard مقابل الـ schema والفيديو المصدر. تعيد <code>valid</code> مع التحذيرات، أو مشكلات الـ schema. لا ترمي خطأ أبدًا. نفّذها قبل كل تصيير.</td><td><code>path</code></td></tr>
-<tr><td><code>voices</code></td><td>تعرض أصوات Edge TTS. تحتاج إلى اتصال بالشبكة. صفِّ حسب اللغة، مثل <code>ar-EG</code> أو <code>en-US</code>.</td><td><code>lang</code></td></tr>
+<tr><td><code>voices</code></td><td>تعرض الأصوات. مع <code>provider</code> قيمته <code>edge</code> (افتراضي) تعرض أصوات Edge وتحتاج إلى اتصال بالشبكة؛ صفِّ حسب اللغة، مثل <code>ar-EG</code> أو <code>en-US</code>. ومع <code>local</code> تعرض النماذج المحلية المثبّتة. ومع <code>command</code> تعرض الأصوات المعرّفة في <code>voices.json</code>. لا توجد أداة لتثبيت نموذج محلي: نفّذ <code>screenpilot voice-setup</code> في الطرفية.</td><td><code>lang</code>, <code>provider</code></td></tr>
 </tbody>
 </table>
-<p>صيغة الملف موجودة في <a href="@guide/storyboard.html">مرجع الـ storyboard</a>.</p>
+<p>صيغة الملف موجودة في <a href="@guide/storyboard.html">مرجع الـ storyboard</a>. مزوّدو الصوت في <a href="@guide/voices.html">الأصوات</a>.</p>
 
 <h2 id="render-check">التصيير والفحص</h2>
 <table>
@@ -127,7 +127,7 @@ summary: الأدوات التي يمنحها ScreenPilot لتطبيق الذك�
 <table>
 <thead><tr><th>الأداة</th><th>وظيفتها</th><th>أهم المدخلات</th></tr></thead>
 <tbody>
-<tr><td><code>doctor</code></td><td>تفحص الجهاز وتعيد <code>{summary, checks}</code>: node وffmpeg وسطح المكتب والشاشات والنوافذ وOBS ومتصفح العرض والأصوات. لا تفشل أبدًا، فاقرأ التقرير. مع تفعيل <code>input</code> تختبر حقن الإدخال أيضًا وتحرّك المؤشر الفعلي لحظة.</td><td><code>input</code></td></tr>
+<tr><td><code>doctor</code></td><td>تفحص الجهاز وتعيد <code>{summary, checks}</code>: node وffmpeg وسطح المكتب والشاشات والنوافذ وOBS ومتصفح العرض والأصوات، ومنها فحص "local voice" الذي يُتخطّى إذا لم يُعدّ صوت محلي. لا تفشل أبدًا، فاقرأ التقرير. مع تفعيل <code>input</code> تختبر حقن الإدخال أيضًا وتحرّك المؤشر الفعلي لحظة.</td><td><code>input</code></td></tr>
 </tbody>
 </table>
 <p>نفّذ <code>doctor</code> أولًا على أي جهاز جديد.</p>
