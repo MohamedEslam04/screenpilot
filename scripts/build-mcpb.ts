@@ -78,7 +78,7 @@ async function main(): Promise<void> {
   cpSync(join(root, "dist"), join(stage, "dist"), { recursive: true });
   cpSync(join(root, "skill"), join(stage, "skill"), { recursive: true });
   copyFileSync(join(root, "assets", "icon.png"), join(stage, "icon.png"));
-  for (const f of ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "README.md"]) copyFileSync(join(root, f), join(stage, f));
+  for (const f of ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "README.md", "LICENSE", "THIRD_PARTY_NOTICES.md"]) copyFileSync(join(root, f), join(stage, f));
 
   // Production dependencies, flat (no symlinks: zip archives and Windows don't love them).
   await sh("pnpm", ["install", "--prod", "--frozen-lockfile", "--config.node-linker=hoisted"], stage);

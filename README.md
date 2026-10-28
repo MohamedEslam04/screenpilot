@@ -1,5 +1,7 @@
 # ScreenPilot
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Latest release](https://img.shields.io/github/v/release/MohamedEslam04/screenpilot)](https://github.com/MohamedEslam04/screenpilot/releases/latest)
+
 Ask your AI app for a screen video and get a finished one: ScreenPilot records your screen (or uses your apps itself), then edits the footage into a polished MP4 with zooms, captions and an AI voiceover in English, Arabic and many other languages. No video editing, and no screen recorder to set up.
 
 ScreenPilot works inside the AI app you already use: Claude, ChatGPT Codex, Cursor, OpenCode, Gemini CLI, Copilot, Windsurf, VS Code and [many more](#which-ai-apps-work). It needs no API key and no account: your AI app does the thinking, and ScreenPilot gives it the screen, the recorder and the video editor. Everything runs on your computer.
@@ -416,6 +418,14 @@ CI: GitHub Actions. `.github/workflows/ci.yml` (Linux: typecheck, tests, build; 
 - Click capture on KDE Wayland needs the `input` group; on macOS the app that starts ScreenPilot needs Accessibility (and Input Monitoring).
 - Rendering is not fast: use `draft` while iterating.
 - Narration in cut regions is dropped; the agent must keep lines inside kept segments.
+
+## Contributing
+
+Bug reports, ideas and pull requests are welcome. Fork the repository and open a pull request; only the maintainer can push to it. See [CONTRIBUTING.md](CONTRIBUTING.md). For security problems, see [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE), © 2026 Mohamed Eslam. Third-party software it uses or bundles: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ---
 

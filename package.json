@@ -4,6 +4,23 @@
   "description": "AI pilot for screen videos: records any desktop app (or drives it), then edits it into a polished video with zooms, captions and voiceover.",
   "type": "module",
   "license": "MIT",
+  "author": "Mohamed Eslam (https://github.com/MohamedEslam04)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MohamedEslam04/screenpilot.git"
+  },
+  "homepage": "https://github.com/MohamedEslam04/screenpilot#readme",
+  "bugs": {
+    "url": "https://github.com/MohamedEslam04/screenpilot/issues"
+  },
+  "keywords": [
+    "mcp",
+    "screen-recording",
+    "demo-video",
+    "ai-agents",
+    "claude-code",
+    "automation"
+  ],
   "bin": {
     "screenpilot": "dist/cli.js",
     "screenpilot-mcp": "dist/mcp.js"
@@ -12,7 +29,9 @@
     "dist",
     "skill",
     "AGENTS.md",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "engines": {
     "node": ">=22"
