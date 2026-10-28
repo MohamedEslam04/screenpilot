@@ -17,13 +17,17 @@ import { initStoryboard } from "./init.js";
 import type { ScreenInfo } from "./record/input/types.js";
 import { type ActiveRecording, startRecording } from "./record/index.js";
 import { remapSession } from "./record/remap.js";
-import { prepareBuild, renderStoryboard, startPreview } from "./render/index.js";
+import { parseFormats } from "./render/formats.js";
+import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
+import { parseWindow } from "./render/window.js";
 import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/load.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
+import { renderSequence, validateSequence } from "./sequence/index.js";
+import { sequenceJsonSchema } from "./sequence/schema.js";
 import { type PerformResult, performTake, resolveTarget, TakeError } from "./take/perform.js";
 import { TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
-import { getProvider } from "./voice/index.js";
+import { getProvider, voiceMatchesLang } from "./voice/index.js";
 import { APP, APP_TITLE, named, OUTPUT_ENV, PERFORM_TIMEOUT_ENV, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { findWindow, getDesktop } from "./platform/index.js";
@@ -119,7 +123,8 @@ const INSTRUCTIONS = `${APP_TITLE} makes screen videos. Typical loops:
 2. You perform it: screenshot to see the monitors, windows to see apps, browser_open for websites (app: true hides the address bar and tabs, so nothing about this machine shows); in take.json, file paths are relative to the take, so it runs on any machine; try the flow live with pointer_move/click/type_text; then write a take.json (take_schema) and call perform (it records, logs clicks/windows and writes a storyboard), add intro/outro/zooms, render.
 Design every video for its purpose; there is no house style. Before rendering, decide who it's for and where it will be shown, then set the storyboard to match: output size (1920x1080 for YouTube/README/slides, 1080x1920 for Reels/TikTok/Shorts, 1080x1080 for feeds), theme (background, padding, radius, accent, font, caption colors), theme.fonts (any Google Fonts), theme.css (your own CSS for captions, cards, highlights; storyboard_schema lists the classes) and text motion (theme.motion.captions / .cards, or motion per caption: in/out presets fade, rise, drop, slide-left, slide-right, pop, zoom, blur, wipe, words, lines, none; duration, any GSAP ease, stagger). Match the product's brand when you can see it (colors and type from its site or app). Pace and wording follow the audience: short punchy captions for social, calm explanatory ones for tutorials, bilingual lines ("English\nعربي") when asked. Defaults are only a fallback.
 Choose the shot the same way: which monitors to record (record_start screens / take "screens": one, several or "all") and what the camera shows: "window" follows the app in use (clean product demos), "screen" the whole monitor (OS-level how-tos, context matters), "all" every monitor side by side (work that spans screens, e.g. code on one and the app on the other). Switch per moment with view steps / storyboard views, and zoom only where detail matters.
-Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). The camera frames the window in use by default. You can run the whole loop yourself: drive live, write the take, perform, render, check_output. If a person is present, ask them not to touch the mouse while you drive; moving it stops the action with a message, and resume carries on from where the pointer is. For unattended runs start the server with SCREENPILOT_INTERRUPT=off. Run doctor first on a new machine.`;
+To put another recording in the middle of a video without re-recording the rest: write a sequence.json {parts: [{storyboard, from?, to?, transition?}]} (sequence_schema, sequence_validate, sequence_render). Each part is a full storyboard; from/to are source seconds of that storyboard, so the same demo twice ({to: 42}, the feature, {from: 42}) inserts the feature at second 42. Give the storyboards a shared "extends" base so theme, voice and size match. Storyboards also take cards (chapter cards), overlays (logo/image/video), music.duck and segment volume/mute; render takes from/to (output seconds, review one window fast) and formats (e.g. ["16:9","9:16"]).
+Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). Free offline voices: voice.provider "local" with name voicetut:Sarah (Egyptian Arabic and English) or namaa (Egyptian Arabic); voices with provider "local" lists what is installed. If none is installed and the user wants one, tell them to run "screenpilot voice-setup voicetut" in a terminal (about 10 GB; do not start it yourself). Command voices (any program) are defined by the user in voices.json; you cannot add them in a storyboard. The camera frames the window in use by default. You can run the whole loop yourself: drive live, write the take, perform, render, check_output. If a person is present, ask them not to touch the mouse while you drive; moving it stops the action with a message, and resume carries on from where the pointer is. For unattended runs start the server with SCREENPILOT_INTERRUPT=off. Run doctor first on a new machine.`;
 
 const server = new McpServer({ name: APP, title: APP_TITLE, version: VERSION }, { instructions: INSTRUCTIONS });
 
@@ -235,7 +240,8 @@ server.registerTool(
       target: z.string().describe("Session directory or path to the raw recording"),
       out: z.string().optional().describe("Storyboard path. Default: storyboard.json in the session / next to the video"),
       suggest: z.boolean().optional().describe("Pre-fill segments and zooms from analyze"),
-      voice: z.string().optional().describe("Default Edge TTS voice. Default en-US-AndrewNeural"),
+      voice: z.string().optional().describe("Default voice: an Edge voice (default en-US-AndrewNeural), a local model (voicetut:Sarah, namaa) or a command voice name"),
+      provider: z.enum(["edge", "local", "command"]).optional().describe("Voice provider. Default edge"),
       force: z.boolean().optional().describe("Overwrite an existing storyboard"),
     },
   },
@@ -264,12 +270,21 @@ server.registerTool(
 server.registerTool(
   "voices",
   {
-    description: "List Edge TTS voices (needs network). Filter by locale prefix, e.g. ar-EG (Egyptian Arabic: ar-EG-SalmaNeural, ar-EG-ShakirNeural) or en-US.",
-    inputSchema: { lang: z.string().optional().describe("Locale prefix, e.g. ar or en-US") },
+    description:
+      "List voices. provider edge (default, needs network): filter by locale prefix, e.g. ar-EG (Egyptian Arabic: ar-EG-SalmaNeural, ar-EG-ShakirNeural) or en-US. " +
+      "provider local: speech models installed on this computer (voicetut:<voice>, namaa). provider command: voices the user defined in voices.json.",
+    inputSchema: {
+      lang: z.string().optional().describe("Locale prefix, e.g. ar or en-US"),
+      provider: z.enum(["edge", "local", "command"]).optional().describe("Default edge"),
+    },
   },
-  safe(async ({ lang }) => {
-    const voices = await getProvider("edge").listVoices();
-    return text(voices.filter((v) => !lang || v.locale.toLowerCase().startsWith(lang.toLowerCase())));
+  safe(async ({ lang, provider: id }) => {
+    const provider = getProvider(id ?? "edge");
+    try {
+      return text((await provider.listVoices()).filter((v) => voiceMatchesLang(v, lang)));
+    } finally {
+      await provider.close?.();
+    }
   }),
 );
 
@@ -291,17 +306,67 @@ server.registerTool(
     description:
       "Render a storyboard to MP4. Narration never overlaps: when a voice line is longer than its slot the video auto-freezes (see autoHolds in the result). " +
       'Use quality "draft" while iterating (fast), "looks" for a normal render, "delivery" only for the final file. ' +
+      "Pass from/to (OUTPUT seconds) to re-render only that window for a fast review; the file is named <storyboard>.part-<from>-<to>.mp4. " +
+      'Pass formats (e.g. ["16:9","9:16","1:1"] or ["1280x720"]) to render one file per format: <storyboard>.<format>.mp4 (16x9, 9x16, 1x1), narration synthesized once. ' +
       "Slow (minutes). Follow with check_output to review the result.",
     inputSchema: {
       storyboard: z.string().describe("Path to storyboard.json"),
       output: z.string().optional().describe("Output mp4. Default: <storyboard>.mp4"),
       quality: z.enum(["draft", "looks", "delivery"]).optional().describe("Default looks"),
+      from: z.number().min(0).optional().describe("Partial render: start, in OUTPUT seconds"),
+      to: z.number().min(0).optional().describe("Partial render: end, in OUTPUT seconds"),
+      formats: z.array(z.string()).optional().describe('Output formats, each "16:9", "9:16", "1:1" or "WxH". One file per format; output becomes the base name.'),
     },
   },
-  safe(async ({ storyboard, output, quality }) => {
-    const r = await renderStoryboard(storyboard, { output, quality, log });
+  safe(async ({ storyboard, output, quality, from, to, formats }) => {
+    const window = parseWindow(from, to);
+    if (formats?.length) {
+      const rs = await renderFormats(storyboard, parseFormats(formats.join(",")), { output, quality, window, log });
+      return text(rs.map((r) => ({ format: r.format, output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings })));
+    }
+    const r = await renderStoryboard(storyboard, { output, quality, window, log });
     return text({ output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
   }),
+);
+
+server.registerTool(
+  "sequence_schema",
+  {
+    description:
+      "JSON Schema of sequence.json: several storyboards (each with its own recording) joined into one video, e.g. to insert a feature clip into an existing demo without re-recording it.",
+  },
+  safe(async () => text(sequenceJsonSchema())),
+);
+
+server.registerTool(
+  "sequence_validate",
+  {
+    description: "Validate a sequence.json and every storyboard it uses. Returns schema errors and lint warnings as text (never throws).",
+    inputSchema: { path: z.string().describe("Path to sequence.json") },
+  },
+  safe(async ({ path }) => {
+    try {
+      return text(await validateSequence(path));
+    } catch (err) {
+      if (err instanceof StoryboardError) return text({ valid: false, issues: err.issues });
+      throw err;
+    }
+  }),
+);
+
+server.registerTool(
+  "sequence_render",
+  {
+    description:
+      "Render a sequence.json: each part is rendered like a storyboard (unchanged parts are reused), all at one output size, " +
+      "with the intro of the first part and the outro of the last, then joined into one MP4. Slow (minutes). Follow with check_output.",
+    inputSchema: {
+      sequence: z.string().describe("Path to sequence.json"),
+      output: z.string().optional().describe("Output mp4. Default: <sequence>.mp4"),
+      quality: z.enum(["draft", "looks", "delivery"]).optional().describe("Default looks"),
+    },
+  },
+  safe(async ({ sequence, output, quality }) => text(await renderSequence(sequence, { output, quality, log }))),
 );
 
 server.registerTool(

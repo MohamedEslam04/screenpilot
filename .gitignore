@@ -9,3 +9,5 @@ x11-smoke-report/
 windows-live-report/
 release/
 wayland-smoke-report/
+
+__pycache__/

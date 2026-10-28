@@ -27,7 +27,7 @@
   <nav class="nav" aria-label="Main"><a href="../../ar/guide/index.html" aria-current=page>التوثيق</a><a href="../../ar/guide/install.html" class="hide-s">التثبيت</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../../guide/faq.html" lang="en" hreflang="en">English</a><button class="theme" type="button" aria-label="تبديل المظهر"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
 </div></header>
 <main id="main"><div class="wrap docs">
-  <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html">سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html">مرجع الـ storyboard</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html" aria-current=page>الأسئلة الشائعة وحل المشكلات</a></details></nav>
+  <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html">سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html">مرجع الـ storyboard</a><a href="voices.html">الأصوات</a><a href="sequence.html">دمج التسجيلات</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html" aria-current=page>الأسئلة الشائعة وحل المشكلات</a></details></nav>
   <article class="doc"><h1>الأسئلة الشائعة وحل المشكلات</h1><p class="summary">إجابات قصيرة عن أكثر أسئلة ScreenPilot شيوعاً، مع حلول لأكثر المشكلات تكراراً: الأذونات ونوافذ الموافقة والتجمّد واختفاء التكبير.</p><p>الإجابات القصيرة أولاً ثم الحلول. وإذا لم تجد سؤالك هنا، اطلب من تطبيق الذكاء الاصطناعي أن يشغّل ScreenPilot doctor: يفحص الجهاز ويقول ما الذي يجب إصلاحه.</p>
 
 <h2 id="basics">الأساسيات<a class="a" href="#basics" aria-label="رابط إلى هذا القسم">#</a></h2>
@@ -54,13 +54,13 @@
 </ul>
 
 <h3 id="arabic">هل يمكن أن يكون التعليق الصوتي بالعربية؟<a class="a" href="#arabic" aria-label="رابط إلى هذا القسم">#</a></h3>
-<p>نعم. يستخدم ScreenPilot أصوات Edge TTS بالإنجليزية والعربية ولغات كثيرة غيرها. للعربية المصرية استخدم <code>ar-EG-SalmaNeural</code> (أنثى) أو <code>ar-EG-ShakirNeural</code> (ذكر). ولعرض المزيد شغّل <code>screenpilot voices --lang ar-EG</code>، أو اطلب من تطبيق الذكاء الاصطناعي عرض الأصوات. ويمكن لسطر واحد أن يغيّر الصوت، فيجمع الفيديو الواحد بين لغتين. والعناوين يمكن أن تكون ثنائية اللغة أيضاً: اكتب <code>"English\nعربي"</code> نصاً للعنوان.</p>
+<p>نعم. يستخدم ScreenPilot افتراضياً أصوات Edge بالإنجليزية والعربية ولغات كثيرة غيرها. للعربية المصرية استخدم <code>ar-EG-SalmaNeural</code> (أنثى) أو <code>ar-EG-ShakirNeural</code> (ذكر). ولعرض المزيد شغّل <code>screenpilot voices --lang ar-EG</code>، أو اطلب من تطبيق الذكاء الاصطناعي عرض الأصوات. وإن فضّلت أصواتاً مجانية تعمل على جهازك فيمكنك تثبيت VoiceTut (عربية مصرية وإنجليزية) أو NAMAA (عربية مصرية) بالأمر <code>screenpilot voice-setup</code>. راجع صفحة <a href="../../ar/guide/voices.html">الأصوات</a>. ويمكن لسطر واحد أن يغيّر الصوت، فيجمع الفيديو الواحد بين لغتين. والعناوين يمكن أن تكون ثنائية اللغة أيضاً: اكتب <code>"English\nعربي"</code> نصاً للعنوان.</p>
 <p>كتابة العربية داخل تطبيق العرض تعمل على Windows وmacOS وX11. وعلى Wayland تمرّ عبر الحافظة وتحتاج <code>wl-clipboard</code> (الأمر <code>wl-copy</code>).</p>
 
 <h3 id="offline">هل يعمل دون إنترنت؟<a class="a" href="#offline" aria-label="رابط إلى هذا القسم">#</a></h3>
 <p>في معظمه نعم. التسجيل والتحليل والتحرير والتصدير تعمل على جهازك. وثلاثة أشياء تحتاج الإنترنت:</p>
 <ul>
-  <li><strong>التعليق الصوتي.</strong> Edge TTS خدمة على الإنترنت. والفيديو الذي لا فيه أسطر تعليق لا يحتاج صوتاً. المقاطع التي أُنشئت تُحفظ مؤقتاً في مجلد <code>.screenpilot-cache</code> بجوار الـ storyboard أو الـ take.</li>
+  <li><strong>التعليق الصوتي الافتراضي.</strong> أصوات Edge خدمة على الإنترنت. أما الأصوات المحلية فلا تحتاج الإنترنت بعد تثبيتها (والتثبيت نفسه ينزّل نحو 10 غيغابايت، راجع <a href="../../ar/guide/voices.html">الأصوات</a>). والفيديو الذي لا فيه أسطر تعليق لا يحتاج صوتاً. المقاطع التي أُنشئت تُحفظ مؤقتاً في مجلد <code>.screenpilot-cache</code> بجوار الـ storyboard أو الـ take.</li>
   <li><strong>أول تصدير.</strong> ينزّل مُصيّر الفيديو، نحو 100 ميغابايت، مرة واحدة.</li>
   <li><strong>الصفحات التي تطلب من المتصفح التجريبي فتحها</strong>، وأي خطوط Google يستخدمها الـ storyboard.</li>
 </ul>
@@ -76,7 +76,7 @@
 <ul>
   <li>Node بإصدار 22 أو أحدث، و<code>ffmpeg</code> و<code>ffprobe</code>.</li>
   <li>نوع سطح المكتب والشاشات، وهل يستطيع التسجيل والتحكم بالماوس ولوحة المفاتيح والتحكم بالنوافذ وتسجيل المؤشر.</li>
-  <li>المتصفح التجريبي (Chrome أو Edge أو Brave)، وأصوات Edge TTS (تحتاج الإنترنت)، ومُصيّر الفيديو.</li>
+  <li>المتصفح التجريبي (Chrome أو Edge أو Brave)، والأصوات (أصوات Edge الافتراضية تحتاج الإنترنت، وللأصوات المحلية فحص خاص اسمه "local voice" بعد أن تثبّتها)، ومُصيّر الفيديو.</li>
   <li>OBS إذا كنت تستخدم <code>--recorder obs</code> فقط. وGStreamer على Linux.</li>
   <li>على ماك: Accessibility وScreen Recording وInput Monitoring وavfoundation.</li>
 </ul>
@@ -108,6 +108,12 @@
 
 <h3 id="ninety-seconds">كيف أبقي الفيديو أقل من 90 ثانية تقريباً؟<a class="a" href="#ninety-seconds" aria-label="رابط إلى هذا القسم">#</a></h3>
 <p>استهدف من 30 إلى 90 ثانية. اقصص الوقت الخامل والتحميل أو سرّعه، واجعل التعليق جملة قصيرة واحدة لكل خطوة، وكتابة العنوان من كلمتين إلى ست كلمات. وعندما يتحكم الوكيل بسطح المكتب، اجعل الـ take نفسه أقل من 90 ثانية تقريباً واستخدم <code>waitFor</code> بدل الانتظار الطويل. والفيديو الطويل أكثر من اللازم غالباً يعرض كل خطوة: اعرض المسار الرئيسي واترك الباقي. راجع <a href="../../ar/guide/agent-drive.html#tips">نصائح الـ take</a>.</p>
+
+<h3 id="add-feature">كيف أضيف ميزة جديدة إلى عرض صنعته من قبل؟<a class="a" href="#add-feature" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>لا تعد تسجيل العرض. سجّل الميزة الجديدة فقط، وأعطها storyboard يمتد (<code>extends</code>) من storyboard العرض، ثم اجمعهما بملف <code>sequence.json</code> يقسم العرض عند الثانية المناسبة: <code>[{demo, to: 42}, {feature}, {demo, from: 42}]</code>. انظر <a href="../../ar/guide/sequence.html#insert-feature">إدخال مقطع ميزة في عرض موجود</a>.</p>
+
+<h3 id="vertical">كيف أحصل على نسخة طولية أو مربعة؟<a class="a" href="#vertical" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>صيّر بالخيار <code>--formats</code>، مثل <code>screenpilot render storyboard.json --formats 16:9,9:16,1:1</code>. تحصل على ملف لكل صيغة من التعديل نفسه. النسخة الطولية من تسجيل عرضي تقصّ الـ views التي تؤطر نافذة، فانظر إلى مسودة أولًا. انظر <a href="../../ar/guide/cli.html#formats">عدة صيغ</a>.</p>
 
 <h2 id="troubleshooting">حل المشكلات<a class="a" href="#troubleshooting" aria-label="رابط إلى هذا القسم">#</a></h2>
 

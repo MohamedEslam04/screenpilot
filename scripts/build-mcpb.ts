@@ -77,6 +77,7 @@ async function main(): Promise<void> {
   mkdirSync(stage, { recursive: true });
   cpSync(join(root, "dist"), join(stage, "dist"), { recursive: true });
   cpSync(join(root, "skill"), join(stage, "skill"), { recursive: true });
+  cpSync(join(root, "python"), join(stage, "python"), { recursive: true, filter: (src) => !src.includes("__pycache__") && !src.endsWith("smoke_test.py") });
   copyFileSync(join(root, "assets", "icon.png"), join(stage, "icon.png"));
   for (const f of ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "README.md", "LICENSE", "THIRD_PARTY_NOTICES.md"]) copyFileSync(join(root, f), join(stage, f));
 

@@ -5,7 +5,7 @@ description: Make a polished demo / product video from a screen recording of any
 
 # screenpilot: record, storyboard, render
 
-You record (or receive) a raw screen recording, look at it, write `storyboard.json`, and screenpilot renders an MP4 (HyperFrames, Edge TTS voiceover). You are the editor: you decide the cuts, zooms, captions and narration.
+You record (or receive) a raw screen recording, look at it, write `storyboard.json`, and screenpilot renders an MP4 (HyperFrames; voiceover with Edge voices by default, or local models or a user-defined command). You are the editor: you decide the cuts, zooms, captions and narration.
 
 Each step has an MCP tool and a CLI form (`screenpilot ...`, or `node /abs/path/dist/cli.js ...`). Use whichever is available.
 
@@ -29,13 +29,38 @@ Each step has an MCP tool and a CLI form (`screenpilot ...`, or `node /abs/path/
    Gives duration, `idle` spans (cut or speed these up), `clicks` (zoom targets), `suggestedSegments`, `suggestedZooms`, and a contact sheet image. Look at the contact sheet first to understand the story.
 3. **Look closer.** MCP `get_frames` (video, times, grid: true). CLI `screenpilot frames <video> --at 1,4.5,10 --grid`.
    The grid labels 0..1 coordinates on the image: read the x/y of the button or field you want to zoom or highlight straight off it. Look at a frame just before and just after each click you plan to feature. Max 12 images per MCP call.
-4. **Init.** MCP `storyboard_init` (target, suggest?, out?, voice?). CLI `screenpilot init <session-dir|video> --suggest [--voice ar-EG-SalmaNeural]`. Writes a starter storyboard; with suggest it pre-fills `segments` (idle time cut) and `zooms` (from clicks) for you to refine. `storyboard_schema` / `screenpilot schema` prints the full JSON Schema.
+4. **Init.** MCP `storyboard_init` (target, suggest?, out?, voice?, provider?). CLI `screenpilot init <session-dir|video> --suggest [--voice ar-EG-SalmaNeural] [--provider local --voice voicetut:Sarah]`. Writes a starter storyboard; with suggest it pre-fills `segments` (idle time cut) and `zooms` (from clicks) for you to refine. `storyboard_schema` / `screenpilot schema` prints the full JSON Schema.
 5. **Write the storyboard** (see example). Edit the file directly.
 6. **Validate.** MCP `storyboard_validate` (path). CLI `screenpilot validate <storyboard>`. Fix every schema issue; read warnings (overlapping segments, items past the end of the video, callouts without x/y).
 7. **Render a draft.** MCP `render` (storyboard, quality: "draft"). CLI `screenpilot render <storyboard> -q draft`. Slow (minutes); it makes the voice, cuts the video and renders. `build` / `screenpilot build` does everything except the final render; `preview` / `screenpilot preview` opens HyperFrames Studio for the user.
 8. **Review.** MCP `check_output` (video, times?). CLI `screenpilot check <video> [--at 2,8,15]`. Times are OUTPUT seconds. Check: zoom lands on the right element, captions are not cut off or overlapping, nothing important is hidden by a caption, pacing feels right.
 9. **Iterate** steps 5-8. Change one kind of thing at a time (timing, then zooms, then wording).
 10. **Final render** with quality `delivery`: `screenpilot render <storyboard> -q delivery -o demo.mp4`. Tell the user the output path, duration and any warnings.
+
+## Combine recordings (insert a feature clip, no re-recording)
+
+One storyboard has one `source`. To insert another recording into the middle of a demo, record or `perform` only the new part, `init` a storyboard for it, then join storyboards with a `sequence.json`:
+
+```json
+{ "version": 1, "parts": [
+  { "storyboard": "demo.json", "to": 42 },
+  { "storyboard": "feature.json", "transition": { "type": "crossfade", "dur": 0.5 } },
+  { "storyboard": "demo.json", "from": 42 } ] }
+```
+
+- MCP `sequence_validate` / `sequence_render` (quality, output) / `sequence_schema`; CLI `screenpilot sequence-validate|sequence|sequence-schema <sequence.json>`.
+- `from`/`to` are SOURCE seconds of that part's storyboard, half-open `[from, to)`. Read the first storyboard's frames to pick the split second (a quiet moment between two actions). Narration that started before `from` is dropped; zooms/captions/highlights that straddle the cut are trimmed (dropped if under 0.5s is left); cards and overlays are clipped too.
+- Make the pieces look the same: give each storyboard `"extends": "base.json"` (shares theme, voice, output, music, keepSourceAudio; the child wins; paths are relative to each file). Intro is used on the first part only, outro on the last; all parts get the first part's output size (override with `sequence.output`).
+- Transitions on a part (how it enters from the previous one): `cut`, `crossfade`, `fade-black`, `wipe-left`, `wipe-right`, `slide-left`, `slide-right`; `dur` default 0.5, clamped to half of either neighbour. Unchanged parts are cached, so only edited parts re-render.
+
+## More editing tools
+
+- **Chapter cards** `cards: [{ "at": 30, "title": "Step 2", "subtitle": "Export", "dur": 2.5 }]`: freezes the video at `at` and shows a full card (same look as intro/outro). An `at` in a cut region is dropped (warning). Put captions slightly after `at`.
+- **Overlays** `overlays: [{ "src": "logo.png", "x": 0.82, "y": 0.04, "w": 0.14, "h": 0.08 }]`: image or video on the OUTPUT frame (0..1). No `at`/`dur` = whole video (watermark). Options: `fit` contain|cover, `opacity`, `radius`, `shadow`, `motion` (in/out like captions), `mute` (default true), `loop`. Paths relative to the storyboard.
+- **Audio.** `segments[].volume` (0..4) or `mute: true` for the source audio (needs `keepSourceAudio`); `music.duck: { "amount": 0.6, "attack": 0.2, "release": 0.5 }` lowers the music while narration plays.
+- **Fast review.** `render` with `from`/`to` (OUTPUT seconds) renders only that window into `<name>.part-A-B.mp4`; use it after editing one section.
+- **Other formats.** `render` with `formats: ["16:9","9:16","1:1"]` (or `1280x720`) renders each into `<name>.<label>.mp4` (labels `16x9`, `9x16`, `1x1`). Portrait crops wide window-framed views, so check frames.
+- **Lint.** `validate` and render warnings flag narration over ~12 words or too fast, captions over 6 words, overlapping captions/zooms, zoom scale outside 1.4-2.5, zoom + highlight + callout stacked, speed over 8, and a final length over 90s or under 15s. Fix them unless there is a reason.
 
 ## Optional: you perform the demo (KDE Wayland, X11, GNOME Wayland, Windows)
 
@@ -131,8 +156,10 @@ What each part does:
 - `captions`: `style` is `pill` (subtitle-like), `title` (big), or `callout` (bubble pointing at `x`,`y`; always give x/y). `position` is bottom/top/center.
 - `highlights`: a box (`x`,`y` top-left, `w`,`h` size, all 0..1) with optional label.
 - `narration`: `at` is the source time the line starts. Per-line `voice` overrides `voice.name`. A line placed in a cut region is dropped (warning). Lines also show as subtitles unless `caption: false` or `voice.subtitles: false`.
+- `cards`, `overlays`, `extends`, segment `volume`/`mute` and `music.duck`: see "More editing tools" and "Combine recordings" above.
 - `intro` / `outro`: title cards. `music`: `{ "src": "bgm.mp3", "volume": 0.12 }`. `keepSourceAudio`, `output` (1920x1080@30 default) and `theme` (background, padding, radius, accent, font, captionColor, captionBackground, clickRipples, `fonts`: extra Google Fonts, `css`: your own CSS) are optional; see "Design the look" below.
 - Voices: MCP `voices` (lang: "ar-EG") / `screenpilot voices --lang ar-EG`. Egyptian Arabic: `ar-EG-SalmaNeural` (f), `ar-EG-ShakirNeural` (m). English: `en-US-AndrewNeural`, `en-US-AriaNeural`.
+- Local and command voices: set `"voice": {"provider": "local", "name": "voicetut:Sarah", "rate": "+0%"}` (default provider `edge`). Local names: `voicetut` or `voicetut:<Voice>` (Egyptian Arabic and English, 19 voices) and `namaa` (Egyptian Arabic only). A line's own `voice` overrides the name within the same provider (e.g. `namaa` for an Arabic line, `voicetut:Sarah` for an English one); the language of each line is detected, and `rate` becomes a speed factor for voicetut (namaa ignores it). Arabic from VoiceTut is less accurate than English. List installed ones with MCP `voices` (provider: "local") / `screenpilot voices --provider local`, and check `doctor` ("local voice"). If the user wants free offline voices and none is installed, tell them to run `screenpilot voice-setup voicetut` in a terminal (about 10 GB, 30 minutes or more); do not start it yourself. `provider: "command"` voices (`name` = a key in the user's `voices.json`) are defined by the user; you cannot add commands from a storyboard. Details: https://mohamedeslam04.github.io/screenpilot/guide/voices.html
 
 ## Design the look (every video is different)
 

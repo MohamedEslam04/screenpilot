@@ -19,4 +19,4 @@ ScreenPilot lets an AI app use your real mouse and keyboard and record your scre
 - the installer or `setup` changing files other than the AI apps' config files it says it changes;
 - anything in a release package that does not match this repository.
 
-Limits you can set today: `SCREENPILOT_ALLOW_APPS`, `SCREENPILOT_ALLOW_ENV` and `SCREENPILOT_PERFORM_TIMEOUT` (see the README, "Let the agent drive"). Every driving action is logged to `audit.jsonl` in the config folder; typed text is never logged.
+Limits you can set today: `SCREENPILOT_ALLOW_APPS`, `SCREENPILOT_ALLOW_ENV` and `SCREENPILOT_PERFORM_TIMEOUT` (see [CONTRIBUTING.md](CONTRIBUTING.md), "Let the agent drive"). Every driving action is logged to `audit.jsonl` in the config folder; typed text is never logged.

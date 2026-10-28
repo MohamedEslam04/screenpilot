@@ -1,6 +1,6 @@
 # screenpilot: agent guide
 
-Turn a screen recording of any desktop app into a polished demo MP4. You write `storyboard.json` (cuts, zooms, captions, highlights, voiceover); screenpilot renders it with HyperFrames and Edge TTS. Run the CLI as `screenpilot` (or `node dist/cli.js`). An MCP server (`dist/mcp.js`) exposes the same steps as tools; see README. Claude Code users also get `skill/SKILL.md` with a longer walkthrough and a full storyboard example.
+Turn a screen recording of any desktop app into a polished demo MP4. You write `storyboard.json` (cuts, zooms, captions, highlights, voiceover); screenpilot renders it with HyperFrames and a text-to-speech voice (Edge by default; local models or a user-defined command are optional). Run the CLI as `screenpilot` (or `node dist/cli.js`). An MCP server (`dist/mcp.js`) exposes the same steps as tools; see CONTRIBUTING.md. Claude Code users also get `skill/SKILL.md` with a longer walkthrough and a full storyboard example.
 
 ## Rules
 
@@ -8,6 +8,7 @@ Turn a screen recording of any desktop app into a polished demo MP4. You write `
 - Paths inside a storyboard are relative to the storyboard file.
 - Narration never overlaps: render auto-freezes the video when a line overruns. Keep lines short.
 - Iterate with `-q draft`; use `-q delivery` only for the final render.
+- Voice providers: `"voice": {"provider": "local", "name": "voicetut:Sarah", "rate": "+0%"}` (default provider is `edge`). `local` names are `voicetut`, `voicetut:<Voice>` (Egyptian Arabic and English) and `namaa` (Egyptian Arabic only); a line's own `voice` overrides the name, and each line's language is detected. Run `screenpilot voices --provider local` and `screenpilot doctor` ("local voice") to see what is installed. If the user wants free offline voices and none is installed, tell them to run `screenpilot voice-setup voicetut` in a terminal (about 10 GB download); never start it yourself. `command` voices (`"provider": "command"`, `name` = a key in the user's `voices.json`) are defined by the user; you cannot add commands from a storyboard. Details: https://mohamedeslam04.github.io/screenpilot/guide/voices.html
 
 ## Workflow
 
@@ -16,14 +17,31 @@ Turn a screen recording of any desktop app into a polished demo MP4. You write `
    If `record` warns it assumed which monitor OBS records and that was wrong: `screenpilot remap <session> --screen <name>` (names in meta.json `screens`).
 2. Analyze: `screenpilot analyze <session-dir|video>` -> idle spans, clicks, suggested segments/zooms, contact sheet image. View the contact sheet.
 3. Look closer: `screenpilot frames <video> --at 1,4.5,10 --grid`. The grid shows 0..1 coordinates; read zoom/highlight/callout positions from it. View the images.
-4. Start: `screenpilot init <session-dir|video> --suggest [--voice ar-EG-SalmaNeural]` (`--suggest` pre-fills idle cuts and click zooms). Schema: `screenpilot schema`. Voices: `screenpilot voices --lang ar-EG`.
-5. Edit `storyboard.json`: `segments` (keep parts, `speed` to fast-forward), `holds`, `zooms` (at, dur, x, y, scale), `captions` (style pill/title/callout; callout needs x,y), `highlights` (x,y,w,h), `narration` (at, text, optional per-line `voice`), `intro`/`outro`, `music`.
+4. Start: `screenpilot init <session-dir|video> --suggest [--voice ar-EG-SalmaNeural]` (`--suggest` pre-fills idle cuts and click zooms). Schema: `screenpilot schema`. Voices: `screenpilot voices --lang ar-EG` (Edge), `screenpilot voices --provider local` (installed local models), `--provider command` (voices the user defined). `init` also takes `--provider local --voice voicetut:Sarah`.
+5. Edit `storyboard.json`: `segments` (keep parts, `speed` to fast-forward; optional `volume`/`mute` of source audio), `holds`, `zooms` (at, dur, x, y, scale), `captions` (style pill/title/callout; callout needs x,y), `highlights` (x,y,w,h), `narration` (at, text, optional per-line `voice`), `intro`/`outro`, `cards` (chapter card at a source time, freezes the video), `overlays` (logo/image/video on the output frame, 0..1), `music` (`duck` lowers it under narration), `extends` (inherit theme/voice/output/music from a base storyboard so clips match).
 6. Validate: `screenpilot validate storyboard.json`.
 7. Draft: `screenpilot render storyboard.json -q draft`.
 8. Review: `screenpilot check storyboard.mp4 --at 2,8,15` (output seconds) and view the frames. Fix and repeat 5-8.
 9. Final: `screenpilot render storyboard.json -q delivery -o demo.mp4`.
 
 `screenpilot build` prepares everything without rendering; `screenpilot preview` opens HyperFrames Studio.
+
+## Combine recordings (insert a feature clip without re-recording)
+
+A storyboard has one `source`. To put another recording in the middle, write `sequence.json` and run `screenpilot sequence sequence.json -q draft` (MCP `sequence_render`; `sequence-validate`, `sequence-schema`). Each part is a full storyboard (own source, zooms, narration), rendered alone and joined:
+
+```json
+{ "version": 1, "parts": [
+  { "storyboard": "demo.json", "to": 42 },
+  { "storyboard": "feature.json", "transition": { "type": "crossfade", "dur": 0.5 } },
+  { "storyboard": "demo.json", "from": 42 } ] }
+```
+
+- `from`/`to` are SOURCE seconds of that part's storyboard, half-open `[from, to)`: the same storyboard twice with `to: 42` and `from: 42` keeps every item once. Narration that started before `from` is dropped.
+- Intro only on the first part, outro only on the last; every part is forced to one output size. Give every storyboard the same `extends` base so the look matches.
+- Transitions (how a part enters from the previous): cut, crossfade, fade-black, wipe-left, wipe-right, slide-left, slide-right; `dur` is clamped to half of either neighbour.
+- Review fast: `render ... --from 12 --to 20` (OUTPUT seconds) renders only that window. Other sizes: `render ... --formats 16:9,9:16,1:1`.
+- `validate` also warns about style (long narration/captions, overlapping or stacked effects, duration over 90s or under 15s).
 
 ## Agent drives the desktop (KDE Wayland, X11, GNOME Wayland, Windows)
 
@@ -88,6 +106,7 @@ Take tips: put `say` with `wait: true` before an important click so the viewer h
 - HyperFrames telemetry is disabled through env vars in `src/render/index.ts` (`hyperframesEnv()`); keep it that way for every HyperFrames subprocess.
 - The MCP server must never write to stdout except protocol messages; log to stderr.
 - Renaming the project: the name lives only in `src/brand.ts` (`APP`). Change it, add the old name to `PREVIOUS_NAMES` (users' config folder is moved over on first run), then update `package.json` (`name`, `bin`), the docs, and rename the GitHub repo.
+- Combining recordings lives in `src/sequence/` (schema, ffmpeg concat/xfade, per-part build dirs `<seq>.build/part-<i>/` with a cache key); `src/storyboard/clip.ts` slices a storyboard by source range; `extends` resolves in `loadStoryboard`. Partial render (`src/render/window.ts`) shifts the RenderPlan, so any new plan field with times must be handled there too. Multi-format is `src/render/formats.ts`.
 - Platforms: everything OS-specific is behind `src/platform` (`Desktop`, `Injector`, `Watcher`), picked by `detect.ts` (override: `SCREENPILOT_DESKTOP=kde|x11|portal|windows|macos`, name in `src/brand.ts`): `kde.ts` (portal + KWin), `x11/` (libX11/XRandR/XTest via koffi, EWMH), `wayland.ts` (generic xdg-portal desktop: GNOME, wlroots; monitors from Mutter DisplayConfig / swaymsg / hyprctl / portal streams), shared portal code in `portal.ts`, `windows/` (Win32 via koffi) and `macos/` (Quartz + Accessibility API via koffi, JXA for NSScreen names). Recording backends are in `src/record/backends` (native: portal PipeWire/GStreamer `pipewire.ts`, ffmpeg x11grab / gdigrab / avfoundation; or OBS).
 - macOS coordinates are points (Quartz global space), never pixels; only the avfoundation recorder and screenshots deal with Retina pixels (`src/platform/macos/geometry.ts` explains). Permission errors name the host app (`src/platform/macos/permissions.ts`). Verified in CI by `pnpm smoke:macos` (`.github/workflows/macos.yml`); checks blocked by missing permissions are reported, not failed.
 - End users are not developers: they get a release package and run `screenpilot setup` (`src/setup`). It registers the server with every AI client it finds (`src/setup/clients.ts`: one entry per client with its config path and format). Config edits must keep the user's comments and other entries (jsonc-parser for JSON, a table rewrite for Codex TOML), and the file is backed up first. Test setup only with a fake `HOME`/`APPDATA`, never against real configs. Adding a client = one `CLIENTS` entry + a test. The MCP server's `instructions` (in `src/mcp.ts`) carry the workflow for clients without the skill.

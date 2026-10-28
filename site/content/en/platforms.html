@@ -29,7 +29,7 @@ summary: What ScreenPilot can do on each desktop: recording, driving, window con
   <li>ffmpeg and ffprobe on your <code>PATH</code>.</li>
   <li>A screen recorder. The built-in one is the default. On Wayland (KDE, GNOME, wlroots) it records the PipeWire streams from the screen-cast portal with GStreamer, which needs <code>gst-launch-1.0</code> with <code>pipewiresrc</code> and an H.264 encoder (<code>x264enc</code>, <code>openh264enc</code> or VA-API). On X11 and Windows it records with ffmpeg. On macOS it uses ffmpeg with avfoundation.</li>
   <li>Optional: OBS Studio 28 or newer with the WebSocket server enabled, if you prefer OBS's encoders. Use <code>--recorder obs</code>.</li>
-  <li>Internet access for the voiceover (Edge TTS) and for the voice list.</li>
+  <li>Internet access for the default voiceover (Edge voices) and for its voice list. Local voices need none once installed, but installing them needs <code>uv</code> and the internet (see <a href="@guide/voices.html">Voices</a>).</li>
   <li><code>wl-clipboard</code> (<code>wl-copy</code>) to type non-Latin text on Wayland. X11 and Windows type any Unicode directly.</li>
 </ul>
 <p>If a GStreamer piece is missing, <code>screenpilot doctor</code> prints the install command for your distribution. For example:</p>
@@ -85,7 +85,8 @@ sudo apt install gstreamer1.0-tools gstreamer1.0-pipewire gstreamer1.0-plugins-u
 <ul>
   <li>Driving the desktop works on KDE Wayland, X11, GNOME Wayland (without window control), Windows and macOS. It does not work on wlroots desktops (sway, Hyprland). Recording still works there.</li>
   <li>Wayland desktops other than KDE expose no window list and no pointer position. That means no window framing, no <code>{web}</code> or <code>{window}</code> targets, and no pointer log for your own recordings.</li>
-  <li>The voiceover uses Edge TTS only. It needs the internet, and it is an unofficial service that may change.</li>
+  <li>The default Edge voices need the internet, and they are an unofficial service that may change.</li>
+  <li>Local voices (VoiceTut and NAMAA) are tested on Linux with an NVIDIA graphics card only. Windows, macOS and CPU-only machines are not tested.</li>
   <li>Rendering is not fast. Use a draft render while you iterate.</li>
   <li>Narration inside cut parts of the video is dropped, so lines must sit inside the parts you keep.</li>
 </ul>

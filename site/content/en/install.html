@@ -17,7 +17,7 @@ summary: Install ScreenPilot on Windows, macOS or Linux, add it to your AI apps,
     <tr><td>Linux (64-bit)</td><td><a href="https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-linux.tar.gz">ScreenPilot-linux.tar.gz</a></td></tr>
   </tbody>
 </table>
-<div class="warn">Version 0.3.0, the current release, has Windows and Linux builds only. The two Mac downloads above do not work until the next release. The last Mac builds are on the <a href="https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.2.3">v0.2.3 release</a>.</div>
+<div class="warn">Version 0.4.0, the current release, has Windows and Linux builds only. The two Mac downloads above do not work until the next release. The last Mac builds are on the <a href="https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.2.3">v0.2.3 release</a>.</div>
 <p>Not sure which Mac you have? Open the Apple menu and choose <strong>About This Mac</strong>. "Chip: Apple M..." means Apple Silicon. "Processor: Intel" means Intel. All versions are on the <a href="https://github.com/MohamedEslam04/screenpilot/releases">Releases page</a>.</p>
 
 <h2 id="windows">Windows</h2>
@@ -63,6 +63,15 @@ summary: Install ScreenPilot on Windows, macOS or Linux, add it to your AI apps,
 </ol>
 <div class="warn">Do not run the installer with <code>sudo</code>. It installs for your user only and needs no admin rights. With <code>sudo</code> it stops and tells you to run it again as yourself.</div>
 <p>What works depends on your desktop. See <a href="@guide/platforms.html#support">Platform support</a> for the full table.</p>
+
+<h2 id="verify">Check that it works</h2>
+<ol>
+  <li>Quit your AI app completely and open it again.</li>
+  <li>Ask it: "Run the ScreenPilot doctor." It reports the recorder, permissions, voices and video renderer, and says how to fix what is missing. If you get that report, ScreenPilot is connected.</li>
+  <li>To double-check, look for <code>screenpilot</code> in your AI app's tools or MCP list. In Claude Code, run <code>/mcp</code> (or <code>claude mcp list</code> in a terminal). It should say <strong>Connected</strong>.</li>
+  <li>Try a real request: "Take a screenshot of my screen." The first time, your desktop may ask to allow screen sharing. Allow it.</li>
+</ol>
+<p>Nothing shows up? See <a href="#troubleshooting">If something goes wrong</a>.</p>
 
 <h2 id="installer">What the installer does</h2>
 <ul>

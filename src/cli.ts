@@ -7,6 +7,8 @@ import { doctor } from "./doctor.js";
 import { evenTimes, grabFrames } from "./frames.js";
 import { initStoryboard } from "./init.js";
 import { knownClients, manualConfig, setup } from "./setup/index.js";
+import { voiceSetup } from "./setup/voice.js";
+import type { LocalModel } from "./voice/local.js";
 import { type InputAdapterId, startRecording } from "./record/index.js";
 import { remapSession } from "./record/remap.js";
 import { Driver } from "./drive/index.js";
@@ -15,11 +17,15 @@ import { locate, openBrowser } from "./drive/web.js";
 import type { ScreenInfo } from "./record/input/types.js";
 import { performTake, TakeError } from "./take/perform.js";
 import { takeJsonSchema } from "./take/schema.js";
-import { prepareBuild, renderStoryboard, startPreview } from "./render/index.js";
+import { parseFormats } from "./render/formats.js";
+import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
+import { parseWindow } from "./render/window.js";
 import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/load.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
+import { renderSequence, validateSequence } from "./sequence/index.js";
+import { sequenceJsonSchema } from "./sequence/schema.js";
 import { probeVideo } from "./util/media.js";
-import { getProvider } from "./voice/index.js";
+import { getProvider, voiceMatchesLang } from "./voice/index.js";
 import { APP, APP_TITLE, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { getDesktop } from "./platform/index.js";
@@ -276,11 +282,12 @@ program
   .description("Write a starter storyboard.json for a recording or session")
   .argument("<target>", "Session directory or raw recording (mp4, mkv, webm, mov)")
   .option("-o, --out <file>", "Storyboard path (default: storyboard.json in the session / next to the video)")
-  .option("--voice <name>", "Default Edge TTS voice", "en-US-AndrewNeural")
+  .option("--voice <name>", "Default voice: an Edge voice, a local model (voicetut:Sarah, namaa) or a command voice name", "en-US-AndrewNeural")
+  .option("--provider <id>", "Voice provider: edge | local | command", "edge")
   .option("--suggest", "Pre-fill segments, zooms and camera views from `analyze`")
   .option("--frame <how>", "Camera for suggested views: window | screen | all", "window")
   .option("-f, --force", "Overwrite an existing storyboard")
-  .action(async (target: string, o: { out?: string; voice: string; suggest?: boolean; force?: boolean; frame: "window" | "screen" | "all" }) => {
+  .action(async (target: string, o: { out?: string; voice: string; provider: "edge" | "local" | "command"; suggest?: boolean; force?: boolean; frame: "window" | "screen" | "all" }) => {
     print(await initStoryboard(target, o));
   });
 
@@ -321,13 +328,27 @@ program
   });
 
 program
+  .command("voice-setup")
+  .description("Install a local voice model in its own Python environment (voice.provider \"local\")")
+  .argument("[model]", "voicetut (Egyptian Arabic and English, many voices) or namaa (Egyptian Arabic)", "voicetut")
+  .option("--dir <path>", "Where to put the environment and the downloaded models (default: next to the app folder)")
+  .option("-y, --yes", "Do not ask before downloading")
+  .action(async (model: string, o: { dir?: string; yes?: boolean }) => {
+    print(await voiceSetup({ model: model as LocalModel, dir: o.dir, yes: o.yes, log: (line) => console.error(line) }));
+  });
+
+program
   .command("voices")
   .description("List available voices")
   .option("--lang <prefix>", "Filter by locale prefix, e.g. ar or en-US")
-  .option("--provider <id>", "Voice provider", "edge")
+  .option("--provider <id>", "Voice provider: edge | local | command", "edge")
   .action(async (o: { lang?: string; provider: string }) => {
-    const voices = await getProvider(o.provider).listVoices();
-    print(voices.filter((v) => !o.lang || v.locale.toLowerCase().startsWith(o.lang.toLowerCase())));
+    const provider = getProvider(o.provider);
+    try {
+      print((await provider.listVoices()).filter((v) => voiceMatchesLang(v, o.lang)));
+    } finally {
+      await provider.close?.();
+    }
   });
 
 program
@@ -348,10 +369,48 @@ program
   .option("-q, --quality <q>", "draft | looks | delivery", "looks")
   .option("--png-frames", "Lossless source frames: sharper UI text, slower")
   .option("--workers <n>", "Parallel renderers (each is a headless Chrome)", "2")
+  .option("--from <s>", "Render only from this OUTPUT second (fast review; writes <storyboard>.part-<from>-<to>.mp4)", Number)
+  .option("--to <s>", "Render only up to this OUTPUT second", Number)
+  .option("--formats <list>", "Render once per format, e.g. 16:9,9:16,1:1 or 1280x720 (writes <storyboard>.<format>.mp4)")
+  .option("--build-dir <dir>")
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers: string; from?: number; to?: number; formats?: string }) => {
+    const opts = { ...o, workers: Number(o.workers), window: parseWindow(o.from, o.to), log };
+    if (o.formats) {
+      if (o.buildDir) throw new Error("--build-dir cannot be combined with --formats (each format gets its own <name>.<format>.build)");
+      const rs = await renderFormats(path, parseFormats(o.formats), opts);
+      print(rs.map((r) => ({ format: r.format, output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings })));
+      return;
+    }
+    const r = await renderStoryboard(path, opts);
+    print({ output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
+  });
+
+program
+  .command("sequence")
+  .description("Render several storyboards (each with its own recording) and join them into one MP4")
+  .argument("<sequence>", "sequence.json")
+  .option("-o, --output <file>", "Output video (default: <sequence>.mp4)")
+  .option("-q, --quality <q>", "draft | looks | delivery", "looks")
+  .option("--png-frames", "Lossless source frames: sharper UI text, slower")
+  .option("--workers <n>", "Parallel renderers (each is a headless Chrome)", "2")
   .option("--build-dir <dir>")
   .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers: string }) => {
-    const r = await renderStoryboard(path, { ...o, workers: Number(o.workers), log });
-    print({ output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
+    print(await renderSequence(path, { ...o, workers: Number(o.workers), log }));
+  });
+
+program
+  .command("sequence-validate")
+  .description("Check a sequence.json and every storyboard it uses")
+  .argument("<sequence>")
+  .action(async (path: string) => {
+    print(await validateSequence(path));
+  });
+
+program
+  .command("sequence-schema")
+  .description("Print the sequence.json JSON Schema")
+  .action(() => {
+    print(sequenceJsonSchema());
   });
 
 program

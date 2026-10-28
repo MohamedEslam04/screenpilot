@@ -14,7 +14,9 @@ import { mouseAccess } from "./record/input/evdev.js";
 import { ObsRecorder, resolveObsConfig } from "./record/obs.js";
 import { installHint } from "./util/distro.js";
 import { run } from "./util/exec.js";
+import { loadVoiceConfig } from "./voice/config.js";
 import { getProvider } from "./voice/index.js";
+import { defaultLaunch, LOCAL_PYTHON_ENV, LocalWorker } from "./voice/local.js";
 
 // Environment self-check: every check is isolated and never throws.
 
@@ -267,6 +269,29 @@ export async function doctor(opts: { input?: boolean } = {}): Promise<DoctorRepo
   await add("edge tts", async () => {
     const voices = await withTimeout(getProvider("edge").listVoices(), 10_000, "Edge TTS");
     return { ok: voices.length > 0, detail: `${voices.length} voices` };
+  });
+  await add("local voice", async () => {
+    if (!process.env[LOCAL_PYTHON_ENV] && !loadVoiceConfig().local.python) return skip(`optional, not set up: run "${APP} voice-setup voicetut"`);
+    const worker = new LocalWorker(defaultLaunch());
+    try {
+      const r = (await worker.request({ cmd: "doctor" }, 60_000)) as {
+        ok?: boolean;
+        error?: string;
+        device?: string;
+        gpu?: string;
+        vram_total_gb?: number;
+        models?: Record<string, { installed: boolean; weights: boolean; detail?: string }>;
+      };
+      if (!r.ok) return { ok: false, detail: r.error ?? "the voice engine did not answer" };
+      const models = Object.entries(r.models ?? {});
+      const state = (m: { installed: boolean; weights: boolean }) => (!m.installed ? "not installed" : m.weights ? "ready" : "weights not downloaded");
+      const where = r.device === "cuda" ? `GPU ${r.gpu ?? ""} ${r.vram_total_gb ?? "?"} GB` : `${r.device ?? "cpu"} (slow: a line takes several times its length)`;
+      return { ok: models.some(([, m]) => m.installed && m.weights), detail: `${where}; ${models.map(([n, m]) => `${n}: ${state(m)}`).join(", ")}` };
+    } catch (err) {
+      return { ok: false, detail: (err as Error).message };
+    } finally {
+      await worker.close();
+    }
   });
   await add("render browser", async () => {
     // Don't call `hyperframes browser path`: it downloads Chrome when missing.

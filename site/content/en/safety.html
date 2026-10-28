@@ -115,7 +115,7 @@ summary: What the agent can touch when it drives your desktop, how to stop it, h
 <p>ScreenPilot needs no account and no API key. Recording, analysis, editing and rendering run on your computer. Files are saved in your <strong>ScreenPilot</strong> folder inside Videos (Movies on a Mac), or in <code>sessions</code> for command-line use.</p>
 <p>What goes over the network:</p>
 <ul>
-  <li><strong>The voice.</strong> Voiceover uses Edge TTS, an online service. The text of your narration lines is sent to it, and the audio comes back. Listing voices uses it too. Without internet there is no voiceover.</li>
+  <li><strong>The voice.</strong> The default voices (<code>edge</code>) are an online service: the text of your narration lines is sent to it, and the audio comes back. Listing Edge voices uses it too. Local voices (<code>local</code>) run on your computer and send nothing. A <code>command</code> voice runs a program you set up yourself in <code>voices.json</code>; a storyboard cannot add one, so a storyboard from someone else cannot run programs. See <a href="@guide/voices.html">Voices</a>.</li>
   <li><strong>Your AI app.</strong> The agent sees what its tools return: screenshots of your monitors, frames of your recordings, window titles and the text of the demo browser's page. Your AI app sends that to its model provider under its own privacy terms. Do not let the agent look at screens you would not show that provider.</li>
   <li><strong>One-time downloads.</strong> The first render downloads the video renderer (about 100 MB). Pages in the demo browser load whatever sites you point it at, and a storyboard that asks for Google Fonts loads them at render time.</li>
 </ul>

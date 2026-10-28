@@ -29,7 +29,7 @@ summary: ما الذي يستطيعه ScreenPilot على كل سطح مكتب: �
   <li>ffmpeg وffprobe على <code>PATH</code>.</li>
   <li>مسجّل شاشة. المسجّل المدمج هو الافتراضي. على Wayland (KDE وGNOME وwlroots) يسجّل تدفقات PipeWire من screen-cast portal بواسطة GStreamer، وهذا يحتاج إلى <code>gst-launch-1.0</code> مع <code>pipewiresrc</code> ومُرمِّز H.264 (<code>x264enc</code> أو <code>openh264enc</code> أو VA-API). على X11 وWindows يسجّل بـ ffmpeg. وعلى macOS يستخدم ffmpeg مع avfoundation.</li>
   <li>اختياري: OBS Studio 28 أو أحدث مع تفعيل خادم WebSocket، إذا فضّلت مُرمِّزات OBS. استخدم <code>--recorder obs</code>.</li>
-  <li>اتصال بالإنترنت للتعليق الصوتي (Edge TTS) ولقائمة الأصوات.</li>
+  <li>اتصال بالإنترنت للتعليق الصوتي الافتراضي (أصوات Edge) ولقائمة أصواته. والأصوات المحلية لا تحتاجه بعد تثبيتها، لكن تثبيتها يحتاج <code>uv</code> والإنترنت (راجع <a href="@guide/voices.html">الأصوات</a>).</li>
   <li><code>wl-clipboard</code> (<code>wl-copy</code>) لكتابة النص غير اللاتيني على Wayland. أما X11 وWindows فيكتبان أي نص Unicode مباشرة.</li>
 </ul>
 <p>إذا نقصت حزمة من GStreamer فإن <code>screenpilot doctor</code> يطبع أمر التثبيت لتوزيعتك. مثلًا:</p>
@@ -85,7 +85,8 @@ sudo apt install gstreamer1.0-tools gstreamer1.0-pipewire gstreamer1.0-plugins-u
 <ul>
   <li>تعمل قيادة سطح المكتب على KDE Wayland وX11 وGNOME Wayland (دون التحكم بالنوافذ) وWindows وmacOS. ولا تعمل على سطوح wlroots (sway وHyprland). أما التسجيل فيعمل هناك.</li>
   <li>سطوح Wayland غير KDE لا تعرض قائمة نوافذ ولا موضع المؤشر. وهذا يعني: لا تأطير بالنوافذ، ولا أهداف <code>{web}</code> أو <code>{window}</code>، ولا سجل للمؤشر في تسجيلاتك أنت.</li>
-  <li>التعليق الصوتي يستخدم Edge TTS فقط. يحتاج إلى الإنترنت، وهو خدمة غير رسمية قد تتغير.</li>
+  <li>أصوات Edge الافتراضية تحتاج إلى الإنترنت، وهي خدمة غير رسمية قد تتغير.</li>
+  <li>الأصوات المحلية (VoiceTut وNAMAA) جُرّبت على Linux مع بطاقة رسوميات NVIDIA فقط. ولم تُجرَّب على Windows أو macOS أو الأجهزة التي ليس فيها سوى المعالج.</li>
   <li>الإخراج ليس سريعًا. استخدم المسودة أثناء التجريب.</li>
   <li>يُسقَط التعليق الصوتي داخل الأجزاء المقصوصة من الفيديو، لذلك يجب أن تقع الجمل داخل الأجزاء المحتفظ بها.</li>
 </ul>

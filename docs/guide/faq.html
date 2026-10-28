@@ -27,7 +27,7 @@
   <nav class="nav" aria-label="Main"><a href="../guide/index.html" aria-current=page>Docs</a><a href="../guide/install.html" class="hide-s">Install</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../ar/guide/faq.html" lang="ar" hreflang="ar">العربية</a><button class="theme" type="button" aria-label="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
 </div></header>
 <main id="main"><div class="wrap docs">
-  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html" aria-current=page>FAQ and troubleshooting</a></details></nav>
+  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="voices.html">Voices</a><a href="sequence.html">Combine recordings</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html" aria-current=page>FAQ and troubleshooting</a></details></nav>
   <article class="doc"><h1>FAQ and troubleshooting</h1><p class="summary">Short answers to common questions about ScreenPilot, plus fixes for the problems people hit most: permissions, dialogs, freezes and missing zooms.</p><p>Short answers first, fixes after. If your question is not here, ask your AI app to run the ScreenPilot doctor: it checks the machine and says what to fix.</p>
 
 <h2 id="basics">The basics<a class="a" href="#basics" aria-label="Link to this section">#</a></h2>
@@ -54,13 +54,13 @@
 </ul>
 
 <h3 id="arabic">Can the voiceover be in Arabic?<a class="a" href="#arabic" aria-label="Link to this section">#</a></h3>
-<p>Yes. ScreenPilot uses Edge TTS voices in English, Arabic and many other languages. For Egyptian Arabic use <code>ar-EG-SalmaNeural</code> (female) or <code>ar-EG-ShakirNeural</code> (male). List more with <code>screenpilot voices --lang ar-EG</code>, or ask your AI app to list voices. A single narration line can override the voice, so one video can mix languages. Captions can be bilingual too: write <code>"English\nعربي"</code> as the caption text.</p>
+<p>Yes. By default ScreenPilot uses Edge voices in English, Arabic and many other languages. For Egyptian Arabic use <code>ar-EG-SalmaNeural</code> (female) or <code>ar-EG-ShakirNeural</code> (male). List more with <code>screenpilot voices --lang ar-EG</code>, or ask your AI app to list voices. If you prefer free voices that run on your own computer, you can install VoiceTut (Egyptian Arabic and English) or NAMAA (Egyptian Arabic) with <code>screenpilot voice-setup</code>. See <a href="../guide/voices.html">Voices</a>. A single narration line can override the voice, so one video can mix languages. Captions can be bilingual too: write <code>"English\nعربي"</code> as the caption text.</p>
 <p>Typing Arabic into the demo app works on Windows, macOS and X11. On Wayland it goes through the clipboard and needs <code>wl-clipboard</code> (<code>wl-copy</code>).</p>
 
 <h3 id="offline">Does it work offline?<a class="a" href="#offline" aria-label="Link to this section">#</a></h3>
 <p>Mostly. Recording, analysis, editing and rendering run on your computer. Three things need the internet:</p>
 <ul>
-  <li><strong>The voiceover.</strong> Edge TTS is an online service. A video with no narration lines needs no voice. Generated clips are cached in a <code>.screenpilot-cache</code> folder next to the storyboard or take.</li>
+  <li><strong>The default voiceover.</strong> Edge voices are an online service. Local voices need no internet once they are installed (the setup itself downloads about 10 GB; see <a href="../guide/voices.html">Voices</a>). A video with no narration lines needs no voice. Generated clips are cached in a <code>.screenpilot-cache</code> folder next to the storyboard or take.</li>
   <li><strong>The first render.</strong> It downloads the video renderer, about 100 MB, once.</li>
   <li><strong>Pages you ask the demo browser to open</strong>, and any Google Fonts a storyboard uses.</li>
 </ul>
@@ -76,7 +76,7 @@
 <ul>
   <li>Node 22 or newer, <code>ffmpeg</code> and <code>ffprobe</code>.</li>
   <li>Your desktop type and monitors, and whether it can record, drive the mouse and keyboard, control windows, and log the pointer.</li>
-  <li>The demo browser (Chrome, Edge or Brave), the Edge TTS voices (needs internet), and the video renderer.</li>
+  <li>The demo browser (Chrome, Edge or Brave), the voices (the default Edge voices need internet; local voices get their own "local voice" check once you have set them up), and the video renderer.</li>
   <li>OBS, only if you use <code>--recorder obs</code>. GStreamer on Linux.</li>
   <li>On a Mac: Accessibility, Screen Recording, Input Monitoring and avfoundation.</li>
 </ul>
@@ -108,6 +108,12 @@
 
 <h3 id="ninety-seconds">How do I keep the video under about 90 seconds?<a class="a" href="#ninety-seconds" aria-label="Link to this section">#</a></h3>
 <p>Aim for 30 to 90 seconds. Cut or speed up idle time and loading, keep narration to one short sentence per step, and caption with two to six words. When the agent drives the desktop, keep the take itself under about 90 seconds and use <code>waitFor</code> instead of long waits. A video that is too long is usually one that shows every step: show the main path and skip the rest. See <a href="../guide/agent-drive.html#tips">the tips for takes</a>.</p>
+
+<h3 id="add-feature">How do I add a new feature to a demo I already made?<a class="a" href="#add-feature" aria-label="Link to this section">#</a></h3>
+<p>Do not re-record the demo. Record only the new feature, give it a storyboard that <code>extends</code> the demo's, and join them with a <code>sequence.json</code> that splits the demo at the right second: <code>[{demo, to: 42}, {feature}, {demo, from: 42}]</code>. See <a href="../guide/sequence.html#insert-feature">Insert a feature clip into a demo</a>.</p>
+
+<h3 id="vertical">How do I get a vertical or square version?<a class="a" href="#vertical" aria-label="Link to this section">#</a></h3>
+<p>Render with <code>--formats</code>, for example <code>screenpilot render storyboard.json --formats 16:9,9:16,1:1</code>. You get one file per format from the same edit. A portrait cut of a landscape recording crops views that frame a window, so look at a draft first. See <a href="../guide/cli.html#formats">Several formats</a>.</p>
 
 <h2 id="troubleshooting">Troubleshooting<a class="a" href="#troubleshooting" aria-label="Link to this section">#</a></h2>
 

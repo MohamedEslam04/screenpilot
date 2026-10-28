@@ -4,6 +4,7 @@ import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { clicksOf, readEvents } from "../record/events.js";
+import { lintTimeline } from "../storyboard/lint.js";
 import { lintStoryboard, loadStoryboard } from "../storyboard/load.js";
 import type { Storyboard } from "../storyboard/schema.js";
 import { buildTimeline, planNarrationHolds, type Timeline } from "../storyboard/timeline.js";
@@ -12,7 +13,10 @@ import { ffmpegFilterScriptFlag, probeVideo, type VideoInfo } from "../util/medi
 import { synthesizeLines } from "../voice/index.js";
 import { buildCutArgs, buildCutFilter } from "./cut.js";
 import { renderHtml } from "./html.js";
-import { buildPlan, type RenderPlan } from "./plan.js";
+import { formatPaths, type OutputFormat } from "./formats.js";
+import { overlayKind } from "./overlay.js";
+import { buildPlan, type OverlayAsset, type RenderPlan } from "./plan.js";
+import { partSuffix, type Window, windowPlan } from "./window.js";
 import { CACHE_DIR } from "../brand.js";
 
 const require = createRequire(import.meta.url);
@@ -20,6 +24,12 @@ const require = createRequire(import.meta.url);
 export interface PrepareOptions {
   /** Where the HyperFrames project goes. Default: <storyboard dir>/<name>.build */
   buildDir?: string;
+  /** Build only this window (output seconds) for a fast review render. */
+  window?: Window;
+  /** Override the storyboard's output size (multi-format export); fps is kept. */
+  size?: { width: number; height: number };
+  /** Voice cache. Default: CACHE_DIR next to the storyboard */
+  cacheDir?: string;
   log?: (msg: string) => void;
 }
 
@@ -35,12 +45,13 @@ export interface Prepared {
 export async function prepareBuild(storyboardPath: string, opts: PrepareOptions = {}): Promise<Prepared> {
   const log = opts.log ?? (() => {});
   const { sb, baseDir, path } = await loadStoryboard(storyboardPath);
+  if (opts.size) sb.output = { ...sb.output, ...opts.size };
   const sourcePath = resolve(baseDir, sb.source);
   if (!existsSync(sourcePath)) throw new Error(`Source video not found: ${sourcePath}`);
   const source = await probeVideo(sourcePath);
   const warnings = lintStoryboard(sb, source.duration);
 
-  const buildDir = resolve(opts.buildDir ?? join(baseDir, `${basename(path, extname(path))}.build`));
+  const buildDir = resolve(opts.buildDir ?? join(baseDir, `${basename(path, extname(path))}${opts.window ? partSuffix(opts.window) : ""}.build`));
   await mkdir(join(buildDir, "voice"), { recursive: true });
 
   // 1. Voice: real durations decide the pacing.
@@ -48,7 +59,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   const clips = await synthesizeLines(
     sb.voice.provider,
     sb.narration.map((l) => ({ text: l.text, voice: l.voice ?? sb.voice.name, rate: sb.voice.rate })),
-    join(baseDir, CACHE_DIR, "voice"),
+    join(opts.cacheDir ?? join(baseDir, CACHE_DIR), "voice"),
   );
   const narration = await Promise.all(
     sb.narration.map(async (l, i) => {
@@ -61,20 +72,33 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
 
   // 2. Timeline, with freezes so narration never overlaps.
   const offset = sb.intro?.dur ?? 0;
-  const base = { segments: sb.segments, holds: sb.holds, sourceDuration: source.duration, offset };
+  // Chapter cards are holds too, so later times shift and narration holds keep working.
+  const cardHolds = sb.cards.map((c, card) => ({ at: c.at, dur: c.dur, card }));
+  const userHolds = [...sb.holds, ...cardHolds];
+  const base = { segments: sb.segments, holds: userHolds, sourceDuration: source.duration, offset };
   const autoHolds = planNarrationHolds({
     ...base,
     gap: sb.voice.gap,
     lines: narration.map((l) => ({ at: l.at, duration: l.duration })),
   });
-  const timeline = buildTimeline({ ...base, holds: [...sb.holds, ...autoHolds] });
-  for (const h of timeline.ignoredHolds) warnings.push(`hold at ${h.at}s is outside every segment and was ignored`);
+  const timeline = buildTimeline({ ...base, holds: [...userHolds, ...autoHolds] });
+  warnings.push(...lintTimeline(sb, timeline));
+  for (const h of timeline.ignoredHolds) {
+    warnings.push(
+      h.card !== undefined
+        ? `cards[${h.card}] at ${h.at}s is cut out (outside every segment) and was dropped`
+        : `hold at ${h.at}s is outside every segment and was ignored`,
+    );
+  }
   for (const l of narration) {
     if (timeline.toOutput(l.at) === null) warnings.push(`narration at ${l.at}s falls in a cut region and was dropped`);
   }
 
   // 3. Cut the recording (cached on source + pieces).
   const keepAudio = sb.keepSourceAudio && source.hasAudio;
+  if (!keepAudio && sb.segments.some((s) => s.mute || (s.volume !== undefined && s.volume !== 1))) {
+    warnings.push("segment volume/mute has no effect: the source audio is not kept (set keepSourceAudio: true and use a recording with sound)");
+  }
   await cutVideo(sourcePath, buildDir, timeline, sb, source, keepAudio, log);
 
   // 4. Events → click ripples.
@@ -95,8 +119,29 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     } else warnings.push(`music file not found: ${m}`);
   }
 
+  // 5b. Overlay images and videos.
+  await mkdir(join(buildDir, "overlays"), { recursive: true });
+  const overlays: (OverlayAsset | undefined)[] = [];
+  for (const [i, o] of sb.overlays.entries()) {
+    const file = resolve(baseDir, o.src);
+    const kind = overlayKind(o.src);
+    if (!kind) warnings.push(`overlays[${i}] "${o.src}" is not a known image or video type and was skipped`);
+    else if (!existsSync(file)) warnings.push(`overlays[${i}] file not found: ${file}`);
+    if (!kind || !existsSync(file)) {
+      overlays.push(undefined);
+      continue;
+    }
+    const src = `overlays/${i}${extname(file).toLowerCase()}`;
+    await copyFile(file, join(buildDir, src));
+    if (kind === "image") overlays.push({ src, kind });
+    else {
+      const info = await probeVideo(file);
+      overlays.push({ src, kind, duration: info.duration, hasAudio: info.hasAudio });
+    }
+  }
+
   // 6. Composition.
-  const plan = buildPlan({
+  const fullPlan = buildPlan({
     sb,
     timeline,
     editedSrc: "edited.mp4",
@@ -105,7 +150,9 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     narration,
     clicks,
     musicSrc,
+    overlays,
   });
+  const plan = opts.window ? windowPlan(fullPlan, opts.window) : fullPlan;
   await copyFile(require.resolve("gsap/dist/gsap.min.js"), join(buildDir, "gsap.min.js"));
   await writeFile(join(buildDir, "index.html"), renderHtml(plan, { gsapSrc: "gsap.min.js" }));
   await writeFile(
@@ -181,7 +228,8 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
   const log = opts.log ?? (() => {});
   const prepared = await prepareBuild(storyboardPath, opts);
   const output = resolve(
-    opts.output ?? join(dirname(resolve(storyboardPath)), `${basename(storyboardPath, extname(storyboardPath))}.mp4`),
+    opts.output ??
+      join(dirname(resolve(storyboardPath)), `${basename(storyboardPath, extname(storyboardPath))}${opts.window ? partSuffix(opts.window) : ""}.mp4`),
   );
   await mkdir(dirname(output), { recursive: true });
   log(`render: ${output} (${opts.quality ?? "looks"})`);
@@ -205,6 +253,31 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
     { env: hyperframesEnv() },
   );
   return { ...prepared, output };
+}
+
+export interface FormatRenderResult extends RenderResult {
+  format: string;
+}
+
+/**
+ * Render the storyboard once per format, one after another (each render is
+ * already parallel inside). Every format has its own build dir and output
+ * (`<name>.<format>.build` / `.mp4`); the voice cache lives next to the
+ * storyboard, so each narration line is synthesized once.
+ */
+export async function renderFormats(
+  storyboardPath: string,
+  formats: OutputFormat[],
+  opts: Omit<RenderOptions, "buildDir" | "size"> = {},
+): Promise<FormatRenderResult[]> {
+  const results: FormatRenderResult[] = [];
+  for (const f of formats) {
+    const { buildDir, output } = formatPaths(storyboardPath, f, opts.window, opts.output);
+    opts.log?.(`format ${f.label} (${f.width}x${f.height})`);
+    const r = await renderStoryboard(storyboardPath, { ...opts, output, buildDir, size: { width: f.width, height: f.height } });
+    results.push({ ...r, format: f.label });
+  }
+  return results;
 }
 
 /** Start (or reuse) the HyperFrames Studio preview for a prepared build. */

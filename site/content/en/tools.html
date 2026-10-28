@@ -1,6 +1,6 @@
 <!--
 title: MCP tools
-summary: The tools ScreenPilot gives an AI app, grouped by job: recording, footage, storyboard, render, desktop control and diagnostics.
+summary: The tools ScreenPilot gives an AI app, grouped by job: recording, footage, storyboard, render, combining recordings, desktop control and diagnostics.
 -->
 <p>ScreenPilot runs as an MCP server. Your AI app sees the tools below and calls them for you, so you ask for a video in plain words and the app picks the tools. This page is for developers who want to know exactly what each tool does. The server also sends the workflow to every client when it connects, so apps without a skill know the loop too.</p>
 <p>Times in storyboard tools are source seconds (the raw recording). Positions are normalized 0..1, with x from the left and y from the top. Only <code>check_output</code> uses output seconds.</p>
@@ -30,21 +30,34 @@ summary: The tools ScreenPilot gives an AI app, grouped by job: recording, foota
 <thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
 <tbody>
 <tr><td><code>storyboard_schema</code></td><td>Returns the JSON Schema of <code>storyboard.json</code>. Read it before you write a storyboard.</td><td>none</td></tr>
-<tr><td><code>storyboard_init</code></td><td>Writes a starter <code>storyboard.json</code> for a recording or a session. With <code>suggest</code>, it pre-fills segments (idle time cut) and zooms (from clicks).</td><td><code>target</code>, <code>suggest</code>, <code>out</code>, <code>voice</code>, <code>force</code></td></tr>
+<tr><td><code>storyboard_init</code></td><td>Writes a starter <code>storyboard.json</code> for a recording or a session. With <code>suggest</code>, it pre-fills segments (idle time cut) and zooms (from clicks). <code>provider</code> is <code>edge</code> (default), <code>local</code> or <code>command</code>, and <code>voice</code> is the voice name for it, for example <code>voicetut:Sarah</code>.</td><td><code>target</code>, <code>suggest</code>, <code>out</code>, <code>voice</code>, <code>provider</code>, <code>force</code></td></tr>
 <tr><td><code>storyboard_validate</code></td><td>Validates a storyboard against the schema and the source video. Returns <code>valid</code> with warnings, or the schema issues. It never throws. Run it before every render.</td><td><code>path</code></td></tr>
-<tr><td><code>voices</code></td><td>Lists Edge TTS voices. It needs a network connection. Filter by locale, for example <code>ar-EG</code> or <code>en-US</code>.</td><td><code>lang</code></td></tr>
+<tr><td><code>voices</code></td><td>Lists voices. With <code>provider</code> <code>edge</code> (default) it lists Edge voices and needs a network connection; filter by locale, for example <code>ar-EG</code> or <code>en-US</code>. With <code>local</code> it lists the installed local models. With <code>command</code> it lists the voices defined in <code>voices.json</code>. Installing a local model has no tool: run <code>screenpilot voice-setup</code> in a terminal.</td><td><code>lang</code>, <code>provider</code></td></tr>
 </tbody>
 </table>
-<p>The file format is in <a href="@guide/storyboard.html">the storyboard reference</a>.</p>
+<p>The file format is in <a href="@guide/storyboard.html">the storyboard reference</a>. The voice providers are in <a href="@guide/voices.html">Voices</a>.</p>
 
 <h2 id="render-check">Render and check</h2>
 <table>
 <thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
 <tbody>
-<tr><td><code>render</code></td><td>Renders a storyboard to MP4. It takes minutes. When a narration line is longer than its slot, the video freezes automatically (see <code>autoHolds</code> in the result). Use <code>draft</code> while iterating, <code>looks</code> for a normal render, and <code>delivery</code> only for the final file.</td><td><code>storyboard</code>, <code>output</code>, <code>quality</code> (<code>draft</code>, <code>looks</code>, <code>delivery</code>; default <code>looks</code>)</td></tr>
+<tr><td><code>render</code></td><td>Renders a storyboard to MP4. It takes minutes. When a narration line is longer than its slot, the video freezes automatically (see <code>autoHolds</code> in the result). Use <code>draft</code> while iterating, <code>looks</code> for a normal render, and <code>delivery</code> only for the final file. Pass <code>from</code> and <code>to</code> (output seconds) to re-render only that window for a fast review: the file is <code>&lt;storyboard&gt;.part-&lt;from&gt;-&lt;to&gt;.mp4</code>. Pass <code>formats</code> to render one file per format, narration generated once.</td><td><code>storyboard</code>, <code>output</code>, <code>quality</code> (<code>draft</code>, <code>looks</code>, <code>delivery</code>; default <code>looks</code>), <code>from</code>, <code>to</code>, <code>formats</code></td></tr>
 <tr><td><code>check_output</code></td><td>Returns frames of a rendered video as images, at most 12 per call. Times here are output seconds. Without <code>times</code> you get 8 evenly spaced frames. Look for clipped captions, zooms on the wrong spot and awkward freezes.</td><td><code>video</code>, <code>times</code></td></tr>
 <tr><td><code>build</code></td><td>Generates the voice, cuts the video and writes the HyperFrames project without rendering. Reports the output duration, automatic freezes and warnings.</td><td><code>storyboard</code></td></tr>
 <tr><td><code>preview</code></td><td>Builds the storyboard and opens HyperFrames Studio so a person can scrub through it.</td><td><code>storyboard</code></td></tr>
+</tbody>
+</table>
+
+<p>The <code>formats</code> input is a list of strings, each <code>"16:9"</code>, <code>"9:16"</code>, <code>"1:1"</code> or <code>"WxH"</code> such as <code>"1280x720"</code>. It writes <code>&lt;storyboard&gt;.&lt;format&gt;.mp4</code> (labels <code>16x9</code>, <code>9x16</code>, <code>1x1</code>, <code>WxH</code>), and then <code>output</code> becomes the base name. The result is one entry per format. A portrait export crops landscape views that frame a window. See <a href="@guide/cli.html#formats">Several formats</a>.</p>
+
+<h2 id="sequence">Combine recordings</h2>
+<p>These tools join several storyboards, each with its own recording, into one video, for example to insert a feature clip into an existing demo without re-recording it. The file format is in <a href="@guide/sequence.html">Combine recordings</a>.</p>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
+<tbody>
+<tr><td><code>sequence_schema</code></td><td>Returns the JSON Schema of <code>sequence.json</code>. Read it before you write a sequence.</td><td>none</td></tr>
+<tr><td><code>sequence_validate</code></td><td>Validates a sequence and every storyboard it uses. Returns <code>valid</code> with warnings, or the issues. It never throws.</td><td><code>path</code></td></tr>
+<tr><td><code>sequence_render</code></td><td>Renders each part like a storyboard (unchanged parts are reused), all at one output size, with the intro of the first part and the outro of the last, then joins them into one MP4. It takes minutes. Follow it with <code>check_output</code>.</td><td><code>sequence</code>, <code>output</code> (default <code>&lt;sequence&gt;.mp4</code>), <code>quality</code></td></tr>
 </tbody>
 </table>
 
@@ -114,7 +127,7 @@ summary: The tools ScreenPilot gives an AI app, grouped by job: recording, foota
 <table>
 <thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
 <tbody>
-<tr><td><code>doctor</code></td><td>Checks the machine and returns <code>{summary, checks}</code>: node, ffmpeg, desktop, monitors, windows, OBS, demo browser and voices. It never fails, so read the report. With <code>input</code> on, it also tests input injection and briefly moves the real pointer.</td><td><code>input</code></td></tr>
+<tr><td><code>doctor</code></td><td>Checks the machine and returns <code>{summary, checks}</code>: node, ffmpeg, desktop, monitors, windows, OBS, demo browser and voices, including a "local voice" check that is skipped when no local voice is set up. It never fails, so read the report. With <code>input</code> on, it also tests input injection and briefly moves the real pointer.</td><td><code>input</code></td></tr>
 </tbody>
 </table>
 <p>Run <code>doctor</code> first on a new machine.</p>

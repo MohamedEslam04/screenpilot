@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-copy="Copy" data-copied="Copied">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Combine recordings · ScreenPilot</title>
+<meta name="description" content="Join several storyboards into one video with sequence.json, and insert a new feature clip into the middle of an existing demo without re-recording it.">
+<link rel="canonical" href="https://mohamedeslam04.github.io/screenpilot/guide/sequence.html">
+<link rel="alternate" hreflang="en" href="https://mohamedeslam04.github.io/screenpilot/guide/sequence.html">
+<link rel="alternate" hreflang="ar" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/sequence.html">
+<link rel="alternate" hreflang="x-default" href="https://mohamedeslam04.github.io/screenpilot/guide/sequence.html">
+<meta property="og:type" content="article"><meta property="og:title" content="Combine recordings · ScreenPilot"><meta property="og:description" content="Join several storyboards into one video with sequence.json, and insert a new feature clip into the middle of an existing demo without re-recording it.">
+<meta property="og:url" content="https://mohamedeslam04.github.io/screenpilot/guide/sequence.html"><meta property="og:image" content="https://mohamedeslam04.github.io/screenpilot/assets/og.png"><meta property="og:site_name" content="ScreenPilot"><meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b132b">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("sp-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+  <a class="brand" href="../index.html" aria-label="ScreenPilot"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a>
+  <nav class="nav" aria-label="Main"><a href="../guide/index.html" aria-current=page>Docs</a><a href="../guide/install.html" class="hide-s">Install</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../ar/guide/sequence.html" lang="ar" hreflang="ar">العربية</a><button class="theme" type="button" aria-label="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
+</div></header>
+<main id="main"><div class="wrap docs">
+  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="voices.html">Voices</a><a href="sequence.html" aria-current=page>Combine recordings</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
+  <article class="doc"><h1>Combine recordings</h1><p class="summary">Join several storyboards into one video with sequence.json, and insert a new feature clip into the middle of an existing demo without re-recording it.</p><p>A <code>sequence.json</code> joins several storyboards, each with its own recording, into one MP4. The AI app can write it for you, or you write it yourself. The main use is to add a new feature to a demo you already made: you record only the new part, and the old recording stays untouched.</p>
+
+<h2 id="insert-feature">Insert a feature clip into a demo<a class="a" href="#insert-feature" aria-label="Link to this section">#</a></h2>
+<p>Say <code>demo.json</code> is a finished demo, and the feature you want to show belongs after second 42 of its recording. You do not re-record the demo and you do not edit its storyboard. You do three things.</p>
+<ol>
+<li><strong>Record the feature</strong> on its own and write a storyboard for it, <code>feature/feature.json</code>. Start it with <code>"extends": "../demo.json"</code> so it takes the demo's look: theme, voice, output size and music. See <a href="../guide/storyboard.html#extends">Share a look with extends</a>.</li>
+<li><strong>Write <code>sequence.json</code></strong> next to <code>demo.json</code>. List the demo twice, split at second 42, and put the feature between the two halves.</li>
+<li><strong>Validate and render.</strong></li>
+</ol>
+<p>The feature storyboard only needs what is different:</p>
+<pre><code class="language-json">{
+  "extends": "../demo.json",
+  "source": "rec.mp4",
+  "segments": [{ "in": 0, "out": 12 }],
+  "captions": [{ "at": 1, "text": "New: recurring invoices", "style": "title" }],
+  "narration": [{ "at": 1, "text": "Invoices can now repeat on a schedule." }]
+}</code></pre>
+<p>And the sequence:</p>
+<pre><code class="language-json">{
+  "version": 1,
+  "parts": [
+    { "storyboard": "demo.json", "to": 42 },
+    { "storyboard": "feature/feature.json", "transition": { "type": "crossfade", "dur": 0.5 } },
+    { "storyboard": "demo.json", "from": 42, "transition": { "type": "crossfade" } }
+  ]
+}</code></pre>
+<pre><code class="language-sh">screenpilot sequence-validate sequence.json
+screenpilot sequence sequence.json -q draft
+screenpilot check sequence.mp4 --at 5,40,50
+screenpilot sequence sequence.json -q delivery -o demo-with-feature.mp4</code></pre>
+<p>The result plays the demo up to second 42, crossfades into the feature clip, then crossfades back and plays the rest of the demo. The demo's intro plays once at the start and its outro once at the end.</p>
+<div class="note">The seconds in <code>from</code> and <code>to</code> are source seconds of that storyboard, the same seconds you use for zooms and captions. Pick the split from a frame: <code>screenpilot frames demo.mp4 --at 42 --grid</code>.</div>
+
+<h2 id="sequence-file">The sequence file<a class="a" href="#sequence-file" aria-label="Link to this section">#</a></h2>
+<p>Paths in <code>sequence.json</code> are relative to the sequence file. <code>screenpilot sequence-schema</code> (or the <code>sequence_schema</code> tool) prints the authoritative JSON Schema.</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>version</code></td><td><code>1</code></td><td>Format version. Always 1.</td></tr>
+<tr><td><code>parts</code></td><td>required</td><td>Storyboards in playing order. At least one. The same storyboard can appear more than once.</td></tr>
+<tr><td><code>output</code></td><td>first part's output</td><td><code>width</code>, <code>height</code> and <code>fps</code> for the whole video. Fields you give here override the first part's <code>output</code>.</td></tr>
+</tbody>
+</table>
+
+<h3 id="part-fields">Part fields<a class="a" href="#part-fields" aria-label="Link to this section">#</a></h3>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>storyboard</code></td><td>required</td><td>Path to a storyboard, relative to the sequence file.</td></tr>
+<tr><td><code>from</code></td><td>the start</td><td>Source second this part starts at.</td></tr>
+<tr><td><code>to</code></td><td>the end</td><td>Source second this part ends at.</td></tr>
+<tr><td><code>transition</code></td><td><code>cut</code></td><td>How this part enters from the previous one. See <a href="../guide/sequence.html#transitions">Transitions</a>. Ignored on the first part.</td></tr>
+</tbody>
+</table>
+
+<h3 id="shared-rules">What every part shares<a class="a" href="#shared-rules" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>One output size.</strong> All parts are rendered at the same width, height and frame rate, even if their storyboards say different things.</li>
+<li><strong>One intro, one outro.</strong> <code>intro</code> plays only on the first part and <code>outro</code> only on the last. The other parts' cards are left out.</li>
+<li><strong>Your files stay as they are.</strong> ScreenPilot writes a derived storyboard for each part into a build folder.</li>
+</ul>
+
+<h2 id="ranges">Source ranges: from and to<a class="a" href="#ranges" aria-label="Link to this section">#</a></h2>
+<p><code>from</code> and <code>to</code> keep only the range <code>[from, to)</code> of a storyboard's source time. The range is half-open: something at exactly <code>to</code> belongs to the part that starts there. That is why <code>{"to": 42}</code> followed by <code>{"from": 42}</code> keeps every item of the demo exactly once.</p>
+<table>
+<thead><tr><th>Item</th><th>What happens at the edges</th></tr></thead>
+<tbody>
+<tr><td>Segments</td><td>Cut to the range. If nothing is left, the sequence is invalid.</td></tr>
+<tr><td>Narration</td><td>Kept when it starts inside the range. A line that started before <code>from</code> is dropped, because a line cannot resume in the middle of a word.</td></tr>
+<tr><td>Zooms, captions, highlights</td><td>Cut to the range. One that straddles an edge is shortened. If less than 0.5 seconds is left, it is dropped.</td></tr>
+<tr><td>Holds, chapter cards</td><td>Kept when their <code>at</code> is inside the range.</td></tr>
+<tr><td>Overlays</td><td>An overlay with <code>at</code> is cut to the range like a zoom. An overlay without <code>at</code> (a logo for the whole video) is kept in every part.</td></tr>
+<tr><td>Camera view</td><td>The view in force at <code>from</code> carries in, so the second half does not start on the wrong window or monitor.</td></tr>
+</tbody>
+</table>
+<p><code>sequence-validate</code> warns when <code>to</code> is past the end of the source.</p>
+
+<h2 id="transitions">Transitions<a class="a" href="#transitions" aria-label="Link to this section">#</a></h2>
+<p><code>transition</code> on a part says how it enters from the previous part. It has a <code>type</code> and an optional <code>dur</code>.</p>
+<table>
+<thead><tr><th>Type</th><th>What the viewer sees</th></tr></thead>
+<tbody>
+<tr><td><code>cut</code></td><td>A plain cut. This is the default.</td></tr>
+<tr><td><code>crossfade</code></td><td>The previous part fades into this one.</td></tr>
+<tr><td><code>fade-black</code></td><td>The previous part fades to black, then this one fades in.</td></tr>
+<tr><td><code>wipe-left</code>, <code>wipe-right</code></td><td>This part is revealed by a wipe in that direction.</td></tr>
+<tr><td><code>slide-left</code>, <code>slide-right</code></td><td>This part slides in over the previous one in that direction.</td></tr>
+</tbody>
+</table>
+<p><code>dur</code> is the number of seconds the two parts overlap. It defaults to 0.5 and is clamped to half the length of either neighbouring part, so a short clip never disappears into a long transition. Audio crossfades together with the picture.</p>
+
+<h2 id="rendering">Render a sequence<a class="a" href="#rendering" aria-label="Link to this section">#</a></h2>
+<table>
+<thead><tr><th>Command</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>screenpilot sequence-validate &lt;sequence&gt;</code></td><td>Checks the sequence and every storyboard it uses. It fails with the schema issues, or prints <code>valid: true</code> with the warnings of each part.</td></tr>
+<tr><td><code>screenpilot sequence &lt;sequence&gt;</code></td><td>Renders every part and joins them. Flags: <code>-o, --output</code> (default <code>&lt;sequence&gt;.mp4</code>), <code>-q, --quality</code> (<code>draft</code>, <code>looks</code>, <code>delivery</code>), <code>--png-frames</code>, <code>--workers</code>, <code>--build-dir</code>.</td></tr>
+<tr><td><code>screenpilot sequence-schema</code></td><td>Prints the JSON Schema of <code>sequence.json</code>.</td></tr>
+</tbody>
+</table>
+<p>The same steps are the tools <code>sequence_validate</code>, <code>sequence_render</code> (inputs <code>sequence</code>, <code>output</code>, <code>quality</code>) and <code>sequence_schema</code>. See <a href="../guide/tools.html#sequence">MCP tools</a>.</p>
+<ul>
+<li><strong>Unchanged parts are reused.</strong> Each part is rendered like a storyboard into <code>&lt;sequence&gt;.build/part-N/</code>. On the next run, a part whose storyboard, recording, events, music, overlays and quality are the same is not rendered again. Editing the feature clip does not re-render the demo.</li>
+<li><strong>The join.</strong> When every part is cut to the next and they are encoded the same way, the parts are joined by stream copy, with no quality loss. With a transition, or when the encodings differ, the video is re-encoded. The result tells you which one happened in <code>join</code> (<code>copy</code> or <code>encode</code>).</li>
+<li><strong>The result.</strong> The command prints the output path, the duration, <code>join</code> and each part with its duration, whether it was reused and its warnings.</li>
+</ul>
+<div class="note">Review with <code>-q draft</code> first, then look at frames with <code>screenpilot check</code> around each join. Use <code>-q delivery</code> only for the final file.</div>
+
+<h2 id="limits">Limits<a class="a" href="#limits" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><code>sequence</code> has no <code>--from</code>, <code>--to</code> or <code>--formats</code>. To review one part quickly, render its storyboard with <code>screenpilot render --from --to</code>. For another size, set <code>output</code> in the sequence.</li>
+<li>A part keeps its own recording and its own narration. Nothing is shared between parts except the output size, the intro on the first part and the outro on the last.</li>
+<li>A storyboard that fails validation fails the sequence. The error names the part, for example <code>parts[1] (feature/feature.json)</code>.</li>
+</ul>
+<nav class="pager" aria-label="Pager"><a href="voices.html" rel="prev"><small>Previous</small>Voices</a><a href="agent-drive.html" rel="next"><small>Next</small>Let the agent drive</a></nav></article>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#insert-feature">Insert a feature clip into a demo</a><a href="#sequence-file">The sequence file</a><a href="#ranges">Source ranges: from and to</a><a href="#transitions">Transitions</a><a href="#rendering">Render a sequence</a><a href="#limits">Limits</a></aside>
+</div></main>
+<footer class="foot"><div class="wrap">
+  <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>
+  <div><h3>Learn</h3><ul><li><a href="../guide/getting-started.html">Getting started</a></li><li><a href="../guide/tools.html">MCP tools</a></li><li><a href="../guide/storyboard.html">Storyboard reference</a></li><li><a href="../guide/faq.html">FAQ and troubleshooting</a></li></ul></div>
+  <div><h3>Project</h3><ul><li><a href="https://github.com/MohamedEslam04/screenpilot">GitHub</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/releases">Releases</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/issues">Report an issue</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/CONTRIBUTING.md">Contributing</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/SECURITY.md">Security</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/LICENSE">License</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/THIRD_PARTY_NOTICES.md">Third-party notices</a></li></ul></div>
+</div></footer>
+<script src="../assets/app.js" defer></script>
+</body></html>

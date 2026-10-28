@@ -7,6 +7,8 @@ import { probeVideo, type VideoInfo } from "./util/media.js";
 export interface InitOptions {
   out?: string;
   voice?: string;
+  /** Voice provider written to the storyboard when it is not the default (edge). */
+  provider?: "edge" | "local" | "command";
   force?: boolean;
   /** Pre-fill segments (idle cut), zooms (from clicks) and camera views using `analyze`. */
   suggest?: boolean;
@@ -43,7 +45,7 @@ export async function initStoryboard(target: string, o: InitOptions = {}): Promi
     version: 1,
     source: relative(base, video),
     ...(events ? { events: relative(base, events) } : {}),
-    voice: { name: o.voice ?? "en-US-AndrewNeural" },
+    voice: { ...(o.provider && o.provider !== "edge" ? { provider: o.provider } : {}), name: o.voice ?? "en-US-AndrewNeural" },
     segments,
     zooms,
     ...(screens.length ? { screens: screens.map(({ name, x, y, w, h }) => ({ name, x, y, w, h })) } : {}),

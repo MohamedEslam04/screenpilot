@@ -40,7 +40,8 @@ export function buildCutFilter(opts: Omit<CutOptions, "source" | "output">): str
     if (p.kind === "play") {
       lines.push(`[vs${i}]trim=start=${f(p.in)}:end=${f(p.out)},setpts=(PTS-STARTPTS)/${p.speed},fps=${fps}[v${i}]`);
       if (keepAudio) {
-        lines.push(`[as${i}]atrim=start=${f(p.in)}:end=${f(p.out)},asetpts=PTS-STARTPTS,${atempoChain(p.speed)}[a${i}]`);
+        const gain = p.volume === 1 ? "" : `,volume=${+p.volume.toFixed(3)}`;
+        lines.push(`[as${i}]atrim=start=${f(p.in)}:end=${f(p.out)},asetpts=PTS-STARTPTS,${atempoChain(p.speed)}${gain}[a${i}]`);
       }
     } else {
       const at = Math.min(p.at, lastFrame);

@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>مرجع الـ storyboard · ScreenPilot</title>
-<meta name="description" content="صيغة storyboard.json: segments وholds وzooms وcaptions وhighlights وnarration وintro وoutro وmusic وtheme وحجم الخرج، مع مثال كامل.">
+<meta name="description" content="صيغة storyboard.json: segments وholds وzooms وcaptions وhighlights وnarration وcards وoverlays وmusic وextends وtheme وحجم الخرج، مع مثال كامل.">
 <link rel="canonical" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/storyboard.html">
 <link rel="alternate" hreflang="en" href="https://mohamedeslam04.github.io/screenpilot/guide/storyboard.html">
 <link rel="alternate" hreflang="ar" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/storyboard.html">
 <link rel="alternate" hreflang="x-default" href="https://mohamedeslam04.github.io/screenpilot/guide/storyboard.html">
-<meta property="og:type" content="article"><meta property="og:title" content="مرجع الـ storyboard · ScreenPilot"><meta property="og:description" content="صيغة storyboard.json: segments وholds وzooms وcaptions وhighlights وnarration وintro وoutro وmusic وtheme وحجم الخرج، مع مثال كامل.">
+<meta property="og:type" content="article"><meta property="og:title" content="مرجع الـ storyboard · ScreenPilot"><meta property="og:description" content="صيغة storyboard.json: segments وholds وzooms وcaptions وhighlights وnarration وcards وoverlays وmusic وextends وtheme وحجم الخرج، مع مثال كامل.">
 <meta property="og:url" content="https://mohamedeslam04.github.io/screenpilot/ar/guide/storyboard.html"><meta property="og:image" content="https://mohamedeslam04.github.io/screenpilot/assets/og.png"><meta property="og:site_name" content="ScreenPilot"><meta property="og:locale" content="ar">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0b132b">
@@ -27,25 +27,26 @@
   <nav class="nav" aria-label="Main"><a href="../../ar/guide/index.html" aria-current=page>التوثيق</a><a href="../../ar/guide/install.html" class="hide-s">التثبيت</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../../guide/storyboard.html" lang="en" hreflang="en">English</a><button class="theme" type="button" aria-label="تبديل المظهر"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
 </div></header>
 <main id="main"><div class="wrap docs">
-  <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html">سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html" aria-current=page>مرجع الـ storyboard</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html">الأسئلة الشائعة وحل المشكلات</a></details></nav>
-  <article class="doc"><h1>مرجع الـ storyboard</h1><p class="summary">صيغة storyboard.json: segments وholds وzooms وcaptions وhighlights وnarration وintro وoutro وmusic وtheme وحجم الخرج، مع مثال كامل.</p><p>الـ storyboard ملف JSON يصف المونتاج. يكتبه لك تطبيق الذكاء الاصطناعي، لكن يمكنك قراءته وتعديله وتصييره بنفسك. الأمر <code>screenpilot schema</code> (أو الأداة <code>storyboard_schema</code>) يطبع JSON Schema المعتمد. وتشرح هذه الصفحة كل حقل.</p>
+  <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html">سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html" aria-current=page>مرجع الـ storyboard</a><a href="voices.html">الأصوات</a><a href="sequence.html">دمج التسجيلات</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html">الأسئلة الشائعة وحل المشكلات</a></details></nav>
+  <article class="doc"><h1>مرجع الـ storyboard</h1><p class="summary">صيغة storyboard.json: segments وholds وzooms وcaptions وhighlights وnarration وcards وoverlays وmusic وextends وtheme وحجم الخرج، مع مثال كامل.</p><p>الـ storyboard ملف JSON يصف المونتاج. يكتبه لك تطبيق الذكاء الاصطناعي، لكن يمكنك قراءته وتعديله وتصييره بنفسك. الأمر <code>screenpilot schema</code> (أو الأداة <code>storyboard_schema</code>) يطبع JSON Schema المعتمد. وتشرح هذه الصفحة كل حقل.</p>
 
 <h2 id="basics">القواعد الثلاث<a class="a" href="#basics" aria-label="رابط إلى هذا القسم">#</a></h2>
 <ul>
 <li><strong>الأزمنة بثواني المصدر.</strong> تُحسب من بداية التسجيل الخام، لا من الفيديو المصيَّر. القص وتغيير السرعة لا يحرّكانها. الأمر <code>screenpilot check</code> والأداة <code>check_output</code> وحدهما يستخدمان ثواني الخرج.</li>
 <li><strong>المواضع مُطبَّعة بين 0 و1.</strong> تُقاس <code>x</code> من الحافة اليسرى للتسجيل و<code>y</code> من حافته العليا. اقرأها من لقطة باستخدام <code>frames --grid</code>.</li>
-<li><strong>المسارات نسبية إلى ملف الـ storyboard.</strong> ينطبق هذا على <code>source</code> و<code>events</code> و<code>music.src</code>.</li>
+<li><strong>المسارات نسبية إلى ملف الـ storyboard.</strong> ينطبق هذا على <code>source</code> و<code>events</code> و<code>extends</code> و<code>music.src</code> و<code>overlays[].src</code>.</li>
 </ul>
-<p>كل الحقول اختيارية عدا <code>source</code>. نفّذ <code>screenpilot validate storyboard.json</code> بعد كل تعديل. يعرض أخطاء الـ schema والتحذيرات: segments متداخلة، أو عناصر بعد نهاية المصدر، أو views تذكر شاشة غير معروفة، أو callout بلا <code>x</code> و<code>y</code>.</p>
+<p>كل الحقول اختيارية عدا <code>source</code>. نفّذ <code>screenpilot validate storyboard.json</code> بعد كل تعديل. يعرض أخطاء الـ schema والتحذيرات: segments متداخلة، أو عناصر بعد نهاية المصدر، أو views تذكر شاشة غير معروفة، أو callout بلا <code>x</code> و<code>y</code>. ويقدّم أيضًا نصائح أسلوب: انظر <a href="../../ar/guide/storyboard.html#lint">تحذيرات الأسلوب</a>.</p>
 
 <h2 id="top-level">حقول المستوى الأعلى<a class="a" href="#top-level" aria-label="رابط إلى هذا القسم">#</a></h2>
 <table>
 <thead><tr><th>الحقل</th><th>الافتراضي</th><th>معناه</th></tr></thead>
 <tbody>
 <tr><td><code>version</code></td><td><code>1</code></td><td>إصدار الصيغة. دائمًا 1.</td></tr>
+<tr><td><code>extends</code></td><td>لا شيء</td><td>storyboard أساسي تأخذ منه المظهر. انظر <a href="../../ar/guide/storyboard.html#extends">مشاركة المظهر بـ extends</a>.</td></tr>
 <tr><td><code>source</code></td><td>مطلوب</td><td>مسار التسجيل الخام.</td></tr>
 <tr><td><code>events</code></td><td>لا شيء</td><td>ملف <code>events.jsonl</code> الناتج عن <code>record</code>. يفعّل تموّجات النقر.</td></tr>
-<tr><td><code>keepSourceAudio</code></td><td><code>false</code></td><td>إبقاء صوت التسجيل.</td></tr>
+<tr><td><code>keepSourceAudio</code></td><td><code>false</code></td><td>إبقاء صوت التسجيل. عندها يمكن للـ segments ضبط <code>volume</code> أو <code>mute</code>.</td></tr>
 <tr><td><code>output</code></td><td>1920x1080 بمعدل 30 إطارًا</td><td>الحجم ومعدل الإطارات. انظر <a href="../../ar/guide/storyboard.html#output">الخرج والصوت</a>.</td></tr>
 <tr><td><code>theme</code></td><td>القيم الافتراضية</td><td>المظهر. انظر <a href="../../ar/guide/storyboard.html#theme">القالب</a>.</td></tr>
 <tr><td><code>voice</code></td><td>القيم الافتراضية</td><td>صوت التعليق. انظر <a href="../../ar/guide/storyboard.html#output">الخرج والصوت</a>.</td></tr>
@@ -56,8 +57,10 @@
 <tr><td><code>captions</code></td><td><code>[]</code></td><td>نص على الشاشة.</td></tr>
 <tr><td><code>highlights</code></td><td><code>[]</code></td><td>مربعات حول أجزاء من الشاشة.</td></tr>
 <tr><td><code>narration</code></td><td><code>[]</code></td><td>أسطر التعليق الصوتي.</td></tr>
-<tr><td><code>intro</code>, <code>outro</code></td><td>لا شيء</td><td>بطاقات العنوان.</td></tr>
-<tr><td><code>music</code></td><td>لا شيء</td><td>موسيقى خلفية.</td></tr>
+<tr><td><code>intro</code>, <code>outro</code></td><td>لا شيء</td><td>بطاقات العنوان قبل الفيديو وبعده.</td></tr>
+<tr><td><code>cards</code></td><td><code>[]</code></td><td>بطاقات فصول في منتصف الفيديو. انظر <a href="../../ar/guide/storyboard.html#chapter-cards">بطاقات الفصول</a>.</td></tr>
+<tr><td><code>overlays</code></td><td><code>[]</code></td><td>صور وفيديو وشعارات فوق الإطار. انظر <a href="../../ar/guide/storyboard.html#overlays">الـ overlays</a>.</td></tr>
+<tr><td><code>music</code></td><td>لا شيء</td><td>موسيقى خلفية، ويمكن خفضها تحت الصوت.</td></tr>
 </tbody>
 </table>
 
@@ -69,9 +72,11 @@
 <tr><td><code>in</code></td><td>مطلوب</td><td>البداية بثواني المصدر.</td></tr>
 <tr><td><code>out</code></td><td>مطلوب</td><td>النهاية. يجب أن تكون أكبر من <code>in</code>.</td></tr>
 <tr><td><code>speed</code></td><td><code>1</code></td><td>سرعة التشغيل من 0.25 إلى 16. استخدم 4 إلى 8 لتسريع التحميل والانتظار.</td></tr>
+<tr><td><code>volume</code></td><td><code>1</code></td><td>مستوى صوت المصدر في هذا الـ segment، من 0 إلى 4. يحتاج إلى <code>keepSourceAudio</code>.</td></tr>
+<tr><td><code>mute</code></td><td><code>false</code></td><td>يُسكت صوت المصدر في هذا الـ segment. مثل <code>volume</code> بقيمة 0.</td></tr>
 </tbody>
 </table>
-<p>إذا وقع سطر تعليق صوتي داخل منطقة مقصوصة، يُحذف مع تحذير.</p>
+<p>إذا وقع سطر تعليق صوتي داخل منطقة مقصوصة، يُحذف مع تحذير. و<code>volume</code> و<code>mute</code> لهما أثر فقط عندما يبقى صوت المصدر: بدون <code>keepSourceAudio: true</code> وتسجيل فيه صوت، ينبّهك التصيير إلى أنهما بلا أثر.</p>
 
 <h2 id="holds">Holds<a class="a" href="#holds" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>الـ <code>holds</code> تجمّد الفيديو عند إطار واحد، لتعطي caption أو سطرًا صوتيًا وقتًا كافيًا.</p>
@@ -130,13 +135,13 @@
 </table>
 
 <h2 id="narration">Narration<a class="a" href="#narration" aria-label="رابط إلى هذا القسم">#</a></h2>
-<p>يقرأ كل سطر صوتُ Edge TTS ويُمزج في الفيديو. التعليق الصوتي لا يتداخل أبدًا: إذا تجاوز سطر مكانه، يتجمد الفيديو ليفسح له.</p>
+<p>يقرأ كل سطر صوتُ الـ storyboard ويُمزج في الفيديو. الافتراضي صوت Edge؛ انظر <a href="../../ar/guide/voices.html">الأصوات</a> للنماذج المحلية ولبرامجك الخاصة. التعليق الصوتي لا يتداخل أبدًا: إذا تجاوز سطر مكانه، يتجمد الفيديو ليفسح له.</p>
 <table>
 <thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
 <tbody>
 <tr><td><code>at</code></td><td>مطلوب</td><td>زمن المصدر الذي يبدأ عنده السطر.</td></tr>
 <tr><td><code>text</code></td><td>مطلوب</td><td>ما يقوله الصوت.</td></tr>
-<tr><td><code>voice</code></td><td><code>voice.name</code></td><td>صوت لهذا السطر وحده، مثل <code>ar-EG-ShakirNeural</code>. استخدمه للمزج بين لغتين.</td></tr>
+<tr><td><code>voice</code></td><td><code>voice.name</code></td><td>صوت لهذا السطر وحده، مثل <code>ar-EG-ShakirNeural</code>. يستبدل <code>voice.name</code> ويُبقي <code>voice.provider</code>، فيجب أن يكون صوتًا من المزوّد نفسه. استخدمه للمزج بين لغتين.</td></tr>
 <tr><td><code>caption</code></td><td><code>voice.subtitles</code></td><td>إظهار هذا السطر كترجمة أيضًا (<code>true</code>) أو عدم إظهاره (<code>false</code>).</td></tr>
 </tbody>
 </table>
@@ -153,14 +158,75 @@
 </tbody>
 </table>
 
+<h2 id="chapter-cards">بطاقات الفصول<a class="a" href="#chapter-cards" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>الحقل <code>cards</code> بطاقات عنوان في منتصف الفيديو، لبداية فصل جديد. كل بطاقة تجمّد الصورة عند <code>at</code> وتعرض بطاقة كاملة بظهور واختفاء تدريجيين، ثم يكمل الفيديو من الإطار نفسه.</p>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>at</code></td><td>مطلوب</td><td>زمن المصدر الذي يتجمد عنده الفيديو وتظهر البطاقة.</td></tr>
+<tr><td><code>dur</code></td><td><code>2.5</code></td><td>الثواني التي تبقى فيها البطاقة. يبقى الفيديو مجمّدًا خلالها.</td></tr>
+<tr><td><code>title</code></td><td>مطلوب</td><td>النص الرئيسي.</td></tr>
+<tr><td><code>subtitle</code></td><td>لا شيء</td><td>السطر الثاني.</td></tr>
+</tbody>
+</table>
+<p>البطاقة التي يقع <code>at</code> الخاص بها في منطقة مقصوصة تُحذف، ويحذّرك <code>validate</code>. وتستخدم البطاقات المظهر نفسه الخاص بـ intro وoutro (<code>theme.motion.cards</code> وـ CSS الخاص بـ <code>.card</code>).</p>
+
+<h2 id="overlays">Overlays<a class="a" href="#overlays" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>الحقل <code>overlays</code> يضع صورة أو فيديو فوق إطار الخرج: شعارًا، أو علامة مائية، أو مقطعًا صغيرًا داخل الصورة. وعلى خلاف zooms وhighlights، الموضع هنا كسر من إطار <strong>الخرج</strong> لا من التسجيل، فيبقى الشعار في الزاوية نفسها مهما تحركت الكاميرا.</p>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>src</code></td><td>مطلوب</td><td>صورة أو فيديو، نسبي إلى الـ storyboard.</td></tr>
+<tr><td><code>x</code>, <code>y</code></td><td>مطلوب</td><td>الحافة اليسرى والعليا، بين 0 و1 من إطار الخرج.</td></tr>
+<tr><td><code>w</code>, <code>h</code></td><td>مطلوب</td><td>العرض والارتفاع، بين 0 و1 من إطار الخرج. يجب أن يكونا أكبر من 0.</td></tr>
+<tr><td><code>at</code></td><td>لا شيء</td><td>زمن المصدر الذي يظهر عنده.</td></tr>
+<tr><td><code>dur</code></td><td>لا شيء</td><td>الثواني التي يبقى فيها. مع <code>at</code> بلا <code>dur</code> يبقى حتى النهاية. ومن دون <code>at</code> و<code>dur</code> يظهر طوال الفيديو.</td></tr>
+<tr><td><code>fit</code></td><td><code>contain</code></td><td>القيمة <code>contain</code> تُظهر الصورة كاملة داخل المربع. و<code>cover</code> تملأ المربع وتقصّ الزائد.</td></tr>
+<tr><td><code>opacity</code></td><td><code>1</code></td><td>من 0 إلى 1.</td></tr>
+<tr><td><code>radius</code></td><td>لا شيء</td><td>نصف قطر الزوايا بالبكسل.</td></tr>
+<tr><td><code>shadow</code></td><td>لا شيء</td><td>يرسم ظلًّا تحته.</td></tr>
+<tr><td><code>motion</code></td><td>fade</td><td>الدخول والخروج. انظر <a href="../../ar/guide/storyboard.html#motion">الحركة</a>. القيم <code>words</code> و<code>lines</code> و<code>wipe</code> تعود إلى <code>fade</code>.</td></tr>
+<tr><td><code>mute</code></td><td><code>true</code></td><td>للفيديو: القيمة <code>false</code> تشغّل صوته أيضًا.</td></tr>
+<tr><td><code>loop</code></td><td><code>false</code></td><td>للفيديو: يعيده حتى ينتهي الـ overlay.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-json">"overlays": [
+  { "src": "assets/logo.png", "x": 0.88, "y": 0.04, "w": 0.08, "h": 0.08, "opacity": 0.8 },
+  { "src": "assets/webcam.mp4", "at": 5, "dur": 12, "x": 0.72, "y": 0.66, "w": 0.24, "h": 0.28, "fit": "cover", "radius": 16, "shadow": true }
+]</code></pre>
+
 <h2 id="music">Music<a class="a" href="#music" aria-label="رابط إلى هذا القسم">#</a></h2>
 <table>
 <thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
 <tbody>
 <tr><td><code>src</code></td><td>مطلوب</td><td>مسار ملف صوتي نسبي إلى الـ storyboard.</td></tr>
 <tr><td><code>volume</code></td><td><code>0.12</code></td><td>من 0 إلى 1. اجعله منخفضًا كي لا يغطي الصوت.</td></tr>
+<tr><td><code>duck</code></td><td>لا شيء</td><td>يخفض الموسيقى أثناء الكلام. انظر أدناه.</td></tr>
 </tbody>
 </table>
+<p>الـ ducking يجعل الموسيقى أهدأ تحت كل سطر تعليق ثم يعيدها بعده. أعطِ <code>duck</code> أيًّا من الحقول التالية، أو كائنًا فارغًا <code>{}</code> للقيم الافتراضية:</p>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>amount</code></td><td><code>0.6</code></td><td>مقدار انخفاض الموسيقى، من 0 إلى 1. القيمة 0.6 تعني انخفاضًا بنسبة 60%.</td></tr>
+<tr><td><code>attack</code></td><td><code>0.2</code></td><td>الثواني التي تستغرقها الموسيقى لتنخفض، وتنتهي حين يبدأ السطر. من 0 إلى 5.</td></tr>
+<tr><td><code>release</code></td><td><code>0.5</code></td><td>الثواني التي تستغرقها الموسيقى لتعود بعد السطر. من 0 إلى 5.</td></tr>
+</tbody>
+</table>
+
+<h2 id="extends">مشاركة المظهر بـ extends<a class="a" href="#extends" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>الحقل <code>extends</code> يشير إلى storyboard أساسي، نسبيًا إلى هذا الملف. استخدمه حين تريد أن تتشابه عدة فيديوهات في المظهر والصوت: يمتد كل منها من الأساس نفسه ويضيف تسجيله الخاص. وبه يأخذ مقطع الميزة مظهر العرض الذي ينضم إليه داخل <a href="../../ar/guide/sequence.html">sequence</a>.</p>
+<ul>
+<li><strong>تُورَّث خمسة حقول:</strong> <code>theme</code> و<code>voice</code> و<code>output</code> و<code>music</code> و<code>keepSourceAudio</code>. أما الباقي (<code>source</code> وsegments وzooms وcaptions وnarration وintro وoutro وغيرها) فلا يُورَّث أبدًا.</li>
+<li><strong>الابن يتغلب.</strong> الكائنات تُدمج مفتاحًا مفتاحًا، فالابن الذي يضبط <code>theme.accent</code> فقط يحتفظ بباقي حقول القالب من الأساس. أما المصفوفات فتُستبدل ولا تُدمج، مثل <code>theme.fonts</code>.</li>
+<li><strong>السلاسل تعمل.</strong> يمكن للأساس أن يمتد من storyboard آخر. والدورة (cycle) خطأ يذكر السلسلة.</li>
+<li><strong>المسارات تبقى صحيحة.</strong> يُعاد كتابة <code>music.src</code> القادم من الأساس ليشير إلى الملف نفسه انطلاقًا من مجلد الابن.</li>
+</ul>
+<pre><code class="language-json">{
+  "extends": "../demo.json",
+  "source": "rec.mp4",
+  "narration": [{ "at": 1, "text": "Invoices can now repeat on a schedule." }]
+}</code></pre>
 
 <h2 id="views">الشاشات والزوايا<a class="a" href="#views" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>في تسجيل لعدة شاشات، يحدد <code>screens</code> موضع كل شاشة داخل التسجيل، ويحدد <code>views</code> الجزء الذي تعرضه الكاميرا ابتداءً من كل زمن. الأمر <code>init --suggest</code> يملأ الاثنين لك.</p>
@@ -177,9 +243,18 @@
 <thead><tr><th>الكائن</th><th>الحقول والقيم الافتراضية</th></tr></thead>
 <tbody>
 <tr><td><code>output</code></td><td><code>width</code> 1920 و<code>height</code> 1080 و<code>fps</code> 30 (من 1 إلى 120)</td></tr>
-<tr><td><code>voice</code></td><td><code>provider</code> <code>edge</code>، <code>name</code> <code>en-US-AndrewNeural</code>، <code>rate</code> <code>+0%</code> (مثل <code>+10%</code> أو <code>-5%</code>)، <code>subtitles</code> <code>true</code> (إظهار أسطر التعليق كترجمة)، <code>gap</code> 0.3 (أقل صمت بين الأسطر؛ يتجمد الفيديو ليفسح له)، <code>volume</code> 1 (من 0 إلى 4)</td></tr>
+<tr><td><code>voice</code></td><td><code>provider</code> <code>edge</code> (أو <code>local</code> أو <code>command</code>)، <code>name</code> <code>en-US-AndrewNeural</code>، <code>rate</code> <code>+0%</code> (مثل <code>+10%</code> أو <code>-5%</code>)، <code>subtitles</code> <code>true</code> (إظهار أسطر التعليق كترجمة)، <code>gap</code> 0.3 (أقل صمت بين الأسطر؛ يتجمد الفيديو ليفسح له)، <code>volume</code> 1 (من 0 إلى 4)</td></tr>
 </tbody>
 </table>
+<table>
+<thead><tr><th><code>voice.provider</code></th><th>معنى <code>voice.name</code></th></tr></thead>
+<tbody>
+<tr><td><code>edge</code> (افتراضي)</td><td>صوت Edge، مثل <code>ar-EG-SalmaNeural</code>. يحتاج إلى الإنترنت.</td></tr>
+<tr><td><code>local</code></td><td>نموذج على هذا الجهاز: <code>voicetut</code> أو <code>voicetut:&lt;Voice&gt;</code> مثل <code>voicetut:Sarah</code> أو <code>namaa</code>. الحقل <code>rate</code> يتحول إلى معامل سرعة في <code>voicetut</code>؛ أما <code>namaa</code> فيتجاهله.</td></tr>
+<tr><td><code>command</code></td><td>مفتاح صوت عرّفته في <code>voices.json</code>.</td></tr>
+</tbody>
+</table>
+<p>الحقل <code>voice</code> الخاص بسطر التعليق يعمل داخل المزوّد نفسه. فمثلًا مع <code>"provider": "local"</code> يمكن لسطر أن يستخدم <code>namaa</code> ولآخر أن يستخدم <code>voicetut:Sarah</code>. الإعداد والحدود والأمثلة في <a href="../../ar/guide/voices.html">الأصوات</a>.</p>
 <p>اختر حجم الخرج بحسب مكان العرض: 1920x1080 ليوتيوب أو README أو الشرائح؛ 1080x1920 لـ Reels وTikTok وShorts؛ 1080x1080 للخلاصات.</p>
 
 <h2 id="theme">القالب (theme)<a class="a" href="#theme" aria-label="رابط إلى هذا القسم">#</a></h2>
@@ -278,6 +353,24 @@
 }</code></pre>
 <div class="note">يفعّل سطر التعليق الأخير ترجمته بنفسه عبر <code>caption: true</code>، بينما <code>voice.subtitles</code> معطّل للأسطر الأخرى. النقرة عند الثانية 24 تأخذ zoom وcallout؛ أما الـ highlight فعند لحظة أخرى، فلا تحمل نقرة واحدة كل المؤثرات.</div>
 
+<h2 id="lint">تحذيرات الأسلوب<a class="a" href="#lint" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>الأمر <code>validate</code> (والأداة <code>storyboard_validate</code>) يحذّر أيضًا حين يخالف الـ storyboard إرشادات الأسلوب أدناه. هذه تحذيرات فقط: لا تمنع التصيير أبدًا. وتذكر كل رسالة العنصر، مثل <code>captions[2]</code>.</p>
+<table>
+<thead><tr><th>التحذير</th><th>الحد</th></tr></thead>
+<tbody>
+<tr><td>تعليق صوتي طويل</td><td>أكثر من 12 كلمة في السطر.</td></tr>
+<tr><td>تعليق صوتي سريع</td><td>أكثر من 3 كلمات في الثانية تقريبًا قبل السطر التالي. سيجمّد التصيير الفيديو ليتسع له.</td></tr>
+<tr><td>caption طويل</td><td>أكثر من 6 كلمات.</td></tr>
+<tr><td>captions متداخلة</td><td>captionان في الموضع نفسه في الوقت نفسه. الـ callouts مستثناة من هذا الفحص.</td></tr>
+<tr><td>zooms متداخلة</td><td>zoomان في الوقت نفسه.</td></tr>
+<tr><td>مقياس zoom</td><td>خارج المدى 1.4 إلى 2.5.</td></tr>
+<tr><td>تأثيرات مكدّسة</td><td>zoom وhighlight وcallout على النقطة نفسها خلال ثانية واحدة.</td></tr>
+<tr><td>سرعة segment</td><td>فوق 8x. اقصصه بدلًا من ذلك.</td></tr>
+<tr><td>طول الفيديو</td><td>خرج أطول من 90 ثانية أو أقصر من 15 ثانية.</td></tr>
+<tr><td>بطاقات في مناطق مقصوصة</td><td>بطاقة فصل يقع <code>at</code> الخاص بها في جزء مقصوص.</td></tr>
+</tbody>
+</table>
+
 <h2 id="style">إرشادات الأسلوب<a class="a" href="#style" aria-label="رابط إلى هذا القسم">#</a></h2>
 <ul>
 <li><strong>التعليق الصوتي:</strong> جملة واحدة، أقل من 12 كلمة تقريبًا، وفكرة واحدة. قل ما يراه المشاهد أو لماذا يهم، لا أي زر يُضغط. اجعل الأسطر قصيرة: السطر الطويل يجمّد الفيديو.</li>
@@ -289,8 +382,8 @@
 <li><strong>الـ captions بلغتين:</strong> استخدم caption واحدًا بسطرين (<code>"English\nعربي"</code>). تجنّب حرف الواو وحده بين كلمات لاتينية؛ استخدم فاصلة عربية بدلًا منه.</li>
 </ul>
 <div class="note">اعمل على مراحل. اكتب segments والتعليق الصوتي أولًا، وصيّر مسودة بـ <code>-q draft</code>، وراجعها بـ <code>check</code>، ثم أضف zooms وcaptions. غيّر نوعًا واحدًا من الأشياء في كل مرة.</div>
-<nav class="pager" aria-label="Pager"><a href="tools.html" rel="prev"><small>السابق</small>أدوات MCP</a><a href="agent-drive.html" rel="next"><small>التالي</small>دع الوكيل ينفّذ العرض بنفسه</a></nav></article>
-  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#basics">القواعد الثلاث</a><a href="#top-level">حقول المستوى الأعلى</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#narration">Narration</a><a href="#cards">Intro وoutro</a><a href="#music">Music</a><a href="#views">الشاشات والزوايا</a><a href="#output">الخرج والصوت</a><a href="#theme">القالب (theme)</a><a href="#example">مثال كامل</a><a href="#style">إرشادات الأسلوب</a></aside>
+<nav class="pager" aria-label="Pager"><a href="tools.html" rel="prev"><small>السابق</small>أدوات MCP</a><a href="voices.html" rel="next"><small>التالي</small>الأصوات</a></nav></article>
+  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#basics">القواعد الثلاث</a><a href="#top-level">حقول المستوى الأعلى</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#narration">Narration</a><a href="#cards">Intro وoutro</a><a href="#chapter-cards">بطاقات الفصول</a><a href="#overlays">Overlays</a><a href="#music">Music</a><a href="#extends">مشاركة المظهر بـ extends</a><a href="#views">الشاشات والزوايا</a><a href="#output">الخرج والصوت</a><a href="#theme">القالب (theme)</a><a href="#example">مثال كامل</a><a href="#lint">تحذيرات الأسلوب</a><a href="#style">إرشادات الأسلوب</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../../ar/index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot مفتوح المصدر برخصة MIT.</small><small>أسماء المنتجات ملك لأصحابها. ScreenPilot مشروع مستقل.</small></div>

@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>سطر الأوامر · ScreenPilot</title>
-<meta name="description" content="كل أوامر screenpilot وأهم خياراتها مجمّعة حسب المهمة، مع خطوات التسجيل والتحرير والتصيير كاملة في كتلة واحدة.">
+<meta name="description" content="كل أوامر screenpilot وأهم خياراتها مجمّعة حسب المهمة: التسجيل والتحرير والتصيير ودمج التسجيلات والتحكم بسطح المكتب والإعداد، مع الخطوات كاملة في كتلة واحدة.">
 <link rel="canonical" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/cli.html">
 <link rel="alternate" hreflang="en" href="https://mohamedeslam04.github.io/screenpilot/guide/cli.html">
 <link rel="alternate" hreflang="ar" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/cli.html">
 <link rel="alternate" hreflang="x-default" href="https://mohamedeslam04.github.io/screenpilot/guide/cli.html">
-<meta property="og:type" content="article"><meta property="og:title" content="سطر الأوامر · ScreenPilot"><meta property="og:description" content="كل أوامر screenpilot وأهم خياراتها مجمّعة حسب المهمة، مع خطوات التسجيل والتحرير والتصيير كاملة في كتلة واحدة.">
+<meta property="og:type" content="article"><meta property="og:title" content="سطر الأوامر · ScreenPilot"><meta property="og:description" content="كل أوامر screenpilot وأهم خياراتها مجمّعة حسب المهمة: التسجيل والتحرير والتصيير ودمج التسجيلات والتحكم بسطح المكتب والإعداد، مع الخطوات كاملة في كتلة واحدة.">
 <meta property="og:url" content="https://mohamedeslam04.github.io/screenpilot/ar/guide/cli.html"><meta property="og:image" content="https://mohamedeslam04.github.io/screenpilot/assets/og.png"><meta property="og:site_name" content="ScreenPilot"><meta property="og:locale" content="ar">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0b132b">
@@ -27,8 +27,8 @@
   <nav class="nav" aria-label="Main"><a href="../../ar/guide/index.html" aria-current=page>التوثيق</a><a href="../../ar/guide/install.html" class="hide-s">التثبيت</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../../guide/cli.html" lang="en" hreflang="en">English</a><button class="theme" type="button" aria-label="تبديل المظهر"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
 </div></header>
 <main id="main"><div class="wrap docs">
-  <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html" aria-current=page>سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html">مرجع الـ storyboard</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html">الأسئلة الشائعة وحل المشكلات</a></details></nav>
-  <article class="doc"><h1>سطر الأوامر</h1><p class="summary">كل أوامر screenpilot وأهم خياراتها مجمّعة حسب المهمة، مع خطوات التسجيل والتحرير والتصيير كاملة في كتلة واحدة.</p><p>سطر الأوامر ينفّذ الخطوات نفسها التي تنفّذها أدوات MCP. شغّله بالاسم <code>screenpilot</code>، أو بالأمر <code>node dist/cli.js</code> من نسخة المصدر. أغلب المستخدمين لا يحتاجونه، لأن تطبيق الذكاء الاصطناعي عندهم يستدعي <a href="../../ar/guide/tools.html">الأدوات</a> بدلًا منهم. استخدم سطر الأوامر لأتمتة عملية التصيير، أو لفحص جهاز، أو لإصلاح الإعداد.</p>
+  <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html" aria-current=page>سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html">مرجع الـ storyboard</a><a href="voices.html">الأصوات</a><a href="sequence.html">دمج التسجيلات</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html">الأسئلة الشائعة وحل المشكلات</a></details></nav>
+  <article class="doc"><h1>سطر الأوامر</h1><p class="summary">كل أوامر screenpilot وأهم خياراتها مجمّعة حسب المهمة: التسجيل والتحرير والتصيير ودمج التسجيلات والتحكم بسطح المكتب والإعداد، مع الخطوات كاملة في كتلة واحدة.</p><p>سطر الأوامر ينفّذ الخطوات نفسها التي تنفّذها أدوات MCP. شغّله بالاسم <code>screenpilot</code>، أو بالأمر <code>node dist/cli.js</code> من نسخة المصدر. أغلب المستخدمين لا يحتاجونه، لأن تطبيق الذكاء الاصطناعي عندهم يستدعي <a href="../../ar/guide/tools.html">الأدوات</a> بدلًا منهم. استخدم سطر الأوامر لأتمتة عملية التصيير، أو لفحص جهاز، أو لإصلاح الإعداد.</p>
 <p>نفّذ <code>screenpilot --help</code> لعرض قائمة الأوامر، و<code>screenpilot &lt;command&gt; --help</code> لعرض خيارات أمر واحد. تطبع الأوامر نتيجتها بصيغة JSON على stdout، ورسائل التقدّم على stderr.</p>
 
 <h2 id="workflow">سير العمل كاملًا<a class="a" href="#workflow" aria-label="رابط إلى هذا القسم">#</a></h2>
@@ -108,7 +108,8 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 <thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
 <tbody>
 <tr><td><code>--suggest</code></td><td>يملأ segments وzooms وزوايا الكاميرا مسبقًا من نتيجة <code>analyze</code>.</td></tr>
-<tr><td><code>--voice &lt;name&gt;</code></td><td>صوت Edge TTS الافتراضي. الافتراضي <code>en-US-AndrewNeural</code>.</td></tr>
+<tr><td><code>--voice &lt;name&gt;</code></td><td>اسم الصوت الافتراضي: صوت Edge، أو نموذج محلي (<code>voicetut:Sarah</code> أو <code>namaa</code>)، أو مفتاح صوت <code>command</code>. الافتراضي <code>en-US-AndrewNeural</code>.</td></tr>
+<tr><td><code>--provider &lt;id&gt;</code></td><td>مزوّد الصوت الذي يُكتب في الـ storyboard: <code>edge</code> (افتراضي) أو <code>local</code> أو <code>command</code>. انظر <a href="../../ar/guide/voices.html">الأصوات</a>.</td></tr>
 <tr><td><code>--frame &lt;how&gt;</code></td><td>الكاميرا في الزوايا المقترحة: <code>window</code> (افتراضي) أو <code>screen</code> أو <code>all</code>.</td></tr>
 <tr><td><code>-o, --out &lt;file&gt;</code></td><td>مسار ملف الـ storyboard.</td></tr>
 <tr><td><code>-f, --force</code></td><td>يستبدل storyboard موجودًا.</td></tr>
@@ -122,12 +123,24 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 <p>الأمر <code>screenpilot schema</code> يطبع JSON Schema الخاص بالـ storyboard. هو المرجع النهائي لكل حقل.</p>
 
 <h3 id="voices">voices<a class="a" href="#voices" aria-label="رابط إلى هذا القسم">#</a></h3>
-<p>الأمر <code>screenpilot voices</code> يعرض الأصوات المتاحة. يحتاج إلى اتصال بالشبكة.</p>
+<p>الأمر <code>screenpilot voices</code> يعرض أصوات مزوّد واحد. مع <code>edge</code> (الافتراضي) يحتاج إلى اتصال بالشبكة. ومع <code>local</code> يعرض النماذج المثبّتة وأصواتها. ومع <code>command</code> يعرض الأصوات المعرّفة في <code>voices.json</code>. شرح المزوّدين في <a href="../../ar/guide/voices.html">الأصوات</a>.</p>
 <table>
 <thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
 <tbody>
 <tr><td><code>--lang &lt;prefix&gt;</code></td><td>تصفية ببادئة اللغة، مثل <code>ar</code> أو <code>ar-EG</code> أو <code>en-US</code>.</td></tr>
-<tr><td><code>--provider &lt;id&gt;</code></td><td>مزوّد الصوت. الافتراضي <code>edge</code>.</td></tr>
+<tr><td><code>--provider &lt;id&gt;</code></td><td>مزوّد الصوت: <code>edge</code> (افتراضي) أو <code>local</code> أو <code>command</code>.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-sh">screenpilot voices --provider local
+screenpilot voices --provider edge --lang ar</code></pre>
+
+<h3 id="voice-setup">voice-setup<a class="a" href="#voice-setup" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>الأمر <code>screenpilot voice-setup [voicetut|namaa]</code> يثبّت نموذج صوت محليًا. الافتراضي <code>voicetut</code>. يحتاج إلى <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> وهو يجلب Python 3.11 أيضًا. ينشئ بيئة Python، ويثبّت PyTorch وكودًا من أطراف أخرى مثبّتًا على إصدارات مجرَّبة، وينزّل النموذج، وينطق سطر اختبار واحدًا، ويحفظ مسار Python في <code>voices.json</code>. نفّذه في الطرفية: ينزّل عدة غيغابايت، ولا توجد أداة MCP له عمدًا. الأحجام والمجلدات والخطوات في <a href="../../ar/guide/voices.html#setup">الأصوات</a>.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--dir &lt;path&gt;</code></td><td>مجلد البيئة والنماذج. الافتراضي: بجوار مجلد التطبيق.</td></tr>
+<tr><td><code>-y, --yes</code></td><td>لا يسأل قبل التنزيل.</td></tr>
 </tbody>
 </table>
 
@@ -142,9 +155,36 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 <tr><td><code>-q, --quality &lt;q&gt;</code></td><td><code>draft</code> أو <code>looks</code> أو <code>delivery</code>. الافتراضي <code>looks</code>.</td></tr>
 <tr><td><code>--png-frames</code></td><td>يستخدم إطارات مصدر بلا فقدان: نص الواجهة المسجَّلة أوضح، والتصيير أبطأ.</td></tr>
 <tr><td><code>--workers &lt;n&gt;</code></td><td>عدد المصيّرات المتوازية، وكل واحد منها متصفح Chrome بلا واجهة. الافتراضي 2.</td></tr>
-<tr><td><code>--build-dir &lt;dir&gt;</code></td><td>المجلد الذي يُكتب فيه مشروع HyperFrames.</td></tr>
+<tr><td><code>--from &lt;s&gt;</code>, <code>--to &lt;s&gt;</code></td><td>يصيّر هذه النافذة فقط، بثواني <strong>الخرج</strong>. انظر <a href="../../ar/guide/cli.html#partial">التصيير الجزئي</a>.</td></tr>
+<tr><td><code>--formats &lt;list&gt;</code></td><td>يصيّر مرة لكل صيغة، مثل <code>16:9,9:16,1:1</code>. انظر <a href="../../ar/guide/cli.html#formats">عدة صيغ</a>.</td></tr>
+<tr><td><code>--build-dir &lt;dir&gt;</code></td><td>المجلد الذي يُكتب فيه مشروع HyperFrames. غير مسموح مع <code>--formats</code>.</td></tr>
 </tbody>
 </table>
+
+<h3 id="partial">التصيير الجزئي<a class="a" href="#partial" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>لمراجعة مقطع واحد من فيديو طويل، صيّر تلك النافذة فقط بالخيارين <code>--from</code> و<code>--to</code>. كلاهما بثواني <strong>الخرج</strong>، وهي الثواني نفسها التي يستخدمها <code>check</code>: انظر إلى المسودة، وجد المشكلة عند الثانية 12 إلى 20، أصلحها، ثم صيّر تلك النافذة وحدها من جديد. يمكنك كتابة <code>--from</code> فقط (حتى النهاية) أو <code>--to</code> فقط (من البداية).</p>
+<pre><code class="language-sh">screenpilot render storyboard.json -q draft --from 12 --to 20</code></pre>
+<p>الملف الناتج هو <code>&lt;storyboard&gt;.part-12-20.mp4</code> (أو <code>part-12-end</code> إذا لم تكتب <code>--to</code>)، ويُبنى في <code>&lt;storyboard&gt;.part-12-20.build</code>. هو تصيير قصير لتلك النافذة فقط، فهو أسرع كثيرًا من الفيديو كاملًا. العناصر خارج النافذة تُترك، ومستوى الموسيقى، بما فيه الـ ducking، ينتقل إليها.</p>
+
+<h3 id="formats">عدة صيغ<a class="a" href="#formats" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>الخيار <code>--formats</code> يصيّر الـ storyboard نفسه مرة لكل حجم خرج، فيعطيك تعديل واحد نسخة لـ YouTube ونسخة لـ Reels ونسخة للخلاصات. ويُولَّد الصوت مرة واحدة لها كلها.</p>
+<pre><code class="language-sh">screenpilot render storyboard.json --formats 16:9,9:16,1:1 -o demo</code></pre>
+<table>
+<thead><tr><th>الصيغة</th><th>الحجم</th><th>الملف</th></tr></thead>
+<tbody>
+<tr><td><code>16:9</code></td><td>1920x1080</td><td><code>&lt;name&gt;.16x9.mp4</code></td></tr>
+<tr><td><code>9:16</code></td><td>1080x1920</td><td><code>&lt;name&gt;.9x16.mp4</code></td></tr>
+<tr><td><code>1:1</code></td><td>1080x1080</td><td><code>&lt;name&gt;.1x1.mp4</code></td></tr>
+<tr><td><code>WxH</code>، مثل <code>1280x720</code></td><td>كما كُتب</td><td><code>&lt;name&gt;.1280x720.mp4</code></td></tr>
+</tbody>
+</table>
+<ul>
+<li>يجب أن يكون العرض والارتفاع زوجيين. والصيغ المكررة تُحذف.</li>
+<li>الخيار <code>-o</code> يصبح الاسم الأساسي: <code>-o demo</code> يكتب <code>demo.16x9.mp4</code> وهكذا. وبدونه يكون الأساس اسم الـ storyboard.</li>
+<li>لا يجوز الجمع بين <code>--build-dir</code> و<code>--formats</code>. لكل صيغة مجلدها <code>&lt;name&gt;.&lt;format&gt;.build</code>.</li>
+<li>يعمل <code>--from</code> و<code>--to</code> مع <code>--formats</code> معًا: تصبح الملفات <code>&lt;name&gt;.9x16.part-12-20.mp4</code>.</li>
+</ul>
+<div class="warn">التصدير الطولي أو المربع لتسجيل عرضي يقصّ الصورة. الـ views التي تؤطر نافذة تملأ الإطار، فيُقتطع الضلع الأطول للنافذة. أما views الشاشة فتُظهر الشاشة كاملة. انظر إلى مسودة 9:16 قبل أن تسلّمها.</div>
 
 <h3 id="quality">مستويات الجودة<a class="a" href="#quality" aria-label="رابط إلى هذا القسم">#</a></h3>
 <table>
@@ -172,6 +212,28 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 <tr><td><code>-o, --out &lt;dir&gt;</code></td><td>مجلد الإخراج. الافتراضي <code>&lt;video&gt;.check</code> بجوار الفيديو.</td></tr>
 </tbody>
 </table>
+
+<h2 id="combine">دمج التسجيلات<a class="a" href="#combine" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>تجمع هذه الأوامر عدة storyboards، لكل منها تسجيله، في فيديو واحد. الاستخدام الشائع هو إدخال مقطع ميزة جديدة في منتصف عرض موجود دون إعادة تسجيله. صفحة <a href="../../ar/guide/sequence.html">دمج التسجيلات</a> تشرح صيغة الملف والمدى والانتقالات بمثال كامل.</p>
+
+<h3 id="sequence">sequence<a class="a" href="#sequence" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>الأمر <code>screenpilot sequence &lt;sequence.json&gt;</code> يصيّر كل جزء ثم يجمعها في ملف MP4 واحد. الأجزاء التي لم تتغير يُعاد استخدامها من التشغيل السابق. يطبع مسار الملف والمدة وطريقة جمع الأجزاء وكل جزء.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>-o, --output &lt;file&gt;</code></td><td>ملف الفيديو الناتج. الافتراضي <code>&lt;sequence&gt;.mp4</code>.</td></tr>
+<tr><td><code>-q, --quality &lt;q&gt;</code></td><td><code>draft</code> أو <code>looks</code> أو <code>delivery</code>. الافتراضي <code>looks</code>.</td></tr>
+<tr><td><code>--png-frames</code></td><td>يستخدم إطارات مصدر بلا فقدان، والتصيير أبطأ.</td></tr>
+<tr><td><code>--workers &lt;n&gt;</code></td><td>عدد المصيّرات المتوازية، وكل واحد منها متصفح Chrome بلا واجهة. الافتراضي 2.</td></tr>
+<tr><td><code>--build-dir &lt;dir&gt;</code></td><td>المجلد الذي تُبنى فيه الأجزاء. الافتراضي <code>&lt;sequence&gt;.build</code>.</td></tr>
+</tbody>
+</table>
+
+<h3 id="sequence-validate">sequence-validate<a class="a" href="#sequence-validate" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>الأمر <code>screenpilot sequence-validate &lt;sequence.json&gt;</code> يفحص الـ sequence وكل storyboard يستخدمه. إما يفشل ويعرض مشكلات الـ schema (وكل مشكلة تذكر الجزء، مثل <code>parts[1] (feature.json)</code>)، وإما يطبع <code>valid: true</code> مع تحذيرات كل جزء.</p>
+
+<h3 id="sequence-schema">sequence-schema<a class="a" href="#sequence-schema" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>الأمر <code>screenpilot sequence-schema</code> يطبع JSON Schema الخاص بـ <code>sequence.json</code>.</p>
 
 <h2 id="drive">رؤية سطح المكتب والتحكم فيه<a class="a" href="#drive" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>تتيح لك هذه الأوامر أن ترى سطح المكتب وتجرّب خطوات بيدك قبل أن تكتب take. يستخدم الوكيل الإجراءات نفسها عبر أدوات MCP. وهي تستخدم الفأرة ولوحة المفاتيح الفعليتين، فارفع يديك عنهما أثناء التنفيذ. شرح <a href="../../ar/guide/agent-drive.html">تحكّم الوكيل</a> يغطي الدورة كاملة، وصفحة <a href="../../ar/guide/safety.html">الأمان</a> تشرح الحدود.</p>
@@ -238,10 +300,10 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 </table>
 
 <h3 id="doctor">doctor<a class="a" href="#doctor" aria-label="رابط إلى هذا القسم">#</a></h3>
-<p>الأمر <code>screenpilot doctor</code> يفحص هذا الجهاز: ffmpeg وسطح المكتب والشاشات وOBS ومتصفح العرض والأصوات. يطبع تقريرًا بصيغة JSON وسطر ملخص. رمز الخروج دائمًا 0، فاقرأ التقرير. أضف <code>--input</code> لاختبار حقن الإدخال أيضًا، وهو يحرّك المؤشر الفعلي لحظة.</p>
+<p>الأمر <code>screenpilot doctor</code> يفحص هذا الجهاز: ffmpeg وسطح المكتب والشاشات وOBS ومتصفح العرض والأصوات، ومنها فحص "local voice" الذي يُتخطّى إذا لم تُعدّ صوتًا محليًا (فهو اختياري). يطبع تقريرًا بصيغة JSON وسطر ملخص. رمز الخروج دائمًا 0، فاقرأ التقرير. أضف <code>--input</code> لاختبار حقن الإدخال أيضًا، وهو يحرّك المؤشر الفعلي لحظة.</p>
 <div class="note">نفّذ <code>screenpilot doctor</code> أولًا على أي جهاز جديد، وأعد تنفيذه كلما فشل التسجيل أو التحكم.</div>
 <nav class="pager" aria-label="Pager"><a href="install.html" rel="prev"><small>السابق</small>تثبيت ScreenPilot</a><a href="tools.html" rel="next"><small>التالي</small>أدوات MCP</a></nav></article>
-  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#workflow">سير العمل كاملًا</a><a href="#record-and-look">التسجيل والمعاينة</a><a href="#edit">التحرير</a><a href="#render-and-check">التصيير والفحص</a><a href="#drive">رؤية سطح المكتب والتحكم فيه</a><a href="#setup-and-checks">إعداد الجهاز وفحصه</a></aside>
+  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#workflow">سير العمل كاملًا</a><a href="#record-and-look">التسجيل والمعاينة</a><a href="#edit">التحرير</a><a href="#render-and-check">التصيير والفحص</a><a href="#combine">دمج التسجيلات</a><a href="#drive">رؤية سطح المكتب والتحكم فيه</a><a href="#setup-and-checks">إعداد الجهاز وفحصه</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../../ar/index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot مفتوح المصدر برخصة MIT.</small><small>أسماء المنتجات ملك لأصحابها. ScreenPilot مشروع مستقل.</small></div>

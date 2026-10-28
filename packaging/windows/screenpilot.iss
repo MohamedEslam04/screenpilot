@@ -47,6 +47,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Type: filesandordirs; Name: "{app}\dist"
 Type: filesandordirs; Name: "{app}\node_modules"
 Type: filesandordirs; Name: "{app}\skill"
+Type: filesandordirs; Name: "{app}\python"
 Type: filesandordirs; Name: "{app}\bin"
 
 [Files]

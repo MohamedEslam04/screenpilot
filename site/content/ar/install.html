@@ -17,7 +17,7 @@ summary: ثبّت ScreenPilot على Windows أو macOS أو Linux، وأضفه 
     <tr><td>Linux (64 بت)</td><td><a href="https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-linux.tar.gz">ScreenPilot-linux.tar.gz</a></td></tr>
   </tbody>
 </table>
-<div class="warn">الإصدار 0.3.0، وهو الإصدار الحالي، فيه نسختا Windows وLinux فقط. رابطا Mac أعلاه لا يعملان حتى الإصدار القادم. آخر نسختين لـ Mac موجودتان في <a href="https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.2.3">إصدار v0.2.3</a>.</div>
+<div class="warn">الإصدار 0.4.0، وهو الإصدار الحالي، فيه نسختا Windows وLinux فقط. رابطا Mac أعلاه لا يعملان حتى الإصدار القادم. آخر نسختين لـ Mac موجودتان في <a href="https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.2.3">إصدار v0.2.3</a>.</div>
 <p>لا تعرف أي Mac لديك؟ افتح قائمة Apple واختر <strong>About This Mac</strong>. إذا ظهر "Chip: Apple M..." فهو Apple Silicon. وإذا ظهر "Processor: Intel" فهو Intel. كل الإصدارات في <a href="https://github.com/MohamedEslam04/screenpilot/releases">صفحة Releases</a>.</p>
 
 <h2 id="windows">Windows</h2>
@@ -63,6 +63,15 @@ summary: ثبّت ScreenPilot على Windows أو macOS أو Linux، وأضفه 
 </ol>
 <div class="warn">لا تشغّل المثبّت بـ <code>sudo</code>. يثبّت لمستخدمك فقط ولا يحتاج إلى صلاحيات المسؤول. إذا شغّلته بـ <code>sudo</code> يتوقف ويطلب منك إعادة تشغيله بحسابك العادي.</div>
 <p>ما يعمل يعتمد على سطح المكتب. راجع <a href="@guide/platforms.html#support">دعم المنصات</a> للجدول الكامل.</p>
+
+<h2 id="verify">تأكد أنه يعمل</h2>
+<ol>
+  <li>أغلق تطبيق الذكاء الاصطناعي تمامًا ثم افتحه من جديد.</li>
+  <li>قل له: "Run the ScreenPilot doctor." يعرض حالة المسجّل والأذونات والأصوات ومحرّك الفيديو، ويشرح كيف تصلح الناقص. إذا ظهر لك هذا التقرير فـ ScreenPilot متصل.</li>
+  <li>للتأكد مرة أخرى، ابحث عن <code>screenpilot</code> في قائمة أدوات التطبيق أو إعدادات MCP. في Claude Code اكتب <code>/mcp</code> (أو <code>claude mcp list</code> في الطرفية)، ويجب أن تظهر كلمة <strong>Connected</strong>.</li>
+  <li>جرّب طلبًا حقيقيًا: "Take a screenshot of my screen." قد يطلب سطح المكتب في المرة الأولى السماح بمشاركة الشاشة. اسمح له.</li>
+</ol>
+<p>لم يظهر شيء؟ راجع <a href="#troubleshooting">إذا حدثت مشكلة</a>.</p>
 
 <h2 id="installer">ماذا يفعل المثبّت</h2>
 <ul>

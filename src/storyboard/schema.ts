@@ -13,6 +13,8 @@ export const SegmentSchema = z
     in: time.describe("Source start (s)"),
     out: time.describe("Source end (s)"),
     speed: z.number().min(0.25).max(16).default(1).describe("Playback speed; >1 fast-forwards boring parts"),
+    volume: z.number().min(0).max(4).optional().describe("Source audio level of this segment (default 1); needs keepSourceAudio"),
+    mute: z.boolean().optional().describe("Silence this segment's source audio (same as volume 0)"),
   })
   .refine((s) => s.out > s.in, { message: "segment.out must be greater than segment.in" });
 
@@ -96,6 +98,30 @@ export const CardSchema = z.object({
   dur: z.number().positive().default(3),
 });
 
+export const OverlaySchema = z.object({
+  src: z.string().min(1).describe("Image or video, relative to the storyboard file"),
+  at: time.optional().describe("Source time it appears. Omit both at and dur for the whole video (watermark, logo)"),
+  dur: z.number().positive().optional().describe("How long it stays (s of source time); omitted with at set = until the end"),
+  x: norm.describe("Left edge, 0..1 of the OUTPUT frame"),
+  y: norm.describe("Top edge, 0..1 of the OUTPUT frame"),
+  w: norm.refine((v) => v > 0, { message: "overlay.w must be > 0" }).describe("Width, 0..1 of the output frame"),
+  h: norm.refine((v) => v > 0, { message: "overlay.h must be > 0" }).describe("Height, 0..1 of the output frame"),
+  fit: z.enum(["contain", "cover"]).default("contain"),
+  opacity: z.number().min(0).max(1).default(1),
+  radius: z.number().min(0).optional().describe("Corner radius in output pixels"),
+  shadow: z.boolean().optional(),
+  motion: MotionSchema.optional().describe("Entrance and exit (default fade); words/lines/wipe fall back to fade"),
+  mute: z.boolean().default(true).describe("Video only: false plays its sound too"),
+  loop: z.boolean().default(false).describe("Video only: repeat until the overlay ends"),
+});
+
+export const ChapterCardSchema = z.object({
+  at: time.describe("Source time the video freezes and the card shows"),
+  dur: z.number().positive().default(2.5).describe("How long the card stays (s); the video is frozen meanwhile"),
+  title: z.string().min(1),
+  subtitle: z.string().optional(),
+});
+
 export const ThemeSchema = z.object({
   background: z.string().default("linear-gradient(135deg, #1e1b4b 0%, #4338ca 55%, #0ea5e9 100%)"),
   padding: z.number().min(0).max(0.2).default(0.05).describe("Space around the recording, fraction of output width"),
@@ -128,8 +154,11 @@ export const ThemeSchema = z.object({
 });
 
 export const VoiceSchema = z.object({
-  provider: z.enum(["edge"]).default("edge"),
-  name: z.string().default("en-US-AndrewNeural"),
+  provider: z
+    .enum(["edge", "local", "command"])
+    .default("edge")
+    .describe("edge: Microsoft voices over the internet. local: models on this computer (name \"voicetut:Sarah\" or \"namaa\"). command: a voice you defined in voices.json (name = its key)"),
+  name: z.string().default("en-US-AndrewNeural").describe("Edge voice, local model[:voice], or the key of a command voice"),
   rate: z.string().default("+0%").describe("SSML rate, e.g. +10% or -5%"),
   subtitles: z.boolean().default(true).describe("Show narration lines as subtitles"),
   gap: z.number().min(0).default(0.3).describe("Min silence between lines; video freezes to make room"),
@@ -142,13 +171,30 @@ export const OutputSchema = z.object({
   fps: z.number().int().min(1).max(120).default(30),
 });
 
+export const DuckSchema = z.object({
+  amount: z.number().min(0).max(1).default(0.6).describe("How much quieter the music gets while someone speaks (0.6 = 60% lower)"),
+  attack: z.number().min(0).max(5).default(0.2).describe("Seconds the music takes to go down, finishing as the line starts"),
+  release: z.number().min(0).max(5).default(0.5).describe("Seconds the music takes to come back after the line"),
+});
+
 export const MusicSchema = z.object({
   src: z.string(),
   volume: z.number().min(0).max(1).default(0.12),
+  duck: DuckSchema.optional().describe("Lower the music under narration"),
 });
+
+/** Keys a storyboard takes from the one it `extends` (deep-merged, the child wins). */
+export const INHERITED_KEYS = ["theme", "voice", "output", "music", "keepSourceAudio"] as const;
 
 export const StoryboardSchema = z.object({
   version: z.literal(1).default(1),
+  extends: z
+    .string()
+    .optional()
+    .describe(
+      `Base storyboard to share the look with, relative to this file (it may extend another). Only ${INHERITED_KEYS.join(", ")} are inherited, ` +
+        "deep-merged with this file winning; source, segments, zooms, captions and the rest are never inherited",
+    ),
   source: z.string().describe("Path to the raw recording, relative to the storyboard file"),
   events: z.string().optional().describe(`events.jsonl from \`${APP} record\`, relative path`),
   keepSourceAudio: z.boolean().default(false),
@@ -165,6 +211,8 @@ export const StoryboardSchema = z.object({
   narration: z.array(NarrationSchema).default([]),
   intro: CardSchema.optional(),
   outro: CardSchema.optional(),
+  overlays: z.array(OverlaySchema).default([]).describe("Images or videos placed on top of the output frame (logos, picture-in-picture)"),
+  cards: z.array(ChapterCardSchema).default([]).describe("Chapter cards in the middle of the video; each freezes the picture for dur seconds"),
   music: MusicSchema.optional(),
 });
 
@@ -179,6 +227,7 @@ export type Caption = z.output<typeof CaptionSchema>;
 export type Motion = z.output<typeof MotionSchema>;
 export type Narration = z.output<typeof NarrationSchema>;
 export type Highlight = z.output<typeof HighlightSchema>;
+export type Overlay = z.output<typeof OverlaySchema>;
 export type Theme = z.output<typeof ThemeSchema>;
 
 export function storyboardJsonSchema(): unknown {

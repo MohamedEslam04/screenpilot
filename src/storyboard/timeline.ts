@@ -10,6 +10,8 @@ export interface PlayPiece {
   in: number;
   out: number;
   speed: number;
+  /** Source audio gain for this piece (1 = untouched, 0 = silent). */
+  volume: number;
   outStart: number;
   outEnd: number;
 }
@@ -20,13 +22,18 @@ export interface HoldPiece {
   dur: number;
   outStart: number;
   outEnd: number;
+  /** Index into storyboard.cards when this freeze is a chapter card. */
+  card?: number;
 }
 
 export type Piece = PlayPiece | HoldPiece;
 
+/** A hold; `card` marks the freeze that a chapter card is shown over. */
+export type TimelineHold = Hold & { card?: number };
+
 export interface TimelineInput {
   segments: Segment[];
-  holds: Hold[];
+  holds: TimelineHold[];
   sourceDuration: number;
   offset?: number;
 }
@@ -37,7 +44,7 @@ export class Timeline {
   constructor(
     readonly pieces: Piece[],
     readonly offset: number,
-    readonly ignoredHolds: Hold[],
+    readonly ignoredHolds: TimelineHold[],
   ) {}
 
   /** Length of the edited video, without intro/outro cards. */
@@ -48,6 +55,15 @@ export class Timeline {
   /** Output time where the video ends (intro included). */
   get videoEnd(): number {
     return this.offset + this.videoDuration;
+  }
+
+  /** Output spans of the chapter cards that made it into the timeline (intro offset included). */
+  cardSpans(): { card: number; start: number; end: number }[] {
+    const spans: { card: number; start: number; end: number }[] = [];
+    for (const p of this.pieces) {
+      if (p.kind === "hold" && p.card !== undefined) spans.push({ card: p.card, start: this.offset + p.outStart, end: this.offset + p.outEnd });
+    }
+    return spans;
   }
 
   /**
@@ -96,10 +112,18 @@ export function buildTimeline({ segments, holds, sourceDuration, offset = 0 }: T
   const pieces: Piece[] = [];
   let cursorOut = 0;
 
-  const pushPlay = (from: number, to: number, speed: number) => {
+  const pushPlay = (from: number, to: number, seg: Segment) => {
     if (to - from < EPS) return;
-    const len = (to - from) / speed;
-    pieces.push({ kind: "play", in: from, out: to, speed, outStart: cursorOut, outEnd: cursorOut + len });
+    const len = (to - from) / seg.speed;
+    pieces.push({
+      kind: "play",
+      in: from,
+      out: to,
+      speed: seg.speed,
+      volume: seg.mute ? 0 : (seg.volume ?? 1),
+      outStart: cursorOut,
+      outEnd: cursorOut + len,
+    });
     cursorOut += len;
   };
 
@@ -110,12 +134,19 @@ export function buildTimeline({ segments, holds, sourceDuration, offset = 0 }: T
     let cursor = seg.in;
     for (const h of inside) {
       used.add(h.i);
-      pushPlay(cursor, h.at, seg.speed);
-      pieces.push({ kind: "hold", at: h.at, dur: h.dur, outStart: cursorOut, outEnd: cursorOut + h.dur });
+      pushPlay(cursor, h.at, seg);
+      pieces.push({
+        kind: "hold",
+        at: h.at,
+        dur: h.dur,
+        outStart: cursorOut,
+        outEnd: cursorOut + h.dur,
+        ...(h.card !== undefined ? { card: h.card } : {}),
+      });
       cursorOut += h.dur;
       cursor = Math.max(cursor, h.at);
     }
-    pushPlay(cursor, seg.out, seg.speed);
+    pushPlay(cursor, seg.out, seg);
   }
 
   const ignored = pending.filter((h) => !used.has(h.i)).map(({ i: _i, ...h }) => h);
