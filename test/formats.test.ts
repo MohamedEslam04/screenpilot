@@ -42,15 +42,15 @@ describe("formatPaths", () => {
 
   it("puts the format between the name and the extension", () => {
     expect(formatPaths("/work/demo/storyboard.json", fmt)).toEqual({
-      buildDir: "/work/demo/storyboard.9x16.build",
-      output: "/work/demo/storyboard.9x16.mp4",
+      buildDir: resolve("/work/demo/storyboard.9x16.build"),
+      output: resolve("/work/demo/storyboard.9x16.mp4"),
     });
   });
 
   it("adds the partial-render window after the format", () => {
     expect(formatPaths("/work/demo/storyboard.json", fmt, { from: 12, to: 20 })).toEqual({
-      buildDir: "/work/demo/storyboard.9x16.part-12-20.build",
-      output: "/work/demo/storyboard.9x16.part-12-20.mp4",
+      buildDir: resolve("/work/demo/storyboard.9x16.part-12-20.build"),
+      output: resolve("/work/demo/storyboard.9x16.part-12-20.mp4"),
     });
   });
 
