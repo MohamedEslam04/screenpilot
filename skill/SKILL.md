@@ -37,6 +37,31 @@ Each step has an MCP tool and a CLI form (`screenpilot ...`, or `node /abs/path/
 9. **Iterate** steps 5-8. Change one kind of thing at a time (timing, then zooms, then wording).
 10. **Final render** with quality `delivery`: `screenpilot render <storyboard> -q delivery -o demo.mp4`. Tell the user the output path, duration and any warnings.
 
+## Combine recordings (insert a feature clip, no re-recording)
+
+One storyboard has one `source`. To insert another recording into the middle of a demo, record or `perform` only the new part, `init` a storyboard for it, then join storyboards with a `sequence.json`:
+
+```json
+{ "version": 1, "parts": [
+  { "storyboard": "demo.json", "to": 42 },
+  { "storyboard": "feature.json", "transition": { "type": "crossfade", "dur": 0.5 } },
+  { "storyboard": "demo.json", "from": 42 } ] }
+```
+
+- MCP `sequence_validate` / `sequence_render` (quality, output) / `sequence_schema`; CLI `screenpilot sequence-validate|sequence|sequence-schema <sequence.json>`.
+- `from`/`to` are SOURCE seconds of that part's storyboard, half-open `[from, to)`. Read the first storyboard's frames to pick the split second (a quiet moment between two actions). Narration that started before `from` is dropped; zooms/captions/highlights that straddle the cut are trimmed (dropped if under 0.5s is left); cards and overlays are clipped too.
+- Make the pieces look the same: give each storyboard `"extends": "base.json"` (shares theme, voice, output, music, keepSourceAudio; the child wins; paths are relative to each file). Intro is used on the first part only, outro on the last; all parts get the first part's output size (override with `sequence.output`).
+- Transitions on a part (how it enters from the previous one): `cut`, `crossfade`, `fade-black`, `wipe-left`, `wipe-right`, `slide-left`, `slide-right`; `dur` default 0.5, clamped to half of either neighbour. Unchanged parts are cached, so only edited parts re-render.
+
+## More editing tools
+
+- **Chapter cards** `cards: [{ "at": 30, "title": "Step 2", "subtitle": "Export", "dur": 2.5 }]`: freezes the video at `at` and shows a full card (same look as intro/outro). An `at` in a cut region is dropped (warning). Put captions slightly after `at`.
+- **Overlays** `overlays: [{ "src": "logo.png", "x": 0.82, "y": 0.04, "w": 0.14, "h": 0.08 }]`: image or video on the OUTPUT frame (0..1). No `at`/`dur` = whole video (watermark). Options: `fit` contain|cover, `opacity`, `radius`, `shadow`, `motion` (in/out like captions), `mute` (default true), `loop`. Paths relative to the storyboard.
+- **Audio.** `segments[].volume` (0..4) or `mute: true` for the source audio (needs `keepSourceAudio`); `music.duck: { "amount": 0.6, "attack": 0.2, "release": 0.5 }` lowers the music while narration plays.
+- **Fast review.** `render` with `from`/`to` (OUTPUT seconds) renders only that window into `<name>.part-A-B.mp4`; use it after editing one section.
+- **Other formats.** `render` with `formats: ["16:9","9:16","1:1"]` (or `1280x720`) renders each into `<name>.<label>.mp4` (labels `16x9`, `9x16`, `1x1`). Portrait crops wide window-framed views, so check frames.
+- **Lint.** `validate` and render warnings flag narration over ~12 words or too fast, captions over 6 words, overlapping captions/zooms, zoom scale outside 1.4-2.5, zoom + highlight + callout stacked, speed over 8, and a final length over 90s or under 15s. Fix them unless there is a reason.
+
 ## Optional: you perform the demo (KDE Wayland, X11, GNOME Wayland, Windows)
 
 Instead of asking the user to perform the demo, drive the desktop yourself and let screenpilot record it. Loop: **explore -> rehearse -> perform -> review storyboard -> render** (then the normal loop above, from step 2).
@@ -131,6 +156,7 @@ What each part does:
 - `captions`: `style` is `pill` (subtitle-like), `title` (big), or `callout` (bubble pointing at `x`,`y`; always give x/y). `position` is bottom/top/center.
 - `highlights`: a box (`x`,`y` top-left, `w`,`h` size, all 0..1) with optional label.
 - `narration`: `at` is the source time the line starts. Per-line `voice` overrides `voice.name`. A line placed in a cut region is dropped (warning). Lines also show as subtitles unless `caption: false` or `voice.subtitles: false`.
+- `cards`, `overlays`, `extends`, segment `volume`/`mute` and `music.duck`: see "More editing tools" and "Combine recordings" above.
 - `intro` / `outro`: title cards. `music`: `{ "src": "bgm.mp3", "volume": 0.12 }`. `keepSourceAudio`, `output` (1920x1080@30 default) and `theme` (background, padding, radius, accent, font, captionColor, captionBackground, clickRipples, `fonts`: extra Google Fonts, `css`: your own CSS) are optional; see "Design the look" below.
 - Voices: MCP `voices` (lang: "ar-EG") / `screenpilot voices --lang ar-EG`. Egyptian Arabic: `ar-EG-SalmaNeural` (f), `ar-EG-ShakirNeural` (m). English: `en-US-AndrewNeural`, `en-US-AriaNeural`.
 
