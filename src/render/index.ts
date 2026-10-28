@@ -4,6 +4,7 @@ import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { clicksOf, readEvents } from "../record/events.js";
+import { lintTimeline } from "../storyboard/lint.js";
 import { lintStoryboard, loadStoryboard } from "../storyboard/load.js";
 import type { Storyboard } from "../storyboard/schema.js";
 import { buildTimeline, planNarrationHolds, type Timeline } from "../storyboard/timeline.js";
@@ -68,6 +69,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     lines: narration.map((l) => ({ at: l.at, duration: l.duration })),
   });
   const timeline = buildTimeline({ ...base, holds: [...sb.holds, ...autoHolds] });
+  warnings.push(...lintTimeline(sb, timeline));
   for (const h of timeline.ignoredHolds) warnings.push(`hold at ${h.at}s is outside every segment and was ignored`);
   for (const l of narration) {
     if (timeline.toOutput(l.at) === null) warnings.push(`narration at ${l.at}s falls in a cut region and was dropped`);
