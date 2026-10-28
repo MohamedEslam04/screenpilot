@@ -18,8 +18,18 @@ export const StepSchema = z.union([
   z.object({ say: z.string(), voice: z.string().optional(), wait: z.boolean().optional().describe("Block until the line ends") }).strict(),
   z.object({ caption: z.string(), dur: z.number().positive().optional(), position: z.enum(["bottom", "top", "center"]).optional() }).strict(),
   z.object({ view: z.string().describe('Monitor name or "all" (camera); without views the camera follows the pointer') }).strict(),
-  z.object({ browser: z.object({ screen: z.string().optional(), url: z.string().optional() }).strict() }).strict(),
-  z.object({ goto: z.string().describe("Navigate the demo browser") }).strict(),
+  z
+    .object({
+      browser: z
+        .object({
+          screen: z.string().optional(),
+          url: z.string().optional().describe("URL, or a file path relative to this take.json (e.g. site/index.html)"),
+          app: z.boolean().optional().describe("App window: no address bar or tabs, so the recording shows only the page"),
+        })
+        .strict(),
+    })
+    .strict(),
+  z.object({ goto: z.string().describe("Navigate the demo browser: URL, or a file path relative to this take.json") }).strict(),
   z.object({ move: TargetSchema, dur: z.number().positive().optional() }).strict(),
   z
     .object({

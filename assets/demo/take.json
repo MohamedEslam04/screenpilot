@@ -3,7 +3,7 @@
   "screens": ["HDMI-A-5"],
   "camera": "window",
   "setup": [
-    { "browser": { "screen": "HDMI-A-5", "url": "file:///data/personal_projects/screenpilot/assets/demo/site/index.html" } },
+    { "browser": { "screen": "HDMI-A-5", "url": "site/index.html", "app": true } },
     { "wait": 1 }
   ],
   "steps": [

@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, posix, win32 } from "node:path";
 import { type Browser, chromium, type Page } from "playwright-core";
@@ -44,6 +44,24 @@ export function findBrowser(): string {
   throw new Error(`No Chromium-based browser found (Chrome, Edge, Brave, Chromium); set ${envName}.`);
 }
 
+/** Close the demo browser through CDP (Browser.close) and wait until its port is gone. */
+async function closeCdpBrowser(): Promise<void> {
+  try {
+    const { webSocketDebuggerUrl } = (await (await fetch(`${CDP_URL}/json/version`)).json()) as { webSocketDebuggerUrl: string };
+    await new Promise<void>((res) => {
+      const ws = new WebSocket(webSocketDebuggerUrl);
+      ws.onopen = () => ws.send(JSON.stringify({ id: 1, method: "Browser.close" }));
+      ws.onclose = () => res();
+      ws.onerror = () => res();
+      setTimeout(res, 3000);
+    });
+  } catch {
+    // already gone
+  }
+  await disconnectBrowser();
+  for (let i = 0; i < 40 && (await cdpUp()); i++) await sleep(250);
+}
+
 async function cdpUp(): Promise<boolean> {
   try {
     return (await fetch(`${CDP_URL}/json/version`)).ok;
@@ -57,9 +75,17 @@ export interface BrowserWindow {
 }
 
 /** Start (or reuse) the demo browser and place its window on `screen`. */
-export async function openBrowser(opts: { screen?: ScreenInfo; url?: string; log?: (m: string) => void } = {}): Promise<WindowInfo | { note: string }> {
+export async function openBrowser(
+  opts: { screen?: ScreenInfo; url?: string; app?: boolean; log?: (m: string) => void } = {},
+): Promise<WindowInfo | { note: string }> {
+  const profile = join(configDir(), "browser");
+  // The window kind is fixed at launch: switching between app window and normal window means a restart.
+  const appMarker = join(profile, `.${APP}-app-window`);
+  if ((await cdpUp()) && existsSync(appMarker) !== !!opts.app) {
+    opts.log?.(`restarting the demo browser ${opts.app ? "as an app window" : "with its toolbar"}`);
+    await closeCdpBrowser();
+  }
   if (!(await cdpUp())) {
-    const profile = join(configDir(), "browser");
     await mkdir(join(profile, "Default"), { recursive: true });
     await quietDownloads(join(profile, "Default", "Preferences"));
     const bin = findBrowser();
@@ -71,9 +97,11 @@ export async function openBrowser(opts: { screen?: ScreenInfo; url?: string; log
       "--no-default-browser-check",
       "--disable-session-crashed-bubble",
       "--hide-crash-restore-bubble",
-      "--new-window",
-      opts.url ?? "about:blank",
+      // --app: a window without address bar or tabs (nothing about this machine shows in the video).
+      ...(opts.app ? [`--app=${opts.url ?? "about:blank"}`] : ["--new-window", opts.url ?? "about:blank"]),
     ];
+    if (opts.app) await writeFile(appMarker, "");
+    else await rm(appMarker, { force: true });
     // macOS only lets an app come to the front if LaunchServices started it: a child
     // process of ours never can. `open -n` starts a separate instance (the user's own
     // browser is untouched) and passes our flags through.

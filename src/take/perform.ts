@@ -1,3 +1,4 @@
+import { pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -207,12 +208,18 @@ export async function resolveTarget(t: Target, d: Driver): Promise<{ x: number; 
 
 const expandHome = (s: string) => (s.startsWith("~/") ? join(homedir(), s.slice(2)) : s);
 
+/** A URL as is; a file path (relative to the take, or ~/…) as a file:// URL, so takes work from any checkout. */
+export function pageUrl(u: string, baseDir: string): string {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(u) && !/^[a-z]:[\\/]/i.test(u)) return u;
+  return pathToFileURL(resolve(baseDir, expandHome(u))).href;
+}
+
 async function runStep(step: Step, { driver: d, log, baseDir }: StepContext): Promise<void> {
   if ("browser" in step) {
     const screen = step.browser.screen ? d.screens().find((s) => s.name === step.browser.screen) : undefined;
-    await openBrowser({ screen, url: step.browser.url, log });
+    await openBrowser({ screen, url: step.browser.url && pageUrl(step.browser.url, baseDir), app: step.browser.app, log });
   } else if ("goto" in step) {
-    await withPage((p) => p.goto(step.goto).then(() => undefined));
+    await withPage((p) => p.goto(pageUrl(step.goto, baseDir)).then(() => undefined));
   } else if ("move" in step) {
     await d.moveToGlobal(await resolveTarget(step.move, d), { dur: step.dur });
   } else if ("click" in step) {

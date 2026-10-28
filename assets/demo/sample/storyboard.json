@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "source": "2026-10-28T06-11-19-281Z.mkv",
+  "events": "events.jsonl",
+  "voice": {
+    "name": "en-US-AndrewNeural",
+    "rate": "+0%",
+    "gap": 0.35
+  },
+  "segments": [
+    {
+      "in": 0,
+      "out": 15.17,
+      "speed": 1
+    }
+  ],
+  "zooms": [
+    {
+      "at": 2.59,
+      "dur": 2,
+      "x": 0.803,
+      "y": 0.126,
+      "scale": 1.8
+    },
+    {
+      "at": 5.63,
+      "dur": 2,
+      "x": 0.861,
+      "y": 0.126,
+      "scale": 1.8
+    },
+    {
+      "at": 8.75,
+      "dur": 2,
+      "x": 0.747,
+      "y": 0.126,
+      "scale": 1.8
+    },
+    {
+      "at": 10.69,
+      "dur": 3.97,
+      "x": 0.341,
+      "y": 0.3,
+      "scale": 1.8
+    }
+  ],
+  "captions": [
+    {
+      "at": 0.6,
+      "dur": 2.5,
+      "text": "How ScreenPilot works",
+      "position": "top"
+    },
+    {
+      "at": 5.56,
+      "dur": 2.5,
+      "text": "Works with your AI app",
+      "position": "top"
+    },
+    {
+      "at": 8.6,
+      "dur": 3,
+      "text": "One-click install",
+      "position": "top"
+    }
+  ],
+  "narration": [],
+  "views": [
+    {
+      "at": 0,
+      "rect": {
+        "x": 0.0427,
+        "y": 0.0657,
+        "w": 0.9146,
+        "h": 0.9148
+      },
+      "label": "ScreenPilot",
+      "transition": "pan"
+    }
+  ],
+  "output": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30
+  },
+  "theme": {
+    "background": "linear-gradient(135deg, #fff7ed 0%, #fed7aa 55%, #fdba74 100%)",
+    "padding": 0.07,
+    "radius": 28,
+    "accent": "#f97316",
+    "shadow": true,
+    "fonts": [
+      "Space Grotesk:wght@500;700"
+    ],
+    "font": "'Space Grotesk', 'Inter', sans-serif",
+    "captionColor": "#1c1917",
+    "captionBackground": "#ffffff",
+    "motion": {
+      "captions": {
+        "in": "words",
+        "out": "pop",
+        "duration": 0.45,
+        "ease": "back.out(2)",
+        "stagger": 0.07
+      }
+    },
+    "css": ".text.pill > span { border-radius: 999px; padding: 10px 28px; box-shadow: 0 12px 30px rgba(124,45,18,.25); font-size: 34px; }\n#frame { box-shadow: 0 30px 80px rgba(124,45,18,.35); }"
+  }
+}

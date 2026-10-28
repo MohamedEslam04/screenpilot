@@ -1,0 +1,26 @@
+{
+  "name": "screenpilot-sample",
+  "screens": ["HDMI-A-5"],
+  "camera": "window",
+  "setup": [
+    { "browser": { "screen": "HDMI-A-5", "url": "../site/index.html", "app": true } },
+    { "wait": 1 }
+  ],
+  "steps": [
+    { "caption": "How ScreenPilot works", "dur": 2.5 },
+    { "wait": 1 },
+    { "click": { "web": "#nav-how" } },
+    { "wait": 2.5 },
+    { "caption": "Works with your AI app", "dur": 2.5 },
+    { "click": { "web": "#nav-apps" } },
+    { "wait": 2.5 },
+    { "caption": "One-click install", "dur": 3 },
+    { "click": { "web": "#nav-install" } },
+    { "wait": 1 },
+    { "click": { "web": "#tab-mac" } },
+    { "wait": 1.4 },
+    { "click": { "web": "#tab-linux" } },
+    { "wait": 1.4 }
+  ],
+  "tail": 0.5
+}

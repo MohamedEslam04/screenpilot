@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "source": "2026-10-27T21-25-24-895Z.mkv",
+  "source": "2026-10-28T06-12-20-362Z.mkv",
   "events": "events.jsonl",
   "voice": {
     "name": "en-US-AndrewNeural",
@@ -10,51 +10,51 @@
   "segments": [
     {
       "in": 0,
-      "out": 35.77,
+      "out": 36.37,
       "speed": 1
     }
   ],
   "zooms": [
     {
-      "at": 4.51,
+      "at": 5.05,
       "dur": 2,
-      "x": 0.453,
-      "y": 0.553,
+      "x": 0.452,
+      "y": 0.508,
       "scale": 1.8
     },
     {
-      "at": 7.17,
+      "at": 7.7,
       "dur": 6.32,
-      "x": 0.314,
-      "y": 0.348,
+      "x": 0.311,
+      "y": 0.3,
       "scale": 1.8
     },
     {
-      "at": 13.75,
+      "at": 14.29,
       "dur": 2,
-      "x": 0.799,
-      "y": 0.178,
+      "x": 0.803,
+      "y": 0.126,
       "scale": 1.8
     },
     {
-      "at": 18.29,
+      "at": 18.84,
       "dur": 2,
-      "x": 0.856,
-      "y": 0.178,
+      "x": 0.861,
+      "y": 0.126,
       "scale": 1.8
     },
     {
-      "at": 22.82,
+      "at": 23.37,
       "dur": 2,
-      "x": 0.9,
-      "y": 0.178,
+      "x": 0.905,
+      "y": 0.126,
       "scale": 1.8
     },
     {
-      "at": 25.23,
+      "at": 25.78,
       "dur": 2,
       "x": 0.496,
-      "y": 0.601,
+      "y": 0.557,
       "scale": 1.8
     }
   ],
@@ -66,25 +66,25 @@
       "position": "bottom"
     },
     {
-      "at": 6.17,
+      "at": 6.69,
       "dur": 6,
       "text": "Install on Windows, macOS or Linux with one double-click\nتثبيت على ويندوز وماك ولينكس بدبل كليك واحدة",
       "position": "bottom"
     },
     {
-      "at": 15.22,
+      "at": 15.75,
       "dur": 4,
       "text": "Record, review, edit, render: all on your computer\nتسجيل، مراجعة، مونتاج، وفيديو جاهز… وكله على جهازك",
       "position": "bottom"
     },
     {
-      "at": 19.75,
+      "at": 20.3,
       "dur": 4,
       "text": "Works with Claude, Cursor, Codex and more, no API key\nبيشتغل مع Claude، Cursor، Codex وغيرهم… من غير API key",
       "position": "bottom"
     },
     {
-      "at": 25.68,
+      "at": 26.25,
       "dur": 5,
       "text": "A finished video, made end to end by ScreenPilot\nفيديو كامل اتعمل من الأول للآخر بـ ScreenPilot",
       "position": "bottom"
@@ -100,20 +100,10 @@
         "w": 0.9146,
         "h": 0.9148
       },
-      "label": "ScreenPilot - Brave",
+      "label": "ScreenPilot",
       "transition": "pan"
     }
   ],
-  "intro": {
-    "title": "ScreenPilot",
-    "subtitle": "Screen videos, made by your AI",
-    "dur": 2.5
-  },
-  "outro": {
-    "title": "Get ScreenPilot",
-    "subtitle": "Windows · macOS · Linux",
-    "dur": 3
-  },
   "theme": {
     "background": "radial-gradient(1100px 620px at 12% 8%, rgba(109,125,255,.38), transparent 60%), radial-gradient(900px 560px at 92% 95%, rgba(34,211,238,.28), transparent 62%), #0b1020",
     "padding": 0.06,
@@ -139,5 +129,15 @@
         "stagger": 0.12
       }
     }
+  },
+  "intro": {
+    "title": "ScreenPilot",
+    "subtitle": "Screen videos, made by your AI",
+    "dur": 2.5
+  },
+  "outro": {
+    "title": "Get ScreenPilot",
+    "subtitle": "Windows · macOS · Linux",
+    "dur": 3
   }
 }

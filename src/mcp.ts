@@ -115,7 +115,7 @@ const norm = z.number().min(0).max(1);
 // any agent knows the workflow without a client-specific skill.
 const INSTRUCTIONS = `${APP_TITLE} makes screen videos. Typical loops:
 1. User records: record_start (screens "all" or one), user works, record_stop → analyze (look at the contact sheet) → storyboard_init with suggest → edit the storyboard (narration lines, captions, highlights, zooms) → render quality "draft" → check_output frames → fix → render "delivery".
-2. You perform it: screenshot to see the monitors, windows to see apps, browser_open for websites; try the flow live with pointer_move/click/type_text; then write a take.json (take_schema) and call perform (it records, logs clicks/windows and writes a storyboard), add intro/outro/zooms, render.
+2. You perform it: screenshot to see the monitors, windows to see apps, browser_open for websites (app: true hides the address bar and tabs, so nothing about this machine shows); in take.json, file paths are relative to the take, so it runs on any machine; try the flow live with pointer_move/click/type_text; then write a take.json (take_schema) and call perform (it records, logs clicks/windows and writes a storyboard), add intro/outro/zooms, render.
 Design every video for its purpose; there is no house style. Before rendering, decide who it's for and where it will be shown, then set the storyboard to match: output size (1920x1080 for YouTube/README/slides, 1080x1920 for Reels/TikTok/Shorts, 1080x1080 for feeds), theme (background, padding, radius, accent, font, caption colors), theme.fonts (any Google Fonts), theme.css (your own CSS for captions, cards, highlights; storyboard_schema lists the classes) and text motion (theme.motion.captions / .cards, or motion per caption: in/out presets fade, rise, drop, slide-left, slide-right, pop, zoom, blur, wipe, words, lines, none; duration, any GSAP ease, stagger). Match the product's brand when you can see it (colors and type from its site or app). Pace and wording follow the audience: short punchy captions for social, calm explanatory ones for tutorials, bilingual lines ("English\nعربي") when asked. Defaults are only a fallback.
 Choose the shot the same way: which monitors to record (record_start screens / take "screens": one, several or "all") and what the camera shows: "window" follows the app in use (clean product demos), "screen" the whole monitor (OS-level how-tos, context matters), "all" every monitor side by side (work that spans screens, e.g. code on one and the app on the other). Switch per moment with view steps / storyboard views, and zoom only where detail matters.
 Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). The camera frames the window in use by default. Ask the user not to touch mouse/keyboard while you drive; touching them aborts. Run doctor first on a new machine.`;
@@ -498,13 +498,14 @@ server.registerTool(
     inputSchema: {
       screen: z.string().optional().describe("Monitor to put it on"),
       url: z.string().optional().describe("Page to open"),
+      app: z.boolean().optional().describe("App window without address bar and tabs, so recordings show only the page (restarts the demo browser when switching)"),
     },
   },
-  safe(async ({ screen, url }) => {
+  safe(async ({ screen, url, app }) => {
     const screens = await getScreens();
     const scr = screen ? screens.find((s) => s.name === screen) : undefined;
     if (screen && !scr) throw new Error(`Unknown monitor "${screen}" (have: ${screens.map((s) => s.name).join(", ")})`);
-    return text(await openBrowser({ screen: scr, url, log }));
+    return text(await openBrowser({ screen: scr, url, app, log }));
   }),
 );
 
