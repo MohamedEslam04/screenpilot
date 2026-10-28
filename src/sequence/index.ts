@@ -9,7 +9,7 @@ import { clipStoryboard } from "../storyboard/clip.js";
 import type { Storyboard } from "../storyboard/schema.js";
 import { probeVideo } from "../util/media.js";
 import { concatParts, type OutputSize, probePart, type Quality } from "./concat.js";
-import { type Sequence, SequenceSchema } from "./schema.js";
+import { type Sequence, SequenceSchema, type Transition } from "./schema.js";
 
 export interface LoadedSequence {
   seq: Sequence;
@@ -64,6 +64,8 @@ export interface PreparedPart {
   /** Changes whenever the derived storyboard or a file it uses changes. */
   key: string;
   sb: Storyboard;
+  /** How it enters from the previous part. */
+  transition?: Transition;
 }
 
 export interface PreparedSequence {
@@ -124,7 +126,8 @@ export async function prepareSequence(path: string, opts: { buildDir?: string } 
     await writeFile(storyboard, text);
     const stamps = await Promise.all([sb.source, sb.events, sb.music?.src].map(fileStamp));
     const key = createHash("sha1").update(`${text}|${stamps.join("|")}`).digest("hex");
-    parts.push({ index, dir, storyboard, output: join(dir, "part.mp4"), cacheDir: join(baseDir, CACHE_DIR), key, sb });
+    const { transition } = loaded.seq.parts[index]!;
+    parts.push({ index, dir, storyboard, output: join(dir, "part.mp4"), cacheDir: join(baseDir, CACHE_DIR), key, sb, transition });
   }
   return { path: loaded.path, buildDir, output, parts };
 }
@@ -174,7 +177,9 @@ export async function renderSequence(path: string, opts: SequenceRenderOptions =
     results.push({ storyboard: part.storyboard, output: part.output, duration: 0, cached, warnings });
   }
 
-  const media = await Promise.all(prepared.parts.map((p) => probePart(p.output)));
+  const media = await Promise.all(
+    prepared.parts.map(async (p) => ({ ...(await probePart(p.output)), transition: p.transition })),
+  );
   media.forEach((m, i) => (results[i]!.duration = m.duration));
   const base = prepared.path.slice(0, -extname(prepared.path).length);
   const output = resolve(opts.output ?? `${base}.mp4`);

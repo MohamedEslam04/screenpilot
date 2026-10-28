@@ -216,6 +216,101 @@ describe("buildConcatFilter", () => {
   });
 });
 
+describe("transitions between parts", () => {
+  const out = { width: 320, height: 180, fps: 30 };
+
+  it("cross-fades video and audio, timed on the real durations", () => {
+    const f = buildConcatFilter(
+      [
+        { duration: 2, hasAudio: true },
+        { duration: 3, hasAudio: true, transition: { type: "crossfade", dur: 0.5 } },
+      ],
+      out,
+    );
+    expect(f.filter).toContain("[v0][v1]xfade=transition=fade:duration=0.500:offset=1.500[vout]");
+    expect(f.filter).toContain("[a0][a1]acrossfade=d=0.500[aout]");
+    expect(f.overlaps).toEqual([0, 0.5]);
+    expect(f.duration).toBeCloseTo(4.5);
+  });
+
+  it("never lets a transition take more than half of either part", () => {
+    const f = buildConcatFilter(
+      [
+        { duration: 0.6, hasAudio: false },
+        { duration: 3, hasAudio: false, transition: { type: "fade-black", dur: 1 } },
+      ],
+      out,
+    );
+    expect(f.filter).toContain("xfade=transition=fadeblack:duration=0.300:offset=0.300");
+    expect(f.duration).toBeCloseTo(3.3);
+  });
+
+  it("mixes cuts and transitions, ignoring a transition on the first part", () => {
+    const f = buildConcatFilter(
+      [
+        { duration: 2, hasAudio: false, transition: { type: "crossfade", dur: 0.5 } },
+        { duration: 1, hasAudio: false, transition: { type: "cut", dur: 0.5 } },
+        { duration: 2, hasAudio: false, transition: { type: "wipe-left", dur: 0.4 } },
+      ],
+      out,
+    );
+    expect(f.filter).toContain("[v0][v1]concat=n=2:v=1:a=0[xv1]");
+    expect(f.filter).toContain("[xv1][v2]xfade=transition=wipeleft:duration=0.400:offset=2.600[vout]");
+    expect(f.overlaps).toEqual([0, 0, 0.4]);
+    expect(f.duration).toBeCloseTo(4.6);
+  });
+
+  it("maps every transition to an ffmpeg xfade", () => {
+    const names = ["wipe-right", "slide-left", "slide-right"] as const;
+    const graphs = names.map(
+      (type) =>
+        buildConcatFilter(
+          [
+            { duration: 2, hasAudio: false },
+            { duration: 2, hasAudio: false, transition: { type, dur: 0.5 } },
+          ],
+          out,
+        ).filter,
+    );
+    expect(graphs.map((g) => /transition=(\w+)/.exec(g)?.[1])).toEqual(["wiperight", "slideleft", "slideright"]);
+  });
+
+  it("joins real clips with overlaps (duration = sum - overlaps)", async () => {
+    const dir = await tempDir();
+    const media = await Promise.all(
+      [
+        makeVideo(join(dir, "a.mp4"), 2, { audio: true }),
+        makeVideo(join(dir, "b.mp4"), 1.5),
+        makeVideo(join(dir, "c.mp4"), 2, { audio: true }),
+      ].map(probePart),
+    );
+    const parts = [
+      media[0]!,
+      { ...media[1]!, transition: { type: "crossfade" as const, dur: 0.5 } },
+      { ...media[2]!, transition: { type: "slide-right" as const, dur: 0.5 } },
+    ];
+    const r = await concatParts(parts, join(dir, "out.mp4"), out, { workDir: dir, quality: "draft" });
+    expect(r.mode).toBe("encode");
+    const info = await probeVideo(r.output);
+    expect(info.hasAudio).toBe(true);
+    expect(info.duration).toBeCloseTo(5.5 - 1, 1);
+  });
+
+  it("re-encodes identical parts when a transition joins them", async () => {
+    const dir = await tempDir();
+    const [a, b] = await Promise.all([makeVideo(join(dir, "a.mp4"), 1), makeVideo(join(dir, "b.mp4"), 1)].map(probePart));
+    const r = await concatParts([a!, { ...b!, transition: { type: "crossfade", dur: 0.25 } }], join(dir, "out.mp4"), out, { workDir: dir });
+    expect(r.mode).toBe("encode");
+    expect((await probeVideo(r.output)).duration).toBeCloseTo(1.75, 1);
+  });
+
+  it("is part of the sequence schema with a 0.5 s default", () => {
+    const s = SequenceSchema.parse({ parts: [{ storyboard: "a.json" }, { storyboard: "b.json", transition: { type: "wipe-right" } }] });
+    expect(s.parts[1]!.transition).toEqual({ type: "wipe-right", dur: 0.5 });
+    expect(SequenceSchema.safeParse({ parts: [{ storyboard: "a.json", transition: { type: "spin" } }] }).success).toBe(false);
+  });
+});
+
 describe("concatParts (real ffmpeg)", () => {
   it("stream-copies identical parts", async () => {
     const dir = await tempDir();

@@ -3,9 +3,19 @@ import { z } from "zod";
 // A sequence joins several storyboards (each with its own recording) into one
 // video, in order. Paths are relative to the sequence file.
 
+export const TRANSITIONS = ["cut", "crossfade", "fade-black", "wipe-left", "wipe-right", "slide-left", "slide-right"] as const;
+
+export const TransitionSchema = z
+  .object({
+    type: z.enum(TRANSITIONS),
+    dur: z.number().positive().default(0.5).describe("Seconds the two parts overlap; at most half of either part"),
+  })
+  .describe("How this part enters from the previous one (ignored on the first part). Default: cut");
+
 export const PartSchema = z
   .object({
     storyboard: z.string().min(1).describe("Path to a storyboard.json, relative to the sequence file"),
+    transition: TransitionSchema.optional(),
     from: z.number().min(0).optional().describe("Source second this part starts at (default: the start)"),
     to: z
       .number()
@@ -36,6 +46,7 @@ export const SequenceSchema = z.object({
 
 export type Sequence = z.output<typeof SequenceSchema>;
 export type Part = z.output<typeof PartSchema>;
+export type Transition = z.output<typeof TransitionSchema>;
 
 export function sequenceJsonSchema(): unknown {
   return z.toJSONSchema(SequenceSchema, { io: "input" });
