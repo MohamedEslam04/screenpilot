@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { buildConcatFilter, concatParts, probePart } from "../src/sequence/concat.js";
 import { prepareSequence, validateSequence } from "../src/sequence/index.js";
 import { sequenceJsonSchema, SequenceSchema } from "../src/sequence/schema.js";
+import { prepareBuild } from "../src/render/index.js";
 import { StoryboardError } from "../src/storyboard/load.js";
 import { probeVideo } from "../src/util/media.js";
 import { makeVideo } from "./fixtures/video.js";
@@ -92,6 +93,81 @@ describe("prepareSequence", () => {
     const c = await prepareSequence(join(dir, "seq.json"));
     expect(c.parts[0]!.key).toBe(a.parts[0]!.key);
     expect(c.parts[1]!.key).not.toBe(a.parts[1]!.key);
+  });
+});
+
+describe("inserting a feature clip into a demo (from/to)", () => {
+  async function fixture() {
+    const dir = await tempDir();
+    makeVideo(join(dir, "demo.mp4"), 5, { audio: true });
+    await mkdir(join(dir, "feature"), { recursive: true });
+    makeVideo(join(dir, "feature/rec.mp4"), 1.5);
+    await writeJson(join(dir, "demo.json"), {
+      source: "demo.mp4",
+      keepSourceAudio: true,
+      output: { width: 320, height: 180, fps: 30 },
+      intro: { title: "Demo", dur: 1 },
+      outro: { title: "Thanks", dur: 1 },
+      captions: [
+        { at: 1, dur: 1.8, text: "before" },
+        { at: 3, text: "after" },
+      ],
+    });
+    await writeJson(join(dir, "feature/feature.json"), { source: "rec.mp4", captions: [{ at: 0.2, text: "new" }] });
+    await writeJson(join(dir, "seq.json"), {
+      parts: [{ storyboard: "demo.json", to: 2.5 }, { storyboard: "feature/feature.json" }, { storyboard: "demo.json", from: 2.5 }],
+    });
+    return dir;
+  }
+
+  it("splits the same storyboard around the inserted part", async () => {
+    const dir = await fixture();
+    const p = await prepareSequence(join(dir, "seq.json"));
+    const [a, f, b] = p.parts.map((x) => x.sb);
+    expect(a!.segments).toEqual([{ in: 0, out: 2.5, speed: 1 }]);
+    expect(b!.segments).toEqual([{ in: 2.5, out: 5, speed: 1 }]);
+    expect(a!.captions.map((c) => [c.text, c.at, c.dur])).toEqual([["before", 1, 1.5]]);
+    expect(b!.captions.map((c) => [c.text, c.at, c.dur])).toEqual([["after", 3, 3]]);
+    expect(f!.segments).toEqual([]);
+    expect([a!.intro?.title, f!.intro, b!.intro]).toEqual(["Demo", undefined, undefined]);
+    expect([a!.outro, f!.outro, b!.outro?.title]).toEqual([undefined, undefined, "Thanks"]);
+    expect(new Set(p.parts.map((x) => x.dir)).size).toBe(3);
+    expect(p.parts[0]!.key).not.toBe(p.parts[2]!.key);
+  });
+
+  it("cuts each part and joins them in order (prepared builds + real ffmpeg join)", async () => {
+    const dir = await fixture();
+    const p = await prepareSequence(join(dir, "seq.json"));
+    const builds = [];
+    for (const part of p.parts) builds.push(await prepareBuild(part.storyboard, { buildDir: join(part.dir, "build"), cacheDir: part.cacheDir }));
+    expect(builds.map((b) => b.plan.duration)).toEqual([3.5, 1.5, 3.5]);
+    const edited = await Promise.all(builds.map((b) => probePart(join(b.buildDir, "edited.mp4"))));
+    expect(edited.map((e) => Math.round(e.duration * 10) / 10)).toEqual([2.5, 1.5, 2.5]);
+    expect(edited.map((e) => e.hasAudio)).toEqual([true, false, true]);
+    const r = await concatParts(edited, join(dir, "out.mp4"), p.output, { workDir: p.buildDir, quality: "draft" });
+    expect(r.mode).toBe("encode");
+    const info = await probeVideo(r.output);
+    expect(info.hasAudio).toBe(true);
+    expect(info.duration).toBeCloseTo(6.5, 1);
+  });
+
+  it("validates ranges against the recording", async () => {
+    const dir = await fixture();
+    await writeJson(join(dir, "seq.json"), {
+      parts: [
+        { storyboard: "demo.json", to: 9 },
+        { storyboard: "demo.json", from: 7 },
+      ],
+    });
+    const err = await validateSequence(join(dir, "seq.json")).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(StoryboardError);
+    expect((err as StoryboardError).issues.join("\n")).toMatch(/parts\[1\].*keeps nothing/);
+    await writeJson(join(dir, "seq.json"), { parts: [{ storyboard: "demo.json", to: 9 }] });
+    expect((await validateSequence(join(dir, "seq.json"))).warnings.join("\n")).toMatch(/parts\[0\].*to 9s is past the end/);
+  });
+
+  it("rejects to <= from in the schema", () => {
+    expect(SequenceSchema.safeParse({ parts: [{ storyboard: "a.json", from: 3, to: 2 }] }).success).toBe(false);
   });
 });
 

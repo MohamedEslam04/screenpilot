@@ -5,6 +5,7 @@ import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path
 import { CACHE_DIR } from "../brand.js";
 import { renderStoryboard } from "../render/index.js";
 import { lintStoryboard, loadStoryboard, StoryboardError } from "../storyboard/load.js";
+import { clipStoryboard } from "../storyboard/clip.js";
 import type { Storyboard } from "../storyboard/schema.js";
 import { probeVideo } from "../util/media.js";
 import { concatParts, type OutputSize, probePart, type Quality } from "./concat.js";
@@ -72,6 +73,18 @@ export interface PreparedSequence {
   parts: PreparedPart[];
 }
 
+/** The part's source range of its storyboard (the whole storyboard without from/to). */
+async function clipPart(loaded: LoadedSequence, index: number, sb: Storyboard, baseDir: string): Promise<Storyboard> {
+  const { from, to, storyboard } = loaded.seq.parts[index]!;
+  if (from === undefined && to === undefined) return sb;
+  const { duration } = await probeVideo(resolve(baseDir, sb.source));
+  try {
+    return clipStoryboard(sb, { from, to }, duration);
+  } catch (err) {
+    throw new StoryboardError(`Invalid sequence ${loaded.path}`, [`parts[${index}] (${storyboard}): ${(err as Error).message}`]);
+  }
+}
+
 const abs = (baseDir: string, p: string) => (isAbsolute(p) ? p : resolve(baseDir, p));
 
 async function fileStamp(file: string | undefined): Promise<string> {
@@ -93,7 +106,8 @@ export async function prepareSequence(path: string, opts: { buildDir?: string } 
   const last = storyboards.length - 1;
 
   const parts: PreparedPart[] = [];
-  for (const [index, { sb: original, baseDir }] of storyboards.entries()) {
+  for (const [index, { sb: loadedSb, baseDir }] of storyboards.entries()) {
+    const original = await clipPart(loaded, index, loadedSb, baseDir);
     const sb: Storyboard = {
       ...original,
       source: abs(baseDir, original.source),
@@ -174,11 +188,25 @@ export async function validateSequence(path: string): Promise<{ valid: true; war
   const loaded = await loadSequence(path);
   const storyboards = await loadParts(loaded);
   const warnings: string[] = [];
+  const issues: string[] = [];
   for (const [i, { sb, baseDir }] of storyboards.entries()) {
-    const label = `parts[${i}] (${loaded.seq.parts[i]!.storyboard})`;
+    const { storyboard, to } = loaded.seq.parts[i]!;
+    const label = `parts[${i}] (${storyboard})`;
     const src = resolve(baseDir, sb.source);
-    const found = existsSync(src) ? lintStoryboard(sb, (await probeVideo(src)).duration) : [`source not found: ${src}`];
-    warnings.push(...found.map((w) => `${label}: ${w}`));
+    if (!existsSync(src)) {
+      warnings.push(`${label}: source not found: ${src}`);
+      continue;
+    }
+    const { duration } = await probeVideo(src);
+    warnings.push(...lintStoryboard(sb, duration).map((w) => `${label}: ${w}`));
+    if (to !== undefined && to > duration + 0.01) warnings.push(`${label}: to ${to}s is past the end of the source (${duration.toFixed(2)}s)`);
+    try {
+      await clipPart(loaded, i, sb, baseDir);
+    } catch (err) {
+      if (!(err instanceof StoryboardError)) throw err;
+      issues.push(...err.issues);
+    }
   }
+  if (issues.length) throw new StoryboardError(`Invalid sequence ${loaded.path}`, issues);
   return { valid: true, warnings };
 }
