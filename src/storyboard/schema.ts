@@ -13,6 +13,8 @@ export const SegmentSchema = z
     in: time.describe("Source start (s)"),
     out: time.describe("Source end (s)"),
     speed: z.number().min(0.25).max(16).default(1).describe("Playback speed; >1 fast-forwards boring parts"),
+    volume: z.number().min(0).max(4).optional().describe("Source audio level of this segment (default 1); needs keepSourceAudio"),
+    mute: z.boolean().optional().describe("Silence this segment's source audio (same as volume 0)"),
   })
   .refine((s) => s.out > s.in, { message: "segment.out must be greater than segment.in" });
 
@@ -166,9 +168,16 @@ export const OutputSchema = z.object({
   fps: z.number().int().min(1).max(120).default(30),
 });
 
+export const DuckSchema = z.object({
+  amount: z.number().min(0).max(1).default(0.6).describe("How much quieter the music gets while someone speaks (0.6 = 60% lower)"),
+  attack: z.number().min(0).max(5).default(0.2).describe("Seconds the music takes to go down, finishing as the line starts"),
+  release: z.number().min(0).max(5).default(0.5).describe("Seconds the music takes to come back after the line"),
+});
+
 export const MusicSchema = z.object({
   src: z.string(),
   volume: z.number().min(0).max(1).default(0.12),
+  duck: DuckSchema.optional().describe("Lower the music under narration"),
 });
 
 export const StoryboardSchema = z.object({

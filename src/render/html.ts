@@ -135,6 +135,15 @@ export function renderHtml(plan: RenderPlan, opts: { gsapSrc: string }): string 
     );
   }
 
+  // Music ducking: HyperFrames samples an audio element's volume from the timeline.
+  plan.audio.forEach((a, i) => {
+    for (const d of a.duck ?? []) {
+      js.push(
+        `tl.fromTo("#au${i}", { volume: ${n(d.from)} }, { volume: ${n(d.to)}, duration: ${n(d.dur)}, ease: "none", immediateRender: false }, ${n(d.t)});`,
+      );
+    }
+  });
+
   const audioEls = plan.audio.map(
     (a, i) =>
       `<audio id="au${i}" ${timed(a.start, a.start + a.duration)} data-volume="${n(a.volume)}"` +

@@ -1,6 +1,7 @@
 import type { Motion, Overlay, Storyboard, Theme, View } from "../storyboard/schema.js";
 import type { Timeline } from "../storyboard/timeline.js";
 import type { VoiceClip } from "../voice/index.js";
+import { type DuckTween, planDuck } from "./duck.js";
 import { type CamTween, FULL, planCamera, planViewCamera, type Rect, type ViewSpan, type ZoomSpan } from "./zoom.js";
 
 // Everything the HTML generator needs, already in OUTPUT seconds.
@@ -46,6 +47,8 @@ export interface AudioItem {
   volume: number;
   fadeIn?: number;
   fadeOut?: number;
+  /** Volume ramps (output seconds) that duck this item under the narration. */
+  duck?: DuckTween[];
 }
 
 export interface CardItem {
@@ -196,7 +199,14 @@ export function buildPlan(input: PlanInput): RenderPlan {
     }
   }
   if (input.musicSrc && sb.music) {
-    audio.push({ src: input.musicSrc, start: 0, duration, volume: sb.music.volume, fadeIn: 1, fadeOut: 2 });
+    const item: AudioItem = { src: input.musicSrc, start: 0, duration, volume: sb.music.volume, fadeIn: 1, fadeOut: 2 };
+    if (sb.music.duck) {
+      // Duck under the narration only; overlay sound is not part of this list yet.
+      const voice = audio.map((a) => ({ start: a.start, end: a.start + a.duration }));
+      const duck = planDuck(voice, sb.music.volume, sb.music.duck, duration);
+      if (duck.length > 0) item.duck = duck;
+    }
+    audio.push(item);
   }
 
   const overlays: OverlayItem[] = [];

@@ -85,6 +85,9 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
 
   // 3. Cut the recording (cached on source + pieces).
   const keepAudio = sb.keepSourceAudio && source.hasAudio;
+  if (!keepAudio && sb.segments.some((s) => s.mute || (s.volume !== undefined && s.volume !== 1))) {
+    warnings.push("segment volume/mute has no effect: the source audio is not kept (set keepSourceAudio: true and use a recording with sound)");
+  }
   await cutVideo(sourcePath, buildDir, timeline, sb, source, keepAudio, log);
 
   // 4. Events → click ripples.

@@ -10,6 +10,8 @@ export interface PlayPiece {
   in: number;
   out: number;
   speed: number;
+  /** Source audio gain for this piece (1 = untouched, 0 = silent). */
+  volume: number;
   outStart: number;
   outEnd: number;
 }
@@ -110,10 +112,18 @@ export function buildTimeline({ segments, holds, sourceDuration, offset = 0 }: T
   const pieces: Piece[] = [];
   let cursorOut = 0;
 
-  const pushPlay = (from: number, to: number, speed: number) => {
+  const pushPlay = (from: number, to: number, seg: Segment) => {
     if (to - from < EPS) return;
-    const len = (to - from) / speed;
-    pieces.push({ kind: "play", in: from, out: to, speed, outStart: cursorOut, outEnd: cursorOut + len });
+    const len = (to - from) / seg.speed;
+    pieces.push({
+      kind: "play",
+      in: from,
+      out: to,
+      speed: seg.speed,
+      volume: seg.mute ? 0 : (seg.volume ?? 1),
+      outStart: cursorOut,
+      outEnd: cursorOut + len,
+    });
     cursorOut += len;
   };
 
@@ -124,7 +134,7 @@ export function buildTimeline({ segments, holds, sourceDuration, offset = 0 }: T
     let cursor = seg.in;
     for (const h of inside) {
       used.add(h.i);
-      pushPlay(cursor, h.at, seg.speed);
+      pushPlay(cursor, h.at, seg);
       pieces.push({
         kind: "hold",
         at: h.at,
@@ -136,7 +146,7 @@ export function buildTimeline({ segments, holds, sourceDuration, offset = 0 }: T
       cursorOut += h.dur;
       cursor = Math.max(cursor, h.at);
     }
-    pushPlay(cursor, seg.out, seg.speed);
+    pushPlay(cursor, seg.out, seg);
   }
 
   const ignored = pending.filter((h) => !used.has(h.i)).map(({ i: _i, ...h }) => h);
