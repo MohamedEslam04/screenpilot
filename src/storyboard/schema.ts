@@ -180,8 +180,18 @@ export const MusicSchema = z.object({
   duck: DuckSchema.optional().describe("Lower the music under narration"),
 });
 
+/** Keys a storyboard takes from the one it `extends` (deep-merged, the child wins). */
+export const INHERITED_KEYS = ["theme", "voice", "output", "music", "keepSourceAudio"] as const;
+
 export const StoryboardSchema = z.object({
   version: z.literal(1).default(1),
+  extends: z
+    .string()
+    .optional()
+    .describe(
+      `Base storyboard to share the look with, relative to this file (it may extend another). Only ${INHERITED_KEYS.join(", ")} are inherited, ` +
+        "deep-merged with this file winning; source, segments, zooms, captions and the rest are never inherited",
+    ),
   source: z.string().describe("Path to the raw recording, relative to the storyboard file"),
   events: z.string().optional().describe(`events.jsonl from \`${APP} record\`, relative path`),
   keepSourceAudio: z.boolean().default(false),

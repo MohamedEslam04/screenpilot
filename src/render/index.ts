@@ -28,6 +28,8 @@ export interface PrepareOptions {
   window?: Window;
   /** Override the storyboard's output size (multi-format export); fps is kept. */
   size?: { width: number; height: number };
+  /** Voice cache. Default: CACHE_DIR next to the storyboard */
+  cacheDir?: string;
   log?: (msg: string) => void;
 }
 
@@ -57,7 +59,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   const clips = await synthesizeLines(
     sb.voice.provider,
     sb.narration.map((l) => ({ text: l.text, voice: l.voice ?? sb.voice.name, rate: sb.voice.rate })),
-    join(baseDir, CACHE_DIR, "voice"),
+    join(opts.cacheDir ?? join(baseDir, CACHE_DIR), "voice"),
   );
   const narration = await Promise.all(
     sb.narration.map(async (l, i) => {
