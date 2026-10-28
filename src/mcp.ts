@@ -18,6 +18,7 @@ import type { ScreenInfo } from "./record/input/types.js";
 import { type ActiveRecording, startRecording } from "./record/index.js";
 import { remapSession } from "./record/remap.js";
 import { prepareBuild, renderStoryboard, startPreview } from "./render/index.js";
+import { parseWindow } from "./render/window.js";
 import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/load.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { type PerformResult, performTake, resolveTarget, TakeError } from "./take/perform.js";
@@ -291,15 +292,18 @@ server.registerTool(
     description:
       "Render a storyboard to MP4. Narration never overlaps: when a voice line is longer than its slot the video auto-freezes (see autoHolds in the result). " +
       'Use quality "draft" while iterating (fast), "looks" for a normal render, "delivery" only for the final file. ' +
+      "Pass from/to (OUTPUT seconds) to re-render only that window for a fast review; the file is named <storyboard>.part-<from>-<to>.mp4. " +
       "Slow (minutes). Follow with check_output to review the result.",
     inputSchema: {
       storyboard: z.string().describe("Path to storyboard.json"),
       output: z.string().optional().describe("Output mp4. Default: <storyboard>.mp4"),
       quality: z.enum(["draft", "looks", "delivery"]).optional().describe("Default looks"),
+      from: z.number().min(0).optional().describe("Partial render: start, in OUTPUT seconds"),
+      to: z.number().min(0).optional().describe("Partial render: end, in OUTPUT seconds"),
     },
   },
-  safe(async ({ storyboard, output, quality }) => {
-    const r = await renderStoryboard(storyboard, { output, quality, log });
+  safe(async ({ storyboard, output, quality, from, to }) => {
+    const r = await renderStoryboard(storyboard, { output, quality, window: parseWindow(from, to), log });
     return text({ output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
   }),
 );

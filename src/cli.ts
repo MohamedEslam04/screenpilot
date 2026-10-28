@@ -16,6 +16,7 @@ import type { ScreenInfo } from "./record/input/types.js";
 import { performTake, TakeError } from "./take/perform.js";
 import { takeJsonSchema } from "./take/schema.js";
 import { prepareBuild, renderStoryboard, startPreview } from "./render/index.js";
+import { parseWindow } from "./render/window.js";
 import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/load.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { probeVideo } from "./util/media.js";
@@ -348,9 +349,11 @@ program
   .option("-q, --quality <q>", "draft | looks | delivery", "looks")
   .option("--png-frames", "Lossless source frames: sharper UI text, slower")
   .option("--workers <n>", "Parallel renderers (each is a headless Chrome)", "2")
+  .option("--from <s>", "Render only from this OUTPUT second (fast review; writes <storyboard>.part-<from>-<to>.mp4)", Number)
+  .option("--to <s>", "Render only up to this OUTPUT second", Number)
   .option("--build-dir <dir>")
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers: string }) => {
-    const r = await renderStoryboard(path, { ...o, workers: Number(o.workers), log });
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers: string; from?: number; to?: number }) => {
+    const r = await renderStoryboard(path, { ...o, workers: Number(o.workers), window: parseWindow(o.from, o.to), log });
     print({ output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
   });
 

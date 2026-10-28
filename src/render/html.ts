@@ -20,6 +20,7 @@ const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const n = (v: number) => String(Math.round(v * 1000) / 1000);
 const timed = (start: number, end: number) => `data-start="${n(start)}" data-duration="${n(Math.max(0.04, end - start))}"`;
+const mediaStart = (s?: number) => (s ? ` data-media-start="${n(s)}"` : "");
 
 export function renderHtml(plan: RenderPlan, opts: { gsapSrc: string }): string {
   const { width: W, height: H, frame, theme, cam } = plan;
@@ -117,7 +118,7 @@ export function renderHtml(plan: RenderPlan, opts: { gsapSrc: string }): string 
 
   const audioEls = plan.audio.map(
     (a, i) =>
-      `<audio id="au${i}" ${timed(a.start, a.start + a.duration)} data-volume="${n(a.volume)}"` +
+      `<audio id="au${i}" ${timed(a.start, a.start + a.duration)} data-volume="${n(a.volume)}"${mediaStart(a.mediaStart)}` +
       `${a.fadeIn ? ` data-fade-in="${n(a.fadeIn)}"` : ""}${a.fadeOut ? ` data-fade-out="${n(a.fadeOut)}"` : ""} src="${esc(a.src)}"></audio>`,
   );
 
@@ -177,7 +178,7 @@ ${theme.css.trim() ? `<style id="theme-css">\n${theme.css.replace(/<\/style/gi, 
 <div id="root" data-composition-id="${COMPOSITION_ID}" data-start="0" data-duration="${n(plan.duration)}" data-width="${W}" data-height="${H}" data-fps="${plan.fps}">
 <div id="frame">
 <div id="cam">
-<video id="rec" class="clip" ${timed(v.start, videoEnd)} src="${esc(v.src)}" ${videoAttrs} playsinline></video>
+<video id="rec" class="clip" ${timed(v.start, videoEnd)}${mediaStart(v.mediaStart)} src="${esc(v.src)}" ${videoAttrs} playsinline></video>
 ${camEls.join("\n")}
 </div>
 </div>

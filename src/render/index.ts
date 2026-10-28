@@ -14,6 +14,7 @@ import { synthesizeLines } from "../voice/index.js";
 import { buildCutArgs, buildCutFilter } from "./cut.js";
 import { renderHtml } from "./html.js";
 import { buildPlan, type RenderPlan } from "./plan.js";
+import { partSuffix, type Window, windowPlan } from "./window.js";
 import { CACHE_DIR } from "../brand.js";
 
 const require = createRequire(import.meta.url);
@@ -21,6 +22,8 @@ const require = createRequire(import.meta.url);
 export interface PrepareOptions {
   /** Where the HyperFrames project goes. Default: <storyboard dir>/<name>.build */
   buildDir?: string;
+  /** Build only this window (output seconds) for a fast review render. */
+  window?: Window;
   log?: (msg: string) => void;
 }
 
@@ -41,7 +44,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   const source = await probeVideo(sourcePath);
   const warnings = lintStoryboard(sb, source.duration);
 
-  const buildDir = resolve(opts.buildDir ?? join(baseDir, `${basename(path, extname(path))}.build`));
+  const buildDir = resolve(opts.buildDir ?? join(baseDir, `${basename(path, extname(path))}${opts.window ? partSuffix(opts.window) : ""}.build`));
   await mkdir(join(buildDir, "voice"), { recursive: true });
 
   // 1. Voice: real durations decide the pacing.
@@ -98,7 +101,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   }
 
   // 6. Composition.
-  const plan = buildPlan({
+  const fullPlan = buildPlan({
     sb,
     timeline,
     editedSrc: "edited.mp4",
@@ -108,6 +111,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     clicks,
     musicSrc,
   });
+  const plan = opts.window ? windowPlan(fullPlan, opts.window) : fullPlan;
   await copyFile(require.resolve("gsap/dist/gsap.min.js"), join(buildDir, "gsap.min.js"));
   await writeFile(join(buildDir, "index.html"), renderHtml(plan, { gsapSrc: "gsap.min.js" }));
   await writeFile(
@@ -183,7 +187,8 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
   const log = opts.log ?? (() => {});
   const prepared = await prepareBuild(storyboardPath, opts);
   const output = resolve(
-    opts.output ?? join(dirname(resolve(storyboardPath)), `${basename(storyboardPath, extname(storyboardPath))}.mp4`),
+    opts.output ??
+      join(dirname(resolve(storyboardPath)), `${basename(storyboardPath, extname(storyboardPath))}${opts.window ? partSuffix(opts.window) : ""}.mp4`),
   );
   await mkdir(dirname(output), { recursive: true });
   log(`render: ${output} (${opts.quality ?? "looks"})`);
