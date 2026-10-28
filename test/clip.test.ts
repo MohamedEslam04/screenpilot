@@ -113,3 +113,50 @@ describe("clipStoryboard", () => {
     expect(() => clipStoryboard(sb, { from: 30, to: 20 }, 60)).toThrow(/from/);
   });
 });
+
+describe("clipStoryboard cards and overlays", () => {
+  const rich = StoryboardSchema.parse({
+    source: "rec.mp4",
+    cards: [
+      { at: 10, title: "one" },
+      { at: 42, title: "two" },
+      { at: 55, title: "three" },
+    ],
+    overlays: [
+      { x: 0.1, y: 0.1, w: 0.2, h: 0.2, src: "logo.png" },
+      { x: 0.1, y: 0.1, w: 0.2, h: 0.2, src: "early.png", at: 5, dur: 4 },
+      { x: 0.1, y: 0.1, w: 0.2, h: 0.2, src: "straddle.png", at: 40, dur: 6 },
+      { x: 0.1, y: 0.1, w: 0.2, h: 0.2, src: "open.png", at: 38 },
+      { x: 0.1, y: 0.1, w: 0.2, h: 0.2, src: "late.png", at: 50, dur: 2 },
+    ],
+  });
+  const first = clipStoryboard(rich, { to: 42 }, 60);
+  const second = clipStoryboard(rich, { from: 42 }, 60);
+
+  it("splits cards at the boundary, each once", () => {
+    expect(first.cards.map((c) => c.title)).toEqual(["one"]);
+    expect(second.cards.map((c) => c.title)).toEqual(["two", "three"]);
+  });
+
+  it("keeps whole-video overlays in every slice", () => {
+    expect(first.overlays.some((o) => o.src === "logo.png")).toBe(true);
+    expect(second.overlays.some((o) => o.src === "logo.png")).toBe(true);
+  });
+
+  it("cuts a straddling overlay to each side", () => {
+    expect(first.overlays.find((o) => o.src === "straddle.png")).toMatchObject({ at: 40, dur: 2 });
+    expect(second.overlays.find((o) => o.src === "straddle.png")).toMatchObject({ at: 42, dur: 4 });
+  });
+
+  it("drops overlays that fall outside the slice", () => {
+    expect(second.overlays.map((o) => o.src)).not.toContain("early.png");
+    expect(first.overlays.map((o) => o.src)).not.toContain("late.png");
+  });
+
+  it("re-times an open-ended overlay that started earlier", () => {
+    const o = second.overlays.find((x) => x.src === "open.png")!;
+    expect(o.at).toBe(42);
+    expect(o.dur).toBeUndefined();
+    expect(first.overlays.find((x) => x.src === "open.png")).toMatchObject({ at: 38 });
+  });
+});

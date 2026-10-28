@@ -43,6 +43,7 @@ describe("prepareSequence", () => {
       output: { width: 1280, height: 720, fps: 25 },
       intro: { title: "Demo" },
       outro: { title: "Thanks" },
+      overlays: [{ src: "logo.png", x: 0.8, y: 0.05, w: 0.15, h: 0.1 }],
     });
     await writeJson(join(dir, "feature/feature.json"), {
       source: "rec.mp4",
@@ -70,6 +71,7 @@ describe("prepareSequence", () => {
     expect(derived.map((d) => d.outro?.title)).toEqual([undefined, undefined, "Thanks"]);
     expect(derived[1].source).toBe(join(dir, "feature/rec.mp4"));
     expect(derived[0].events).toBe(join(dir, "events.jsonl"));
+    expect(derived[0].overlays[0].src).toBe(join(dir, "logo.png"));
     expect(p.parts[1]!.cacheDir).toBe(join(dir, "feature", ".screenpilot-cache"));
     // The user's files are untouched.
     expect(await readFile(join(dir, "demo.json"), "utf8")).toBe(before);

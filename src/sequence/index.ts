@@ -115,6 +115,7 @@ export async function prepareSequence(path: string, opts: { buildDir?: string } 
       source: abs(baseDir, original.source),
       events: original.events === undefined ? undefined : abs(baseDir, original.events),
       music: original.music && { ...original.music, src: abs(baseDir, original.music.src) },
+      overlays: original.overlays.map((o) => ({ ...o, src: abs(baseDir, o.src) })),
       output,
       intro: index === 0 ? original.intro : undefined,
       outro: index === last ? original.outro : undefined,
@@ -124,7 +125,7 @@ export async function prepareSequence(path: string, opts: { buildDir?: string } 
     const storyboard = join(dir, "storyboard.json");
     const text = JSON.stringify(sb, null, 2);
     await writeFile(storyboard, text);
-    const stamps = await Promise.all([sb.source, sb.events, sb.music?.src].map(fileStamp));
+    const stamps = await Promise.all([sb.source, sb.events, sb.music?.src, ...sb.overlays.map((o) => o.src)].map(fileStamp));
     const key = createHash("sha1").update(`${text}|${stamps.join("|")}`).digest("hex");
     const { transition } = loaded.seq.parts[index]!;
     parts.push({ index, dir, storyboard, output: join(dir, "part.mp4"), cacheDir: join(baseDir, CACHE_DIR), key, sb, transition });

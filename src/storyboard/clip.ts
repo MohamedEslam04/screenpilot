@@ -10,6 +10,9 @@ import { normalizeSegments } from "./timeline.js";
 // - zooms, captions and highlights are cut to the range: one that started
 //   before `from` and still runs then is re-timed to start at `from`, one that
 //   runs past `to` ends there. If less than MIN_SPAN of it is left, it is dropped.
+// - cards are kept like holds (by their `at`). Overlays with an `at` are cut to
+//   the range like zooms (an open-ended one just starts at `from`); overlays
+//   without an `at` (whole video, or `dur` only) are kept in every slice.
 // - The camera starts where it was: the last view before `from` moves to `from`.
 // - Click ripples need nothing: the timeline drops clicks outside the segments.
 
@@ -39,6 +42,14 @@ export function clipStoryboard(sb: Storyboard, range: { from?: number; to?: numb
       return stop - start >= MIN_SPAN - EPS ? [{ ...item, at: start, dur: round(stop - start) }] : [];
     });
 
+  const overlays = sb.overlays.flatMap((o) => {
+    if (o.at === undefined) return [o];
+    const start = Math.max(o.at, from);
+    const stop = o.dur === undefined ? Infinity : Math.min(o.at + o.dur, to);
+    if (!inRange(start) || (o.dur !== undefined && stop - start < MIN_SPAN - EPS)) return [];
+    return [{ ...o, at: start, ...(o.dur === undefined ? {} : { dur: round(toEnd ? o.at + o.dur - start : stop - start) }) }];
+  });
+
   const views = [...sb.views].sort((a, b) => a.at - b.at);
   const kept = views.filter((v) => inRange(v.at));
   const before = views.filter((v) => v.at < from - EPS).at(-1);
@@ -48,6 +59,8 @@ export function clipStoryboard(sb: Storyboard, range: { from?: number; to?: numb
     ...sb,
     segments,
     holds: sb.holds.filter((h) => inRange(h.at)),
+    cards: sb.cards.filter((c) => inRange(c.at)),
+    overlays,
     zooms: clipSpan(sb.zooms),
     captions: clipSpan(sb.captions),
     highlights: clipSpan(sb.highlights),
