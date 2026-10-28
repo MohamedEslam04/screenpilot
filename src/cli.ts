@@ -18,6 +18,8 @@ import { takeJsonSchema } from "./take/schema.js";
 import { prepareBuild, renderStoryboard, startPreview } from "./render/index.js";
 import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/load.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
+import { renderSequence, validateSequence } from "./sequence/index.js";
+import { sequenceJsonSchema } from "./sequence/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider } from "./voice/index.js";
 import { APP, APP_TITLE, VERSION } from "./brand.js";
@@ -352,6 +354,34 @@ program
   .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers: string }) => {
     const r = await renderStoryboard(path, { ...o, workers: Number(o.workers), log });
     print({ output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
+  });
+
+program
+  .command("sequence")
+  .description("Render several storyboards (each with its own recording) and join them into one MP4")
+  .argument("<sequence>", "sequence.json")
+  .option("-o, --output <file>", "Output video (default: <sequence>.mp4)")
+  .option("-q, --quality <q>", "draft | looks | delivery", "looks")
+  .option("--png-frames", "Lossless source frames: sharper UI text, slower")
+  .option("--workers <n>", "Parallel renderers (each is a headless Chrome)", "2")
+  .option("--build-dir <dir>")
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers: string }) => {
+    print(await renderSequence(path, { ...o, workers: Number(o.workers), log }));
+  });
+
+program
+  .command("sequence-validate")
+  .description("Check a sequence.json and every storyboard it uses")
+  .argument("<sequence>")
+  .action(async (path: string) => {
+    print(await validateSequence(path));
+  });
+
+program
+  .command("sequence-schema")
+  .description("Print the sequence.json JSON Schema")
+  .action(() => {
+    print(sequenceJsonSchema());
   });
 
 program

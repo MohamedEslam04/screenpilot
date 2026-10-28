@@ -20,6 +20,8 @@ import { remapSession } from "./record/remap.js";
 import { prepareBuild, renderStoryboard, startPreview } from "./render/index.js";
 import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/load.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
+import { renderSequence, validateSequence } from "./sequence/index.js";
+import { sequenceJsonSchema } from "./sequence/schema.js";
 import { type PerformResult, performTake, resolveTarget, TakeError } from "./take/perform.js";
 import { TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
@@ -302,6 +304,46 @@ server.registerTool(
     const r = await renderStoryboard(storyboard, { output, quality, log });
     return text({ output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
   }),
+);
+
+server.registerTool(
+  "sequence_schema",
+  {
+    description:
+      "JSON Schema of sequence.json: several storyboards (each with its own recording) joined into one video, e.g. to insert a feature clip into an existing demo without re-recording it.",
+  },
+  safe(async () => text(sequenceJsonSchema())),
+);
+
+server.registerTool(
+  "sequence_validate",
+  {
+    description: "Validate a sequence.json and every storyboard it uses. Returns schema errors and lint warnings as text (never throws).",
+    inputSchema: { path: z.string().describe("Path to sequence.json") },
+  },
+  safe(async ({ path }) => {
+    try {
+      return text(await validateSequence(path));
+    } catch (err) {
+      if (err instanceof StoryboardError) return text({ valid: false, issues: err.issues });
+      throw err;
+    }
+  }),
+);
+
+server.registerTool(
+  "sequence_render",
+  {
+    description:
+      "Render a sequence.json: each part is rendered like a storyboard (unchanged parts are reused), all at one output size, " +
+      "with the intro of the first part and the outro of the last, then joined into one MP4. Slow (minutes). Follow with check_output.",
+    inputSchema: {
+      sequence: z.string().describe("Path to sequence.json"),
+      output: z.string().optional().describe("Output mp4. Default: <sequence>.mp4"),
+      quality: z.enum(["draft", "looks", "delivery"]).optional().describe("Default looks"),
+    },
+  },
+  safe(async ({ sequence, output, quality }) => text(await renderSequence(sequence, { output, quality, log }))),
 );
 
 server.registerTool(

@@ -20,6 +20,8 @@ const require = createRequire(import.meta.url);
 export interface PrepareOptions {
   /** Where the HyperFrames project goes. Default: <storyboard dir>/<name>.build */
   buildDir?: string;
+  /** Voice cache. Default: CACHE_DIR next to the storyboard */
+  cacheDir?: string;
   log?: (msg: string) => void;
 }
 
@@ -48,7 +50,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   const clips = await synthesizeLines(
     sb.voice.provider,
     sb.narration.map((l) => ({ text: l.text, voice: l.voice ?? sb.voice.name, rate: sb.voice.rate })),
-    join(baseDir, CACHE_DIR, "voice"),
+    join(opts.cacheDir ?? join(baseDir, CACHE_DIR), "voice"),
   );
   const narration = await Promise.all(
     sb.narration.map(async (l, i) => {
