@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-copy="Copy" data-copied="Copied">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCP tools · ScreenPilot</title>
+<meta name="description" content="The tools ScreenPilot gives an AI app, grouped by job: recording, footage, storyboard, render, desktop control and diagnostics.">
+<link rel="canonical" href="https://mohamedeslam04.github.io/screenpilot/guide/tools.html">
+<link rel="alternate" hreflang="en" href="https://mohamedeslam04.github.io/screenpilot/guide/tools.html">
+<link rel="alternate" hreflang="ar" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/tools.html">
+<link rel="alternate" hreflang="x-default" href="https://mohamedeslam04.github.io/screenpilot/guide/tools.html">
+<meta property="og:type" content="article"><meta property="og:title" content="MCP tools · ScreenPilot"><meta property="og:description" content="The tools ScreenPilot gives an AI app, grouped by job: recording, footage, storyboard, render, desktop control and diagnostics.">
+<meta property="og:url" content="https://mohamedeslam04.github.io/screenpilot/guide/tools.html"><meta property="og:image" content="https://mohamedeslam04.github.io/screenpilot/assets/og.png"><meta property="og:site_name" content="ScreenPilot"><meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b132b">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("sp-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+  <a class="brand" href="../index.html" aria-label="ScreenPilot"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a>
+  <nav class="nav" aria-label="Main"><a href="../guide/index.html" aria-current=page>Docs</a><a href="../guide/install.html" class="hide-s">Install</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../ar/guide/tools.html" lang="ar" hreflang="ar">العربية</a><button class="theme" type="button" aria-label="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
+</div></header>
+<main id="main"><div class="wrap docs">
+  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html" aria-current=page>MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
+  <article class="doc"><h1>MCP tools</h1><p class="summary">The tools ScreenPilot gives an AI app, grouped by job: recording, footage, storyboard, render, desktop control and diagnostics.</p><p>ScreenPilot runs as an MCP server. Your AI app sees the tools below and calls them for you, so you ask for a video in plain words and the app picks the tools. This page is for developers who want to know exactly what each tool does. The server also sends the workflow to every client when it connects, so apps without a skill know the loop too.</p>
+<p>Times in storyboard tools are source seconds (the raw recording). Positions are normalized 0..1, with x from the left and y from the top. Only <code>check_output</code> uses output seconds.</p>
+
+<h2 id="recording">Recording<a class="a" href="#recording" aria-label="Link to this section">#</a></h2>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
+<tbody>
+<tr><td><code>record_start</code></td><td>Starts recording the desktop with the built-in recorder (no OBS needed), plus pointer, click and active-window events. Only one recording at a time. Ask the person to do the demo, then call <code>record_stop</code>.</td><td><code>dir</code>, <code>screens</code> (<code>"all"</code> or monitor names), <code>screen</code>, <code>fitWindow</code>, <code>recorder</code> (<code>native</code> or <code>obs</code>), <code>input</code>, <code>obsUrl</code>, <code>obsPassword</code>, <code>map</code></td></tr>
+<tr><td><code>record_stop</code></td><td>Stops the running recording. Returns the session folder, video path, <code>events.jsonl</code> path, duration and warnings.</td><td>none</td></tr>
+<tr><td><code>remap</code></td><td>Re-maps a session's pointer events to another monitor, when <code>record_stop</code> warned that it guessed which monitor OBS records.</td><td><code>dir</code>, <code>screen</code></td></tr>
+</tbody>
+</table>
+<p>If the server's client closes during a recording, the server stops the recording and saves it.</p>
+
+<h2 id="looking">Looking at footage<a class="a" href="#looking" aria-label="Link to this section">#</a></h2>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
+<tbody>
+<tr><td><code>analyze</code></td><td>Analyzes a recording: duration, idle spans, clicks, suggested segments and zooms. Also returns a contact sheet image of labelled thumbnails. Look at the contact sheet first.</td><td><code>target</code> (session folder or video)</td></tr>
+<tr><td><code>get_frames</code></td><td>Extracts frames of the source recording at the given source seconds and returns them as images, at most 12 per call. Frames are also saved in a <code>frames/</code> folder next to the video. With <code>grid</code> on, a 0..1 grid lets you read zoom, highlight and callout positions off the image.</td><td><code>video</code>, <code>times</code>, <code>grid</code>, <code>width</code> (160..3840, default 1280)</td></tr>
+</tbody>
+</table>
+
+<h2 id="storyboard">Storyboard<a class="a" href="#storyboard" aria-label="Link to this section">#</a></h2>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
+<tbody>
+<tr><td><code>storyboard_schema</code></td><td>Returns the JSON Schema of <code>storyboard.json</code>. Read it before you write a storyboard.</td><td>none</td></tr>
+<tr><td><code>storyboard_init</code></td><td>Writes a starter <code>storyboard.json</code> for a recording or a session. With <code>suggest</code>, it pre-fills segments (idle time cut) and zooms (from clicks).</td><td><code>target</code>, <code>suggest</code>, <code>out</code>, <code>voice</code>, <code>force</code></td></tr>
+<tr><td><code>storyboard_validate</code></td><td>Validates a storyboard against the schema and the source video. Returns <code>valid</code> with warnings, or the schema issues. It never throws. Run it before every render.</td><td><code>path</code></td></tr>
+<tr><td><code>voices</code></td><td>Lists Edge TTS voices. It needs a network connection. Filter by locale, for example <code>ar-EG</code> or <code>en-US</code>.</td><td><code>lang</code></td></tr>
+</tbody>
+</table>
+<p>The file format is in <a href="../guide/storyboard.html">the storyboard reference</a>.</p>
+
+<h2 id="render-check">Render and check<a class="a" href="#render-check" aria-label="Link to this section">#</a></h2>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
+<tbody>
+<tr><td><code>render</code></td><td>Renders a storyboard to MP4. It takes minutes. When a narration line is longer than its slot, the video freezes automatically (see <code>autoHolds</code> in the result). Use <code>draft</code> while iterating, <code>looks</code> for a normal render, and <code>delivery</code> only for the final file.</td><td><code>storyboard</code>, <code>output</code>, <code>quality</code> (<code>draft</code>, <code>looks</code>, <code>delivery</code>; default <code>looks</code>)</td></tr>
+<tr><td><code>check_output</code></td><td>Returns frames of a rendered video as images, at most 12 per call. Times here are output seconds. Without <code>times</code> you get 8 evenly spaced frames. Look for clipped captions, zooms on the wrong spot and awkward freezes.</td><td><code>video</code>, <code>times</code></td></tr>
+<tr><td><code>build</code></td><td>Generates the voice, cuts the video and writes the HyperFrames project without rendering. Reports the output duration, automatic freezes and warnings.</td><td><code>storyboard</code></td></tr>
+<tr><td><code>preview</code></td><td>Builds the storyboard and opens HyperFrames Studio so a person can scrub through it.</td><td><code>storyboard</code></td></tr>
+</tbody>
+</table>
+
+<h2 id="desktop">See and drive the desktop<a class="a" href="#desktop" aria-label="Link to this section">#</a></h2>
+<p>These tools let the agent look at the screen and act on it. Drive tools use the real mouse and keyboard. Read <a href="../guide/agent-drive.html">Agent drive</a> for the loop and <a href="../guide/safety.html">Safety</a> for what the agent can touch and how to limit it. Every drive action is logged to <code>audit.jsonl</code> in the config folder. Typed text is never logged.</p>
+
+<h3 id="see">See<a class="a" href="#see" aria-label="Link to this section">#</a></h3>
+<p>These tools only read.</p>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
+<tbody>
+<tr><td><code>screenshot</code></td><td>Returns a picture of each monitor. With <code>grid</code> on, a 0..1 grid shows the x and y to pass to <code>pointer_move</code> and <code>click</code>. Take one before an action and one after, to verify.</td><td><code>screen</code>, <code>grid</code>, <code>width</code></td></tr>
+<tr><td><code>windows</code></td><td>Lists open windows: id, title, class or app, pid, whether active, geometry and monitor. Empty on desktops without window control (GNOME, sway); use screen targets there.</td><td>none</td></tr>
+<tr><td><code>browser_open</code></td><td>Opens, or reuses, the clean demo browser (its own profile) and places it on a monitor. <code>app</code> hides the address bar and tabs, so nothing about the machine shows. After that, use <code>{web: selector}</code> targets and <code>web_locate</code>.</td><td><code>screen</code>, <code>url</code>, <code>app</code></td></tr>
+<tr><td><code>web_locate</code></td><td>Finds an element in the demo browser by Playwright selector (CSS, <code>text=...</code>, <code>role=...</code>) and returns its rectangle in screen pixels. Use it to check that a target exists before you click.</td><td><code>selector</code></td></tr>
+<tr><td><code>wait_for</code></td><td>Waits until a window or a browser element shows up, so you can verify an action without guessing with sleeps. Give exactly one of <code>window</code> or <code>web</code>. It fails when the timeout passes.</td><td><code>window</code> or <code>web</code>, <code>timeout</code> (seconds, default 15, max 120)</td></tr>
+<tr><td><code>page_text</code></td><td>Reads the demo browser's current tab as data: URL, title and visible text. Use it to check what a page says instead of reading a screenshot.</td><td><code>maxChars</code> (default 4000)</td></tr>
+</tbody>
+</table>
+
+<h3 id="act">Act<a class="a" href="#act" aria-label="Link to this section">#</a></h3>
+<p>These tools move the real pointer and press real keys.</p>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
+<tbody>
+<tr><td><code>focus_window</code></td><td>Raises and focuses the first window whose class or title contains <code>match</code>. It can also move the window onto a monitor.</td><td><code>match</code>, <code>screen</code></td></tr>
+<tr><td><code>pointer_move</code></td><td>Glides the pointer to a point on a monitor.</td><td><code>screen</code>, <code>x</code>, <code>y</code>, <code>dur</code></td></tr>
+<tr><td><code>click</code></td><td>Moves the pointer to a target and clicks.</td><td><code>target</code>, <code>button</code> (<code>left</code>, <code>right</code>, <code>middle</code>), <code>count</code> (1 to 3; 2 is a double click)</td></tr>
+<tr><td><code>drag</code></td><td>Presses at <code>from</code>, moves to <code>to</code>, releases.</td><td><code>from</code>, <code>to</code></td></tr>
+<tr><td><code>scroll</code></td><td>Scrolls the wheel, optionally after moving to a target. Positive steps scroll down or right.</td><td><code>steps</code>, <code>at</code>, <code>horizontal</code></td></tr>
+<tr><td><code>key</code></td><td>Presses a key combination in the focused window, such as <code>ctrl+l</code>, <code>enter</code> or <code>alt+tab</code>. On macOS use <code>cmd</code>, not <code>ctrl</code>.</td><td><code>combo</code></td></tr>
+<tr><td><code>type_text</code></td><td>Types text into the focused field like a person. For secrets pass <code>{env: NAME}</code>: the value is read from the server's environment and never shown. Typed text is never echoed back.</td><td><code>text</code> (a string or <code>{env: NAME}</code>)</td></tr>
+</tbody>
+</table>
+
+<h3 id="targets">Targets<a class="a" href="#targets" aria-label="Link to this section">#</a></h3>
+<p><code>click</code>, <code>drag</code> and <code>scroll</code> take a target. There are three forms:</p>
+<ul>
+<li><code>{web: selector}</code>: an element in the demo browser, by Playwright selector. This is the most reliable form.</li>
+<li><code>{screen, x, y}</code>: a point on a monitor, normalized 0..1. <code>screen</code> is optional.</li>
+<li><code>{window, x, y}</code>: a point inside the window whose class or title contains the text, normalized 0..1.</li>
+</ul>
+<div class="note">On GNOME and other Wayland desktops there is no window control. Use <code>{screen, x, y}</code> targets only there. Run <code>doctor</code> to see what the desktop supports.</div>
+
+<h3 id="perform">Takes<a class="a" href="#perform" aria-label="Link to this section">#</a></h3>
+<p>A take is a <code>take.json</code> that the agent performs on the real desktop while recording.</p>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
+<tbody>
+<tr><td><code>take_schema</code></td><td>Returns the JSON Schema of <code>take.json</code>: say, caption, view, browser, goto, move, click, drag, type, key, scroll, wait, waitFor, waitForWindow, focus, open and run steps. Read it before you write a take.</td><td>none</td></tr>
+<tr><td><code>perform</code></td><td>Performs a take: records with the built-in recorder while driving the mouse and keyboard, and writes a storyboard from what happened. <code>dryRun</code> rehearses the same actions without recording; always rehearse first. If a step fails, the result is an error with <code>failedStep</code>, <code>error</code> and <code>partial</code>. Only one take runs at a time.</td><td><code>take</code>, <code>dir</code>, <code>dryRun</code></td></tr>
+</tbody>
+</table>
+
+<h3 id="stop-and-resume">Abort and resume<a class="a" href="#stop-and-resume" aria-label="Link to this section">#</a></h3>
+<p>If a person moves the mouse while the agent drives, the running action stops with a message. This protects the person at the machine. For unattended runs, start the server with <code>SCREENPILOT_INTERRUPT=off</code>.</p>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
+<tbody>
+<tr><td><code>resume</code></td><td>Carries on after a click, move or type stopped because someone else moved the pointer. It adopts the pointer where it is now and keeps the driver open, so no new approval dialog appears. Take a screenshot afterwards: the screen may have changed.</td><td>none</td></tr>
+<tr><td><code>abort</code></td><td>Stops whatever the agent is driving: the live driver and a running <code>perform</code>. Safe to call any time. The next drive tool opens a fresh driver.</td><td>none</td></tr>
+</tbody>
+</table>
+<div class="warn">The first drive action can need a person to approve a remote-control dialog (once, on Wayland; the approval is saved). On macOS, the AI app needs Accessibility and Screen Recording permission. The error says where to grant it.</div>
+
+<h2 id="diagnose">Diagnose<a class="a" href="#diagnose" aria-label="Link to this section">#</a></h2>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
+<tbody>
+<tr><td><code>doctor</code></td><td>Checks the machine and returns <code>{summary, checks}</code>: node, ffmpeg, desktop, monitors, windows, OBS, demo browser and voices. It never fails, so read the report. With <code>input</code> on, it also tests input injection and briefly moves the real pointer.</td><td><code>input</code></td></tr>
+</tbody>
+</table>
+<p>Run <code>doctor</code> first on a new machine.</p>
+<nav class="pager" aria-label="Pager"><a href="cli.html" rel="prev"><small>Previous</small>Command line</a><a href="storyboard.html" rel="next"><small>Next</small>Storyboard reference</a></nav></article>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#recording">Recording</a><a href="#looking">Looking at footage</a><a href="#storyboard">Storyboard</a><a href="#render-check">Render and check</a><a href="#desktop">See and drive the desktop</a><a href="#diagnose">Diagnose</a></aside>
+</div></main>
+<footer class="foot"><div class="wrap">
+  <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>
+  <div><h3>Learn</h3><ul><li><a href="../guide/getting-started.html">Getting started</a></li><li><a href="../guide/tools.html">MCP tools</a></li><li><a href="../guide/storyboard.html">Storyboard reference</a></li><li><a href="../guide/faq.html">FAQ and troubleshooting</a></li></ul></div>
+  <div><h3>Project</h3><ul><li><a href="https://github.com/MohamedEslam04/screenpilot">GitHub</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/releases">Releases</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/issues">Report an issue</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/CONTRIBUTING.md">Contributing</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/SECURITY.md">Security</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/LICENSE">License</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/THIRD_PARTY_NOTICES.md">Third-party notices</a></li></ul></div>
+</div></footer>
+<script src="../assets/app.js" defer></script>
+</body></html>

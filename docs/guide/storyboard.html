@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-copy="Copy" data-copied="Copied">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Storyboard reference · ScreenPilot</title>
+<meta name="description" content="The storyboard.json format: segments, holds, zooms, captions, highlights, narration, intro and outro, music, theme and output, with a full example.">
+<link rel="canonical" href="https://mohamedeslam04.github.io/screenpilot/guide/storyboard.html">
+<link rel="alternate" hreflang="en" href="https://mohamedeslam04.github.io/screenpilot/guide/storyboard.html">
+<link rel="alternate" hreflang="ar" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/storyboard.html">
+<link rel="alternate" hreflang="x-default" href="https://mohamedeslam04.github.io/screenpilot/guide/storyboard.html">
+<meta property="og:type" content="article"><meta property="og:title" content="Storyboard reference · ScreenPilot"><meta property="og:description" content="The storyboard.json format: segments, holds, zooms, captions, highlights, narration, intro and outro, music, theme and output, with a full example.">
+<meta property="og:url" content="https://mohamedeslam04.github.io/screenpilot/guide/storyboard.html"><meta property="og:image" content="https://mohamedeslam04.github.io/screenpilot/assets/og.png"><meta property="og:site_name" content="ScreenPilot"><meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b132b">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("sp-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+  <a class="brand" href="../index.html" aria-label="ScreenPilot"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a>
+  <nav class="nav" aria-label="Main"><a href="../guide/index.html" aria-current=page>Docs</a><a href="../guide/install.html" class="hide-s">Install</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../ar/guide/storyboard.html" lang="ar" hreflang="ar">العربية</a><button class="theme" type="button" aria-label="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
+</div></header>
+<main id="main"><div class="wrap docs">
+  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html" aria-current=page>Storyboard reference</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
+  <article class="doc"><h1>Storyboard reference</h1><p class="summary">The storyboard.json format: segments, holds, zooms, captions, highlights, narration, intro and outro, music, theme and output, with a full example.</p><p>A storyboard is a JSON file that describes the edit. The AI app writes it for you, but you can read it, change it and render it yourself. <code>screenpilot schema</code> (or the <code>storyboard_schema</code> tool) prints the authoritative JSON Schema. This page explains each field.</p>
+
+<h2 id="basics">The three rules<a class="a" href="#basics" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>Times are source seconds.</strong> They count from the start of the raw recording, never from the rendered video. Cuts and speed changes do not move them. Only <code>screenpilot check</code> and the <code>check_output</code> tool use output seconds.</li>
+<li><strong>Positions are normalized 0..1.</strong> <code>x</code> runs from the left edge and <code>y</code> from the top edge of the recording. Read them from a frame with <code>frames --grid</code>.</li>
+<li><strong>Paths are relative to the storyboard file.</strong> This applies to <code>source</code>, <code>events</code> and <code>music.src</code>.</li>
+</ul>
+<p>Every field except <code>source</code> is optional. Run <code>screenpilot validate storyboard.json</code> after each edit. It reports schema errors and warnings: overlapping segments, items past the end of the source, views that name an unknown screen, and callouts without <code>x</code> and <code>y</code>.</p>
+
+<h2 id="top-level">Top-level fields<a class="a" href="#top-level" aria-label="Link to this section">#</a></h2>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>What it is</th></tr></thead>
+<tbody>
+<tr><td><code>version</code></td><td><code>1</code></td><td>Format version. Always 1.</td></tr>
+<tr><td><code>source</code></td><td>required</td><td>Path to the raw recording.</td></tr>
+<tr><td><code>events</code></td><td>none</td><td><code>events.jsonl</code> from <code>record</code>. It enables click ripples.</td></tr>
+<tr><td><code>keepSourceAudio</code></td><td><code>false</code></td><td>Keep the audio of the recording.</td></tr>
+<tr><td><code>output</code></td><td>1920x1080 at 30 fps</td><td>Size and frame rate. See <a href="../guide/storyboard.html#output">Output and voice</a>.</td></tr>
+<tr><td><code>theme</code></td><td>defaults</td><td>The look. See <a href="../guide/storyboard.html#theme">Theme</a>.</td></tr>
+<tr><td><code>voice</code></td><td>defaults</td><td>The narration voice. See <a href="../guide/storyboard.html#output">Output and voice</a>.</td></tr>
+<tr><td><code>segments</code></td><td><code>[]</code></td><td>Parts of the source to keep.</td></tr>
+<tr><td><code>holds</code></td><td><code>[]</code></td><td>Freeze frames.</td></tr>
+<tr><td><code>zooms</code></td><td><code>[]</code></td><td>Camera zooms.</td></tr>
+<tr><td><code>screens</code>, <code>views</code></td><td><code>[]</code></td><td>Multi-monitor recordings. See <a href="../guide/storyboard.html#views">Screens and views</a>.</td></tr>
+<tr><td><code>captions</code></td><td><code>[]</code></td><td>On-screen text.</td></tr>
+<tr><td><code>highlights</code></td><td><code>[]</code></td><td>Boxes around parts of the screen.</td></tr>
+<tr><td><code>narration</code></td><td><code>[]</code></td><td>Voiceover lines.</td></tr>
+<tr><td><code>intro</code>, <code>outro</code></td><td>none</td><td>Title cards.</td></tr>
+<tr><td><code>music</code></td><td>none</td><td>Background music.</td></tr>
+</tbody>
+</table>
+
+<h2 id="segments">Segments<a class="a" href="#segments" aria-label="Link to this section">#</a></h2>
+<p><code>segments</code> lists the parts of the source to keep, in order. Anything between segments is cut. An empty list keeps the whole video. Segments must not overlap.</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>in</code></td><td>required</td><td>Start, in source seconds.</td></tr>
+<tr><td><code>out</code></td><td>required</td><td>End. Must be greater than <code>in</code>.</td></tr>
+<tr><td><code>speed</code></td><td><code>1</code></td><td>Playback speed, 0.25 to 16. Use 4 to 8 to fast-forward loading and waiting.</td></tr>
+</tbody>
+</table>
+<p>A narration line placed inside a cut region is dropped, with a warning.</p>
+
+<h2 id="holds">Holds<a class="a" href="#holds" aria-label="Link to this section">#</a></h2>
+<p><code>holds</code> freeze the video on one frame, to give a caption or a line room.</p>
+<table>
+<thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>at</code></td><td>Source time to freeze on.</td></tr>
+<tr><td><code>dur</code></td><td>Freeze length in seconds.</td></tr>
+</tbody>
+</table>
+<p>You rarely need to write holds. When a narration line is longer than its slot, the render adds a hold automatically so lines never overlap. The result lists them as <code>autoHolds</code>.</p>
+
+<h2 id="zooms">Zooms<a class="a" href="#zooms" aria-label="Link to this section">#</a></h2>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>at</code></td><td>required</td><td>Source time at which the zoom is fully in.</td></tr>
+<tr><td><code>dur</code></td><td>required</td><td>How long to stay zoomed, in seconds.</td></tr>
+<tr><td><code>x</code>, <code>y</code></td><td>required</td><td>Focus point, 0..1.</td></tr>
+<tr><td><code>scale</code></td><td><code>1.8</code></td><td>Zoom factor, 1 to 4.</td></tr>
+</tbody>
+</table>
+
+<h2 id="captions">Captions<a class="a" href="#captions" aria-label="Link to this section">#</a></h2>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>at</code></td><td>required</td><td>Source time the caption appears.</td></tr>
+<tr><td><code>dur</code></td><td><code>3</code></td><td>Seconds on screen.</td></tr>
+<tr><td><code>text</code></td><td>required</td><td>The text. Use <code>\n</code> for a second line, for example a bilingual caption.</td></tr>
+<tr><td><code>position</code></td><td><code>bottom</code></td><td><code>bottom</code>, <code>top</code> or <code>center</code>.</td></tr>
+<tr><td><code>style</code></td><td><code>pill</code></td><td><code>pill</code>, <code>title</code> or <code>callout</code>.</td></tr>
+<tr><td><code>x</code>, <code>y</code></td><td>none</td><td>Anchor point for <code>callout</code>, 0..1.</td></tr>
+<tr><td><code>motion</code></td><td>theme default</td><td>How this caption moves in and out. See <a href="../guide/storyboard.html#motion">Motion</a>.</td></tr>
+</tbody>
+</table>
+
+<h3 id="caption-styles">Caption styles<a class="a" href="#caption-styles" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><code>pill</code>: a subtitle-like box. Use it for most captions.</li>
+<li><code>title</code>: big text for a chapter-like moment.</li>
+<li><code>callout</code>: a bubble that points at <code>x</code>, <code>y</code>. Always give both. Without them the bubble points at the center and <code>validate</code> warns you.</li>
+</ul>
+
+<h2 id="highlights">Highlights<a class="a" href="#highlights" aria-label="Link to this section">#</a></h2>
+<p>A highlight draws a box around part of the screen.</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>at</code></td><td>required</td><td>Source time it appears.</td></tr>
+<tr><td><code>dur</code></td><td><code>2</code></td><td>Seconds on screen.</td></tr>
+<tr><td><code>x</code>, <code>y</code></td><td>required</td><td>Top-left corner, 0..1.</td></tr>
+<tr><td><code>w</code>, <code>h</code></td><td>required</td><td>Width and height, 0..1.</td></tr>
+<tr><td><code>label</code></td><td>none</td><td>Optional text on the box.</td></tr>
+</tbody>
+</table>
+
+<h2 id="narration">Narration<a class="a" href="#narration" aria-label="Link to this section">#</a></h2>
+<p>Each line is spoken by an Edge TTS voice and mixed into the video. Narration never overlaps: when a line overruns its slot, the video freezes to make room.</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>at</code></td><td>required</td><td>Source time the line starts.</td></tr>
+<tr><td><code>text</code></td><td>required</td><td>What the voice says.</td></tr>
+<tr><td><code>voice</code></td><td><code>voice.name</code></td><td>Voice for this line only, for example <code>ar-EG-ShakirNeural</code>. Use it to mix languages.</td></tr>
+<tr><td><code>caption</code></td><td><code>voice.subtitles</code></td><td>Also show this line as a subtitle (<code>true</code>) or not (<code>false</code>).</td></tr>
+</tbody>
+</table>
+<p>List the voices with <code>screenpilot voices --lang ar-EG</code>. Examples: <code>ar-EG-SalmaNeural</code>, <code>ar-EG-ShakirNeural</code>, <code>en-US-AndrewNeural</code>, <code>en-US-AriaNeural</code>.</p>
+
+<h2 id="cards">Intro and outro<a class="a" href="#cards" aria-label="Link to this section">#</a></h2>
+<p><code>intro</code> and <code>outro</code> are title cards before and after the video. Both take the same fields.</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>title</code></td><td>required</td><td>Main text.</td></tr>
+<tr><td><code>subtitle</code></td><td>none</td><td>Second line.</td></tr>
+<tr><td><code>dur</code></td><td><code>3</code></td><td>Seconds on screen.</td></tr>
+</tbody>
+</table>
+
+<h2 id="music">Music<a class="a" href="#music" aria-label="Link to this section">#</a></h2>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>src</code></td><td>required</td><td>Path to an audio file, relative to the storyboard.</td></tr>
+<tr><td><code>volume</code></td><td><code>0.12</code></td><td>0 to 1. Keep it low so it does not cover the voice.</td></tr>
+</tbody>
+</table>
+
+<h2 id="views">Screens and views<a class="a" href="#views" aria-label="Link to this section">#</a></h2>
+<p>For a recording of several monitors, <code>screens</code> says where each monitor sits in the recording and <code>views</code> says which part the camera shows from each time on. <code>init --suggest</code> fills both for you.</p>
+<table>
+<thead><tr><th>Item</th><th>Fields</th></tr></thead>
+<tbody>
+<tr><td><code>screens[]</code></td><td><code>name</code> (monitor name, for example <code>eDP-1</code>), <code>x</code>, <code>y</code>, <code>w</code>, <code>h</code> (0..1 of the source; <code>w</code> must be above 0)</td></tr>
+<tr><td><code>views[]</code></td><td><code>at</code>, then exactly one of <code>screen</code> (a <code>screens[].name</code>, or <code>"all"</code>) or <code>rect</code> (<code>x</code>, <code>y</code>, <code>w</code>, <code>h</code>, any region); optional <code>label</code> and <code>transition</code> (<code>pan</code> by default, or <code>cut</code>)</td></tr>
+</tbody>
+</table>
+
+<h2 id="output">Output and voice<a class="a" href="#output" aria-label="Link to this section">#</a></h2>
+<table>
+<thead><tr><th>Object</th><th>Fields and defaults</th></tr></thead>
+<tbody>
+<tr><td><code>output</code></td><td><code>width</code> 1920, <code>height</code> 1080, <code>fps</code> 30 (1 to 120)</td></tr>
+<tr><td><code>voice</code></td><td><code>provider</code> <code>edge</code>, <code>name</code> <code>en-US-AndrewNeural</code>, <code>rate</code> <code>+0%</code> (for example <code>+10%</code> or <code>-5%</code>), <code>subtitles</code> <code>true</code> (show narration lines as subtitles), <code>gap</code> 0.3 (minimum silence between lines; the video freezes to make room), <code>volume</code> 1 (0 to 4)</td></tr>
+</tbody>
+</table>
+<p>Pick the output size from where the video will be shown: 1920x1080 for YouTube, a README or slides; 1080x1920 for Reels, TikTok and Shorts; 1080x1080 for feeds.</p>
+
+<h2 id="theme">Theme<a class="a" href="#theme" aria-label="Link to this section">#</a></h2>
+<p>The theme sets the look of the whole video. There is no house style: choose it for the audience, and take colors and type from the product you show.</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>background</code></td><td>indigo-to-blue gradient</td><td>Any CSS background: a color, a gradient or an image.</td></tr>
+<tr><td><code>padding</code></td><td><code>0.05</code></td><td>Space around the recording, as a fraction of the output width (0 to 0.2).</td></tr>
+<tr><td><code>radius</code></td><td><code>16</code></td><td>Corner radius of the recording, 0 to 60.</td></tr>
+<tr><td><code>shadow</code></td><td><code>true</code></td><td>Shadow under the recording.</td></tr>
+<tr><td><code>accent</code></td><td><code>#facc15</code></td><td>Accent color.</td></tr>
+<tr><td><code>font</code></td><td>Inter, Cairo, system-ui</td><td>CSS font family.</td></tr>
+<tr><td><code>captionColor</code></td><td><code>#ffffff</code></td><td>Caption text color.</td></tr>
+<tr><td><code>captionBackground</code></td><td>dark, translucent</td><td>Caption box color.</td></tr>
+<tr><td><code>clickRipples</code></td><td><code>true</code></td><td>Draw a ripple on every recorded click. Needs <code>events</code>.</td></tr>
+<tr><td><code>fonts</code></td><td><code>[]</code></td><td>Extra Google Fonts to load, as css2 family specs such as <code>"Tajawal:wght@400;700"</code> or <code>"Space Grotesk:wght@500;700"</code>. Then use them in <code>font</code> or <code>css</code>.</td></tr>
+<tr><td><code>css</code></td><td>empty</td><td>Your own CSS, applied after the built-in styles.</td></tr>
+<tr><td><code>motion</code></td><td><code>{}</code></td><td>Default text motion: <code>captions</code> (captions and subtitles) and <code>cards</code> (intro and outro).</td></tr>
+</tbody>
+</table>
+
+<h3 id="css">Custom CSS<a class="a" href="#css" aria-label="Link to this section">#</a></h3>
+<p>The elements you can style with <code>theme.css</code>:</p>
+<ul>
+<li><code>#root</code>: the whole frame and its background.</li>
+<li><code>#frame</code>: the box that holds the recording.</li>
+<li><code>.card</code>, <code>.card-inner</code>, <code>.card h1</code>, <code>.card p</code>: the intro and outro cards.</li>
+<li><code>.text</code>: captions. Variants are <code>.text.pill</code>, <code>.text.subtitle</code> and <code>.text.title</code>. The visible box is <code>.text.&lt;style&gt; &gt; span</code>, and <code>.text .ln</code> is one line of a multi-line caption.</li>
+<li><code>.pos-bottom</code>, <code>.pos-top</code>, <code>.pos-center</code>: caption positions.</li>
+<li><code>.hl</code> and <code>.hl span</code>: highlights.</li>
+<li><code>.callout span</code>: callout bubbles.</li>
+<li><code>.ripple</code>: click ripples.</li>
+</ul>
+
+<h3 id="motion">Motion<a class="a" href="#motion" aria-label="Link to this section">#</a></h3>
+<p>Motion controls how text enters and leaves. Set the default in <code>theme.motion.captions</code> and <code>theme.motion.cards</code>, and override it with <code>motion</code> on one caption. Every field is optional.</p>
+<table>
+<thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>in</code></td><td>Entrance preset.</td></tr>
+<tr><td><code>out</code></td><td>Exit preset. <code>words</code> and <code>lines</code> exit like <code>fade</code>.</td></tr>
+<tr><td><code>duration</code></td><td>Seconds per entrance, 0 to 3. Default 0.3.</td></tr>
+<tr><td><code>ease</code></td><td>Any GSAP ease, for example <code>"power3.out"</code>, <code>"back.out(1.7)"</code>, <code>"expo.out"</code> or <code>"elastic.out(1,0.5)"</code>.</td></tr>
+<tr><td><code>stagger</code></td><td>Seconds between words or lines for <code>words</code> and <code>lines</code>, 0 to 1. Default 0.08.</td></tr>
+</tbody>
+</table>
+<p>Presets: <code>none</code>, <code>fade</code>, <code>rise</code>, <code>drop</code>, <code>slide-left</code>, <code>slide-right</code>, <code>pop</code>, <code>zoom</code>, <code>blur</code>, <code>wipe</code>, <code>words</code>, <code>lines</code>. <code>wipe</code> uncovers text in the reading direction. <code>words</code> reveals one word at a time and <code>lines</code> one line at a time; both work in any script, Arabic included.</p>
+<div class="note">Calm tutorials suit <code>fade</code> and <code>rise</code>. Energetic social clips suit <code>pop</code> or <code>words</code> with a bouncy ease. Titles suit <code>wipe</code> or <code>words</code>.</div>
+
+<h2 id="example">A complete example<a class="a" href="#example" aria-label="Link to this section">#</a></h2>
+<p>This storyboard keeps one recording, speeds up a loading stretch, zooms on two clicks, adds three captions and a highlight, and speaks three lines (the last one in Arabic). The paths are relative to the storyboard file. It passes <code>screenpilot validate</code>; the warning you see without the files is only that the source video is missing.</p>
+<pre><code class="language-json">{
+  "version": 1,
+  "source": "sessions/2026-10-27_14-02/video.mkv",
+  "events": "sessions/2026-10-27_14-02/events.jsonl",
+  "output": { "width": 1920, "height": 1080, "fps": 30 },
+  "voice": { "name": "en-US-AndrewNeural", "rate": "+0%", "subtitles": false, "gap": 0.3 },
+  "theme": {
+    "background": "linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%)",
+    "padding": 0.05,
+    "radius": 16,
+    "accent": "#facc15",
+    "font": "'Space Grotesk', 'Cairo', sans-serif",
+    "fonts": ["Space Grotesk:wght@500;700"],
+    "css": ".text.pill &gt; span { letter-spacing: 0.01em; }",
+    "motion": {
+      "captions": { "in": "rise", "out": "fade", "duration": 0.35, "ease": "power3.out" },
+      "cards": { "in": "words", "stagger": 0.08 }
+    }
+  },
+  "intro": { "title": "Acme Invoices", "subtitle": "Send an invoice in 20 seconds", "dur": 3 },
+  "outro": { "title": "Try it today", "subtitle": "acme.example", "dur": 3 },
+  "segments": [
+    { "in": 0, "out": 6, "speed": 1 },
+    { "in": 6, "out": 19, "speed": 6 },
+    { "in": 19, "out": 41, "speed": 1 }
+  ],
+  "holds": [{ "at": 30.5, "dur": 1.5 }],
+  "zooms": [
+    { "at": 2.5, "dur": 3, "x": 0.18, "y": 0.22, "scale": 2 },
+    { "at": 24, "dur": 4, "x": 0.82, "y": 0.9, "scale": 1.8 }
+  ],
+  "captions": [
+    { "at": 1, "dur": 3, "text": "Start from the dashboard", "position": "bottom", "style": "pill" },
+    { "at": 22, "dur": 3, "text": "One click to send", "style": "callout", "x": 0.82, "y": 0.9 },
+    { "at": 36, "dur": 3, "text": "Done", "position": "center", "style": "title", "motion": { "in": "pop", "ease": "back.out(1.7)" } }
+  ],
+  "highlights": [{ "at": 31, "dur": 2.5, "x": 0.3, "y": 0.4, "w": 0.3, "h": 0.12, "label": "Total" }],
+  "narration": [
+    { "at": 1, "text": "We start on the dashboard." },
+    { "at": 22, "text": "One click and the invoice is sent." },
+    { "at": 36, "text": "هذا كل شيء.", "voice": "ar-EG-SalmaNeural", "caption": true }
+  ],
+  "music": { "src": "assets/bgm.mp3", "volume": 0.12 }
+}</code></pre>
+<div class="note">The last narration line turns its own subtitle on with <code>caption: true</code>, while <code>voice.subtitles</code> is off for the others. The click near 24 s gets a zoom and a callout; the highlight sits on a different moment, so no single click carries every effect.</div>
+
+<h2 id="style">Style guidance<a class="a" href="#style" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>Narration:</strong> one sentence, under about 12 words, one idea. Say what the viewer sees or why it matters, not which button to press. Keep lines short: a long line freezes the video.</li>
+<li><strong>Zooms:</strong> zoom on what is about to be clicked. Start the zoom about 0.5 seconds before the click, hold it for 2 to 4 seconds, and use a scale of 1.6 to 2.2. Take <code>x</code> and <code>y</code> from a <code>--grid</code> frame. Return to the full view between zooms, and do not zoom when the whole screen matters.</li>
+<li><strong>Captions:</strong> 2 to 6 words, one idea each. Use <code>callout</code> only to point at one small element, <code>title</code> for chapter-like beats and <code>pill</code> for the rest. Do not repeat in a caption what the narration already says.</li>
+<li><strong>Idle time:</strong> cut it, or speed it up 4 to 8 times. Loading, waiting and mistakes do not belong at normal speed.</li>
+<li><strong>Pace:</strong> start a narration line together with the action it describes, and leave about 0.3 seconds between lines. Aim for 30 to 90 seconds in total.</li>
+<li><strong>Do not stack effects:</strong> a zoom, a highlight and a callout on one click is too much. Choose the one that points best.</li>
+<li><strong>Bilingual captions:</strong> use one caption with two lines (<code>"English\nعربي"</code>). Avoid a lone Arabic <em>waw</em> between Latin words; use an Arabic comma instead.</li>
+</ul>
+<div class="note">Work in passes. Write segments and narration first, render a draft with <code>-q draft</code>, look at it with <code>check</code>, then add zooms and captions. Change one kind of thing at a time.</div>
+<nav class="pager" aria-label="Pager"><a href="tools.html" rel="prev"><small>Previous</small>MCP tools</a><a href="agent-drive.html" rel="next"><small>Next</small>Let the agent drive</a></nav></article>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#basics">The three rules</a><a href="#top-level">Top-level fields</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#narration">Narration</a><a href="#cards">Intro and outro</a><a href="#music">Music</a><a href="#views">Screens and views</a><a href="#output">Output and voice</a><a href="#theme">Theme</a><a href="#example">A complete example</a><a href="#style">Style guidance</a></aside>
+</div></main>
+<footer class="foot"><div class="wrap">
+  <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>
+  <div><h3>Learn</h3><ul><li><a href="../guide/getting-started.html">Getting started</a></li><li><a href="../guide/tools.html">MCP tools</a></li><li><a href="../guide/storyboard.html">Storyboard reference</a></li><li><a href="../guide/faq.html">FAQ and troubleshooting</a></li></ul></div>
+  <div><h3>Project</h3><ul><li><a href="https://github.com/MohamedEslam04/screenpilot">GitHub</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/releases">Releases</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/issues">Report an issue</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/CONTRIBUTING.md">Contributing</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/SECURITY.md">Security</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/LICENSE">License</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/THIRD_PARTY_NOTICES.md">Third-party notices</a></li></ul></div>
+</div></footer>
+<script src="../assets/app.js" defer></script>
+</body></html>

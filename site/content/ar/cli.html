@@ -1,0 +1,216 @@
+<!--
+title: سطر الأوامر
+summary: كل أوامر screenpilot وأهم خياراتها مجمّعة حسب المهمة، مع خطوات التسجيل والتحرير والتصيير كاملة في كتلة واحدة.
+-->
+<p>سطر الأوامر ينفّذ الخطوات نفسها التي تنفّذها أدوات MCP. شغّله بالاسم <code>screenpilot</code>، أو بالأمر <code>node dist/cli.js</code> من نسخة المصدر. أغلب المستخدمين لا يحتاجونه، لأن تطبيق الذكاء الاصطناعي عندهم يستدعي <a href="@guide/tools.html">الأدوات</a> بدلًا منهم. استخدم سطر الأوامر لأتمتة عملية التصيير، أو لفحص جهاز، أو لإصلاح الإعداد.</p>
+<p>نفّذ <code>screenpilot --help</code> لعرض قائمة الأوامر، و<code>screenpilot &lt;command&gt; --help</code> لعرض خيارات أمر واحد. تطبع الأوامر نتيجتها بصيغة JSON على stdout، ورسائل التقدّم على stderr.</p>
+
+<h2 id="workflow">سير العمل كاملًا</h2>
+<p>هذه الكتلة توصلك من التسجيل إلى الفيديو النهائي. بدّل المسارات والصوت بما يناسبك.</p>
+<pre><code class="language-sh"># 1. Record the screen. Press Enter or Ctrl+C to stop.
+screenpilot record
+
+# 2. Find idle time and clicks, and get a contact sheet image.
+screenpilot analyze sessions/2026-10-27_14-02
+
+# 3. Look closer at moments, with a 0..1 coordinate grid.
+screenpilot frames sessions/2026-10-27_14-02/video.mkv --at 1,4.5,10 --grid
+
+# 4. Write a starter storyboard (idle time cut, click zooms filled in).
+screenpilot init sessions/2026-10-27_14-02 --suggest --voice ar-EG-SalmaNeural
+
+# 5. Edit storyboard.json, then check it.
+screenpilot validate sessions/2026-10-27_14-02/storyboard.json
+
+# 6. Render a fast draft and look at frames of the result.
+screenpilot render sessions/2026-10-27_14-02/storyboard.json -q draft
+screenpilot check sessions/2026-10-27_14-02/storyboard.mp4 --at 2,8,15
+
+# 7. Render the final video.
+screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo.mp4</code></pre>
+<div class="note">الأزمنة في الـ storyboard وفي <code>frames --at</code> هي ثوانٍ في المصدر (التسجيل الخام). الأمر <code>check --at</code> وحده يستخدم ثواني الخرج (الفيديو المصيَّر). راجع <a href="@guide/storyboard.html">مرجع الـ storyboard</a>.</div>
+
+<h2 id="record-and-look">التسجيل والمعاينة</h2>
+
+<h3 id="record">record</h3>
+<p>يسجّل الشاشة ويحفظ أحداث المؤشر. اضغط Enter أو Ctrl+C للإيقاف، أو استخدم <code>--duration</code>. يطبع مسار مجلد الجلسة وفيه الفيديو والملفان <code>events.jsonl</code> و<code>windows.jsonl</code>. التسجيل أصلي افتراضيًا، فلا حاجة إلى OBS.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>-d, --dir &lt;dir&gt;</code></td><td>مجلد الجلسة. الافتراضي: <code>sessions/&lt;timestamp&gt;</code>.</td></tr>
+<tr><td><code>--duration &lt;s&gt;</code></td><td>يتوقف التسجيل تلقائيًا بعد هذا العدد من الثواني.</td></tr>
+<tr><td><code>--screen &lt;name&gt;</code></td><td>الشاشة المسجَّلة، مثل <code>eDP-1</code>. الافتراضي: الشاشة التي عليها المؤشر.</td></tr>
+<tr><td><code>--screens &lt;list&gt;</code></td><td>تسجيل عدة شاشات جنبًا إلى جنب: <code>all</code> أو أسماء مثل <code>HDMI-A-5,eDP-1</code>.</td></tr>
+<tr><td><code>--fit-window &lt;match&gt;</code></td><td>يضبط النافذة التي يحتوي صنفها أو عنوانها على هذا النص بنسبة 16:9 أثناء التسجيل، ثم يعيدها كما كانت.</td></tr>
+<tr><td><code>--recorder &lt;how&gt;</code></td><td><code>native</code> (بدون OBS) أو <code>obs</code>. الافتراضي: native عندما يتوفر.</td></tr>
+<tr><td><code>--input &lt;adapter&gt;</code></td><td>التقاط المؤشر والنقرات: <code>auto</code> (افتراضي) أو <code>kwin</code> أو <code>uiohook</code> أو <code>none</code>.</td></tr>
+<tr><td><code>--obs-url &lt;url&gt;</code>, <code>--obs-password &lt;pw&gt;</code></td><td>اتصال obs-websocket عند التسجيل عبر OBS. القيم الافتراضية تُقرأ من إعدادات OBS، وإلا <code>ws://127.0.0.1:4455</code>.</td></tr>
+<tr><td><code>--map &lt;pairs&gt;</code></td><td>ربط مصدر OBS بشاشة، مثل <code>"PC Screen=eDP-1"</code>. يُحفظ الربط للمرات القادمة.</td></tr>
+</tbody>
+</table>
+
+<h3 id="remap">remap</h3>
+<p>الأمر <code>screenpilot remap &lt;session&gt; --screen &lt;name&gt;</code> يعيد ربط أحداث المؤشر في جلسة بشاشة أخرى. استخدمه عندما ينبّه <code>record</code> إلى أنه خمّن الشاشة التي يسجّلها OBS وكان التخمين خاطئًا. أسماء الشاشات موجودة في <code>meta.json</code> الخاص بالجلسة تحت المفتاح <code>screens</code>.</p>
+
+<h3 id="analyze">analyze</h3>
+<p>الأمر <code>screenpilot analyze &lt;session-dir|video&gt;</code> يكتشف فترات الخمول والنقرات، ويقترح segments وzooms، ويكتب صورة contact sheet فيها مصغّرات مرقّمة بالزمن. افتح الصورة أولًا لتفهم قصة التسجيل.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--frames &lt;n&gt;</code></td><td>عدد المصغّرات في الصورة. الافتراضي 12.</td></tr>
+</tbody>
+</table>
+
+<h3 id="frames">frames</h3>
+<p>الأمر <code>screenpilot frames &lt;video&gt;</code> يحفظ لقطات من التسجيل الخام لتراه بعينك. الأزمنة بثواني المصدر.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--at &lt;times&gt;</code></td><td>ثوانٍ مفصولة بفواصل، مثل <code>1,4.5,10</code>.</td></tr>
+<tr><td><code>--every &lt;n&gt;</code></td><td>بدل <code>--at</code>: هذا العدد من اللقطات موزعة بالتساوي. الافتراضي 12.</td></tr>
+<tr><td><code>--grid</code></td><td>يرسم شبكة إحداثيات من 0 إلى 1. اقرأ منها مواضع zoom وhighlight وcallout.</td></tr>
+<tr><td><code>-w, --width &lt;px&gt;</code></td><td>عرض اللقطة. الافتراضي 1280.</td></tr>
+<tr><td><code>-o, --out &lt;dir&gt;</code></td><td>مجلد الإخراج. الافتراضي <code>frames</code>.</td></tr>
+</tbody>
+</table>
+
+<h2 id="edit">التحرير</h2>
+
+<h3 id="init">init</h3>
+<p>الأمر <code>screenpilot init &lt;session-dir|video&gt;</code> يكتب ملف <code>storyboard.json</code> مبدئيًا. يحفظه في مجلد الجلسة أو بجوار الفيديو، ويقرأ <code>events.jsonl</code> إن وُجد.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--suggest</code></td><td>يملأ segments وzooms وزوايا الكاميرا مسبقًا من نتيجة <code>analyze</code>.</td></tr>
+<tr><td><code>--voice &lt;name&gt;</code></td><td>صوت Edge TTS الافتراضي. الافتراضي <code>en-US-AndrewNeural</code>.</td></tr>
+<tr><td><code>--frame &lt;how&gt;</code></td><td>الكاميرا في الزوايا المقترحة: <code>window</code> (افتراضي) أو <code>screen</code> أو <code>all</code>.</td></tr>
+<tr><td><code>-o, --out &lt;file&gt;</code></td><td>مسار ملف الـ storyboard.</td></tr>
+<tr><td><code>-f, --force</code></td><td>يستبدل storyboard موجودًا.</td></tr>
+</tbody>
+</table>
+
+<h3 id="validate">validate</h3>
+<p>الأمر <code>screenpilot validate &lt;storyboard&gt;</code> يفحص الملف مقابل الـ schema والفيديو المصدر. إما يفشل ويعرض قائمة مشكلات الـ schema، وإما يطبع <code>valid: true</code> مع تحذيرات مثل تداخل segments، أو عناصر بعد نهاية الفيديو، أو callout بلا <code>x</code> و<code>y</code>.</p>
+
+<h3 id="schema">schema</h3>
+<p>الأمر <code>screenpilot schema</code> يطبع JSON Schema الخاص بالـ storyboard. هو المرجع النهائي لكل حقل.</p>
+
+<h3 id="voices">voices</h3>
+<p>الأمر <code>screenpilot voices</code> يعرض الأصوات المتاحة. يحتاج إلى اتصال بالشبكة.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--lang &lt;prefix&gt;</code></td><td>تصفية ببادئة اللغة، مثل <code>ar</code> أو <code>ar-EG</code> أو <code>en-US</code>.</td></tr>
+<tr><td><code>--provider &lt;id&gt;</code></td><td>مزوّد الصوت. الافتراضي <code>edge</code>.</td></tr>
+</tbody>
+</table>
+
+<h2 id="render-and-check">التصيير والفحص</h2>
+
+<h3 id="render">render</h3>
+<p>الأمر <code>screenpilot render &lt;storyboard&gt;</code> يولّد الصوت ويقصّ الفيديو ويصيّر ملف MP4. يستغرق دقائق. يطبع مسار الملف والمدة وفترات التجميد التي أضافها (<code>autoHolds</code>) والتحذيرات. إذا كان سطر التعليق الصوتي أطول من مكانه، يجمّد التصيير الفيديو كي لا تتداخل الأسطر.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>-o, --output &lt;file&gt;</code></td><td>ملف الفيديو الناتج. الافتراضي <code>&lt;storyboard&gt;.mp4</code>.</td></tr>
+<tr><td><code>-q, --quality &lt;q&gt;</code></td><td><code>draft</code> أو <code>looks</code> أو <code>delivery</code>. الافتراضي <code>looks</code>.</td></tr>
+<tr><td><code>--png-frames</code></td><td>يستخدم إطارات مصدر بلا فقدان: نص الواجهة المسجَّلة أوضح، والتصيير أبطأ.</td></tr>
+<tr><td><code>--workers &lt;n&gt;</code></td><td>عدد المصيّرات المتوازية، وكل واحد منها متصفح Chrome بلا واجهة. الافتراضي 2.</td></tr>
+<tr><td><code>--build-dir &lt;dir&gt;</code></td><td>المجلد الذي يُكتب فيه مشروع HyperFrames.</td></tr>
+</tbody>
+</table>
+
+<h3 id="quality">مستويات الجودة</h3>
+<table>
+<thead><tr><th>المستوى</th><th>متى تستخدمه</th></tr></thead>
+<tbody>
+<tr><td><code>draft</code></td><td>تصيير سريع أثناء التحرير. استخدمه في كل دورة مراجعة.</td></tr>
+<tr><td><code>looks</code></td><td>تصيير عادي. هو الافتراضي.</td></tr>
+<tr><td><code>delivery</code></td><td>الملف النهائي فقط. هو الأبطأ.</td></tr>
+</tbody>
+</table>
+
+<h3 id="build">build</h3>
+<p>الأمر <code>screenpilot build &lt;storyboard&gt;</code> ينفّذ كل شيء عدا التصيير النهائي: يولّد الصوت ويقصّ الفيديو ويكتب مشروع HyperFrames. يطبع مجلد البناء ومدة الخرج وفترات التجميد التلقائية والتحذيرات. يقبل الخيار <code>--build-dir &lt;dir&gt;</code>.</p>
+
+<h3 id="preview">preview</h3>
+<p>الأمر <code>screenpilot preview &lt;storyboard&gt;</code> يبني الـ storyboard ويفتح HyperFrames Studio لتتنقل داخل الفيديو.</p>
+
+<h3 id="check">check</h3>
+<p>الأمر <code>screenpilot check &lt;video&gt;</code> يستخرج لقطات من فيديو مصيَّر لتراجع النتيجة. الأزمنة بثواني الخرج. يطبع المدة، وهل في الفيديو صوت، وملفات اللقطات.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--at &lt;times&gt;</code></td><td>ثوانٍ مفصولة بفواصل، بزمن الخرج.</td></tr>
+<tr><td><code>--every &lt;n&gt;</code></td><td>لقطات موزعة بالتساوي. الافتراضي 8.</td></tr>
+<tr><td><code>-o, --out &lt;dir&gt;</code></td><td>مجلد الإخراج. الافتراضي <code>&lt;video&gt;.check</code> بجوار الفيديو.</td></tr>
+</tbody>
+</table>
+
+<h2 id="drive">رؤية سطح المكتب والتحكم فيه</h2>
+<p>تتيح لك هذه الأوامر أن ترى سطح المكتب وتجرّب خطوات بيدك قبل أن تكتب take. يستخدم الوكيل الإجراءات نفسها عبر أدوات MCP. وهي تستخدم الفأرة ولوحة المفاتيح الفعليتين، فارفع يديك عنهما أثناء التنفيذ. شرح <a href="@guide/agent-drive.html">تحكّم الوكيل</a> يغطي الدورة كاملة، وصفحة <a href="@guide/safety.html">الأمان</a> تشرح الحدود.</p>
+
+<h3 id="screenshot">screenshot</h3>
+<p>الأمر <code>screenpilot screenshot</code> يحفظ صورة لكل شاشة.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--screen &lt;name&gt;</code></td><td>هذه الشاشة فقط.</td></tr>
+<tr><td><code>--grid</code></td><td>يضع شبكة إحداثيات من 0 إلى 1 فوق الصورة.</td></tr>
+<tr><td><code>-w, --width &lt;px&gt;</code></td><td>عرض الصورة. الافتراضي 1280.</td></tr>
+<tr><td><code>-o, --out &lt;dir&gt;</code></td><td>مجلد الإخراج. الافتراضي <code>screens</code>.</td></tr>
+</tbody>
+</table>
+
+<h3 id="windows">windows</h3>
+<p>الأمر <code>screenpilot windows</code> يعرض النوافذ المفتوحة ومواضعها. على أنظمة سطح المكتب التي لا تتيح التحكم بالنوافذ (GNOME وغيره من أنظمة Wayland) تكون القائمة فارغة.</p>
+
+<h3 id="browser">browser</h3>
+<p>الأمر <code>screenpilot browser</code> يفتح متصفح العرض النظيف أو يعيد استخدامه، ويضعه على شاشة. الخيارات: <code>--screen &lt;name&gt;</code> و<code>--url &lt;url&gt;</code>.</p>
+
+<h3 id="drive-commands">drive</h3>
+<p>للأمر <code>screenpilot drive</code> أربعة أوامر فرعية. المواضع بصيغة <code>screen,x,y</code> حيث <code>x</code> و<code>y</code> بين 0 و1، مثل <code>eDP-1,0.5,0.5</code>.</p>
+<table>
+<thead><tr><th>الأمر</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>drive move &lt;screen,x,y&gt;</code></td><td>يحرّك المؤشر.</td></tr>
+<tr><td><code>drive click &lt;target&gt;</code></td><td>ينقر. الهدف <code>screen,x,y</code> أو <code>web:&lt;selector&gt;</code> لعنصر داخل متصفح العرض. الخيارات: <code>--button left|right|middle</code> (الافتراضي left) و<code>--count &lt;n&gt;</code> (2 لنقرة مزدوجة).</td></tr>
+<tr><td><code>drive type &lt;text&gt;</code></td><td>يكتب نصًا في الحقل الذي عليه التركيز.</td></tr>
+<tr><td><code>drive key &lt;combo&gt;</code></td><td>يضغط تركيبة مفاتيح مثل <code>"ctrl+l"</code>. على macOS استخدم <code>cmd</code>.</td></tr>
+</tbody>
+</table>
+
+<h3 id="perform">perform</h3>
+<p>الأمر <code>screenpilot perform &lt;take.json&gt;</code> ينفّذ take على سطح المكتب الفعلي أثناء التسجيل، ثم يكتب مجلد جلسة فيه الفيديو والأحداث وstoryboard جاهز. إذا فشلت خطوة، يطبع رقم الخطوة ونصها والخطأ. اضغط Ctrl+C لإيقاف التنفيذ.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--dry-run</code></td><td>ينفّذ الخطوات على سطح المكتب بدون تسجيل. جرّب بهذا الخيار دائمًا قبل التسجيل.</td></tr>
+<tr><td><code>-d, --dir &lt;dir&gt;</code></td><td>مجلد الجلسة. الافتراضي <code>sessions/&lt;timestamp&gt;</code>.</td></tr>
+</tbody>
+</table>
+
+<h3 id="take-schema">take-schema</h3>
+<p>الأمر <code>screenpilot take-schema</code> يطبع JSON Schema الخاص بملف <code>take.json</code>.</p>
+
+<h2 id="setup-and-checks">إعداد الجهاز وفحصه</h2>
+
+<h3 id="setup">setup</h3>
+<p>الأمر <code>screenpilot setup</code> ينسخ التطبيق إلى مجلده، ويضيف ScreenPilot إلى كل تطبيق ذكاء اصطناعي يجده، ويجهّز متصفح التصيير. أعد تشغيل تطبيق الذكاء الاصطناعي بعد ذلك. تُنسخ ملفات الإعداد احتياطيًا قبل تعديلها.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--list</code></td><td>يعرض التطبيقات التي يعرفها setup، وهل كل منها مثبّت على هذا الجهاز.</td></tr>
+<tr><td><code>--clients &lt;ids&gt;</code></td><td>هذه التطبيقات فقط، بمعرّفاتها، مثل <code>claude-desktop,claude-code,codex,opencode,cursor</code>.</td></tr>
+<tr><td><code>--remove</code></td><td>يزيل ScreenPilot من هذه التطبيقات بدل إضافته.</td></tr>
+<tr><td><code>--output &lt;dir&gt;</code></td><td>مكان حفظ الفيديوهات. الافتراضي <code>~/Videos/ScreenPilot</code>.</td></tr>
+<tr><td><code>--in-place</code></td><td>يسجّل الحزمة في مكانها بدون نسخها.</td></tr>
+<tr><td><code>--skip-prepare</code></td><td>لا ينزّل متصفح التصيير ولا ينفّذ التصيير التجريبي.</td></tr>
+<tr><td><code>--allow-tools</code></td><td>لـ Claude Code فقط: يسمح للوكيل باستخدام كل أدوات ScreenPilot بدون سؤال في كل مرة. يضيف قاعدة إلى <code>~/.claude/settings.json</code>.</td></tr>
+<tr><td><code>--print</code></td><td>يطبع الإعداد فقط لتلصقه بيدك في تطبيق الذكاء الاصطناعي.</td></tr>
+</tbody>
+</table>
+
+<h3 id="doctor">doctor</h3>
+<p>الأمر <code>screenpilot doctor</code> يفحص هذا الجهاز: ffmpeg وسطح المكتب والشاشات وOBS ومتصفح العرض والأصوات. يطبع تقريرًا بصيغة JSON وسطر ملخص. رمز الخروج دائمًا 0، فاقرأ التقرير. أضف <code>--input</code> لاختبار حقن الإدخال أيضًا، وهو يحرّك المؤشر الفعلي لحظة.</p>
+<div class="note">نفّذ <code>screenpilot doctor</code> أولًا على أي جهاز جديد، وأعد تنفيذه كلما فشل التسجيل أو التحكم.</div>

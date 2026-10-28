@@ -5,10 +5,14 @@ on:
     branches: [main]
     paths-ignore:
       - "**.md"
+      - "docs/**"
+      - "site/**"
   pull_request:
     branches: [main]
     paths-ignore:
       - "**.md"
+      - "docs/**"
+      - "site/**"
 
 concurrency:
   group: ci-${{ github.ref }}

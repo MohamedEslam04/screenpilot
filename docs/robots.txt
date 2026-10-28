@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://mohamedeslam04.github.io/screenpilot/sitemap.xml

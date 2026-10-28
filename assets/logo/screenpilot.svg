@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-labelledby="t">
+  <title id="t">ScreenPilot</title>
+  <rect width="128" height="128" rx="30" fill="#0B132B"/>
+  <g transform="translate(64 64) scale(1.25) translate(-70 -64)">
+    <path d="M44 32L44 96L96 64Z" fill="#5EEAD4" fill-opacity=".14"/>
+    <path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" stroke="#5EEAD4" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="44" cy="32" r="8" fill="#5EEAD4"/>
+    <circle cx="44" cy="96" r="8" fill="#5EEAD4"/>
+    <circle cx="96" cy="64" r="8" fill="#5EEAD4"/>
+    <circle cx="62" cy="64" r="6" fill="#fff"/>
+  </g>
+</svg>

@@ -1,0 +1,92 @@
+<!--
+title: المنصات
+summary: ما الذي يستطيعه ScreenPilot على كل سطح مكتب: التسجيل والقيادة والتحكم بالنوافذ وتسجيل النقرات، مع المتطلبات وملاحظات كل نظام والقيود.
+-->
+<p>يختار ScreenPilot الواجهة المناسبة لسطح مكتبك بنفسه. التسجيل يعمل على كل سطح مكتب مدعوم. أما هل يستطيع الذكاء الاصطناعي استخدام تطبيقاتك نيابةً عنك (تحريك الفأرة والنقر والكتابة) فيعتمد على سطح المكتب. اطلب من تطبيق الذكاء الاصطناعي تشغيل ScreenPilot doctor ليخبرك أي واجهة اختار وما الذي يعمل على جهازك.</p>
+
+<h2 id="support">دعم المنصات</h2>
+<p>الاسم بين القوسين هو معرّف الواجهة الذي يعرضه ScreenPilot.</p>
+<table>
+  <thead>
+    <tr><th>سطح المكتب</th><th>التسجيل (مدمج)</th><th>القيادة (المؤشر والمفاتيح والكتابة)</th><th>النوافذ (عرض وتركيز وملاءمة 16:9)</th><th>تسجيل المؤشر والنقرات</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>KDE Plasma مع Wayland (<code>kde</code>)</td><td>PipeWire portal streams + GStreamer</td><td>RemoteDesktop portal (توافق مرة واحدة)</td><td>KWin scripts</td><td>مؤشر KWin؛ النقرات تحتاج إلى المجموعة <code>input</code></td></tr>
+    <tr><td>أي جلسة X11 (<code>x11</code>): GNOME على Xorg، وLinux Mint مع Cinnamon أو MATE أو Xfce، وKDE X11</td><td>ffmpeg <code>x11grab</code></td><td>XTest (أي نص Unicode، دون حافظة أو تبديل لغة الإدخال)</td><td>EWMH window manager</td><td>XQueryPointer + global hook</td></tr>
+    <tr><td>GNOME وسطوح Wayland الأخرى (<code>portal</code>)</td><td>PipeWire portal streams + GStreamer (يسأل مرة واحدة)</td><td>RemoteDesktop portal (توافق مرة واحدة)</td><td>غير متاح: خطوات التركيز والملاءمة وأهداف <code>{web}</code> تفشل برسالة واضحة؛ والعروض المؤطَّرة بالنوافذ ترجع إلى عروض الشاشة</td><td>لا شيء لأن Wayland يخفي المؤشر؛ لكن الـ takes المنفّذة تسجّل نقراتها هي</td></tr>
+    <tr><td>sway وHyprland وسطوح wlroots الأخرى (<code>portal</code>)</td><td>ScreenCast portal + GStreamer (يسأل مرة واحدة)</td><td>غير متاح (لا يوجد RemoteDesktop portal)</td><td>غير متاح</td><td>لا شيء</td></tr>
+    <tr><td>Windows 10 و11 (<code>windows</code>)</td><td>ffmpeg <code>gdigrab</code></td><td><code>SendInput</code></td><td>Win32</td><td>استطلاع المؤشر + global hook</td></tr>
+    <tr><td>macOS 12 وما بعده، Apple Silicon وIntel (<code>macos</code>)</td><td>ffmpeg <code>avfoundation</code> (إذن Screen Recording)</td><td>CGEvent (إذن Accessibility)</td><td>Accessibility API</td><td>استطلاع Quartz + global hook (إذن Input Monitoring)</td></tr>
+  </tbody>
+</table>
+<p>لفرض واجهة بعينها اضبط متغير البيئة <code>SCREENPILOT_DESKTOP</code> على <code>kde</code> أو <code>x11</code> أو <code>portal</code> أو <code>windows</code> أو <code>macos</code>.</p>
+<div class="note">KDE Wayland يُستخدم يوميًا. أما Windows وX11 وmacOS فلكل منها اختبار آلي على جهاز حقيقي في CI. لم يُجرَّب GNOME وHyprland على أجهزة حقيقية بعد.</div>
+
+<h2 id="requirements">المتطلبات</h2>
+<p>تحتوي تنزيلات Windows وmacOS وLinux على Node وffmpeg، فلا تحتاج إلى شيء آخر معها. هذه القائمة لمن يشغّل ScreenPilot من الشيفرة المصدرية.</p>
+<ul>
+  <li>Node 22 أو أحدث وpnpm.</li>
+  <li>ffmpeg وffprobe على <code>PATH</code>.</li>
+  <li>مسجّل شاشة. المسجّل المدمج هو الافتراضي. على Wayland (KDE وGNOME وwlroots) يسجّل تدفقات PipeWire من screen-cast portal بواسطة GStreamer، وهذا يحتاج إلى <code>gst-launch-1.0</code> مع <code>pipewiresrc</code> ومُرمِّز H.264 (<code>x264enc</code> أو <code>openh264enc</code> أو VA-API). على X11 وWindows يسجّل بـ ffmpeg. وعلى macOS يستخدم ffmpeg مع avfoundation.</li>
+  <li>اختياري: OBS Studio 28 أو أحدث مع تفعيل خادم WebSocket، إذا فضّلت مُرمِّزات OBS. استخدم <code>--recorder obs</code>.</li>
+  <li>اتصال بالإنترنت للتعليق الصوتي (Edge TTS) ولقائمة الأصوات.</li>
+  <li><code>wl-clipboard</code> (<code>wl-copy</code>) لكتابة النص غير اللاتيني على Wayland. أما X11 وWindows فيكتبان أي نص Unicode مباشرة.</li>
+</ul>
+<p>إذا نقصت حزمة من GStreamer فإن <code>screenpilot doctor</code> يطبع أمر التثبيت لتوزيعتك. مثلًا:</p>
+<pre><code class="language-sh"># Fedora
+sudo dnf install gstreamer1 pipewire-gstreamer gstreamer1-plugin-openh264
+# Debian, Ubuntu
+sudo apt install gstreamer1.0-tools gstreamer1.0-pipewire gstreamer1.0-plugins-ugly</code></pre>
+
+<h2 id="linux-notes">ملاحظات Linux</h2>
+<h3 id="linux-prompt">نافذة الإذن</h3>
+<p>على KDE وGNOME مع Wayland تعتمد القيادة على RemoteDesktop portal. وافق على نافذة "remote control" مرة واحدة واختر كل الشاشات. يحفظ ScreenPilot الموافقة فتمرّ المرات التالية دون سؤال. والتسجيل على Wayland يسأل مرة واحدة عن مشاركة الشاشة (على KDE يعيد استخدام موافقة التحكم عن بُعد).</p>
+<h3 id="linux-input">KDE Wayland: المجموعة input</h3>
+<p>لا يسمح Wayland للتطبيقات بمراقبة الإدخال العام. ولتسجيل نقرات الفأرة يقرأ ScreenPilot أزرار الفأرة من <code>/dev/input</code>، وهذا يتطلب أن يكون مستخدمك في المجموعة <code>input</code>:</p>
+<pre><code class="language-sh">sudo usermod -aG input "$USER"   # then log out and back in</code></pre>
+<div class="warn">أعضاء المجموعة <code>input</code> يستطيعون قراءة كل ما يُكتب بلوحة المفاتيح وكل حركة الفأرة على الجهاز، ومنها كلمات المرور في أي تطبيق. افعل ذلك فقط على جهاز وحساب تثق بهما. يمكنك إخراج نفسك منها بعد ذلك بالأمر <code>sudo gpasswd -d "$USER" input</code>.</div>
+<p>بدون المجموعة يظل التسجيل ممكنًا. تفقد تأثير النقرات، وتعود اقتراحات التكبير إلى الموضع الذي استقر فيه المؤشر.</p>
+<h3 id="linux-x11">X11</h3>
+<p>يدعم X11 كل شيء، بما في ذلك أهداف الويب وتأطير النوافذ، ولا يحتاج إلى أي نافذة إذن. مع التحجيم الكسري أو HiDPI يكون التسجيل بوحدات X pixels كما يبلغ عنها XRandR.</p>
+
+<h2 id="windows-notes">ملاحظات Windows</h2>
+<ul>
+  <li>تعتمد القيادة على <code>SendInput</code>. النافذة المشغَّلة بصلاحيات المسؤول لا تستطيع عملية عادية التحكم بها. شغّل ScreenPilot بصلاحيات المسؤول أيضًا.</li>
+  <li>الإحداثيات بالبكسل الفعلي.</li>
+  <li>التسجيل مدمج (ffmpeg <code>gdigrab</code> مع مؤشر الفأرة). OBS اختياري.</li>
+  <li>متصفح العرض هو Chrome أو Edge أو Brave، أيها وُجد أولًا. اضبط <code>SCREENPILOT_BROWSER</code> لاختيار متصفح آخر.</li>
+  <li>حجب إشعارات النوافذ المنبثقة أو إغلاقها لا يفعل شيئًا على Windows.</li>
+  <li>إذا سألك برنامج مكافحة الفيروسات عن ScreenPilot فاسمح له. يراقب النقرات أثناء التسجيل.</li>
+</ul>
+
+<h2 id="macos-notes">ملاحظات macOS</h2>
+<p>macOS 12 وما بعده، على Apple Silicon وIntel. التسجيل ولقطات الشاشة والقيادة (المؤشر والنقرات والكتابة بما فيها العربية والإيموجي والاختصارات) وقائمة النوافذ وتركيز النوافذ وترتيبها ومتصفح العرض، كلها تعمل دون OBS. عروض الويب تحتاج إلى Chrome أو Edge أو Brave في <code>/Applications</code>.</p>
+<p>يمنح macOS أذونات الخصوصية للتطبيق الذي يشغّل ScreenPilot (Claude أو Cursor أو VS Code أو Terminal) وليس لـ ScreenPilot نفسه. فعّل ذلك التطبيق في System Settings ثم Privacy &amp; Security:</p>
+<table>
+  <thead>
+    <tr><th>الإذن</th><th>لماذا يلزم</th><th>بدونه</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Accessibility</td><td>تحريك الفأرة والنقر والكتابة وتركيز النوافذ وتغيير حجمها</td><td>تفشل القيادة، وتسرد رسالة الخطأ هذه الخطوات</td></tr>
+    <tr><td>Screen &amp; System Audio Recording (واسمه Screen Recording في macOS 14 وما قبله)</td><td>التسجيل ولقطات الشاشة وعناوين النوافذ</td><td>يفشل التسجيل، وتسرد رسالة الخطأ هذه الخطوات</td></tr>
+    <tr><td>Input Monitoring</td><td>تسجيل نقراتك أنت أثناء التسجيل</td><td>لا تحتوي التسجيلات على تكبير عند النقرات (اختياري)</td></tr>
+  </tbody>
+</table>
+<p>ثم أغلق ذلك التطبيق وافتحه من جديد. الخطوات في <a href="@guide/install.html#macos-permissions">أذونات macOS</a>.</p>
+<ul>
+  <li>الإحداثيات بالنقاط (points) وليست بكسلات. تُعرض شاشة Retina بحجم "looks like"، وتحتفظ التسجيلات بتفاصيل Retina الكاملة (بحد أقصى 4096x2304 لشاشات 5K ولوحات الشاشات المتعددة).</li>
+  <li>تُسمّى الشاشات كما في System Settings، مثل "Built-in Retina Display" أو "DELL U2720Q". والطرازات المتطابقة تأخذ " (2)".</li>
+  <li>الاختصارات تُفسَّر حرفيًا. <code>ctrl+c</code> تعني Control-C. استخدم <code>cmd+c</code> لـ Command-C.</li>
+  <li>فعّل وضع Do Not Disturb بنفسك قبل التسجيل. لا يملك ScreenPilot طريقة في macOS لحجب إشعارات البانر.</li>
+  <li>النوافذ المصغّرة والنوافذ في Spaces أخرى لا تظهر في القائمة. النوافذ بملء الشاشة تخرج من هذا الوضع حين يضعها take في مكان.</li>
+</ul>
+
+<h2 id="limitations">القيود</h2>
+<ul>
+  <li>تعمل قيادة سطح المكتب على KDE Wayland وX11 وGNOME Wayland (دون التحكم بالنوافذ) وWindows وmacOS. ولا تعمل على سطوح wlroots (sway وHyprland). أما التسجيل فيعمل هناك.</li>
+  <li>سطوح Wayland غير KDE لا تعرض قائمة نوافذ ولا موضع المؤشر. وهذا يعني: لا تأطير بالنوافذ، ولا أهداف <code>{web}</code> أو <code>{window}</code>، ولا سجل للمؤشر في تسجيلاتك أنت.</li>
+  <li>التعليق الصوتي يستخدم Edge TTS فقط. يحتاج إلى الإنترنت، وهو خدمة غير رسمية قد تتغير.</li>
+  <li>الإخراج ليس سريعًا. استخدم المسودة أثناء التجريب.</li>
+  <li>يُسقَط التعليق الصوتي داخل الأجزاء المقصوصة من الفيديو، لذلك يجب أن تقع الجمل داخل الأجزاء المحتفظ بها.</li>
+</ul>
+<p>ارجع إلى <a href="@guide/install.html">التثبيت</a> أو انتقل إلى دليل <a href="@guide/safety.html">الأمان</a>.</p>

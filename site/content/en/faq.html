@@ -1,0 +1,103 @@
+<!--
+title: FAQ and troubleshooting
+summary: Short answers to common questions about ScreenPilot, plus fixes for the problems people hit most: permissions, dialogs, freezes and missing zooms.
+-->
+<p>Short answers first, fixes after. If your question is not here, ask your AI app to run the ScreenPilot doctor: it checks the machine and says what to fix.</p>
+
+<h2 id="basics">The basics</h2>
+
+<h3 id="api-key">Do I need an API key or an account?</h3>
+<p>No. Your AI app does the thinking, and ScreenPilot gives it the screen, the recorder and the video editor. There is no ScreenPilot account, no key and no sign-in.</p>
+
+<h3 id="ai-apps">Which AI apps work?</h3>
+<p>The installer adds ScreenPilot to each of these that it finds:</p>
+<ul>
+  <li>Claude Desktop and Claude Code</li>
+  <li>Codex, OpenCode, Gemini CLI, Qwen Code, GitHub Copilot CLI, Amazon Q, Goose, Warp</li>
+  <li>Cursor, Windsurf, Devin Desktop, Antigravity, Kiro, Zed, LM Studio</li>
+  <li>VS Code, VS Code Insiders and VSCodium, with the Cline and Roo Code extensions</li>
+</ul>
+<p>JetBrains AI Assistant has no settings file, so use its <strong>Import from Claude</strong> button after you install. Any other app that supports MCP servers works too. See <a href="@guide/install.html">Install</a>.</p>
+
+<h3 id="one-window">Can I record just one window?</h3>
+<p>You record a monitor, and the video can follow one window. Three ways to get the shot you want:</p>
+<ul>
+  <li><strong>Frame the window.</strong> The default camera is <code>"window"</code>: it shows only the window in use and hides the panel, tray and other apps. This needs the desktop to report the active window (KDE, X11, Windows, macOS). On GNOME and other Wayland desktops it falls back to showing the monitor.</li>
+  <li><strong>Fit the window to 16:9.</strong> Ask for <code>fitWindow</code> (command line: <code>screenpilot record --fit-window &lt;class or title&gt;</code>). The window is resized to 16:9 during the recording and put back afterwards.</li>
+  <li><strong>Record one monitor only.</strong> Pass the monitor name (<code>--screens HDMI-A-5</code>), and the other monitors never appear.</li>
+</ul>
+
+<h3 id="arabic">Can the voiceover be in Arabic?</h3>
+<p>Yes. ScreenPilot uses Edge TTS voices in English, Arabic and many other languages. For Egyptian Arabic use <code>ar-EG-SalmaNeural</code> (female) or <code>ar-EG-ShakirNeural</code> (male). List more with <code>screenpilot voices --lang ar-EG</code>, or ask your AI app to list voices. A single narration line can override the voice, so one video can mix languages. Captions can be bilingual too: write <code>"English\nعربي"</code> as the caption text.</p>
+<p>Typing Arabic into the demo app works on Windows, macOS and X11. On Wayland it goes through the clipboard and needs <code>wl-clipboard</code> (<code>wl-copy</code>).</p>
+
+<h3 id="offline">Does it work offline?</h3>
+<p>Mostly. Recording, analysis, editing and rendering run on your computer. Three things need the internet:</p>
+<ul>
+  <li><strong>The voiceover.</strong> Edge TTS is an online service. A video with no narration lines needs no voice. Generated clips are cached in a <code>.screenpilot-cache</code> folder next to the storyboard or take.</li>
+  <li><strong>The first render.</strong> It downloads the video renderer, about 100 MB, once.</li>
+  <li><strong>Pages you ask the demo browser to open</strong>, and any Google Fonts a storyboard uses.</li>
+</ul>
+<p>Your AI app itself usually needs the internet too. See <a href="@guide/safety.html#privacy">Privacy</a> for what leaves your computer.</p>
+
+<h3 id="files">Where are my files saved?</h3>
+<p>Recordings and finished videos go to the <strong>ScreenPilot</strong> folder inside your Videos folder (on a Mac: Movies). Each recording is a session folder holding the video, <code>events.jsonl</code> and a <code>storyboard.json</code>. When you use the command line, sessions go to <code>sessions/&lt;timestamp&gt;</code> in the current folder, or to the folder in <code>SCREENPILOT_OUTPUT</code>. The installer option <code>--output &lt;dir&gt;</code> sets that folder. Settings and the audit log are in <code>~/.config/screenpilot</code> (Windows: <code>%APPDATA%\screenpilot</code>).</p>
+
+<h2 id="checks">Checks and permissions</h2>
+
+<h3 id="doctor">What does doctor check?</h3>
+<p>Ask your AI app to "run the ScreenPilot doctor", or run <code>screenpilot doctor</code>. It prints a list of checks and a summary such as "12 ok, 0 failed, 2 skipped". Each failed check says how to fix it. A skipped check is optional or does not apply to your desktop.</p>
+<ul>
+  <li>Node 22 or newer, <code>ffmpeg</code> and <code>ffprobe</code>.</li>
+  <li>Your desktop type and monitors, and whether it can record, drive the mouse and keyboard, control windows, and log the pointer.</li>
+  <li>The demo browser (Chrome, Edge or Brave), the Edge TTS voices (needs internet), and the video renderer.</li>
+  <li>OBS, only if you use <code>--recorder obs</code>. GStreamer on Linux.</li>
+  <li>On a Mac: Accessibility, Screen Recording, Input Monitoring and avfoundation.</li>
+</ul>
+<p>Add <code>--input</code> to also test mouse control. That test moves the real pointer for a moment.</p>
+
+<h3 id="mac-permissions">What are the macOS permissions?</h3>
+<p>macOS grants privacy permissions to the app that starts ScreenPilot (Claude, Cursor, VS Code, Terminal), not to ScreenPilot itself. Open <strong>System Settings, Privacy &amp; Security</strong> and turn that app on under:</p>
+<ul>
+  <li><strong>Screen &amp; System Audio Recording</strong> (called Screen Recording on macOS 14 and older): needed to record, take screenshots and read window titles.</li>
+  <li><strong>Accessibility</strong>: needed when the AI uses your apps for you, with mouse and keyboard.</li>
+  <li><strong>Input Monitoring</strong>: optional. It lets recordings zoom in on your own clicks.</li>
+</ul>
+<p>Then quit and reopen the AI app. When a permission is missing, ScreenPilot opens the right settings pane and the error names the app to allow.</p>
+
+<h3 id="wayland-dialog">Why does my desktop show an approval dialog?</h3>
+<p>On Wayland (KDE, GNOME and others) apps cannot capture the screen or control the mouse without your approval. The first time you record, or let the AI use your desktop, the desktop asks once to allow screen sharing or remote control. Allow it, and on KDE select all monitors. ScreenPilot saves the approval, so later runs are silent. If you chose only one monitor, the others are missing from recordings. Deleting <code>state.json</code> in the config folder makes ScreenPilot ask again.</p>
+<p>On sway and Hyprland, recording works but the AI cannot drive the desktop, because those desktops have no remote control interface.</p>
+
+<h2 id="videos">Making the video</h2>
+
+<h3 id="freeze">Why does the video freeze while a narration line plays?</h3>
+<p>The render never lets two narration lines overlap. When a line is longer than the time before the next cut or line, the render freezes the video until the line ends. The render result lists these pauses as <code>autoHolds</code>. To avoid them, make lines shorter: one sentence, under about 12 words, one idea. Narration placed in a cut region is dropped, so keep lines inside the parts of the video you keep.</p>
+
+<h3 id="quality">What is the difference between draft and delivery?</h3>
+<p>There are three render qualities. <code>draft</code> is fast and rougher: use it while you change timing, zooms and wording. <code>looks</code> is the default, a normal render. <code>delivery</code> is the final file: use it once, at the end. Rendering is slow, so iterating on <code>draft</code> saves a lot of time. From the command line: <code>screenpilot render storyboard.json -q draft</code>, then <code>-q delivery -o demo.mp4</code>.</p>
+
+<h3 id="cut-idle">How do I cut idle time?</h3>
+<p>Run <code>analyze</code> on the recording. It lists idle spans, where nothing happens. Then create the storyboard with <code>suggest</code> on (<code>screenpilot init &lt;session&gt; --suggest</code>), which cuts the idle time and zooms on clicks for you. In the storyboard, <code>segments</code> are the parts you keep. Give a segment a <code>speed</code> of 4 to 8 to fast-forward a loading screen instead of cutting it. Remove mistakes the same way. See <a href="@guide/storyboard.html">Storyboard reference</a>.</p>
+
+<h3 id="ninety-seconds">How do I keep the video under about 90 seconds?</h3>
+<p>Aim for 30 to 90 seconds. Cut or speed up idle time and loading, keep narration to one short sentence per step, and caption with two to six words. When the agent drives the desktop, keep the take itself under about 90 seconds and use <code>waitFor</code> instead of long waits. A video that is too long is usually one that shows every step: show the main path and skip the rest. See <a href="@guide/agent-drive.html#tips">the tips for takes</a>.</p>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<h3 id="not-found">My AI app does not know ScreenPilot</h3>
+<p>Quit the AI app completely and open it again. For Claude Desktop on Windows, right-click its icon next to the clock and choose Quit. Still nothing? Run the ScreenPilot installer again. It lists the apps it added ScreenPilot to. If it says "No AI tool found", install your AI app, open it once, then run the installer again. See <a href="@guide/install.html">Install</a>.</p>
+
+<h3 id="no-zooms">The recording has no zoom on my clicks</h3>
+<p>Zooms come from click logging, and logging depends on the desktop:</p>
+<ul>
+  <li><strong>KDE Wayland:</strong> click capture needs your user in the <code>input</code> group. That group can read all keyboard and mouse input, so add yourself only on a machine you trust.</li>
+  <li><strong>macOS:</strong> allow Input Monitoring for the AI app.</li>
+  <li><strong>GNOME and other Wayland desktops:</strong> the desktop hides the pointer, so own recordings have no click log. Takes that the agent performs still log their own clicks, and the agent can place zooms in the storyboard by hand.</li>
+</ul>
+
+<h3 id="renderer">The doctor says the video renderer is not ready</h3>
+<p>The renderer downloads once, about 100 MB, and needs internet. Your first render downloads it, so there is nothing to do except wait. If it fails, check the connection and render again.</p>
+
+<h3 id="stops">The agent stopped when I touched the mouse</h3>
+<p>That is on purpose. Moving the pointer stops the agent so you can take over. Ask it to call <code>resume</code> to carry on from where the pointer is now, or <code>abort</code> to stop. To stop it from reacting to the mouse on an unattended machine, see <a href="@guide/safety.html#unattended">Unattended runs</a>.</p>

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-copy="Copy" data-copied="Copied">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Safety and privacy · ScreenPilot</title>
+<meta name="description" content="What the agent can touch when it drives your desktop, how to stop it, how to limit it, what is logged, and what leaves your computer.">
+<link rel="canonical" href="https://mohamedeslam04.github.io/screenpilot/guide/safety.html">
+<link rel="alternate" hreflang="en" href="https://mohamedeslam04.github.io/screenpilot/guide/safety.html">
+<link rel="alternate" hreflang="ar" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/safety.html">
+<link rel="alternate" hreflang="x-default" href="https://mohamedeslam04.github.io/screenpilot/guide/safety.html">
+<meta property="og:type" content="article"><meta property="og:title" content="Safety and privacy · ScreenPilot"><meta property="og:description" content="What the agent can touch when it drives your desktop, how to stop it, how to limit it, what is logged, and what leaves your computer.">
+<meta property="og:url" content="https://mohamedeslam04.github.io/screenpilot/guide/safety.html"><meta property="og:image" content="https://mohamedeslam04.github.io/screenpilot/assets/og.png"><meta property="og:site_name" content="ScreenPilot"><meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b132b">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("sp-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+  <a class="brand" href="../index.html" aria-label="ScreenPilot"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a>
+  <nav class="nav" aria-label="Main"><a href="../guide/index.html" aria-current=page>Docs</a><a href="../guide/install.html" class="hide-s">Install</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../ar/guide/safety.html" lang="ar" hreflang="ar">العربية</a><button class="theme" type="button" aria-label="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
+</div></header>
+<main id="main"><div class="wrap docs">
+  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html" aria-current=page>Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
+  <article class="doc"><h1>Safety and privacy</h1><p class="summary">What the agent can touch when it drives your desktop, how to stop it, how to limit it, what is logged, and what leaves your computer.</p><p>When an AI app drives your desktop through ScreenPilot, it can do what you can do with a mouse and keyboard: click, type, press shortcuts and open apps. This page explains how to stop it, how to limit it, what gets logged, and what leaves your computer.</p>
+<p>Recording your own screen and editing a video do not involve any of this. These controls matter when the agent <a href="../guide/agent-drive.html">drives the desktop</a>.</p>
+
+<h2 id="real-input">The agent uses your real mouse and keyboard<a class="a" href="#real-input" aria-label="Link to this section">#</a></h2>
+<p>There is no sandbox and no virtual screen. Clicks and keystrokes go to whatever window is in front, as if you had made them. If the agent clicks the wrong button in your mail app, that mail app receives the click.</p>
+<ul>
+  <li>Before the first driven action, Wayland desktops (KDE, GNOME) show a remote control approval dialog. Approve it once. The approval token is saved in <code>state.json</code> in the config folder (see <a href="#audit">the audit log</a> for where that is), so later runs are silent. Delete that file and ScreenPilot asks again.</li>
+  <li>On macOS the AI app needs Accessibility permission. On X11 and Windows there is no dialog.</li>
+  <li>While a person is at the machine, ask them to keep their hands off the mouse during a take.</li>
+</ul>
+<div class="warn">Close what you do not want touched before the agent starts: mail, chat, a banking tab, a terminal with a production shell. The agent sees screenshots of your screens and can click anywhere on them.</div>
+
+<h2 id="interrupt">Move the mouse to stop it<a class="a" href="#interrupt" aria-label="Link to this section">#</a></h2>
+<p>ScreenPilot watches the pointer while it drives. If the pointer is more than about 40 pixels away from where ScreenPilot just put it, it assumes a person took over and stops.</p>
+<ul>
+  <li><strong>Live driving</strong> (tools such as <code>click</code>, <code>type_text</code>): the action fails with a message that the pointer was moved by someone else. Nothing else runs until the agent calls <code>resume</code> to carry on from where the pointer is now, or <code>abort</code> to stop. The agent should take a new screenshot after <code>resume</code>, because the screen may have changed.</li>
+  <li><strong>A take</strong> (<code>perform</code>): the take stops at that step, keeps what was recorded so far, and reports the failed step. Fix the cause and perform it again. A take cannot be resumed.</li>
+</ul>
+<p>The check is made before each action and before each typed character. It reacts to the mouse only: pressing keys on your own keyboard does not stop anything.</p>
+<div class="warn">Interrupt detection needs ScreenPilot to read the pointer position. On GNOME and other Wayland desktops that use the portal backend, the desktop does not expose it, so moving the mouse does not stop the agent there. Use <code>abort</code> or Ctrl+C instead. <code>screenpilot doctor</code> shows the pointer-logging line for your desktop.</div>
+
+<h2 id="abort">Abort<a class="a" href="#abort" aria-label="Link to this section">#</a></h2>
+<p>Abort always works, on every desktop.</p>
+<ul>
+  <li><strong>From an AI app:</strong> the <code>abort</code> tool stops a running <code>perform</code> and closes the live driver. The agent has to call it, so if you need the agent to stop right now, also stop it in the AI app itself.</li>
+  <li><strong>From the command line:</strong> press Ctrl+C while <code>screenpilot perform</code> runs.</li>
+  <li><strong>Quitting the AI app</strong> closes the ScreenPilot server, which aborts a running take and releases the mouse.</li>
+</ul>
+<p>After an abort the next drive tool opens a fresh driver. Abort does not undo anything the agent already did.</p>
+
+<h2 id="unattended">Unattended runs<a class="a" href="#unattended" aria-label="Link to this section">#</a></h2>
+<p>If nobody sits at the machine, the pointer check can get in the way: any other program that moves the cursor would stop the agent. For those runs, turn it off:</p>
+<pre><code class="language-sh">SCREENPILOT_INTERRUPT=off</code></pre>
+<p>With this set, ScreenPilot ignores pointer movement by anyone else. Only <code>abort</code> (or a timeout, see below) stops the agent.</p>
+<div class="warn">With <code>SCREENPILOT_INTERRUPT=off</code>, moving your mouse no longer stops anything. If you sit down at the machine, the agent keeps clicking and typing into whatever is focused, and your own clicks may land in the middle of its work. Use it only on a machine nobody is using, and pair it with <code>SCREENPILOT_ALLOW_APPS</code> and <code>SCREENPILOT_PERFORM_TIMEOUT</code>.</div>
+
+<h2 id="env">Setting the environment variables<a class="a" href="#env" aria-label="Link to this section">#</a></h2>
+<p>All limits below are environment variables of the ScreenPilot server, so they must be set where your AI app starts it: in the <code>env</code> of the <code>screenpilot</code> entry in the app's MCP settings.</p>
+<pre><code class="language-json">"env": {
+  "SCREENPILOT_INTERRUPT": "off",
+  "SCREENPILOT_ALLOW_APPS": "firefox,notepad",
+  "SCREENPILOT_PERFORM_TIMEOUT": "180"
+}</code></pre>
+<p>For Claude Code you can add them when you register the server:</p>
+<pre><code class="language-sh">claude mcp add --scope user screenpilot \
+  -e SCREENPILOT_ALLOW_APPS=firefox,notepad \
+  -e SCREENPILOT_PERFORM_TIMEOUT=180 \
+  -- node /abs/path/to/dist/mcp.js</code></pre>
+<p>Restart the AI app after a change. Running the ScreenPilot installer again rewrites its entry, so check your variables afterwards. <code>screenpilot setup --print</code> shows the entry the installer writes; see <a href="../guide/install.html">Install</a>.</p>
+<p>None of these limits is on by default.</p>
+
+<h2 id="allow-apps">Limit which apps get input<a class="a" href="#allow-apps" aria-label="Link to this section">#</a></h2>
+<p><code>SCREENPILOT_ALLOW_APPS</code> is a comma-separated list of app names. Before each click, drag, scroll, key press or typing action, ScreenPilot checks which window has focus. If its class or title does not contain one of the names (case does not matter), the action fails and tells the agent to focus an allowed app first.</p>
+<pre><code class="language-sh">SCREENPILOT_ALLOW_APPS=firefox,notepad</code></pre>
+<p>Limits of this check:</p>
+<ul>
+  <li>It needs window control. On desktops that cannot tell which window is focused (GNOME on Wayland), every guarded action fails with an error that says so. Do not set it there.</li>
+  <li>It applies to the MCP drive tools. <code>focus_window</code> and <code>pointer_move</code> are exempt, so the agent can move the pointer and focus a window before the check runs.</li>
+  <li>It does not apply to <code>perform</code> takes or to <code>screenpilot perform</code> and <code>screenpilot drive</code> on the command line. A take is a file you can read before it runs.</li>
+  <li>It checks the focused window, not what is under the pointer. It is a safety net, not a security boundary.</li>
+</ul>
+
+<h2 id="allow-env">Limit which secrets can be typed<a class="a" href="#allow-env" aria-label="Link to this section">#</a></h2>
+<p>The agent can type the value of an environment variable without ever seeing it: <code>type_text</code> with <code>{ "env": "NAME" }</code>. <code>SCREENPILOT_ALLOW_ENV</code> is a comma-separated list of the names it may use. Any other name is refused.</p>
+<pre><code class="language-sh">SCREENPILOT_ALLOW_ENV=DEMO_PASSWORD,DEMO_EMAIL</code></pre>
+<p>Without it, the agent can type any variable in the server's environment, and that includes everything your AI app passed to it. The list is checked by the <code>type_text</code> tool only, not by <code>{ "type": { "env": ... } }</code> steps inside a take.</p>
+
+<h2 id="timeout">Time limit for takes<a class="a" href="#timeout" aria-label="Link to this section">#</a></h2>
+<p><code>SCREENPILOT_PERFORM_TIMEOUT</code> is a number of seconds. When a <code>perform</code> call runs longer than that, ScreenPilot aborts it, so a take that hangs does not hold your mouse forever.</p>
+<pre><code class="language-sh">SCREENPILOT_PERFORM_TIMEOUT=180</code></pre>
+<p>Set it a little above the length of your take. It limits <code>perform</code> through the MCP server. It does not limit live drive tools or the command-line <code>perform</code>.</p>
+
+<h2 id="audit">The audit log<a class="a" href="#audit" aria-label="Link to this section">#</a></h2>
+<p>Every drive action the agent takes through the MCP tools is appended to a file, one JSON line per action:</p>
+<pre><code class="language-json">{"at":"2026-10-28T09:14:03.221Z","tool":"type_text","args":{"text":{"chars":18}}}</code></pre>
+<p>The file is <code>audit.jsonl</code> in ScreenPilot's config folder:</p>
+<table>
+  <thead><tr><th>System</th><th>Config folder</th></tr></thead>
+  <tbody>
+    <tr><td>Linux and macOS</td><td><code>~/.config/screenpilot</code> (or <code>$XDG_CONFIG_HOME/screenpilot</code> if you set it)</td></tr>
+    <tr><td>Windows</td><td><code>%APPDATA%\screenpilot</code></td></tr>
+  </tbody>
+</table>
+<p>What is logged: the time, the tool name and its arguments for <code>focus_window</code>, <code>pointer_move</code>, <code>click</code>, <code>drag</code>, <code>scroll</code>, <code>key</code> and <code>type_text</code>. Key combos are logged. Actions that the app limit refuses are logged too, because the log is written first.</p>
+<p>What is not logged:</p>
+<ul>
+  <li><strong>Typed text.</strong> Only its length in characters. A secret given as <code>{ "env": "NAME" }</code> logs the variable name, never the value.</li>
+  <li><strong>The steps inside a take.</strong> A <code>perform</code> call is not broken down into its clicks. The take file and the recording are the record of what happened.</li>
+  <li><strong>Screenshots, recordings and results.</strong> Only the actions.</li>
+  <li><strong>Command-line use.</strong> <code>screenpilot drive</code> and <code>screenpilot perform</code> do not write to the log.</li>
+</ul>
+<p>The log stays on your computer and ScreenPilot never trims it. Delete it when you no longer need it. A failure to write it never stops a take.</p>
+
+<h2 id="secrets">Secrets<a class="a" href="#secrets" aria-label="Link to this section">#</a></h2>
+<ul>
+  <li>Never put a password or token in <code>take.json</code> as plain text. The file stays on disk and is easy to share by accident.</li>
+  <li>Use <code>{ "type": { "env": "NAME" } }</code> in a take, or <code>{ "env": "NAME" }</code> in <code>type_text</code>. The value is read from the environment when the action runs. It is not logged and not returned to the agent.</li>
+  <li>The recording still shows what is on screen. A password in a field that shows plain text appears in the video and in screenshots, which the AI app sees. Use fields that mask input.</li>
+</ul>
+
+<h2 id="allow-tools">setup --allow-tools (Claude Code)<a class="a" href="#allow-tools" aria-label="Link to this section">#</a></h2>
+<p>By default Claude Code asks you before each ScreenPilot tool call. That prompt is a brake on every click. If you prefer to skip it, the installer can allow all ScreenPilot tools at once:</p>
+<pre><code class="language-sh">screenpilot setup --allow-tools</code></pre>
+<p>What it changes: it adds <code>mcp__screenpilot</code> to <code>permissions.allow</code> in <code>~/.claude/settings.json</code>. That one rule covers every ScreenPilot tool, including <code>click</code>, <code>type_text</code>, <code>key</code> and <code>perform</code>. Your other entries and comments stay as they are, and the file is copied to <code>settings.json.screenpilot-backup</code> first.</p>
+<p>To undo it, either delete the <code>mcp__screenpilot</code> line from that file, or run:</p>
+<pre><code class="language-sh">screenpilot setup --remove --clients claude-code</code></pre>
+<p>This removes the rule, and also removes ScreenPilot and its skill from Claude Code. Run <code>screenpilot setup</code> again afterwards to add it back without the rule.</p>
+<div class="note">A middle way: skip <code>--allow-tools</code> and allow only the read-only tools yourself in Claude Code, such as <code>mcp__screenpilot__screenshot</code> and <code>mcp__screenpilot__windows</code>. Clicks and typing then still ask.</div>
+
+<h2 id="privacy">Privacy: what stays on your computer<a class="a" href="#privacy" aria-label="Link to this section">#</a></h2>
+<p>ScreenPilot needs no account and no API key. Recording, analysis, editing and rendering run on your computer. Files are saved in your <strong>ScreenPilot</strong> folder inside Videos (Movies on a Mac), or in <code>sessions</code> for command-line use.</p>
+<p>What goes over the network:</p>
+<ul>
+  <li><strong>The voice.</strong> Voiceover uses Edge TTS, an online service. The text of your narration lines is sent to it, and the audio comes back. Listing voices uses it too. Without internet there is no voiceover.</li>
+  <li><strong>Your AI app.</strong> The agent sees what its tools return: screenshots of your monitors, frames of your recordings, window titles and the text of the demo browser's page. Your AI app sends that to its model provider under its own privacy terms. Do not let the agent look at screens you would not show that provider.</li>
+  <li><strong>One-time downloads.</strong> The first render downloads the video renderer (about 100 MB). Pages in the demo browser load whatever sites you point it at, and a storyboard that asks for Google Fonts loads them at render time.</li>
+</ul>
+<p>ScreenPilot turns off telemetry in the HyperFrames renderer it uses.</p>
+
+<h2 id="checklist">Before you let an agent run alone<a class="a" href="#checklist" aria-label="Link to this section">#</a></h2>
+<ol>
+  <li>Rehearse with a dry run and watch it once.</li>
+  <li>Close apps and tabs you do not want touched.</li>
+  <li>Set <code>SCREENPILOT_ALLOW_APPS</code>, <code>SCREENPILOT_ALLOW_ENV</code> and <code>SCREENPILOT_PERFORM_TIMEOUT</code>.</li>
+  <li>Keep secrets in environment variables.</li>
+  <li>Know how to stop it: <code>abort</code> from the AI app, or Ctrl+C for the command line.</li>
+  <li>Check <code>audit.jsonl</code> afterwards.</li>
+</ol>
+<nav class="pager" aria-label="Pager"><a href="agent-drive.html" rel="prev"><small>Previous</small>Let the agent drive</a><a href="platforms.html" rel="next"><small>Next</small>Platforms</a></nav></article>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#real-input">The agent uses your real mouse and keyboard</a><a href="#interrupt">Move the mouse to stop it</a><a href="#abort">Abort</a><a href="#unattended">Unattended runs</a><a href="#env">Setting the environment variables</a><a href="#allow-apps">Limit which apps get input</a><a href="#allow-env">Limit which secrets can be typed</a><a href="#timeout">Time limit for takes</a><a href="#audit">The audit log</a><a href="#secrets">Secrets</a><a href="#allow-tools">setup --allow-tools (Claude Code)</a><a href="#privacy">Privacy: what stays on your computer</a><a href="#checklist">Before you let an agent run alone</a></aside>
+</div></main>
+<footer class="foot"><div class="wrap">
+  <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>
+  <div><h3>Learn</h3><ul><li><a href="../guide/getting-started.html">Getting started</a></li><li><a href="../guide/tools.html">MCP tools</a></li><li><a href="../guide/storyboard.html">Storyboard reference</a></li><li><a href="../guide/faq.html">FAQ and troubleshooting</a></li></ul></div>
+  <div><h3>Project</h3><ul><li><a href="https://github.com/MohamedEslam04/screenpilot">GitHub</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/releases">Releases</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/issues">Report an issue</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/CONTRIBUTING.md">Contributing</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/SECURITY.md">Security</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/LICENSE">License</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/THIRD_PARTY_NOTICES.md">Third-party notices</a></li></ul></div>
+</div></footer>
+<script src="../assets/app.js" defer></script>
+</body></html>

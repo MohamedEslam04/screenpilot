@@ -1,0 +1,120 @@
+<!--
+title: أدوات MCP
+summary: الأدوات التي يمنحها ScreenPilot لتطبيق الذكاء الاصطناعي، مجمّعة حسب المهمة: التسجيل والمقاطع وstoryboard والتصيير والتحكم بسطح المكتب والتشخيص.
+-->
+<p>يعمل ScreenPilot كخادم MCP. يرى تطبيق الذكاء الاصطناعي الأدوات أدناه ويستدعيها عنك، فتطلب الفيديو بكلمات عادية ويختار التطبيق الأدوات. هذه الصفحة للمطورين الذين يريدون معرفة ما تفعله كل أداة بالضبط. ويرسل الخادم سير العمل إلى كل عميل عند الاتصال، فتعرف حتى التطبيقات التي بلا skill الدورة كاملة.</p>
+<p>الأزمنة في أدوات الـ storyboard بثواني المصدر (التسجيل الخام). المواضع مُطبَّعة بين 0 و1، حيث x من اليسار وy من الأعلى. الأداة <code>check_output</code> وحدها تستخدم ثواني الخرج.</p>
+
+<h2 id="recording">التسجيل</h2>
+<table>
+<thead><tr><th>الأداة</th><th>وظيفتها</th><th>أهم المدخلات</th></tr></thead>
+<tbody>
+<tr><td><code>record_start</code></td><td>تبدأ تسجيل سطح المكتب بالمسجّل المدمج (بدون OBS)، مع أحداث المؤشر والنقرات والنافذة النشطة. تسجيل واحد فقط في كل مرة. اطلب من الشخص تنفيذ العرض ثم استدعِ <code>record_stop</code>.</td><td><code>dir</code>, <code>screens</code> (<code>"all"</code> أو أسماء شاشات), <code>screen</code>, <code>fitWindow</code>, <code>recorder</code> (<code>native</code> أو <code>obs</code>), <code>input</code>, <code>obsUrl</code>, <code>obsPassword</code>, <code>map</code></td></tr>
+<tr><td><code>record_stop</code></td><td>توقف التسجيل الجاري. تعيد مجلد الجلسة ومسار الفيديو ومسار <code>events.jsonl</code> والمدة والتحذيرات.</td><td>لا شيء</td></tr>
+<tr><td><code>remap</code></td><td>تعيد ربط أحداث المؤشر في جلسة بشاشة أخرى، عندما ينبّه <code>record_stop</code> إلى أنه خمّن الشاشة التي يسجّلها OBS.</td><td><code>dir</code>, <code>screen</code></td></tr>
+</tbody>
+</table>
+<p>إذا أُغلق العميل أثناء التسجيل، يوقف الخادم التسجيل ويحفظه.</p>
+
+<h2 id="looking">معاينة المقاطع</h2>
+<table>
+<thead><tr><th>الأداة</th><th>وظيفتها</th><th>أهم المدخلات</th></tr></thead>
+<tbody>
+<tr><td><code>analyze</code></td><td>تحلّل التسجيل: المدة وفترات الخمول والنقرات وsegments وzooms المقترحة. وتعيد أيضًا صورة contact sheet فيها مصغّرات مرقّمة بالزمن. انظر إلى الصورة أولًا.</td><td><code>target</code> (مجلد جلسة أو فيديو)</td></tr>
+<tr><td><code>get_frames</code></td><td>تستخرج لقطات من التسجيل المصدر عند ثواني المصدر المحددة وتعيدها صورًا، بحد أقصى 12 في الاستدعاء. وتُحفظ اللقطات أيضًا في مجلد <code>frames/</code> بجوار الفيديو. مع تفعيل <code>grid</code> تقرأ من الشبكة (0..1) مواضع zoom وhighlight وcallout مباشرة من الصورة.</td><td><code>video</code>, <code>times</code>, <code>grid</code>, <code>width</code> (من 160 إلى 3840، الافتراضي 1280)</td></tr>
+</tbody>
+</table>
+
+<h2 id="storyboard">Storyboard</h2>
+<table>
+<thead><tr><th>الأداة</th><th>وظيفتها</th><th>أهم المدخلات</th></tr></thead>
+<tbody>
+<tr><td><code>storyboard_schema</code></td><td>تعيد JSON Schema الخاص بـ <code>storyboard.json</code>. اقرأه قبل أن تكتب storyboard.</td><td>لا شيء</td></tr>
+<tr><td><code>storyboard_init</code></td><td>تكتب <code>storyboard.json</code> مبدئيًا لتسجيل أو جلسة. مع <code>suggest</code> تملأ segments (بقصّ وقت الخمول) وzooms (من النقرات) مسبقًا.</td><td><code>target</code>, <code>suggest</code>, <code>out</code>, <code>voice</code>, <code>force</code></td></tr>
+<tr><td><code>storyboard_validate</code></td><td>تتحقق من الـ storyboard مقابل الـ schema والفيديو المصدر. تعيد <code>valid</code> مع التحذيرات، أو مشكلات الـ schema. لا ترمي خطأ أبدًا. نفّذها قبل كل تصيير.</td><td><code>path</code></td></tr>
+<tr><td><code>voices</code></td><td>تعرض أصوات Edge TTS. تحتاج إلى اتصال بالشبكة. صفِّ حسب اللغة، مثل <code>ar-EG</code> أو <code>en-US</code>.</td><td><code>lang</code></td></tr>
+</tbody>
+</table>
+<p>صيغة الملف موجودة في <a href="@guide/storyboard.html">مرجع الـ storyboard</a>.</p>
+
+<h2 id="render-check">التصيير والفحص</h2>
+<table>
+<thead><tr><th>الأداة</th><th>وظيفتها</th><th>أهم المدخلات</th></tr></thead>
+<tbody>
+<tr><td><code>render</code></td><td>تصيّر storyboard إلى MP4. تستغرق دقائق. إذا كان سطر التعليق الصوتي أطول من مكانه يتجمد الفيديو تلقائيًا (انظر <code>autoHolds</code> في النتيجة). استخدم <code>draft</code> أثناء التكرار، و<code>looks</code> للتصيير العادي، و<code>delivery</code> للملف النهائي فقط.</td><td><code>storyboard</code>, <code>output</code>, <code>quality</code> (<code>draft</code> أو <code>looks</code> أو <code>delivery</code>؛ الافتراضي <code>looks</code>)</td></tr>
+<tr><td><code>check_output</code></td><td>تعيد لقطات من فيديو مصيَّر على شكل صور، بحد أقصى 12 في الاستدعاء. الأزمنة هنا بثواني الخرج. بدون <code>times</code> تحصل على 8 لقطات موزعة بالتساوي. ابحث عن تعليقات مقطوعة، وzoom على موضع خاطئ، وتجميد غير مريح.</td><td><code>video</code>, <code>times</code></td></tr>
+<tr><td><code>build</code></td><td>تولّد الصوت وتقصّ الفيديو وتكتب مشروع HyperFrames بدون تصيير. تعرض مدة الخرج وفترات التجميد التلقائية والتحذيرات.</td><td><code>storyboard</code></td></tr>
+<tr><td><code>preview</code></td><td>تبني الـ storyboard وتفتح HyperFrames Studio ليتنقل الشخص داخل الفيديو.</td><td><code>storyboard</code></td></tr>
+</tbody>
+</table>
+
+<h2 id="desktop">رؤية سطح المكتب والتحكم فيه</h2>
+<p>تتيح هذه الأدوات للوكيل أن ينظر إلى الشاشة ويتصرف عليها. أدوات التحكم تستخدم الفأرة ولوحة المفاتيح الفعليتين. اقرأ <a href="@guide/agent-drive.html">تحكّم الوكيل</a> للدورة، و<a href="@guide/safety.html">الأمان</a> لمعرفة ما يستطيع الوكيل لمسه وكيف تحدّه. يُسجَّل كل إجراء تحكّم في <code>audit.jsonl</code> داخل مجلد الإعدادات. ولا يُسجَّل النص المكتوب أبدًا.</p>
+
+<h3 id="see">الرؤية</h3>
+<p>هذه الأدوات للقراءة فقط.</p>
+<table>
+<thead><tr><th>الأداة</th><th>وظيفتها</th><th>أهم المدخلات</th></tr></thead>
+<tbody>
+<tr><td><code>screenshot</code></td><td>تعيد صورة لكل شاشة. مع تفعيل <code>grid</code> تظهر شبكة 0..1 تقرأ منها قيم x وy لتمريرها إلى <code>pointer_move</code> و<code>click</code>. التقط صورة قبل الإجراء وأخرى بعده للتحقق.</td><td><code>screen</code>, <code>grid</code>, <code>width</code></td></tr>
+<tr><td><code>windows</code></td><td>تعرض النوافذ المفتوحة: المعرّف والعنوان والصنف أو التطبيق وpid وهل هي نشطة والأبعاد والشاشة. فارغة على أنظمة سطح المكتب التي لا تتيح التحكم بالنوافذ (GNOME وsway)؛ استخدم أهداف الشاشة هناك.</td><td>لا شيء</td></tr>
+<tr><td><code>browser_open</code></td><td>تفتح متصفح العرض النظيف (له ملف تعريف خاص) أو تعيد استخدامه، وتضعه على شاشة. الخيار <code>app</code> يخفي شريط العنوان والتبويبات فلا يظهر شيء عن الجهاز. بعدها استخدم أهداف <code>{web: selector}</code> والأداة <code>web_locate</code>.</td><td><code>screen</code>, <code>url</code>, <code>app</code></td></tr>
+<tr><td><code>web_locate</code></td><td>تجد عنصرًا في متصفح العرض بمحدد Playwright (CSS أو <code>text=...</code> أو <code>role=...</code>) وتعيد مستطيله بإحداثيات الشاشة بالبكسل. استخدمها للتأكد من وجود الهدف قبل النقر.</td><td><code>selector</code></td></tr>
+<tr><td><code>wait_for</code></td><td>تنتظر حتى تظهر نافذة أو عنصر في المتصفح، لتتحقق من نجاح إجراء بدون تخمين مدة الانتظار. مرّر واحدًا فقط من <code>window</code> أو <code>web</code>. تفشل عند انتهاء المهلة.</td><td><code>window</code> أو <code>web</code>, <code>timeout</code> (بالثواني، الافتراضي 15، الأقصى 120)</td></tr>
+<tr><td><code>page_text</code></td><td>تقرأ التبويب الحالي في متصفح العرض كبيانات: العنوان URL والعنوان والنص المرئي. استخدمها لتعرف ما تقوله الصفحة بدل قراءة لقطة شاشة.</td><td><code>maxChars</code> (الافتراضي 4000)</td></tr>
+</tbody>
+</table>
+
+<h3 id="act">التنفيذ</h3>
+<p>هذه الأدوات تحرّك المؤشر الفعلي وتضغط مفاتيح فعلية.</p>
+<table>
+<thead><tr><th>الأداة</th><th>وظيفتها</th><th>أهم المدخلات</th></tr></thead>
+<tbody>
+<tr><td><code>focus_window</code></td><td>ترفع أول نافذة يحتوي صنفها أو عنوانها على <code>match</code> وتعطيها التركيز. ويمكنها نقل النافذة إلى شاشة.</td><td><code>match</code>, <code>screen</code></td></tr>
+<tr><td><code>pointer_move</code></td><td>تنقل المؤشر بحركة سلسة إلى نقطة على شاشة.</td><td><code>screen</code>, <code>x</code>, <code>y</code>, <code>dur</code></td></tr>
+<tr><td><code>click</code></td><td>تنقل المؤشر إلى هدف وتنقر.</td><td><code>target</code>, <code>button</code> (<code>left</code> أو <code>right</code> أو <code>middle</code>), <code>count</code> (من 1 إلى 3؛ 2 نقرة مزدوجة)</td></tr>
+<tr><td><code>drag</code></td><td>تضغط عند <code>from</code> وتنقل إلى <code>to</code> ثم تترك.</td><td><code>from</code>, <code>to</code></td></tr>
+<tr><td><code>scroll</code></td><td>تدير عجلة الفأرة، ويمكنها الانتقال إلى هدف أولًا. القيمة الموجبة تمرّر للأسفل أو لليمين.</td><td><code>steps</code>, <code>at</code>, <code>horizontal</code></td></tr>
+<tr><td><code>key</code></td><td>تضغط تركيبة مفاتيح في النافذة التي عليها التركيز، مثل <code>ctrl+l</code> أو <code>enter</code> أو <code>alt+tab</code>. على macOS استخدم <code>cmd</code> لا <code>ctrl</code>.</td><td><code>combo</code></td></tr>
+<tr><td><code>type_text</code></td><td>تكتب نصًا في الحقل الذي عليه التركيز كما يفعل الإنسان. للأسرار مرّر <code>{env: NAME}</code>: تُقرأ القيمة من بيئة الخادم ولا تظهر أبدًا. ولا يُعاد النص المكتوب في النتيجة.</td><td><code>text</code> (نص أو <code>{env: NAME}</code>)</td></tr>
+</tbody>
+</table>
+
+<h3 id="targets">الأهداف</h3>
+<p>الأدوات <code>click</code> و<code>drag</code> و<code>scroll</code> تأخذ هدفًا. له ثلاث صيغ:</p>
+<ul>
+<li><code>{web: selector}</code>: عنصر في متصفح العرض بمحدد Playwright. هذه الصيغة الأكثر موثوقية.</li>
+<li><code>{screen, x, y}</code>: نقطة على شاشة، مُطبَّعة بين 0 و1. الحقل <code>screen</code> اختياري.</li>
+<li><code>{window, x, y}</code>: نقطة داخل النافذة التي يحتوي صنفها أو عنوانها على النص، مُطبَّعة بين 0 و1.</li>
+</ul>
+<div class="note">على GNOME وغيره من أنظمة Wayland لا يوجد تحكم بالنوافذ. استخدم أهداف <code>{screen, x, y}</code> فقط هناك. نفّذ <code>doctor</code> لترى ما يدعمه سطح المكتب.</div>
+
+<h3 id="perform">الـ takes</h3>
+<p>الـ take ملف <code>take.json</code> ينفّذه الوكيل على سطح المكتب الفعلي أثناء التسجيل.</p>
+<table>
+<thead><tr><th>الأداة</th><th>وظيفتها</th><th>أهم المدخلات</th></tr></thead>
+<tbody>
+<tr><td><code>take_schema</code></td><td>تعيد JSON Schema الخاص بـ <code>take.json</code>: خطوات say وcaption وview وbrowser وgoto وmove وclick وdrag وtype وkey وscroll وwait وwaitFor وwaitForWindow وfocus وopen وrun. اقرأه قبل أن تكتب take.</td><td>لا شيء</td></tr>
+<tr><td><code>perform</code></td><td>تنفّذ take: تسجّل بالمسجّل المدمج بينما تتحكم بالفأرة ولوحة المفاتيح، وتكتب storyboard مما حدث. الخيار <code>dryRun</code> يجرّب الإجراءات نفسها بدون تسجيل؛ جرّب دائمًا أولًا. إذا فشلت خطوة تكون النتيجة خطأ يحمل <code>failedStep</code> و<code>error</code> و<code>partial</code>. يعمل take واحد فقط في كل مرة.</td><td><code>take</code>, <code>dir</code>, <code>dryRun</code></td></tr>
+</tbody>
+</table>
+
+<h3 id="stop-and-resume">الإيقاف والاستئناف</h3>
+<p>إذا حرّك شخص الفأرة أثناء تحكّم الوكيل، يتوقف الإجراء الجاري مع رسالة. هذا يحمي الشخص الجالس أمام الجهاز. في التشغيل بلا مراقبة، شغّل الخادم مع <code>SCREENPILOT_INTERRUPT=off</code>.</p>
+<table>
+<thead><tr><th>الأداة</th><th>وظيفتها</th><th>أهم المدخلات</th></tr></thead>
+<tbody>
+<tr><td><code>resume</code></td><td>تتابع بعد أن توقفت نقرة أو حركة أو كتابة لأن شخصًا آخر حرّك المؤشر. تعتمد موضع المؤشر الحالي وتبقي المشغّل مفتوحًا، فلا يظهر مربع موافقة جديد. التقط لقطة شاشة بعدها، فقد تغيّرت الشاشة.</td><td>لا شيء</td></tr>
+<tr><td><code>abort</code></td><td>توقف كل ما يتحكم فيه الوكيل الآن: المشغّل الحي و<code>perform</code> الجاري. آمنة في أي وقت. أداة التحكم التالية تفتح مشغّلًا جديدًا.</td><td>لا شيء</td></tr>
+</tbody>
+</table>
+<div class="warn">قد يحتاج أول إجراء تحكّم إلى موافقة شخص على مربع حوار التحكم عن بعد (مرة واحدة على Wayland، وتُحفظ الموافقة). على macOS يحتاج تطبيق الذكاء الاصطناعي إلى إذن Accessibility وScreen Recording. ويذكر الخطأ مكان منح الإذن.</div>
+
+<h2 id="diagnose">التشخيص</h2>
+<table>
+<thead><tr><th>الأداة</th><th>وظيفتها</th><th>أهم المدخلات</th></tr></thead>
+<tbody>
+<tr><td><code>doctor</code></td><td>تفحص الجهاز وتعيد <code>{summary, checks}</code>: node وffmpeg وسطح المكتب والشاشات والنوافذ وOBS ومتصفح العرض والأصوات. لا تفشل أبدًا، فاقرأ التقرير. مع تفعيل <code>input</code> تختبر حقن الإدخال أيضًا وتحرّك المؤشر الفعلي لحظة.</td><td><code>input</code></td></tr>
+</tbody>
+</table>
+<p>نفّذ <code>doctor</code> أولًا على أي جهاز جديد.</p>

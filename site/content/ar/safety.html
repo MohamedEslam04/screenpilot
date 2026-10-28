@@ -1,0 +1,132 @@
+<!--
+title: الأمان والخصوصية
+summary: ما الذي يستطيع الوكيل لمسه عندما يتحكم بسطح مكتبك، وكيف توقفه وتقيّده، وما الذي يُسجَّل، وما الذي يغادر جهازك.
+-->
+<p>عندما يتحكم تطبيق ذكاء اصطناعي بسطح مكتبك عبر ScreenPilot، يستطيع أن يفعل ما تفعله أنت بالماوس ولوحة المفاتيح: ينقر ويكتب ويضغط الاختصارات ويفتح التطبيقات. تشرح هذه الصفحة كيف توقفه وكيف تقيّده، وما الذي يُسجَّل، وما الذي يغادر جهازك.</p>
+<p>تسجيل شاشتك بنفسك وتحرير الفيديو لا علاقة لهما بكل هذا. هذه الضوابط تهمّك عندما <a href="@guide/agent-drive.html">يتحكم الوكيل بسطح المكتب</a>.</p>
+
+<h2 id="real-input">الوكيل يستخدم الماوس ولوحة المفاتيح الحقيقيين</h2>
+<p>لا يوجد sandbox ولا شاشة افتراضية. النقرات والضغطات تذهب إلى النافذة التي في المقدمة كما لو أنك أنت من فعلها. إذا نقر الوكيل الزر الخطأ في تطبيق البريد، فتطبيق البريد هو من يستقبل النقرة.</p>
+<ul>
+  <li>قبل أول إجراء تحكّم، تعرض أسطح مكتب Wayland (مثل KDE وGNOME) نافذة موافقة على التحكم عن بعد. وافق عليها مرة واحدة. يُحفظ رمز الموافقة في <code>state.json</code> داخل مجلد الإعدادات (انظر <a href="#audit">سجل التدقيق</a> لمعرفة مكانه)، فتكون التشغيلات التالية صامتة. احذف الملف ليطلب ScreenPilot الموافقة من جديد.</li>
+  <li>على macOS يحتاج تطبيق الذكاء الاصطناعي إلى إذن Accessibility. وعلى X11 وWindows لا توجد نافذة موافقة.</li>
+  <li>إذا كان شخص جالساً أمام الجهاز، اطلب منه أن يبعد يده عن الماوس أثناء الـ take.</li>
+</ul>
+<div class="warn">أغلق ما لا تريد أن يُلمس قبل أن يبدأ الوكيل: البريد، والمحادثات، وتبويب البنك، وطرفية فيها shell على بيئة الإنتاج. يرى الوكيل لقطات شاشاتك ويستطيع النقر في أي مكان فيها.</div>
+
+<h2 id="interrupt">حرّك الماوس لإيقافه</h2>
+<p>يراقب ScreenPilot المؤشر أثناء التحكم. إذا ابتعد المؤشر أكثر من 40 بكسل تقريباً عن المكان الذي وضعه فيه ScreenPilot للتو، يفترض أن شخصاً تولّى الأمر ويتوقف.</p>
+<ul>
+  <li><strong>التحكم المباشر</strong> (أدوات مثل <code>click</code> و<code>type_text</code>): يفشل الإجراء برسالة تقول إن شخصاً آخر حرّك المؤشر. لا يُنفَّذ شيء بعدها حتى يستدعي الوكيل <code>resume</code> ليكمل من حيث المؤشر الآن، أو <code>abort</code> ليتوقف. على الوكيل أن يلتقط لقطة شاشة جديدة بعد <code>resume</code> لأن الشاشة قد تكون تغيّرت.</li>
+  <li><strong>الـ take</strong> (<code>perform</code>): يتوقف الـ take عند تلك الخطوة، ويحتفظ بما سُجّل، ويذكر الخطوة الفاشلة. عالج السبب ونفّذه من جديد. لا يمكن استئناف take.</li>
+</ul>
+<p>يُجرى الفحص قبل كل إجراء وقبل كل حرف يُكتب. وهو يتفاعل مع الماوس فقط: الضغط على لوحة مفاتيحك أنت لا يوقف شيئاً.</p>
+<div class="warn">كشف المقاطعة يحتاج أن يقرأ ScreenPilot موضع المؤشر. على GNOME وأسطح مكتب Wayland الأخرى التي تستخدم الواجهة الخلفية portal لا يتيح سطح المكتب هذه المعلومة، فلا يوقف تحريك الماوس الوكيلَ هناك. استخدم <code>abort</code> أو Ctrl+C بدلاً من ذلك. ويعرض <code>screenpilot doctor</code> سطر تسجيل المؤشر لسطح مكتبك.</div>
+
+<h2 id="abort">الإيقاف بـ abort</h2>
+<p>يعمل <code>abort</code> دائماً، على كل أسطح المكتب.</p>
+<ul>
+  <li><strong>من تطبيق الذكاء الاصطناعي:</strong> الأداة <code>abort</code> توقف <code>perform</code> الجاري وتغلق المشغّل المباشر. لكن الوكيل هو من يجب أن يستدعيها، فإذا أردت إيقافه فوراً فأوقفه أيضاً من تطبيق الذكاء الاصطناعي نفسه.</li>
+  <li><strong>من سطر الأوامر:</strong> اضغط Ctrl+C أثناء تشغيل <code>screenpilot perform</code>.</li>
+  <li><strong>إغلاق تطبيق الذكاء الاصطناعي</strong> يغلق خادم ScreenPilot، فيوقف أي take جارٍ ويحرّر الماوس.</li>
+</ul>
+<p>بعد <code>abort</code> تفتح أداة التحكم التالية مشغّلاً جديداً. و<code>abort</code> لا يتراجع عن أي شيء فعله الوكيل بالفعل.</p>
+
+<h2 id="unattended">التشغيل دون مراقبة</h2>
+<p>إذا لم يكن أحد جالساً أمام الجهاز، قد يعطّل فحص المؤشر العمل: أي برنامج آخر يحرّك المؤشر سيوقف الوكيل. لهذه الحالة أوقف الفحص:</p>
+<pre><code class="language-sh">SCREENPILOT_INTERRUPT=off</code></pre>
+<p>مع هذا المتغير يتجاهل ScreenPilot حركة المؤشر من أي طرف آخر. لا يوقف الوكيلَ إلا <code>abort</code> (أو مهلة زمنية، انظر أدناه).</p>
+<div class="warn">مع <code>SCREENPILOT_INTERRUPT=off</code> لا يوقف تحريك الماوس أي شيء. إذا جلست أمام الجهاز يستمر الوكيل في النقر والكتابة داخل النافذة التي عليها التركيز، وقد تقع نقراتك أنت وسط عمله. استخدمه فقط على جهاز لا يستعمله أحد، واجمعه مع <code>SCREENPILOT_ALLOW_APPS</code> و<code>SCREENPILOT_PERFORM_TIMEOUT</code>.</div>
+
+<h2 id="env">ضبط متغيرات البيئة</h2>
+<p>كل القيود التالية متغيرات بيئة لخادم ScreenPilot، فيجب ضبطها حيث يشغّله تطبيق الذكاء الاصطناعي: في <code>env</code> الخاص بإدخال <code>screenpilot</code> في إعدادات MCP للتطبيق.</p>
+<pre><code class="language-json">"env": {
+  "SCREENPILOT_INTERRUPT": "off",
+  "SCREENPILOT_ALLOW_APPS": "firefox,notepad",
+  "SCREENPILOT_PERFORM_TIMEOUT": "180"
+}</code></pre>
+<p>في Claude Code يمكنك إضافتها عند تسجيل الخادم:</p>
+<pre><code class="language-sh">claude mcp add --scope user screenpilot \
+  -e SCREENPILOT_ALLOW_APPS=firefox,notepad \
+  -e SCREENPILOT_PERFORM_TIMEOUT=180 \
+  -- node /abs/path/to/dist/mcp.js</code></pre>
+<p>أعد تشغيل تطبيق الذكاء الاصطناعي بعد أي تغيير. وتشغيل مثبّت ScreenPilot من جديد يعيد كتابة إدخاله، فتحقق من متغيراتك بعد ذلك. الأمر <code>screenpilot setup --print</code> يعرض الإدخال الذي يكتبه المثبّت، وراجع صفحة <a href="@guide/install.html">التثبيت</a>.</p>
+<p>لا يوجد أي من هذه القيود مفعّلاً افتراضياً.</p>
+
+<h2 id="allow-apps">تحديد التطبيقات التي تستقبل الإدخال</h2>
+<p>المتغير <code>SCREENPILOT_ALLOW_APPS</code> قائمة أسماء تطبيقات مفصولة بفواصل. قبل كل نقر أو سحب أو تمرير أو ضغط مفتاح أو كتابة، يفحص ScreenPilot أي نافذة عليها التركيز. إذا لم يحتوِ صنفها أو عنوانها على أحد الأسماء (لا فرق بين الأحرف الكبيرة والصغيرة)، يفشل الإجراء ويطلب من الوكيل أن يركّز على تطبيق مسموح أولاً.</p>
+<pre><code class="language-sh">SCREENPILOT_ALLOW_APPS=firefox,notepad</code></pre>
+<p>حدود هذا الفحص:</p>
+<ul>
+  <li>يحتاج التحكم بالنوافذ. على أسطح المكتب التي لا تعرف أي نافذة عليها التركيز (GNOME على Wayland) يفشل كل إجراء محروس برسالة تقول ذلك. لا تضبطه هناك.</li>
+  <li>يسري على أدوات التحكم في MCP. الأداتان <code>focus_window</code> و<code>pointer_move</code> مستثناتان، فيستطيع الوكيل تحريك المؤشر وتركيز نافذة قبل أن يُجرى الفحص.</li>
+  <li>لا يسري على الـ takes التي تُنفَّذ بـ <code>perform</code>، ولا على <code>screenpilot perform</code> و<code>screenpilot drive</code> في سطر الأوامر. الـ take ملف تستطيع قراءته قبل تشغيله.</li>
+  <li>يفحص النافذة التي عليها التركيز، لا ما تحت المؤشر. هو شبكة أمان وليس حداً أمنياً.</li>
+</ul>
+
+<h2 id="allow-env">تحديد الأسرار التي يمكن كتابتها</h2>
+<p>يستطيع الوكيل كتابة قيمة متغير بيئة دون أن يراها: الأداة <code>type_text</code> مع <code>{ "env": "NAME" }</code>. والمتغير <code>SCREENPILOT_ALLOW_ENV</code> قائمة مفصولة بفواصل بالأسماء المسموح استخدامها. أي اسم آخر يُرفض.</p>
+<pre><code class="language-sh">SCREENPILOT_ALLOW_ENV=DEMO_PASSWORD,DEMO_EMAIL</code></pre>
+<p>بدونه يستطيع الوكيل كتابة أي متغير في بيئة الخادم، ومنها كل ما مرّره له تطبيق الذكاء الاصطناعي. القائمة تفحصها الأداة <code>type_text</code> فقط، ولا تفحصها خطوات <code>{ "type": { "env": ... } }</code> داخل الـ take.</p>
+
+<h2 id="timeout">مهلة زمنية للـ takes</h2>
+<p>المتغير <code>SCREENPILOT_PERFORM_TIMEOUT</code> عدد من الثواني. إذا استمر استدعاء <code>perform</code> أطول من ذلك يوقفه ScreenPilot، فلا يحتجز take معلّق الماوسَ إلى الأبد.</p>
+<pre><code class="language-sh">SCREENPILOT_PERFORM_TIMEOUT=180</code></pre>
+<p>اجعله أطول قليلاً من مدة الـ take. وهو يقيّد <code>perform</code> عبر خادم MCP فقط، ولا يقيّد أدوات التحكم المباشر ولا <code>perform</code> في سطر الأوامر.</p>
+
+<h2 id="audit">سجل التدقيق</h2>
+<p>كل إجراء تحكّم ينفّذه الوكيل عبر أدوات MCP يُضاف إلى ملف، سطر JSON لكل إجراء:</p>
+<pre><code class="language-json">{"at":"2026-10-28T09:14:03.221Z","tool":"type_text","args":{"text":{"chars":18}}}</code></pre>
+<p>الملف هو <code>audit.jsonl</code> في مجلد إعدادات ScreenPilot:</p>
+<table>
+  <thead><tr><th>النظام</th><th>مجلد الإعدادات</th></tr></thead>
+  <tbody>
+    <tr><td>Linux وmacOS</td><td><code>~/.config/screenpilot</code> (أو <code>$XDG_CONFIG_HOME/screenpilot</code> إذا ضبطته)</td></tr>
+    <tr><td>Windows</td><td><code>%APPDATA%\screenpilot</code></td></tr>
+  </tbody>
+</table>
+<p>ما يُسجَّل: الوقت واسم الأداة ووسائطها للأدوات <code>focus_window</code> و<code>pointer_move</code> و<code>click</code> و<code>drag</code> و<code>scroll</code> و<code>key</code> و<code>type_text</code>. اختصارات المفاتيح تُسجَّل. والإجراءات التي يرفضها قيد التطبيقات تُسجَّل أيضاً، لأن السجل يُكتب أولاً.</p>
+<p>ما لا يُسجَّل:</p>
+<ul>
+  <li><strong>النص المكتوب.</strong> يُسجَّل طوله بالأحرف فقط. والسر المعطى بصيغة <code>{ "env": "NAME" }</code> يُسجَّل منه اسم المتغير لا قيمته.</li>
+  <li><strong>الخطوات داخل الـ take.</strong> استدعاء <code>perform</code> لا يُفصَّل إلى نقراته. ملف الـ take والتسجيل هما أثر ما حدث.</li>
+  <li><strong>لقطات الشاشة والتسجيلات والنتائج.</strong> تُسجَّل الإجراءات فقط.</li>
+  <li><strong>الاستخدام من سطر الأوامر.</strong> الأمران <code>screenpilot drive</code> و<code>screenpilot perform</code> لا يكتبان في السجل.</li>
+</ul>
+<p>يبقى السجل على جهازك ولا يقصّه ScreenPilot أبداً. احذفه عندما لا تحتاجه. وفشل الكتابة فيه لا يوقف أي take.</p>
+
+<h2 id="secrets">الأسرار</h2>
+<ul>
+  <li>لا تضع كلمة مرور أو رمزاً داخل <code>take.json</code> كنص صريح. الملف يبقى على القرص ومن السهل مشاركته بالخطأ.</li>
+  <li>استخدم <code>{ "type": { "env": "NAME" } }</code> في الـ take، أو <code>{ "env": "NAME" }</code> في <code>type_text</code>. تُقرأ القيمة من البيئة عند تنفيذ الإجراء. لا تُسجَّل ولا تُرجَع إلى الوكيل.</li>
+  <li>يظل التسجيل يُظهر ما على الشاشة. كلمة المرور في حقل يعرض النص صريحاً ستظهر في الفيديو وفي لقطات الشاشة التي يراها تطبيق الذكاء الاصطناعي. استخدم حقولاً تخفي ما يُكتب.</li>
+</ul>
+
+<h2 id="allow-tools">setup --allow-tools (لـ Claude Code)</h2>
+<p>افتراضياً يسألك Claude Code قبل كل استدعاء لأداة من ScreenPilot. هذا السؤال فرملة على كل نقرة. وإذا فضّلت تخطّيه فيستطيع المثبّت السماح بكل أدوات ScreenPilot دفعة واحدة:</p>
+<pre><code class="language-sh">screenpilot setup --allow-tools</code></pre>
+<p>ما الذي يغيّره: يضيف <code>mcp__screenpilot</code> إلى <code>permissions.allow</code> في الملف <code>~/.claude/settings.json</code>. هذه القاعدة الواحدة تغطي كل أدوات ScreenPilot، ومنها <code>click</code> و<code>type_text</code> و<code>key</code> و<code>perform</code>. تبقى بقية إدخالاتك وتعليقاتك كما هي، ويُنسخ الملف أولاً إلى <code>settings.json.screenpilot-backup</code>.</p>
+<p>للتراجع، احذف السطر <code>mcp__screenpilot</code> من الملف، أو شغّل:</p>
+<pre><code class="language-sh">screenpilot setup --remove --clients claude-code</code></pre>
+<p>هذا يزيل القاعدة، ويزيل أيضاً ScreenPilot ومهارته (skill) من Claude Code. شغّل <code>screenpilot setup</code> بعدها لإضافته من جديد دون القاعدة.</p>
+<div class="note">حل وسط: لا تستخدم <code>--allow-tools</code>، واسمح بنفسك في Claude Code بالأدوات التي تقرأ فقط مثل <code>mcp__screenpilot__screenshot</code> و<code>mcp__screenpilot__windows</code>. تبقى النقرات والكتابة تسأل قبل التنفيذ.</div>
+
+<h2 id="privacy">الخصوصية: ما الذي يبقى على جهازك</h2>
+<p>لا يحتاج ScreenPilot إلى حساب ولا إلى مفتاح API. التسجيل والتحليل والتحرير والتصدير تعمل كلها على جهازك. تُحفظ الملفات في مجلد <strong>ScreenPilot</strong> داخل Videos (وفي ماك Movies)، أو في <code>sessions</code> عند الاستخدام من سطر الأوامر.</p>
+<p>ما الذي يمرّ عبر الشبكة:</p>
+<ul>
+  <li><strong>الصوت.</strong> التعليق الصوتي يستخدم Edge TTS، وهي خدمة على الإنترنت. يُرسَل إليها نص أسطر التعليق ويعود الصوت. وعرض قائمة الأصوات يستخدمها أيضاً. بدون إنترنت لا يوجد تعليق صوتي.</li>
+  <li><strong>تطبيق الذكاء الاصطناعي.</strong> يرى الوكيل ما تعيده أدواته: لقطات شاشاتك، وإطارات من تسجيلاتك، وعناوين النوافذ، ونص صفحة المتصفح التجريبي. ويرسل تطبيقك ذلك إلى مزوّد النموذج وفق سياسة الخصوصية الخاصة به. لا تدع الوكيل ينظر إلى شاشات لا تريد أن يراها ذلك المزوّد.</li>
+  <li><strong>التنزيلات لمرة واحدة.</strong> أول تصدير ينزّل مُصيّر الفيديو (نحو 100 ميغابايت). والصفحات في المتصفح التجريبي تحمّل المواقع التي توجّهه إليها، والـ storyboard الذي يطلب خطوط Google يحمّلها وقت التصدير.</li>
+</ul>
+<p>يعطّل ScreenPilot القياس عن بعد (telemetry) في مُصيّر HyperFrames الذي يستخدمه.</p>
+
+<h2 id="checklist">قبل أن تترك وكيلاً يعمل وحده</h2>
+<ol>
+  <li>جرّب بـ dry run وشاهده مرة واحدة.</li>
+  <li>أغلق التطبيقات والتبويبات التي لا تريد أن تُلمس.</li>
+  <li>اضبط <code>SCREENPILOT_ALLOW_APPS</code> و<code>SCREENPILOT_ALLOW_ENV</code> و<code>SCREENPILOT_PERFORM_TIMEOUT</code>.</li>
+  <li>اترك الأسرار في متغيرات البيئة.</li>
+  <li>اعرف كيف توقفه: <code>abort</code> من تطبيق الذكاء الاصطناعي، أو Ctrl+C في سطر الأوامر.</li>
+  <li>افحص <code>audit.jsonl</code> بعد انتهائه.</li>
+</ol>

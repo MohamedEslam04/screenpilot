@@ -1,2 +1,4 @@
 *.mp4 filter=lfs diff=lfs merge=lfs -text
 *.gif filter=lfs diff=lfs merge=lfs -text
+# The website serves its media straight from git: GitHub Pages does not resolve LFS pointers.
+docs/media/* -filter -diff -merge

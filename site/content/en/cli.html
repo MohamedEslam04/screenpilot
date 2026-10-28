@@ -1,0 +1,216 @@
+<!--
+title: Command line
+summary: Every screenpilot command and its useful flags, grouped by job, with the full record, edit and render workflow in one block.
+-->
+<p>The command line does the same steps as the MCP tools. Run it as <code>screenpilot</code>, or as <code>node dist/cli.js</code> from a source checkout. Most people never need it, because their AI app calls the <a href="@guide/tools.html">tools</a> for them. Use the CLI to script a render, to check a machine, or to repair a setup.</p>
+<p>Run <code>screenpilot --help</code> for the list of commands and <code>screenpilot &lt;command&gt; --help</code> for the flags of one command. Commands print their result as JSON on stdout and progress messages on stderr.</p>
+
+<h2 id="workflow">The whole workflow</h2>
+<p>This block takes a recording to a finished video. Replace the paths and the voice with your own.</p>
+<pre><code class="language-sh"># 1. Record the screen. Press Enter or Ctrl+C to stop.
+screenpilot record
+
+# 2. Find idle time and clicks, and get a contact sheet image.
+screenpilot analyze sessions/2026-10-27_14-02
+
+# 3. Look closer at moments, with a 0..1 coordinate grid.
+screenpilot frames sessions/2026-10-27_14-02/video.mkv --at 1,4.5,10 --grid
+
+# 4. Write a starter storyboard (idle time cut, click zooms filled in).
+screenpilot init sessions/2026-10-27_14-02 --suggest --voice ar-EG-SalmaNeural
+
+# 5. Edit storyboard.json, then check it.
+screenpilot validate sessions/2026-10-27_14-02/storyboard.json
+
+# 6. Render a fast draft and look at frames of the result.
+screenpilot render sessions/2026-10-27_14-02/storyboard.json -q draft
+screenpilot check sessions/2026-10-27_14-02/storyboard.mp4 --at 2,8,15
+
+# 7. Render the final video.
+screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo.mp4</code></pre>
+<div class="note">Times in a storyboard and in <code>frames --at</code> are source seconds (the raw recording). Only <code>check --at</code> uses output seconds (the rendered video). See <a href="@guide/storyboard.html">the storyboard reference</a>.</div>
+
+<h2 id="record-and-look">Record and look</h2>
+
+<h3 id="record">record</h3>
+<p>Records the screen and logs pointer events. Press Enter or Ctrl+C to stop, or pass <code>--duration</code>. It prints the session folder with the video, <code>events.jsonl</code> and <code>windows.jsonl</code>. Recording is native by default, so OBS is not needed.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>-d, --dir &lt;dir&gt;</code></td><td>Session folder. Default: <code>sessions/&lt;timestamp&gt;</code>.</td></tr>
+<tr><td><code>--duration &lt;s&gt;</code></td><td>Stop automatically after this many seconds.</td></tr>
+<tr><td><code>--screen &lt;name&gt;</code></td><td>Monitor being recorded, for example <code>eDP-1</code>. Default: the one under the cursor.</td></tr>
+<tr><td><code>--screens &lt;list&gt;</code></td><td>Record several monitors side by side: <code>all</code>, or names such as <code>HDMI-A-5,eDP-1</code>.</td></tr>
+<tr><td><code>--fit-window &lt;match&gt;</code></td><td>Resize the window whose class or title contains this text to 16:9 while recording. It is restored afterwards.</td></tr>
+<tr><td><code>--recorder &lt;how&gt;</code></td><td><code>native</code> (no OBS) or <code>obs</code>. Default: native when available.</td></tr>
+<tr><td><code>--input &lt;adapter&gt;</code></td><td>Pointer and click capture: <code>auto</code> (default), <code>kwin</code>, <code>uiohook</code> or <code>none</code>.</td></tr>
+<tr><td><code>--obs-url &lt;url&gt;</code>, <code>--obs-password &lt;pw&gt;</code></td><td>obs-websocket connection, when you record through OBS. Defaults come from the OBS config, else <code>ws://127.0.0.1:4455</code>.</td></tr>
+<tr><td><code>--map &lt;pairs&gt;</code></td><td>OBS source to monitor, for example <code>"PC Screen=eDP-1"</code>. It is remembered.</td></tr>
+</tbody>
+</table>
+
+<h3 id="remap">remap</h3>
+<p><code>screenpilot remap &lt;session&gt; --screen &lt;name&gt;</code> re-maps the pointer events of a session to another monitor. Use it when <code>record</code> warns that it guessed which monitor OBS records, and the guess was wrong. The monitor names are in the session's <code>meta.json</code> under <code>screens</code>.</p>
+
+<h3 id="analyze">analyze</h3>
+<p><code>screenpilot analyze &lt;session-dir|video&gt;</code> finds idle spans and clicks, suggests segments and zooms, and writes a contact sheet image of labelled thumbnails. Open the contact sheet first to understand the story of the recording.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--frames &lt;n&gt;</code></td><td>Thumbnails in the contact sheet. Default 12.</td></tr>
+</tbody>
+</table>
+
+<h3 id="frames">frames</h3>
+<p><code>screenpilot frames &lt;video&gt;</code> saves still frames of the raw recording so you can see it. Times are source seconds.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--at &lt;times&gt;</code></td><td>Comma-separated seconds, for example <code>1,4.5,10</code>.</td></tr>
+<tr><td><code>--every &lt;n&gt;</code></td><td>Instead of <code>--at</code>: this many evenly spaced frames. Default 12.</td></tr>
+<tr><td><code>--grid</code></td><td>Draw a 0..1 coordinate grid. Read zoom, highlight and callout positions from it.</td></tr>
+<tr><td><code>-w, --width &lt;px&gt;</code></td><td>Frame width. Default 1280.</td></tr>
+<tr><td><code>-o, --out &lt;dir&gt;</code></td><td>Output folder. Default <code>frames</code>.</td></tr>
+</tbody>
+</table>
+
+<h2 id="edit">Edit</h2>
+
+<h3 id="init">init</h3>
+<p><code>screenpilot init &lt;session-dir|video&gt;</code> writes a starter <code>storyboard.json</code>. It saves the file in the session folder, or next to the video, and it picks up <code>events.jsonl</code> when it exists.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--suggest</code></td><td>Pre-fill segments, zooms and camera views from <code>analyze</code>.</td></tr>
+<tr><td><code>--voice &lt;name&gt;</code></td><td>Default Edge TTS voice. Default <code>en-US-AndrewNeural</code>.</td></tr>
+<tr><td><code>--frame &lt;how&gt;</code></td><td>Camera for suggested views: <code>window</code> (default), <code>screen</code> or <code>all</code>.</td></tr>
+<tr><td><code>-o, --out &lt;file&gt;</code></td><td>Storyboard path.</td></tr>
+<tr><td><code>-f, --force</code></td><td>Overwrite an existing storyboard.</td></tr>
+</tbody>
+</table>
+
+<h3 id="validate">validate</h3>
+<p><code>screenpilot validate &lt;storyboard&gt;</code> checks the file against the schema and the source video. It fails with the list of schema issues, or prints <code>valid: true</code> with warnings such as overlapping segments, items past the end of the video and callouts without <code>x</code> and <code>y</code>.</p>
+
+<h3 id="schema">schema</h3>
+<p><code>screenpilot schema</code> prints the storyboard JSON Schema. It is the authority on every field.</p>
+
+<h3 id="voices">voices</h3>
+<p><code>screenpilot voices</code> lists the available voices. It needs a network connection.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--lang &lt;prefix&gt;</code></td><td>Filter by locale prefix, for example <code>ar</code>, <code>ar-EG</code> or <code>en-US</code>.</td></tr>
+<tr><td><code>--provider &lt;id&gt;</code></td><td>Voice provider. Default <code>edge</code>.</td></tr>
+</tbody>
+</table>
+
+<h2 id="render-and-check">Render and check</h2>
+
+<h3 id="render">render</h3>
+<p><code>screenpilot render &lt;storyboard&gt;</code> makes the voice, cuts the video and renders an MP4. It takes minutes. It prints the output path, the duration, the freezes it added (<code>autoHolds</code>) and warnings. When a narration line is longer than its slot, the render freezes the video so lines never overlap.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>-o, --output &lt;file&gt;</code></td><td>Output video. Default <code>&lt;storyboard&gt;.mp4</code>.</td></tr>
+<tr><td><code>-q, --quality &lt;q&gt;</code></td><td><code>draft</code>, <code>looks</code> or <code>delivery</code>. Default <code>looks</code>.</td></tr>
+<tr><td><code>--png-frames</code></td><td>Use lossless source frames: sharper text in the recorded UI, slower.</td></tr>
+<tr><td><code>--workers &lt;n&gt;</code></td><td>Parallel renderers, each a headless Chrome. Default 2.</td></tr>
+<tr><td><code>--build-dir &lt;dir&gt;</code></td><td>Where the HyperFrames project is written.</td></tr>
+</tbody>
+</table>
+
+<h3 id="quality">Quality levels</h3>
+<table>
+<thead><tr><th>Level</th><th>Use it for</th></tr></thead>
+<tbody>
+<tr><td><code>draft</code></td><td>Fast renders while you edit. Use this in every review loop.</td></tr>
+<tr><td><code>looks</code></td><td>A normal render. This is the default.</td></tr>
+<tr><td><code>delivery</code></td><td>The final file only. It is the slowest.</td></tr>
+</tbody>
+</table>
+
+<h3 id="build">build</h3>
+<p><code>screenpilot build &lt;storyboard&gt;</code> does everything except the final render: it generates the voice, cuts the video and writes the HyperFrames project. It prints the build folder, the output duration, automatic freezes and warnings. It accepts <code>--build-dir &lt;dir&gt;</code>.</p>
+
+<h3 id="preview">preview</h3>
+<p><code>screenpilot preview &lt;storyboard&gt;</code> builds the storyboard and opens HyperFrames Studio, where you can scrub through the video.</p>
+
+<h3 id="check">check</h3>
+<p><code>screenpilot check &lt;video&gt;</code> pulls frames from a rendered video so you can review the result. Times are output seconds. It prints the duration, whether the video has audio, and the frame files.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--at &lt;times&gt;</code></td><td>Comma-separated output seconds.</td></tr>
+<tr><td><code>--every &lt;n&gt;</code></td><td>Evenly spaced frames. Default 8.</td></tr>
+<tr><td><code>-o, --out &lt;dir&gt;</code></td><td>Output folder. Default <code>&lt;video&gt;.check</code> next to the video.</td></tr>
+</tbody>
+</table>
+
+<h2 id="drive">See and drive the desktop</h2>
+<p>These commands let you look at the desktop and test a flow by hand before you write a take. The agent uses the same actions through the MCP tools. They use the real mouse and keyboard, so keep your hands off while one runs. <a href="@guide/agent-drive.html">Agent drive</a> explains the whole loop, and <a href="@guide/safety.html">Safety</a> explains the limits.</p>
+
+<h3 id="screenshot">screenshot</h3>
+<p><code>screenpilot screenshot</code> saves a picture of each monitor.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--screen &lt;name&gt;</code></td><td>Only this monitor.</td></tr>
+<tr><td><code>--grid</code></td><td>Overlay a 0..1 coordinate grid.</td></tr>
+<tr><td><code>-w, --width &lt;px&gt;</code></td><td>Image width. Default 1280.</td></tr>
+<tr><td><code>-o, --out &lt;dir&gt;</code></td><td>Output folder. Default <code>screens</code>.</td></tr>
+</tbody>
+</table>
+
+<h3 id="windows">windows</h3>
+<p><code>screenpilot windows</code> lists open windows with their position. On desktops without window control (GNOME and other Wayland desktops) the list is empty.</p>
+
+<h3 id="browser">browser</h3>
+<p><code>screenpilot browser</code> opens, or reuses, the clean demo browser and places it on a monitor. Flags: <code>--screen &lt;name&gt;</code> and <code>--url &lt;url&gt;</code>.</p>
+
+<h3 id="drive-commands">drive</h3>
+<p><code>screenpilot drive</code> has four subcommands. Positions are <code>screen,x,y</code> with <code>x</code> and <code>y</code> from 0 to 1, for example <code>eDP-1,0.5,0.5</code>.</p>
+<table>
+<thead><tr><th>Command</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>drive move &lt;screen,x,y&gt;</code></td><td>Move the pointer.</td></tr>
+<tr><td><code>drive click &lt;target&gt;</code></td><td>Click. The target is <code>screen,x,y</code> or <code>web:&lt;selector&gt;</code> for an element in the demo browser. Flags: <code>--button left|right|middle</code> (default left), <code>--count &lt;n&gt;</code> (2 for a double click).</td></tr>
+<tr><td><code>drive type &lt;text&gt;</code></td><td>Type text into the focused field.</td></tr>
+<tr><td><code>drive key &lt;combo&gt;</code></td><td>Press a key combination such as <code>"ctrl+l"</code>. On macOS use <code>cmd</code>.</td></tr>
+</tbody>
+</table>
+
+<h3 id="perform">perform</h3>
+<p><code>screenpilot perform &lt;take.json&gt;</code> performs a take on the real desktop while recording, then writes a session folder with the video, events and a ready storyboard. If a step fails, it prints the step number, the step and the error. Press Ctrl+C to stop a run.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--dry-run</code></td><td>Drive the desktop without recording. Always rehearse first.</td></tr>
+<tr><td><code>-d, --dir &lt;dir&gt;</code></td><td>Session folder. Default <code>sessions/&lt;timestamp&gt;</code>.</td></tr>
+</tbody>
+</table>
+
+<h3 id="take-schema">take-schema</h3>
+<p><code>screenpilot take-schema</code> prints the JSON Schema of <code>take.json</code>.</p>
+
+<h2 id="setup-and-checks">Set up and check this machine</h2>
+
+<h3 id="setup">setup</h3>
+<p><code>screenpilot setup</code> copies the app to its folder, adds ScreenPilot to every AI app it finds, and prepares the render browser. Restart the AI app afterwards. Config files are backed up before they change.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--list</code></td><td>List the AI apps setup knows and whether each is installed here.</td></tr>
+<tr><td><code>--clients &lt;ids&gt;</code></td><td>Only these client ids, for example <code>claude-desktop,claude-code,codex,opencode,cursor</code>.</td></tr>
+<tr><td><code>--remove</code></td><td>Remove ScreenPilot from those apps instead.</td></tr>
+<tr><td><code>--output &lt;dir&gt;</code></td><td>Where videos are saved. Default <code>~/Videos/ScreenPilot</code>.</td></tr>
+<tr><td><code>--in-place</code></td><td>Register the package where it is, without copying it.</td></tr>
+<tr><td><code>--skip-prepare</code></td><td>Do not download the render browser or run the test render.</td></tr>
+<tr><td><code>--allow-tools</code></td><td>Claude Code only: let the agent use every ScreenPilot tool without asking each time. It adds a rule to <code>~/.claude/settings.json</code>.</td></tr>
+<tr><td><code>--print</code></td><td>Only print the config to paste into an AI app by hand.</td></tr>
+</tbody>
+</table>
+
+<h3 id="doctor">doctor</h3>
+<p><code>screenpilot doctor</code> checks this machine: ffmpeg, desktop, monitors, OBS, the demo browser and voices. It prints a JSON report and a one-line summary. The exit code is always 0, so read the report. Add <code>--input</code> to also test input injection; this moves the real pointer for a moment.</p>
+<div class="note">Run <code>screenpilot doctor</code> first on a new machine, and again whenever recording or driving fails.</div>

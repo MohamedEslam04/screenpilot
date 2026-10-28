@@ -1,0 +1,114 @@
+<!--
+title: Install ScreenPilot
+summary: Install ScreenPilot on Windows, macOS or Linux, add it to your AI apps, uninstall it, and fix common problems.
+-->
+<p>Download the file for your computer, run the installer, then restart your AI app. Everything ScreenPilot needs is inside the download. You do not need to install anything else.</p>
+<p>Install your AI app first and open it once. The ScreenPilot installer adds itself to every AI app it finds. If you install a new AI app later, run the ScreenPilot installer again.</p>
+
+<h2 id="downloads">Downloads</h2>
+<table>
+  <thead>
+    <tr><th>Your computer</th><th>Download</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Windows 10 or 11</td><td><a href="https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-windows-setup.exe">ScreenPilot-windows-setup.exe</a></td></tr>
+    <tr><td>Mac with Apple Silicon (M1, M2, M3, M4 and later)</td><td><a href="https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-macos-arm64.zip">ScreenPilot-macos-arm64.zip</a></td></tr>
+    <tr><td>Mac with Intel</td><td><a href="https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-macos-x64.zip">ScreenPilot-macos-x64.zip</a></td></tr>
+    <tr><td>Linux (64-bit)</td><td><a href="https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-linux.tar.gz">ScreenPilot-linux.tar.gz</a></td></tr>
+  </tbody>
+</table>
+<div class="warn">Version 0.3.0, the current release, has Windows and Linux builds only. The two Mac downloads above do not work until the next release. The last Mac builds are on the <a href="https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.2.3">v0.2.3 release</a>.</div>
+<p>Not sure which Mac you have? Open the Apple menu and choose <strong>About This Mac</strong>. "Chip: Apple M..." means Apple Silicon. "Processor: Intel" means Intel. All versions are on the <a href="https://github.com/MohamedEslam04/screenpilot/releases">Releases page</a>.</p>
+
+<h2 id="windows">Windows</h2>
+<ol>
+  <li>Download <strong>ScreenPilot-windows-setup.exe</strong> and double-click it.</li>
+  <li>If Windows says <strong>Windows protected your PC</strong>, click <strong>More info</strong>, then <strong>Run anyway</strong>. The installer is not signed yet.</li>
+  <li>Click <strong>Install</strong>. You do not need an administrator password. The first install takes a minute or two, because it also downloads the video renderer (about 100 MB, once).</li>
+  <li>The last page lists the AI apps ScreenPilot was added to. Click <strong>Finish</strong>.</li>
+  <li><strong>Restart your AI app.</strong> Quit it completely, then open it again. For Claude Desktop, right-click its icon next to the clock and choose Quit.</li>
+</ol>
+<p>If your antivirus asks about ScreenPilot, allow it. ScreenPilot watches mouse clicks while it records, so it can zoom in on them.</p>
+<h3 id="windows-other">Other ways to install on Windows</h3>
+<ul>
+  <li><strong>Claude Desktop only:</strong> double-click <a href="https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-windows.mcpb">ScreenPilot-windows.mcpb</a> and click Install in Claude.</li>
+  <li><strong>Cannot run installers:</strong> download <a href="https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-windows.zip">ScreenPilot-windows.zip</a>, right-click it and choose <strong>Extract All</strong>, then open the folder and double-click <strong>ScreenPilot Setup.cmd</strong>.</li>
+</ul>
+
+<h2 id="macos">macOS</h2>
+<ol>
+  <li>Download the zip for your Mac and double-click it. You get a <strong>ScreenPilot</strong> folder.</li>
+  <li>Open the folder and double-click <strong>Install ScreenPilot.command</strong>.</li>
+  <li>The first time, macOS says it cannot verify the developer. Click <strong>Done</strong>. Open <strong>System Settings</strong>, then <strong>Privacy &amp; Security</strong>, scroll down and click <strong>Open Anyway</strong> next to "Install ScreenPilot.command", then confirm. Apple has not notarized ScreenPilot yet.</li>
+  <li>A Terminal window shows what was installed. Press <kbd>Enter</kbd> to close it. You can delete the downloaded folder now.</li>
+  <li><strong>Restart your AI app</strong> (<kbd>Cmd</kbd>+<kbd>Q</kbd>, then open it again).</li>
+</ol>
+<h3 id="macos-permissions">macOS permissions</h3>
+<p>The first time you ask for a recording, macOS asks you to allow your <strong>AI app</strong> (Claude, Cursor, Terminal), not ScreenPilot itself. Open <strong>System Settings</strong>, then <strong>Privacy &amp; Security</strong>, and turn your AI app on in these lists:</p>
+<ul>
+  <li><strong>Screen &amp; System Audio Recording</strong>: needed to record.</li>
+  <li><strong>Accessibility</strong>: needed when the AI uses your apps for you (mouse and keyboard).</li>
+  <li><strong>Input Monitoring</strong>: optional. It lets recordings zoom in on your own clicks.</li>
+</ul>
+<p>Then quit and reopen the AI app. When a permission is missing, ScreenPilot opens the right settings pane and the error names the app to allow.</p>
+<p><strong>Claude Desktop only:</strong> double-click <a href="https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-macos-arm64.mcpb">ScreenPilot-macos-arm64.mcpb</a> (Intel: <a href="https://github.com/MohamedEslam04/screenpilot/releases/latest/download/ScreenPilot-macos-x64.mcpb">ScreenPilot-macos-x64.mcpb</a>) and click Install in Claude. The same note about missing Mac builds applies to these files.</p>
+
+<h2 id="linux">Linux</h2>
+<ol>
+  <li>Download <strong>ScreenPilot-linux.tar.gz</strong>, right-click it and choose <strong>Extract Here</strong>. You get a <strong>ScreenPilot</strong> folder.</li>
+  <li>Open the folder and double-click <strong>install.sh</strong>. Choose <strong>Run</strong> or <strong>Run in Terminal</strong> if asked. A terminal window shows what happens. Or open a terminal in the folder and run <code>./install.sh</code>.</li>
+  <li>Built-in recording on Wayland desktops needs a few system packages (GStreamer). If they are missing, the installer shows the exact command for your distribution (Fedora, Ubuntu, Debian, Mint, Arch or openSUSE) and asks whether to run it. Type <code>y</code> and your password. You can skip this and do it later.</li>
+  <li><strong>Restart your AI app.</strong></li>
+  <li>The first time you record, or let the AI use your desktop, your desktop asks once to allow screen sharing or remote control. Allow it.</li>
+</ol>
+<div class="warn">Do not run the installer with <code>sudo</code>. It installs for your user only and needs no admin rights. With <code>sudo</code> it stops and tells you to run it again as yourself.</div>
+<p>What works depends on your desktop. See <a href="@guide/platforms.html#support">Platform support</a> for the full table.</p>
+
+<h2 id="installer">What the installer does</h2>
+<ul>
+  <li>Copies ScreenPilot to your user folder: <code>%LOCALAPPDATA%\ScreenPilot</code> on Windows, <code>~/Library/Application Support/ScreenPilot</code> on macOS, and <code>~/.local/share/screenpilot</code> on Linux.</li>
+  <li>Creates the output folder for your videos, inside your Videos folder.</li>
+  <li>Adds ScreenPilot to each AI app it finds, and backs up each settings file first. Your other entries and comments stay as they were.</li>
+  <li>Downloads and tests the video renderer, the first time only.</li>
+</ul>
+
+<h2 id="ai-apps">AI apps it is added to</h2>
+<p>The installer adds ScreenPilot to each of these that it finds:</p>
+<ul>
+  <li>Claude Desktop (including the Microsoft Store version) and Claude Code. For Claude Code it also installs the ScreenPilot skill.</li>
+  <li>Codex, OpenCode, Gemini CLI, Qwen Code, GitHub Copilot CLI, Amazon Q, Goose, Warp.</li>
+  <li>Cursor, Windsurf, Devin Desktop, Antigravity, Kiro, Zed, LM Studio.</li>
+  <li>VS Code, VS Code Insiders and VSCodium, plus the Cline and Roo Code extensions.</li>
+</ul>
+<p>JetBrains AI Assistant has no settings file. After installing, use its <strong>Import from Claude</strong> button.</p>
+<div class="note">To skip the permission prompt each time Claude Code uses a ScreenPilot tool, run setup with <code>--allow-tools</code>. See <a href="@guide/safety.html">Safety</a> before you do.</div>
+
+<h2 id="other-apps">Add it to another app by hand</h2>
+<p>Any app that supports MCP servers works. This command prints the settings to copy:</p>
+<ul>
+  <li>Windows (Command Prompt): <code>"%LOCALAPPDATA%\ScreenPilot\bin\node.exe" "%LOCALAPPDATA%\ScreenPilot\dist\cli.js" setup --print</code></li>
+  <li>macOS: <code>~/Library/Application\ Support/ScreenPilot/bin/node ~/Library/Application\ Support/ScreenPilot/dist/cli.js setup --print</code></li>
+  <li>Linux: <code>~/.local/share/screenpilot/bin/node ~/.local/share/screenpilot/dist/cli.js setup --print</code></li>
+</ul>
+<p>It prints a standard <code>mcpServers</code> entry (command, arguments and environment) that most apps accept. Paste it into the app's MCP settings, then restart the app.</p>
+<p>To see which apps setup knows and whether each one is installed, run the same command with <code>setup --list</code> instead of <code>setup --print</code>.</p>
+
+<h2 id="update-uninstall">Update and uninstall</h2>
+<p><strong>Update:</strong> download the new installer and run it. If an AI app is open, the installer asks you to close it first.</p>
+<ul>
+  <li><strong>Windows:</strong> open Settings, then Apps, then Installed apps, find ScreenPilot and choose Uninstall. It also removes ScreenPilot from your AI apps.</li>
+  <li><strong>macOS:</strong> double-click <strong>Uninstall ScreenPilot.command</strong> in the downloaded folder. Download it again if you deleted it.</li>
+  <li><strong>Linux:</strong> run <code>./uninstall.sh</code> in the downloaded folder.</li>
+</ul>
+<p>Uninstalling removes ScreenPilot from your AI apps. Your videos stay where they are.</p>
+
+<h2 id="troubleshooting">If something goes wrong</h2>
+<ul>
+  <li><strong>The AI app does not know ScreenPilot.</strong> Quit the AI app completely and open it again. Still nothing? Run the installer again. It lists the apps it added ScreenPilot to.</li>
+  <li><strong>"No AI tool found".</strong> Install your AI app, open it once, then run the ScreenPilot installer again.</li>
+  <li><strong>The installer says to close your AI apps.</strong> An open AI app is using the old ScreenPilot. Quit it and click Retry.</li>
+  <li><strong>"Video renderer: not ready".</strong> The one-time download needs internet. Nothing to do: your first video downloads it.</li>
+  <li><strong>Recording or mouse control fails on a Mac.</strong> Allow your AI app under Screen &amp; System Audio Recording and Accessibility, then quit and reopen it.</li>
+</ul>
+<h3 id="doctor">Run the doctor</h3>
+<p>To check everything at once, ask your AI app: "Run the ScreenPilot doctor." It checks the recorder, permissions, voices and more, and says how to fix what is missing. Developers can run <code>screenpilot doctor</code> in a terminal. More answers are in the <a href="@guide/faq.html">FAQ</a>.</p>

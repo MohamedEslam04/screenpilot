@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-copy="Copy" data-copied="Copied">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Platforms · ScreenPilot</title>
+<meta name="description" content="What ScreenPilot can do on each desktop: recording, driving, window control and click logging, plus requirements, per-OS notes and limits.">
+<link rel="canonical" href="https://mohamedeslam04.github.io/screenpilot/guide/platforms.html">
+<link rel="alternate" hreflang="en" href="https://mohamedeslam04.github.io/screenpilot/guide/platforms.html">
+<link rel="alternate" hreflang="ar" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/platforms.html">
+<link rel="alternate" hreflang="x-default" href="https://mohamedeslam04.github.io/screenpilot/guide/platforms.html">
+<meta property="og:type" content="article"><meta property="og:title" content="Platforms · ScreenPilot"><meta property="og:description" content="What ScreenPilot can do on each desktop: recording, driving, window control and click logging, plus requirements, per-OS notes and limits.">
+<meta property="og:url" content="https://mohamedeslam04.github.io/screenpilot/guide/platforms.html"><meta property="og:image" content="https://mohamedeslam04.github.io/screenpilot/assets/og.png"><meta property="og:site_name" content="ScreenPilot"><meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b132b">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("sp-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+  <a class="brand" href="../index.html" aria-label="ScreenPilot"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a>
+  <nav class="nav" aria-label="Main"><a href="../guide/index.html" aria-current=page>Docs</a><a href="../guide/install.html" class="hide-s">Install</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../ar/guide/platforms.html" lang="ar" hreflang="ar">العربية</a><button class="theme" type="button" aria-label="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
+</div></header>
+<main id="main"><div class="wrap docs">
+  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html" aria-current=page>Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
+  <article class="doc"><h1>Platforms</h1><p class="summary">What ScreenPilot can do on each desktop: recording, driving, window control and click logging, plus requirements, per-OS notes and limits.</p><p>ScreenPilot picks the right backend for your desktop by itself. Recording works on every supported desktop. Whether the AI can use your apps for you (move the mouse, click, type) depends on the desktop. Ask your AI app to run the ScreenPilot doctor to see which backend it chose and what works on your machine.</p>
+
+<h2 id="support">Platform support<a class="a" href="#support" aria-label="Link to this section">#</a></h2>
+<p>The name in brackets is the backend ID that ScreenPilot reports.</p>
+<table>
+  <thead>
+    <tr><th>Desktop</th><th>Record (native)</th><th>Drive (pointer, keys, typing)</th><th>Windows (list, focus, fit to 16:9)</th><th>Pointer and click logging</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>KDE Plasma, Wayland (<code>kde</code>)</td><td>PipeWire portal streams + GStreamer</td><td>RemoteDesktop portal (approve once)</td><td>KWin scripts</td><td>KWin pointer; clicks need the <code>input</code> group</td></tr>
+    <tr><td>Any X11 session (<code>x11</code>): GNOME on Xorg, Linux Mint Cinnamon, MATE or Xfce, KDE X11</td><td>ffmpeg <code>x11grab</code></td><td>XTest (any Unicode text, no clipboard or layout switch)</td><td>EWMH window manager</td><td>XQueryPointer + global hook</td></tr>
+    <tr><td>GNOME and other Wayland desktops (<code>portal</code>)</td><td>PipeWire portal streams + GStreamer (asks once)</td><td>RemoteDesktop portal (approve once)</td><td>Not available: focus and fit steps and <code>{web}</code> targets fail with a clear error; window-framed views fall back to monitor views</td><td>None, because Wayland hides the pointer; performed takes still log their own clicks</td></tr>
+    <tr><td>sway, Hyprland and other wlroots desktops (<code>portal</code>)</td><td>ScreenCast portal + GStreamer (asks once)</td><td>Not available (no RemoteDesktop portal)</td><td>Not available</td><td>None</td></tr>
+    <tr><td>Windows 10 and 11 (<code>windows</code>)</td><td>ffmpeg <code>gdigrab</code></td><td><code>SendInput</code></td><td>Win32</td><td>Cursor polling + global hook</td></tr>
+    <tr><td>macOS 12 and later, Apple Silicon and Intel (<code>macos</code>)</td><td>ffmpeg <code>avfoundation</code> (Screen Recording permission)</td><td>CGEvent (Accessibility permission)</td><td>Accessibility API</td><td>Quartz polling + global hook (Input Monitoring)</td></tr>
+  </tbody>
+</table>
+<p>To force a backend, set the <code>SCREENPILOT_DESKTOP</code> environment variable to <code>kde</code>, <code>x11</code>, <code>portal</code>, <code>windows</code> or <code>macos</code>.</p>
+<div class="note">KDE Wayland is used daily. Windows, X11 and macOS each have an automated test on a real machine in CI. GNOME and Hyprland have not been run on real hardware yet.</div>
+
+<h2 id="requirements">Requirements<a class="a" href="#requirements" aria-label="Link to this section">#</a></h2>
+<p>The Windows, macOS and Linux downloads include Node and ffmpeg, so you need nothing else for them. This list is for people who run ScreenPilot from source.</p>
+<ul>
+  <li>Node 22 or newer and pnpm.</li>
+  <li>ffmpeg and ffprobe on your <code>PATH</code>.</li>
+  <li>A screen recorder. The built-in one is the default. On Wayland (KDE, GNOME, wlroots) it records the PipeWire streams from the screen-cast portal with GStreamer, which needs <code>gst-launch-1.0</code> with <code>pipewiresrc</code> and an H.264 encoder (<code>x264enc</code>, <code>openh264enc</code> or VA-API). On X11 and Windows it records with ffmpeg. On macOS it uses ffmpeg with avfoundation.</li>
+  <li>Optional: OBS Studio 28 or newer with the WebSocket server enabled, if you prefer OBS's encoders. Use <code>--recorder obs</code>.</li>
+  <li>Internet access for the voiceover (Edge TTS) and for the voice list.</li>
+  <li><code>wl-clipboard</code> (<code>wl-copy</code>) to type non-Latin text on Wayland. X11 and Windows type any Unicode directly.</li>
+</ul>
+<p>If a GStreamer piece is missing, <code>screenpilot doctor</code> prints the install command for your distribution. For example:</p>
+<pre><code class="language-sh"># Fedora
+sudo dnf install gstreamer1 pipewire-gstreamer gstreamer1-plugin-openh264
+# Debian, Ubuntu
+sudo apt install gstreamer1.0-tools gstreamer1.0-pipewire gstreamer1.0-plugins-ugly</code></pre>
+
+<h2 id="linux-notes">Linux notes<a class="a" href="#linux-notes" aria-label="Link to this section">#</a></h2>
+<h3 id="linux-prompt">Permission prompt<a class="a" href="#linux-prompt" aria-label="Link to this section">#</a></h3>
+<p>On KDE and GNOME with Wayland, driving uses the RemoteDesktop portal. Approve the "remote control" dialog once and select all monitors. ScreenPilot saves the approval, so later runs are silent. Recording on Wayland asks once to share the screen (on KDE it reuses the remote-control approval).</p>
+<h3 id="linux-input">KDE Wayland: the input group<a class="a" href="#linux-input" aria-label="Link to this section">#</a></h3>
+<p>Wayland does not let apps watch global input. To log your mouse clicks, ScreenPilot reads mouse buttons from <code>/dev/input</code>, which needs your user to be in the <code>input</code> group:</p>
+<pre><code class="language-sh">sudo usermod -aG input "$USER"   # then log out and back in</code></pre>
+<div class="warn">Members of the <code>input</code> group can read all keyboard and mouse input on the computer, including passwords typed in any app. Do this only on a computer and account you trust. You can remove yourself afterwards with <code>sudo gpasswd -d "$USER" input</code>.</div>
+<p>Without the group you can still record. You lose click ripples, and zoom suggestions fall back to where the pointer came to rest.</p>
+<h3 id="linux-x11">X11<a class="a" href="#linux-x11" aria-label="Link to this section">#</a></h3>
+<p>X11 supports everything, including web targets and window framing, and needs no dialog. With fractional or HiDPI scaling, the recording is in X pixels as reported by XRandR.</p>
+
+<h2 id="windows-notes">Windows notes<a class="a" href="#windows-notes" aria-label="Link to this section">#</a></h2>
+<ul>
+  <li>Driving uses <code>SendInput</code>. A window you run as administrator cannot be controlled by a normal process. Run ScreenPilot as administrator too.</li>
+  <li>Coordinates are physical pixels.</li>
+  <li>Recording is built in (ffmpeg <code>gdigrab</code>, mouse pointer included). OBS is optional.</li>
+  <li>The demo browser is Chrome, Edge or Brave, whichever is found first. Set <code>SCREENPILOT_BROWSER</code> to pick another.</li>
+  <li>Holding back or closing notification popups does nothing on Windows.</li>
+  <li>If your antivirus asks about ScreenPilot, allow it. It watches clicks while recording.</li>
+</ul>
+
+<h2 id="macos-notes">macOS notes<a class="a" href="#macos-notes" aria-label="Link to this section">#</a></h2>
+<p>macOS 12 and later, on Apple Silicon and Intel. Recording, screenshots, driving (pointer, clicks, typing including Arabic and emoji, shortcuts), the window list, focusing and placing windows, and the demo browser all work without OBS. Web demos need Chrome, Edge or Brave in <code>/Applications</code>.</p>
+<p>macOS grants privacy permissions to the app that starts ScreenPilot (Claude, Cursor, VS Code, Terminal), not to ScreenPilot itself. Turn that app on in System Settings, Privacy &amp; Security:</p>
+<table>
+  <thead>
+    <tr><th>Permission</th><th>Needed for</th><th>Without it</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Accessibility</td><td>Moving the mouse, clicking, typing, focusing and resizing windows</td><td>Driving fails, and the error lists these steps</td></tr>
+    <tr><td>Screen &amp; System Audio Recording (Screen Recording on macOS 14 and older)</td><td>Recording, screenshots, window titles</td><td>Recording fails, and the error lists these steps</td></tr>
+    <tr><td>Input Monitoring</td><td>Logging your own clicks while you record</td><td>Recordings have no click zooms (optional)</td></tr>
+  </tbody>
+</table>
+<p>Then quit and reopen that app. See <a href="../guide/install.html#macos-permissions">macOS permissions</a> for the steps.</p>
+<ul>
+  <li>Coordinates are points, not pixels. A Retina display is reported at its "looks like" size, and recordings keep full Retina detail (capped at 4096x2304 for 5K and multi-monitor canvases).</li>
+  <li>Monitors are named as in System Settings, such as "Built-in Retina Display" or "DELL U2720Q". Identical models get " (2)".</li>
+  <li>Shortcuts are literal. <code>ctrl+c</code> is Control-C. Use <code>cmd+c</code> for Command-C.</li>
+  <li>Turn on Do Not Disturb yourself before recording. macOS has no way for ScreenPilot to hold notification banners.</li>
+  <li>Minimized windows and windows on other Spaces are not listed. Full-screen windows leave full screen when a take places them.</li>
+</ul>
+
+<h2 id="limitations">Limitations<a class="a" href="#limitations" aria-label="Link to this section">#</a></h2>
+<ul>
+  <li>Driving the desktop works on KDE Wayland, X11, GNOME Wayland (without window control), Windows and macOS. It does not work on wlroots desktops (sway, Hyprland). Recording still works there.</li>
+  <li>Wayland desktops other than KDE expose no window list and no pointer position. That means no window framing, no <code>{web}</code> or <code>{window}</code> targets, and no pointer log for your own recordings.</li>
+  <li>The voiceover uses Edge TTS only. It needs the internet, and it is an unofficial service that may change.</li>
+  <li>Rendering is not fast. Use a draft render while you iterate.</li>
+  <li>Narration inside cut parts of the video is dropped, so lines must sit inside the parts you keep.</li>
+</ul>
+<p>Back to <a href="../guide/install.html">Install</a> or on to the <a href="../guide/safety.html">Safety</a> guide.</p>
+<nav class="pager" aria-label="Pager"><a href="safety.html" rel="prev"><small>Previous</small>Safety and privacy</a><a href="faq.html" rel="next"><small>Next</small>FAQ and troubleshooting</a></nav></article>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#support">Platform support</a><a href="#requirements">Requirements</a><a href="#linux-notes">Linux notes</a><a href="#windows-notes">Windows notes</a><a href="#macos-notes">macOS notes</a><a href="#limitations">Limitations</a></aside>
+</div></main>
+<footer class="foot"><div class="wrap">
+  <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>
+  <div><h3>Learn</h3><ul><li><a href="../guide/getting-started.html">Getting started</a></li><li><a href="../guide/tools.html">MCP tools</a></li><li><a href="../guide/storyboard.html">Storyboard reference</a></li><li><a href="../guide/faq.html">FAQ and troubleshooting</a></li></ul></div>
+  <div><h3>Project</h3><ul><li><a href="https://github.com/MohamedEslam04/screenpilot">GitHub</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/releases">Releases</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/issues">Report an issue</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/CONTRIBUTING.md">Contributing</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/SECURITY.md">Security</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/LICENSE">License</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/THIRD_PARTY_NOTICES.md">Third-party notices</a></li></ul></div>
+</div></footer>
+<script src="../assets/app.js" defer></script>
+</body></html>

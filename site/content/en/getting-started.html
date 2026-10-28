@@ -1,0 +1,62 @@
+<!--
+title: Getting started
+summary: What ScreenPilot does, how a video gets made in four steps, and your first video in three asks to your AI app.
+-->
+<p>ScreenPilot lets your AI app make a screen video for you. It records your screen, or uses your apps itself, then edits the footage into a finished MP4 with zooms, captions and an AI voiceover. You do not edit anything and you do not set up a screen recorder.</p>
+
+<h2 id="what-it-does">What ScreenPilot does</h2>
+<p>ScreenPilot works inside the AI app you already use: Claude, ChatGPT Codex, Cursor, OpenCode, Gemini CLI, Copilot, Windsurf, VS Code and many more. It runs as an MCP server on your computer and gives the AI app three things: eyes on your screen, a recorder, and a video editor.</p>
+<ul>
+  <li><strong>No API key and no account.</strong> Your AI app does the thinking. ScreenPilot does the recording and editing.</li>
+  <li><strong>Everything runs on your computer.</strong> The one thing that needs the internet is the voiceover, which uses Edge TTS voices in English, Arabic and many other languages.</li>
+  <li><strong>It records any app.</strong> Native apps, code editors, terminals and browsers all work, on Linux, Windows and macOS.</li>
+</ul>
+<p>Not installed yet? Start with <a href="@guide/install.html">Install ScreenPilot</a>, then come back here.</p>
+
+<h2 id="how-it-works">How it works</h2>
+<p>Every video goes through the same four steps. Your AI app runs them for you.</p>
+<ol>
+  <li><strong>Record or drive.</strong> ScreenPilot records the screen along with pointer, click and active-window events. You can do the demo yourself while it records, or let the AI app do it: it looks at your screen, then moves the mouse, clicks and types on its own.</li>
+  <li><strong>Analyze.</strong> The AI app looks at a contact sheet of the recording and at single frames with a coordinate grid. It finds idle time, clicks and the moments that matter.</li>
+  <li><strong>Storyboard.</strong> The AI app writes a <code>storyboard.json</code> file: which parts to keep or speed up, where to zoom, which captions and highlights to show, and the voiceover lines.</li>
+  <li><strong>Render.</strong> ScreenPilot builds the MP4 from the storyboard. It renders a quick draft first, checks frames of the result, fixes what looks wrong, then renders the final video.</li>
+</ol>
+<div class="note">The draft is a fast, lower-quality render for checking the edit. The final render takes longer. Your AI app picks the right one at each step.</div>
+
+<h2 id="first-video">Your first video in three asks</h2>
+<p>Restart your AI app after installing, then type these in order. Change the wording to fit your app.</p>
+
+<h3 id="ask-check">1. Check the setup</h3>
+<pre><code>Run the ScreenPilot doctor and tell me if anything is missing.</code></pre>
+<p>This checks the recorder, permissions and voices, and says how to fix anything that is not ready. On a Mac or on Linux with Wayland, your system may ask for permission here. See <a href="@guide/install.html#macos">Install on macOS</a> and <a href="@guide/install.html#linux">Install on Linux</a>.</p>
+
+<h3 id="ask-record">2. Make a video</h3>
+<pre><code>Make a demo video of our dashboard: open it, show the reports page, and add an English voiceover.</code></pre>
+<p>The AI app opens the page, performs the clicks while recording, and writes the storyboard. Keep your hands off the mouse and keyboard while it works: touching the mouse stops the action. The first video takes longer because the video renderer warms up.</p>
+<p>Prefer to show it yourself? Ask this instead:</p>
+<pre><code>Record my screen while I show the signup flow, then make a short video with captions.</code></pre>
+<p>Do your demo, then tell the AI app you are done.</p>
+
+<h3 id="ask-refine">3. Change it</h3>
+<pre><code>Make it shorter, cut the waiting parts, and add an Arabic voiceover.</code></pre>
+<p>The AI app edits the storyboard and renders again. Ask for as many changes as you like: a different voice, bigger zooms, a title card, background music, a vertical version for Reels or TikTok.</p>
+
+<p>You can also start from a video you already have:</p>
+<pre><code>Turn this recording into a tutorial with zooms on every click: ~/Videos/demo.mp4</code></pre>
+
+<h2 id="where-saved">Where your videos are saved</h2>
+<p>Recordings and finished videos go in the <strong>ScreenPilot</strong> folder inside your Videos folder. On a Mac, that is the Movies folder. The AI app tells you the exact path when a video is ready.</p>
+<ul>
+  <li><strong>Windows:</strong> the ScreenPilot folder inside your Videos folder (the one Windows uses, even if OneDrive moved it).</li>
+  <li><strong>macOS:</strong> <code>~/Movies/ScreenPilot</code></li>
+  <li><strong>Linux:</strong> the ScreenPilot folder inside your Videos folder, which is <code>~/Videos/ScreenPilot</code> unless your desktop uses another name for Videos.</li>
+</ul>
+<p>To save somewhere else, run the installer's setup with <code>--output &lt;dir&gt;</code>. See <a href="@guide/cli.html">the command line guide</a>.</p>
+
+<h2 id="next-steps">Next steps</h2>
+<ul>
+  <li><a href="@guide/install.html">Install</a> on Windows, macOS or Linux, and add ScreenPilot to more AI apps.</li>
+  <li><a href="@guide/platforms.html">Platforms</a>: what works on your desktop.</li>
+  <li><a href="@guide/safety.html">Safety</a>: what the AI app can touch when it uses your computer, and how to limit it.</li>
+  <li><a href="@guide/faq.html">FAQ</a>: short answers when something goes wrong.</li>
+</ul>
