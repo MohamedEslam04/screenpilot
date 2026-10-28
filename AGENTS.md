@@ -1,6 +1,6 @@
 # screenpilot: agent guide
 
-Turn a screen recording of any desktop app into a polished demo MP4. You write `storyboard.json` (cuts, zooms, captions, highlights, voiceover); screenpilot renders it with HyperFrames and Edge TTS. Run the CLI as `screenpilot` (or `node dist/cli.js`). An MCP server (`dist/mcp.js`) exposes the same steps as tools; see README. Claude Code users also get `skill/SKILL.md` with a longer walkthrough and a full storyboard example.
+Turn a screen recording of any desktop app into a polished demo MP4. You write `storyboard.json` (cuts, zooms, captions, highlights, voiceover); screenpilot renders it with HyperFrames and a text-to-speech voice (Edge by default; local models or a user-defined command are optional). Run the CLI as `screenpilot` (or `node dist/cli.js`). An MCP server (`dist/mcp.js`) exposes the same steps as tools; see CONTRIBUTING.md. Claude Code users also get `skill/SKILL.md` with a longer walkthrough and a full storyboard example.
 
 ## Rules
 
@@ -8,6 +8,7 @@ Turn a screen recording of any desktop app into a polished demo MP4. You write `
 - Paths inside a storyboard are relative to the storyboard file.
 - Narration never overlaps: render auto-freezes the video when a line overruns. Keep lines short.
 - Iterate with `-q draft`; use `-q delivery` only for the final render.
+- Voice providers: `"voice": {"provider": "local", "name": "voicetut:Sarah", "rate": "+0%"}` (default provider is `edge`). `local` names are `voicetut`, `voicetut:<Voice>` (Egyptian Arabic and English) and `namaa` (Egyptian Arabic only); a line's own `voice` overrides the name, and each line's language is detected. Run `screenpilot voices --provider local` and `screenpilot doctor` ("local voice") to see what is installed. If the user wants free offline voices and none is installed, tell them to run `screenpilot voice-setup voicetut` in a terminal (about 10 GB download); never start it yourself. `command` voices (`"provider": "command"`, `name` = a key in the user's `voices.json`) are defined by the user; you cannot add commands from a storyboard. Details: https://mohamedeslam04.github.io/screenpilot/guide/voices.html
 
 ## Workflow
 
@@ -16,7 +17,7 @@ Turn a screen recording of any desktop app into a polished demo MP4. You write `
    If `record` warns it assumed which monitor OBS records and that was wrong: `screenpilot remap <session> --screen <name>` (names in meta.json `screens`).
 2. Analyze: `screenpilot analyze <session-dir|video>` -> idle spans, clicks, suggested segments/zooms, contact sheet image. View the contact sheet.
 3. Look closer: `screenpilot frames <video> --at 1,4.5,10 --grid`. The grid shows 0..1 coordinates; read zoom/highlight/callout positions from it. View the images.
-4. Start: `screenpilot init <session-dir|video> --suggest [--voice ar-EG-SalmaNeural]` (`--suggest` pre-fills idle cuts and click zooms). Schema: `screenpilot schema`. Voices: `screenpilot voices --lang ar-EG`.
+4. Start: `screenpilot init <session-dir|video> --suggest [--voice ar-EG-SalmaNeural]` (`--suggest` pre-fills idle cuts and click zooms). Schema: `screenpilot schema`. Voices: `screenpilot voices --lang ar-EG` (Edge), `screenpilot voices --provider local` (installed local models), `--provider command` (voices the user defined). `init` also takes `--provider local --voice voicetut:Sarah`.
 5. Edit `storyboard.json`: `segments` (keep parts, `speed` to fast-forward; optional `volume`/`mute` of source audio), `holds`, `zooms` (at, dur, x, y, scale), `captions` (style pill/title/callout; callout needs x,y), `highlights` (x,y,w,h), `narration` (at, text, optional per-line `voice`), `intro`/`outro`, `cards` (chapter card at a source time, freezes the video), `overlays` (logo/image/video on the output frame, 0..1), `music` (`duck` lowers it under narration), `extends` (inherit theme/voice/output/music from a base storyboard so clips match).
 6. Validate: `screenpilot validate storyboard.json`.
 7. Draft: `screenpilot render storyboard.json -q draft`.
