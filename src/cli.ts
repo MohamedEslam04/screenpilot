@@ -15,7 +15,9 @@ import { locate, openBrowser } from "./drive/web.js";
 import type { ScreenInfo } from "./record/input/types.js";
 import { performTake, TakeError } from "./take/perform.js";
 import { takeJsonSchema } from "./take/schema.js";
-import { prepareBuild, renderStoryboard, startPreview } from "./render/index.js";
+import { parseFormats } from "./render/formats.js";
+import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
+import { parseWindow } from "./render/window.js";
 import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/load.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { probeVideo } from "./util/media.js";
@@ -348,9 +350,19 @@ program
   .option("-q, --quality <q>", "draft | looks | delivery", "looks")
   .option("--png-frames", "Lossless source frames: sharper UI text, slower")
   .option("--workers <n>", "Parallel renderers (each is a headless Chrome)", "2")
+  .option("--from <s>", "Render only from this OUTPUT second (fast review; writes <storyboard>.part-<from>-<to>.mp4)", Number)
+  .option("--to <s>", "Render only up to this OUTPUT second", Number)
+  .option("--formats <list>", "Render once per format, e.g. 16:9,9:16,1:1 or 1280x720 (writes <storyboard>.<format>.mp4)")
   .option("--build-dir <dir>")
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers: string }) => {
-    const r = await renderStoryboard(path, { ...o, workers: Number(o.workers), log });
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers: string; from?: number; to?: number; formats?: string }) => {
+    const opts = { ...o, workers: Number(o.workers), window: parseWindow(o.from, o.to), log };
+    if (o.formats) {
+      if (o.buildDir) throw new Error("--build-dir cannot be combined with --formats (each format gets its own <name>.<format>.build)");
+      const rs = await renderFormats(path, parseFormats(o.formats), opts);
+      print(rs.map((r) => ({ format: r.format, output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings })));
+      return;
+    }
+    const r = await renderStoryboard(path, opts);
     print({ output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
   });
 

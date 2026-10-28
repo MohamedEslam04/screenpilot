@@ -4,6 +4,7 @@ import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { clicksOf, readEvents } from "../record/events.js";
+import { lintTimeline } from "../storyboard/lint.js";
 import { lintStoryboard, loadStoryboard } from "../storyboard/load.js";
 import type { Storyboard } from "../storyboard/schema.js";
 import { buildTimeline, planNarrationHolds, type Timeline } from "../storyboard/timeline.js";
@@ -12,8 +13,10 @@ import { ffmpegFilterScriptFlag, probeVideo, type VideoInfo } from "../util/medi
 import { synthesizeLines } from "../voice/index.js";
 import { buildCutArgs, buildCutFilter } from "./cut.js";
 import { renderHtml } from "./html.js";
+import { formatPaths, type OutputFormat } from "./formats.js";
 import { overlayKind } from "./overlay.js";
 import { buildPlan, type OverlayAsset, type RenderPlan } from "./plan.js";
+import { partSuffix, type Window, windowPlan } from "./window.js";
 import { CACHE_DIR } from "../brand.js";
 
 const require = createRequire(import.meta.url);
@@ -21,6 +24,10 @@ const require = createRequire(import.meta.url);
 export interface PrepareOptions {
   /** Where the HyperFrames project goes. Default: <storyboard dir>/<name>.build */
   buildDir?: string;
+  /** Build only this window (output seconds) for a fast review render. */
+  window?: Window;
+  /** Override the storyboard's output size (multi-format export); fps is kept. */
+  size?: { width: number; height: number };
   log?: (msg: string) => void;
 }
 
@@ -36,12 +43,13 @@ export interface Prepared {
 export async function prepareBuild(storyboardPath: string, opts: PrepareOptions = {}): Promise<Prepared> {
   const log = opts.log ?? (() => {});
   const { sb, baseDir, path } = await loadStoryboard(storyboardPath);
+  if (opts.size) sb.output = { ...sb.output, ...opts.size };
   const sourcePath = resolve(baseDir, sb.source);
   if (!existsSync(sourcePath)) throw new Error(`Source video not found: ${sourcePath}`);
   const source = await probeVideo(sourcePath);
   const warnings = lintStoryboard(sb, source.duration);
 
-  const buildDir = resolve(opts.buildDir ?? join(baseDir, `${basename(path, extname(path))}.build`));
+  const buildDir = resolve(opts.buildDir ?? join(baseDir, `${basename(path, extname(path))}${opts.window ? partSuffix(opts.window) : ""}.build`));
   await mkdir(join(buildDir, "voice"), { recursive: true });
 
   // 1. Voice: real durations decide the pacing.
@@ -72,6 +80,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     lines: narration.map((l) => ({ at: l.at, duration: l.duration })),
   });
   const timeline = buildTimeline({ ...base, holds: [...userHolds, ...autoHolds] });
+  warnings.push(...lintTimeline(sb, timeline));
   for (const h of timeline.ignoredHolds) {
     warnings.push(
       h.card !== undefined
@@ -130,7 +139,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   }
 
   // 6. Composition.
-  const plan = buildPlan({
+  const fullPlan = buildPlan({
     sb,
     timeline,
     editedSrc: "edited.mp4",
@@ -141,6 +150,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     musicSrc,
     overlays,
   });
+  const plan = opts.window ? windowPlan(fullPlan, opts.window) : fullPlan;
   await copyFile(require.resolve("gsap/dist/gsap.min.js"), join(buildDir, "gsap.min.js"));
   await writeFile(join(buildDir, "index.html"), renderHtml(plan, { gsapSrc: "gsap.min.js" }));
   await writeFile(
@@ -216,7 +226,8 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
   const log = opts.log ?? (() => {});
   const prepared = await prepareBuild(storyboardPath, opts);
   const output = resolve(
-    opts.output ?? join(dirname(resolve(storyboardPath)), `${basename(storyboardPath, extname(storyboardPath))}.mp4`),
+    opts.output ??
+      join(dirname(resolve(storyboardPath)), `${basename(storyboardPath, extname(storyboardPath))}${opts.window ? partSuffix(opts.window) : ""}.mp4`),
   );
   await mkdir(dirname(output), { recursive: true });
   log(`render: ${output} (${opts.quality ?? "looks"})`);
@@ -240,6 +251,31 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
     { env: hyperframesEnv() },
   );
   return { ...prepared, output };
+}
+
+export interface FormatRenderResult extends RenderResult {
+  format: string;
+}
+
+/**
+ * Render the storyboard once per format, one after another (each render is
+ * already parallel inside). Every format has its own build dir and output
+ * (`<name>.<format>.build` / `.mp4`); the voice cache lives next to the
+ * storyboard, so each narration line is synthesized once.
+ */
+export async function renderFormats(
+  storyboardPath: string,
+  formats: OutputFormat[],
+  opts: Omit<RenderOptions, "buildDir" | "size"> = {},
+): Promise<FormatRenderResult[]> {
+  const results: FormatRenderResult[] = [];
+  for (const f of formats) {
+    const { buildDir, output } = formatPaths(storyboardPath, f, opts.window, opts.output);
+    opts.log?.(`format ${f.label} (${f.width}x${f.height})`);
+    const r = await renderStoryboard(storyboardPath, { ...opts, output, buildDir, size: { width: f.width, height: f.height } });
+    results.push({ ...r, format: f.label });
+  }
+  return results;
 }
 
 /** Start (or reuse) the HyperFrames Studio preview for a prepared build. */

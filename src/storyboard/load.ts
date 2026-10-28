@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { lintStyle } from "./lint.js";
 import { type Storyboard, StoryboardSchema } from "./schema.js";
 
 export interface LoadedStoryboard {
@@ -49,6 +50,7 @@ export function lintStoryboard(sb: Storyboard, sourceDuration?: number): string[
       warnings.push(`captions[${i}] is a callout without x/y; it will point at the center`);
     }
   });
+  warnings.push(...lintStyle(sb));
   return warnings;
 }
 

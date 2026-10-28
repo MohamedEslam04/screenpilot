@@ -45,6 +45,8 @@ export interface AudioItem {
   start: number;
   duration: number;
   volume: number;
+  /** Seconds to skip at the start of the file (partial renders). */
+  mediaStart?: number;
   fadeIn?: number;
   fadeOut?: number;
   /** Volume ramps (output seconds) that duck this item under the narration. */
@@ -96,7 +98,7 @@ export interface RenderPlan {
   fps: number;
   duration: number;
   theme: Theme;
-  video: { src: string; start: number; duration: number; hasAudio: boolean };
+  video: { src: string; start: number; duration: number; hasAudio: boolean; mediaStart?: number };
   frame: Box;
   /** Pixel size of #cam: the FULL source video at the camera's base scale. */
   cam: { w: number; h: number };
