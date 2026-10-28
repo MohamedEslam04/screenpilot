@@ -55,6 +55,7 @@ export function renderHtml(plan: RenderPlan, opts: { gsapSrc: string }): string 
     if (i === 0 && c.start === 0 && plan.video.start > 0) {
       js.push(`tl.to("#card${i}", { opacity: 0, duration: 0.4 }, ${n(end - 0.4)});`);
     }
+    if (c.fadeOut) js.push(`tl.to("#card${i}", { opacity: 0, duration: ${n(c.fadeOut)} }, ${n(end - c.fadeOut)});`);
   });
 
   // Ripples

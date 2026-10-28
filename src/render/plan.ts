@@ -53,6 +53,8 @@ export interface CardItem {
   dur: number;
   /** Seconds the card cross-fades in over the previous picture (outro). */
   fadeIn: number;
+  /** Seconds the card cross-fades out over the picture (chapter cards). */
+  fadeOut?: number;
   title: string;
   subtitle?: string;
 }
@@ -182,6 +184,12 @@ export function buildPlan(input: PlanInput): RenderPlan {
 
   const cards: CardItem[] = [];
   if (sb.intro) cards.push({ start: 0, dur: sb.intro.dur, fadeIn: 0, title: sb.intro.title, subtitle: sb.intro.subtitle });
+  for (const span of tl.cardSpans()) {
+    const c = sb.cards[span.card]!;
+    // The video is frozen under the card, so it fades in and out over the held frame.
+    const fade = round(Math.min(0.3, (span.end - span.start) / 3));
+    cards.push({ start: round(span.start), dur: round(span.end - span.start), fadeIn: fade, fadeOut: fade, title: c.title, subtitle: c.subtitle });
+  }
   if (sb.outro) {
     // Overlap the last moment of the video so the outro cross-fades in.
     const fadeIn = round(Math.min(0.5, tl.videoDuration / 4));

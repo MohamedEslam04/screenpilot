@@ -96,6 +96,13 @@ export const CardSchema = z.object({
   dur: z.number().positive().default(3),
 });
 
+export const ChapterCardSchema = z.object({
+  at: time.describe("Source time the video freezes and the card shows"),
+  dur: z.number().positive().default(2.5).describe("How long the card stays (s); the video is frozen meanwhile"),
+  title: z.string().min(1),
+  subtitle: z.string().optional(),
+});
+
 export const ThemeSchema = z.object({
   background: z.string().default("linear-gradient(135deg, #1e1b4b 0%, #4338ca 55%, #0ea5e9 100%)"),
   padding: z.number().min(0).max(0.2).default(0.05).describe("Space around the recording, fraction of output width"),
@@ -165,6 +172,7 @@ export const StoryboardSchema = z.object({
   narration: z.array(NarrationSchema).default([]),
   intro: CardSchema.optional(),
   outro: CardSchema.optional(),
+  cards: z.array(ChapterCardSchema).default([]).describe("Chapter cards in the middle of the video; each freezes the picture for dur seconds"),
   music: MusicSchema.optional(),
 });
 

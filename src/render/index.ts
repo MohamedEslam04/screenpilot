@@ -61,14 +61,23 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
 
   // 2. Timeline, with freezes so narration never overlaps.
   const offset = sb.intro?.dur ?? 0;
-  const base = { segments: sb.segments, holds: sb.holds, sourceDuration: source.duration, offset };
+  // Chapter cards are holds too, so later times shift and narration holds keep working.
+  const cardHolds = sb.cards.map((c, card) => ({ at: c.at, dur: c.dur, card }));
+  const userHolds = [...sb.holds, ...cardHolds];
+  const base = { segments: sb.segments, holds: userHolds, sourceDuration: source.duration, offset };
   const autoHolds = planNarrationHolds({
     ...base,
     gap: sb.voice.gap,
     lines: narration.map((l) => ({ at: l.at, duration: l.duration })),
   });
-  const timeline = buildTimeline({ ...base, holds: [...sb.holds, ...autoHolds] });
-  for (const h of timeline.ignoredHolds) warnings.push(`hold at ${h.at}s is outside every segment and was ignored`);
+  const timeline = buildTimeline({ ...base, holds: [...userHolds, ...autoHolds] });
+  for (const h of timeline.ignoredHolds) {
+    warnings.push(
+      h.card !== undefined
+        ? `cards[${h.card}] at ${h.at}s is cut out (outside every segment) and was dropped`
+        : `hold at ${h.at}s is outside every segment and was ignored`,
+    );
+  }
   for (const l of narration) {
     if (timeline.toOutput(l.at) === null) warnings.push(`narration at ${l.at}s falls in a cut region and was dropped`);
   }
