@@ -1,7 +1,7 @@
 import { parse } from "jsonc-parser";
 import { describe, expect, it } from "vitest";
 import { parseDocument } from "yaml";
-import { CLIENTS, gooseServer, jsonSet, NEVER, stillValid, tomlServer } from "../src/setup/clients.js";
+import { CLIENTS, claudeAllowRule, gooseServer, jsonSet, NEVER, stillValid, tomlServer } from "../src/setup/clients.js";
 
 const launch = { command: "C:\\SP\\bin\\node.exe", args: ["C:\\SP\\dist\\mcp.js"], env: { SCREENPILOT_OUTPUT: "C:\\Users\\a\\Videos\\ScreenPilot" } };
 const spec = (id: string) => CLIENTS.find((c) => c.id === id)!;
@@ -161,5 +161,29 @@ describe("more clients", () => {
     expect(stillValid(spec("goose"), text)).toBe(true);
     const removed = parseDocument(gooseServer(text, "screenpilot", undefined)).toJS() as { extensions: Record<string, unknown> };
     expect(Object.keys(removed.extensions)).toEqual(["developer"]);
+  });
+});
+
+describe("Claude Code allow rule", () => {
+  it("adds the rule, keeping other entries and comments", () => {
+    const before = '{\n  // mine\n  "permissions": { "allow": ["Bash(ls)"], "deny": ["Bash(rm *)"] },\n  "theme": "dark"\n}\n';
+    const after = claudeAllowRule(before, "mcp__screenpilot", false);
+    expect(after).toContain("// mine");
+    const doc = parse(after.replace(/\/\/.*\n/, ""));
+    expect(doc.permissions.allow).toEqual(["Bash(ls)", "mcp__screenpilot"]);
+    expect(doc.permissions.deny).toEqual(["Bash(rm *)"]);
+    expect(doc.theme).toBe("dark");
+  });
+
+  it("creates permissions from nothing and does not duplicate", () => {
+    const once = claudeAllowRule("", "mcp__screenpilot", false);
+    expect(JSON.parse(once)).toEqual({ permissions: { allow: ["mcp__screenpilot"] } });
+    expect(claudeAllowRule(once, "mcp__screenpilot", false)).toBe(once);
+  });
+
+  it("removes only its own rule", () => {
+    const before = JSON.stringify({ permissions: { allow: ["Bash(ls)", "mcp__screenpilot"] } });
+    expect(JSON.parse(claudeAllowRule(before, "mcp__screenpilot", true)).permissions.allow).toEqual(["Bash(ls)"]);
+    expect(claudeAllowRule('{"a":1}', "mcp__screenpilot", true)).toBe('{"a":1}');
   });
 });

@@ -7,9 +7,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { analyze } from "./analyze/index.js";
+import { audit, checkAppAllowed, checkEnvAllowed } from "./drive/guard.js";
 import { Driver } from "./drive/index.js";
 import { screenshot } from "./drive/see.js";
-import { locate, openBrowser } from "./drive/web.js";
+import { locate, openBrowser, waitForWeb, withPage } from "./drive/web.js";
 import { doctor } from "./doctor.js";
 import { evenTimes, grabFrames } from "./frames.js";
 import { initStoryboard } from "./init.js";
@@ -23,7 +24,7 @@ import { type PerformResult, performTake, resolveTarget, TakeError } from "./tak
 import { TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider } from "./voice/index.js";
-import { APP, APP_TITLE, named, OUTPUT_ENV, VERSION } from "./brand.js";
+import { APP, APP_TITLE, named, OUTPUT_ENV, PERFORM_TIMEOUT_ENV, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { findWindow, getDesktop } from "./platform/index.js";
 import { defaultOutputDir } from "./setup/folders.js";
@@ -86,7 +87,7 @@ let performing: Driver | null = null;
 
 async function getDriver(): Promise<Driver> {
   if (driver) return driver;
-  driverOpening ??= Driver.open({ log }).then(
+  driverOpening ??= Driver.open({ log, trimActions: true }).then(
     (d) => (driver = d),
     (err) => {
       driverOpening = null;
@@ -104,9 +105,9 @@ async function getScreens(): Promise<ScreenInfo[]> {
 
 const DRIVE_NOTE =
   "Coordinates are normalized 0..1 per monitor (x from left, y from top). Take a screenshot first, act, then screenshot again to verify. " +
-  "This uses the REAL mouse and keyboard: ask the user not to touch them (touching the mouse aborts). " +
+  "This uses the REAL mouse and keyboard. If a person is at the machine, ask them not to touch the mouse (moving it stops the action; call resume to carry on). Unattended, set SCREENPILOT_INTERRUPT=off. " +
   "Prefer {web: selector} targets inside the demo browser (browser_open). " +
-  "The first use may need the user to approve a remote-control dialog (once, on Wayland); on macOS the AI app needs Accessibility and Screen Recording permission (errors say where). " +
+  "The first use may need a person to approve a remote-control dialog (once, on Wayland; the approval is saved); on macOS the AI app needs Accessibility and Screen Recording permission (errors say where). " +
   "On macOS shortcuts use cmd (e.g. cmd+c), not ctrl. " +
   "Run doctor to see what this desktop supports: on GNOME/other Wayland there is no window control (use {screen, x, y} targets only).";
 const norm = z.number().min(0).max(1);
@@ -118,7 +119,7 @@ const INSTRUCTIONS = `${APP_TITLE} makes screen videos. Typical loops:
 2. You perform it: screenshot to see the monitors, windows to see apps, browser_open for websites (app: true hides the address bar and tabs, so nothing about this machine shows); in take.json, file paths are relative to the take, so it runs on any machine; try the flow live with pointer_move/click/type_text; then write a take.json (take_schema) and call perform (it records, logs clicks/windows and writes a storyboard), add intro/outro/zooms, render.
 Design every video for its purpose; there is no house style. Before rendering, decide who it's for and where it will be shown, then set the storyboard to match: output size (1920x1080 for YouTube/README/slides, 1080x1920 for Reels/TikTok/Shorts, 1080x1080 for feeds), theme (background, padding, radius, accent, font, caption colors), theme.fonts (any Google Fonts), theme.css (your own CSS for captions, cards, highlights; storyboard_schema lists the classes) and text motion (theme.motion.captions / .cards, or motion per caption: in/out presets fade, rise, drop, slide-left, slide-right, pop, zoom, blur, wipe, words, lines, none; duration, any GSAP ease, stagger). Match the product's brand when you can see it (colors and type from its site or app). Pace and wording follow the audience: short punchy captions for social, calm explanatory ones for tutorials, bilingual lines ("English\nعربي") when asked. Defaults are only a fallback.
 Choose the shot the same way: which monitors to record (record_start screens / take "screens": one, several or "all") and what the camera shows: "window" follows the app in use (clean product demos), "screen" the whole monitor (OS-level how-tos, context matters), "all" every monitor side by side (work that spans screens, e.g. code on one and the app on the other). Switch per moment with view steps / storyboard views, and zoom only where detail matters.
-Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). The camera frames the window in use by default. Ask the user not to touch mouse/keyboard while you drive; touching them aborts. Run doctor first on a new machine.`;
+Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). The camera frames the window in use by default. You can run the whole loop yourself: drive live, write the take, perform, render, check_output. If a person is present, ask them not to touch the mouse while you drive; moving it stops the action with a message, and resume carries on from where the pointer is. For unattended runs start the server with SCREENPILOT_INTERRUPT=off. Run doctor first on a new machine.`;
 
 const server = new McpServer({ name: APP, title: APP_TITLE, version: VERSION }, { instructions: INSTRUCTIONS });
 
@@ -336,9 +337,12 @@ server.registerTool(
   }),
 );
 
-const driveTool = <A>(fn: (a: A, d: Driver) => Promise<unknown>) =>
+// Every drive action is logged (audit.jsonl); with SCREENPILOT_ALLOW_APPS set, input only goes to those apps.
+const driveTool = <A>(tool: string, fn: (a: A, d: Driver) => Promise<unknown>) =>
   safe<A>(async (a) => {
     const d = await getDriver();
+    await audit(tool, a);
+    if (tool !== "focus_window" && tool !== "pointer_move") await checkAppAllowed(d.desktop);
     return text((await fn(a, d)) ?? { ok: true });
   });
 
@@ -385,7 +389,7 @@ server.registerTool(
       screen: z.string().optional().describe("Move/resize the window onto this monitor"),
     },
   },
-  driveTool(async ({ match, screen }: { match: string; screen?: string }, d) => {
+  driveTool("focus_window", async ({ match, screen }: { match: string; screen?: string }, d) => {
     const desktop = await getDesktop();
     const w = findWindow(await desktop.listWindows(), match);
     if (!w) throw new Error(`No window matching "${match}"`);
@@ -408,7 +412,7 @@ server.registerTool(
       dur: z.number().positive().optional().describe("Seconds for the glide"),
     },
   },
-  driveTool(async ({ screen, x, y, dur }: { screen?: string; x: number; y: number; dur?: number }, d) => {
+  driveTool("pointer_move", async ({ screen, x, y, dur }: { screen?: string; x: number; y: number; dur?: number }, d) => {
     await d.moveTo({ screen, x, y }, { dur });
   }),
 );
@@ -425,7 +429,7 @@ server.registerTool(
       count: z.number().int().min(1).max(3).optional().describe("2 = double click"),
     },
   },
-  driveTool(async ({ target, button, count }: { target: z.output<typeof TargetSchema>; button?: "left" | "right" | "middle"; count?: number }, d) => {
+  driveTool("click", async ({ target, button, count }: { target: z.output<typeof TargetSchema>; button?: "left" | "right" | "middle"; count?: number }, d) => {
     await d.moveToGlobal(await resolveTarget(target, d));
     await new Promise((r) => setTimeout(r, 120));
     await d.click(undefined, { button, count });
@@ -438,7 +442,7 @@ server.registerTool(
     description: `Press at \`from\`, move to \`to\`, release. Targets as in click. ${DRIVE_NOTE}`,
     inputSchema: { from: TargetSchema, to: TargetSchema },
   },
-  driveTool(async ({ from, to }: { from: z.output<typeof TargetSchema>; to: z.output<typeof TargetSchema> }, d) => {
+  driveTool("drag", async ({ from, to }: { from: z.output<typeof TargetSchema>; to: z.output<typeof TargetSchema> }, d) => {
     const a = await resolveTarget(from, d);
     const b = await resolveTarget(to, d);
     await d.moveToGlobal(a);
@@ -456,7 +460,7 @@ server.registerTool(
       horizontal: z.boolean().optional(),
     },
   },
-  driveTool(async ({ steps, at, horizontal }: { steps: number; at?: z.output<typeof TargetSchema>; horizontal?: boolean }, d) => {
+  driveTool("scroll", async ({ steps, at, horizontal }: { steps: number; at?: z.output<typeof TargetSchema>; horizontal?: boolean }, d) => {
     if (at) await d.moveToGlobal(await resolveTarget(at, d));
     await d.scroll(steps, { horizontal });
   }),
@@ -468,7 +472,7 @@ server.registerTool(
     description: `Press a key combo in the focused window, e.g. "ctrl+l", "enter", "alt+tab". ${DRIVE_NOTE}`,
     inputSchema: { combo: z.string() },
   },
-  driveTool(async ({ combo }: { combo: string }, d) => {
+  driveTool("key", async ({ combo }: { combo: string }, d) => {
     await d.key(combo);
   }),
 );
@@ -481,7 +485,8 @@ server.registerTool(
       `and never shown; typed text is never echoed back. ${DRIVE_NOTE}`,
     inputSchema: { text: z.union([z.string(), z.object({ env: z.string() }).strict()]) },
   },
-  driveTool(async ({ text: t }: { text: string | { env: string } }, d) => {
+  driveTool("type_text", async ({ text: t }: { text: string | { env: string } }, d) => {
+    if (typeof t !== "string") checkEnvAllowed(t.env);
     const value = typeof t === "string" ? t : process.env[t.env];
     if (value === undefined) throw new Error(`env var ${typeof t === "string" ? "" : t.env} is not set`);
     await d.type(value);
@@ -518,6 +523,54 @@ server.registerTool(
     inputSchema: { selector: z.string() },
   },
   safe(async ({ selector }) => text(await locate(selector, await getDriver()))),
+);
+
+server.registerTool(
+  "wait_for",
+  {
+    description:
+      "Wait until something shows up, so you can verify an action worked without guessing with sleeps: a window (class or title contains `window`) or an element in the demo browser (Playwright selector `web`). " +
+      "Give exactly one of them. Fails with an error when the timeout passes. Read-only.",
+    inputSchema: {
+      window: z.string().optional().describe("Window class or title substring"),
+      web: z.string().optional().describe("Playwright selector in the demo browser"),
+      timeout: z.number().positive().max(120).optional().describe("Seconds, default 15"),
+    },
+  },
+  safe(async ({ window, web, timeout }) => {
+    if (!!window === !!web) throw new Error("Give exactly one of window or web.");
+    const ms = (timeout ?? 15) * 1000;
+    if (web) {
+      await waitForWeb(web, ms);
+      return text({ found: { web } });
+    }
+    const desktop = await getDesktop();
+    const deadline = Date.now() + ms;
+    for (;;) {
+      const w = findWindow(await desktop.listWindows(), window!);
+      if (w) return text({ found: { window: w.caption, class: w.resourceClass } });
+      if (Date.now() > deadline) throw new Error(`No window matching "${window}" appeared within ${timeout ?? 15}s`);
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  }),
+);
+
+server.registerTool(
+  "page_text",
+  {
+    description:
+      "Read the demo browser's current tab as data: URL, title and visible text (truncated to maxChars). Use it to check what a page says instead of reading a screenshot. Read-only.",
+    inputSchema: { maxChars: z.number().int().positive().max(50000).optional().describe("Default 4000") },
+  },
+  safe(async ({ maxChars }) =>
+    text(
+      await withPage(async (page) => {
+        const body = await page.evaluate(() => document.body?.innerText ?? "");
+        const limit = maxChars ?? 4000;
+        return { url: page.url(), title: await page.title(), text: body.slice(0, limit), truncated: body.length > limit };
+      }),
+    ),
+  ),
 );
 
 server.registerTool(
@@ -560,6 +613,9 @@ server.registerTool(
     if (performing) throw new Error("A take is already running. Call abort to stop it.");
     // performTake opens its own driver; release the live one so two remote-control sessions don't compete.
     await closeDriver();
+    // SCREENPILOT_PERFORM_TIMEOUT=<seconds>: an unattended take that hangs is aborted instead of holding the mouse forever.
+    const limit = Number(process.env[PERFORM_TIMEOUT_ENV]);
+    const timer = limit > 0 ? setTimeout(() => performing?.abort(), limit * 1000) : undefined;
     try {
       const r: PerformResult = await performTake(resolve(take), { dir, dryRun, log, onDriver: (d) => (performing = d) });
       return text(r);
@@ -570,15 +626,29 @@ server.registerTool(
       }
       throw err;
     } finally {
+      clearTimeout(timer);
       performing = null;
     }
   }),
 );
 
 server.registerTool(
+  "resume",
+  {
+    description:
+      "Carry on driving after a click/move/type stopped because the pointer was moved by someone else. Adopts the pointer where it is now; keeps the driver open (no new approval dialog). Take a screenshot afterwards: the screen may have changed.",
+  },
+  safe(async () => {
+    if (!driver) return text({ resumed: false, reason: "no live driver; the next drive tool opens one" });
+    driver.resume();
+    return text({ resumed: true });
+  }),
+);
+
+server.registerTool(
   "abort",
   {
-    description: "Stop whatever the agent is driving right now: the live driver and a running perform. Safe to call any time.",
+    description: "Stop whatever the agent is driving right now: the live driver and a running perform. Safe to call any time. It closes the driver; the next drive tool reopens it. To carry on after the pointer was moved by someone else, use resume instead.",
   },
   safe(async () => {
     const stopped: string[] = [];

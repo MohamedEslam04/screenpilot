@@ -287,7 +287,8 @@ Targets in a take: `{screen, x, y}` (normalized 0..1 per monitor), `{web: "selec
 
 Safety
 
-- The real mouse and keyboard are used. Touching the mouse during a take aborts it. Ctrl+C (or MCP `abort`) stops it too.
+- The real mouse and keyboard are used. Touching the mouse during a take aborts it. Ctrl+C (or MCP `abort`) stops it too. Live MCP driving stops the same way, and `resume` carries on afterwards; set `SCREENPILOT_INTERRUPT=off` for unattended agent runs (only `abort` stops it then).
+- Optional limits for unattended agents (all unset by default): `SCREENPILOT_ALLOW_APPS` (comma list of apps that may receive clicks and typing), `SCREENPILOT_ALLOW_ENV` (env vars `{env}` may type), `SCREENPILOT_PERFORM_TIMEOUT` (seconds before a take is aborted). Every MCP drive action is logged to `audit.jsonl` in the config folder (typed text is never logged). `screenpilot setup --allow-tools` lets Claude Code use the tools without a prompt each time.
 - Never put secrets in `take.json`: use `{"type": {"env": "VAR"}}`; the value is read from the environment and never logged or echoed.
 - Rehearse with `--dry-run` before recording.
 

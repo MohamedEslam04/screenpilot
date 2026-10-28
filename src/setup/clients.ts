@@ -224,6 +224,18 @@ export function tomlServer(text: string, name: string, launch: ServerLaunch | un
   return `${out.join("\n")}\n`;
 }
 
+/**
+ * Add (or remove) a permission rule in Claude Code's settings.json `permissions.allow`,
+ * keeping every other entry and comment. `rule` "mcp__<server>" allows all of that server's tools.
+ */
+export function claudeAllowRule(text: string, rule: string, remove: boolean): string {
+  const doc = (parse(text, [], { allowTrailingComma: true }) ?? {}) as { permissions?: { allow?: unknown } };
+  const current = Array.isArray(doc.permissions?.allow) ? (doc.permissions!.allow as unknown[]) : [];
+  const next = remove ? current.filter((r) => r !== rule) : current.includes(rule) ? current : [...current, rule];
+  if (next.length === current.length && (remove || current.includes(rule))) return text;
+  return jsonSet(text, ["permissions", "allow"], remove && next.length === 0 ? undefined : next);
+}
+
 /** Parse check used before writing: never save a file we broke. */
 export function stillValid(spec: ClientSpec, text: string): boolean {
   if (spec.format === "toml") return true;

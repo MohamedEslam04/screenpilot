@@ -125,8 +125,9 @@ program
   .option("--output <dir>", "Where videos are saved (default: ~/Videos/ScreenPilot)")
   .option("--in-place", "Register the package where it is (no copy)")
   .option("--skip-prepare", "Don't download the render browser or run the test render")
+  .option("--allow-tools", "Claude Code: let the agent use every screenpilot tool without asking each time (adds a rule to ~/.claude/settings.json)")
   .option("--print", "Only print the config to paste into an AI tool by hand")
-  .action(async (o: { clients?: string; remove?: boolean; output?: string; inPlace?: boolean; skipPrepare?: boolean; print?: boolean; list?: boolean }) => {
+  .action(async (o: { clients?: string; remove?: boolean; output?: string; inPlace?: boolean; skipPrepare?: boolean; allowTools?: boolean; print?: boolean; list?: boolean }) => {
     if (o.list) {
       print(knownClients());
       return;
@@ -141,6 +142,7 @@ program
       outputDir: o.output,
       inPlace: o.inPlace,
       skipPrepare: o.skipPrepare,
+      allowTools: o.allowTools,
       log,
     });
     // Dozens of tools are checked: list only the ones that changed (or failed).

@@ -46,6 +46,15 @@ export const OUTPUT_ENV = `${APP.toUpperCase()}_OUTPUT`;
 /** Env var forcing the desktop backend (kde, x11, portal or windows) instead of detecting it. */
 export const DESKTOP_ENV = `${APP.toUpperCase()}_DESKTOP`;
 
+/** "off": driving ignores the pointer being moved by anyone else (unattended agents). */
+export const INTERRUPT_ENV = `${APP.toUpperCase()}_INTERRUPT`;
+/** Comma list of env var names the agent may type from ({env: NAME}). Unset: any. */
+export const ALLOW_ENV_ENV = `${APP.toUpperCase()}_ALLOW_ENV`;
+/** Comma list of app names (window class or title substrings) the agent may click or type into. Unset: any. */
+export const ALLOW_APPS_ENV = `${APP.toUpperCase()}_ALLOW_APPS`;
+/** Seconds after which a perform is aborted. Unset: no limit. */
+export const PERFORM_TIMEOUT_ENV = `${APP.toUpperCase()}_PERFORM_TIMEOUT`;
+
 /** Folder for new recording sessions: $SCREENPILOT_OUTPUT, else ./sessions. */
 export function sessionsRoot(): string {
   return process.env[OUTPUT_ENV] || "sessions";

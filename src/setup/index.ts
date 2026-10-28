@@ -3,8 +3,9 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync,
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parse } from "jsonc-parser";
 import { APP, APP_TITLE, OUTPUT_ENV } from "../brand.js";
-import { CLIENTS, type ClientSpec, NEVER, type PathEnv, type ServerLaunch, stillValid } from "./clients.js";
+import { CLIENTS, type ClientSpec, claudeAllowRule, NEVER, type PathEnv, type ServerLaunch, stillValid } from "./clients.js";
 import { defaultOutputDir } from "./folders.js";
 import { type PrepareResult, prepareRenderer } from "./prepare.js";
 
@@ -22,6 +23,8 @@ export interface SetupOptions {
   inPlace?: boolean;
   /** Skip downloading the render browser and the test render. */
   skipPrepare?: boolean;
+  /** Claude Code: allow every screenpilot tool without a prompt each time (permissions.allow in ~/.claude/settings.json). */
+  allowTools?: boolean;
   log?: (m: string) => void;
 }
 
@@ -115,7 +118,7 @@ export async function setup(opts: SetupOptions = {}): Promise<SetupReport> {
     if (opts.clients && !opts.clients.includes(spec.id)) continue;
     rows.push(configure(spec, env, launch, !!opts.remove, !!opts.clients));
   }
-  if (!opts.clients || opts.clients.includes("claude-code")) rows.push(claudeCode(launch, dir, !!opts.remove));
+  if (!opts.clients || opts.clients.includes("claude-code")) rows.push(claudeCode(launch, dir, !!opts.remove, !!opts.allowTools));
   const renderer = opts.remove || opts.skipPrepare ? undefined : await prepareRenderer(log);
   return { appDir: dir, outputDir, rows, renderer };
 }
@@ -186,12 +189,13 @@ function claudeAvailable(): boolean {
 }
 
 /** Claude Code keeps MCP servers in its own store: use its CLI when it is installed. */
-function claudeCode(launch: ServerLaunch, dir: string, remove: boolean): SetupRow {
+function claudeCode(launch: ServerLaunch, dir: string, remove: boolean, allowTools: boolean): SetupRow {
   const cli = claudeCli();
   if (!cli) return { client: "Claude Code", status: "not installed", detail: "" };
   runClaude(cli, ["mcp", "remove", "--scope", "user", APP]);
   if (remove) {
     rmSync(join(homedir(), ".claude", "skills", APP), { recursive: true, force: true });
+    allowRule(true);
     return { client: "Claude Code", status: "removed", detail: "user scope" };
   }
   // The name goes before -e: -e takes several values and would swallow it ("Invalid environment
@@ -206,5 +210,29 @@ function claudeCode(launch: ServerLaunch, dir: string, remove: boolean): SetupRo
     rmSync(dest, { recursive: true, force: true });
     cpSync(skill, dest, { recursive: true });
   }
-  return { client: "Claude Code", status: "added", detail: "user scope (+ skill)" };
+  if (allowTools) {
+    const err = allowRule(false);
+    if (err) return { client: "Claude Code", status: "failed", detail: `added, but could not allow its tools: ${err}` };
+  }
+  return { client: "Claude Code", status: "added", detail: `user scope (+ skill${allowTools ? ", tools allowed without prompts" : ""})` };
+}
+
+/** Add/remove the "allow every tool of this server" rule in Claude Code's settings. Returns an error message, or undefined. */
+function allowRule(remove: boolean): string | undefined {
+  const file = join(homedir(), ".claude", "settings.json");
+  try {
+    const before = existsSync(file) ? readFileSync(file, "utf8") : "";
+    if (remove && !before.includes(`mcp__${APP}`)) return undefined;
+    const after = claudeAllowRule(before, `mcp__${APP}`, remove);
+    if (after === before) return undefined;
+    const errors: { error: number }[] = [];
+    parse(after, errors as never, { allowTrailingComma: true });
+    if (errors.length) throw new Error("the updated file would not parse; left unchanged");
+    if (before) copyFileSync(file, `${file}.${APP}-backup`);
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, after);
+    return undefined;
+  } catch (err) {
+    return `${file}: ${(err as Error).message}`;
+  }
 }

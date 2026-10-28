@@ -1,4 +1,5 @@
 import { performance } from "node:perf_hooks";
+import { INTERRUPT_ENV } from "../brand.js";
 import { getDesktop } from "../platform/index.js";
 import type { Desktop, Injector, MouseButton, Watcher } from "../platform/types.js";
 import type { ScreenInfo } from "../record/input/types.js";
@@ -28,7 +29,7 @@ export interface DriverAction {
 
 export class UserInterrupted extends Error {
   constructor() {
-    super("Stopped: the pointer was moved by someone else (you took the mouse).");
+    super("Stopped: the pointer was moved by someone else. Call resume to carry on from where the pointer is now, or abort to stop.");
   }
 }
 
@@ -48,8 +49,15 @@ export interface DriverOptions {
   log?: (m: string) => void;
   /** Max distance (px) between where we put the pointer and where the OS sees it before we stop. */
   interruptPx?: number;
+  /** "off": ignore pointer movement by others (unattended runs). abort() still stops. Default "pointer". */
+  interrupt?: "pointer" | "off";
+  /** Keep only the last second of actions (long-lived drivers). A take needs the full list, so it stays off there. */
+  trimActions?: boolean;
   seed?: number;
 }
+
+/** Actions older than this can no longer matter to the interrupt check. */
+const RECENT_MS = 600;
 
 export class Driver {
   readonly actions: DriverAction[] = [];
@@ -66,6 +74,11 @@ export class Driver {
     this.rand = rng(opts.seed ?? 7);
     const c = watcher.cursor();
     if (c) this.pos = { ...c };
+  }
+
+  /** Build a driver from existing parts (tests, custom desktops). */
+  static from(desktop: Desktop, input: Injector, watcher: Watcher, opts: DriverOptions = {}): Driver {
+    return new Driver(desktop, input, watcher, opts);
   }
 
   static async open(opts: DriverOptions = {}): Promise<Driver> {
@@ -101,6 +114,14 @@ export class Driver {
 
   abort(): void {
     this.aborted = true;
+  }
+
+  /** Carry on after an interrupt or abort: adopt the pointer where it is now. */
+  resume(): void {
+    this.aborted = false;
+    const c = this.watcher.cursor();
+    if (c) this.pos = { ...c };
+    this.actions.length = 0;
   }
 
   async moveTo(t: Target, opts: { dur?: number } = {}): Promise<void> {
@@ -162,14 +183,14 @@ export class Driver {
     for (let i = 0; i < Math.abs(steps); i++) {
       this.checkInterrupted();
       await this.input.wheel(!!opts.horizontal, dir);
-      this.actions.push({ at: performance.now(), type: "scroll", px: this.pos.x, py: this.pos.y });
+      this.record({ at: performance.now(), type: "scroll", px: this.pos.x, py: this.pos.y });
       await sleep(60);
     }
   }
 
   async key(combo: string): Promise<void> {
     this.checkInterrupted();
-    this.actions.push({ at: performance.now(), type: "key", px: this.pos.x, py: this.pos.y });
+    this.record({ at: performance.now(), type: "key", px: this.pos.x, py: this.pos.y });
     await this.input.pressCombo(combo);
   }
 
@@ -192,15 +213,24 @@ export class Driver {
     return this.screens().find((s) => c.x >= s.x && c.x < s.x + s.w && c.y >= s.y && c.y < s.y + s.h) ?? this.screens()[0];
   }
 
+  private record(a: DriverAction): void {
+    this.actions.push(a);
+    if (!this.opts.trimActions) return;
+    const keep = a.at - 1000;
+    let drop = 0;
+    while (drop < this.actions.length && (this.actions[drop]?.at ?? keep) < keep) drop++;
+    if (drop) this.actions.splice(0, drop);
+  }
+
   private async place(x: number, y: number): Promise<void> {
     if (!(await this.input.moveTo(x, y))) return; // gap between monitors: skip this step
     this.pos = { x, y };
-    this.actions.push({ at: performance.now(), type: "move", px: x, py: y });
+    this.record({ at: performance.now(), type: "move", px: x, py: y });
   }
 
   private async press(b: Button, down: boolean): Promise<void> {
     await this.input.button(b, down);
-    this.actions.push({ at: performance.now(), type: down ? "down" : "up", px: this.pos.x, py: this.pos.y, button: BUTTON_NO[b] });
+    this.record({ at: performance.now(), type: down ? "down" : "up", px: this.pos.x, py: this.pos.y, button: BUTTON_NO[b] });
   }
 
   /**
@@ -209,10 +239,11 @@ export class Driver {
    */
   private checkInterrupted(): void {
     if (this.aborted) throw new Error("Stopped (abort requested).");
+    if ((this.opts.interrupt ?? (process.env[INTERRUPT_ENV] === "off" ? "off" : "pointer")) === "off") return;
     const seen = this.watcher.cursor();
     if (!seen || this.actions.length === 0) return;
     const limit = this.opts.interruptPx ?? 40;
-    const since = performance.now() - 600;
+    const since = performance.now() - RECENT_MS;
     const recent = this.actions.filter((a) => a.type === "move" && a.at >= since);
     const points = recent.length ? recent.map((a) => ({ x: a.px, y: a.py })) : [this.pos];
     if (points.every((p) => Math.hypot(seen.x - p.x, seen.y - p.y) > limit)) throw new UserInterrupted();
