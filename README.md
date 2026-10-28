@@ -21,6 +21,8 @@ Pick the download for your computer. Everything ScreenPilot needs is inside it; 
 
 Not sure which Mac you have? Apple menu → **About This Mac**: "Chip: Apple M…" means Apple Silicon, "Processor: Intel" means Intel. All versions are on the [Releases](https://github.com/MohamedEslam04/screenpilot/releases) page.
 
+> **Mac downloads:** v0.3.0 (Windows and Linux) has no Mac build yet, so the two Mac links above don't work until the next release. The last Mac builds are on the [v0.2.3 release](https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.2.3).
+
 Install your AI app first (and open it once), then ScreenPilot: the installer adds itself to every AI app it finds. Installed a new AI app later? Run the ScreenPilot installer again.
 
 ### Windows
@@ -206,7 +208,8 @@ screenpilot render sessions/<ts>/storyboard.json -q delivery -o demo.mp4
 
 - `--clients codex,opencode` limits it to those clients;
 - `--remove` takes it out;
-- `--output <dir>` sets where videos go.
+- `--output <dir>` sets where videos go;
+- `--allow-tools` (Claude Code) lets the agent use every ScreenPilot tool without asking each time; it adds `mcp__screenpilot` to `permissions.allow` in `~/.claude/settings.json` (your other entries and comments stay, the file is backed up first, and `--remove` takes the rule out again).
 
 To configure by hand: the server speaks stdio. Use an absolute path to the built file.
 
@@ -255,7 +258,9 @@ Copy or symlink `skill/` to `~/.claude/skills/screenpilot` to give Claude Code t
 | `screenshot`, `windows` | See the desktop: per-monitor images (optional 0..1 grid) and the KWin window list |
 | `focus_window`, `pointer_move`, `click`, `drag`, `scroll`, `key`, `type_text` | Drive the real mouse and keyboard (coordinates normalized 0..1 per monitor) |
 | `browser_open`, `web_locate` | Clean demo browser; find an element's screen rectangle by selector |
+| `wait_for`, `page_text` | Check an action worked: wait for a window or a browser element; read the demo browser's URL, title and visible text |
 | `take_schema`, `perform`, `abort` | Schema of `take.json`; perform a take (`dryRun` to rehearse); stop driving |
+| `resume` | Carry on after someone moved the pointer and stopped the action (the driver stays open) |
 
 `record_start` also takes `screens` (`"all"` or monitor names) and `map` (OBS source name to monitor name). Drive tools open one remote-control session on first use and keep it for the life of the server.
 
@@ -414,4 +419,4 @@ CI: GitHub Actions. `.github/workflows/ci.yml` (Linux: typecheck, tests, build; 
 
 ---
 
-Docs synced to commit 6278d6f ("ci(macos): also run on input and driving changes", 2026-10-27).
+Docs synced to commit 67bd7a6 ("chore: v0.3.0", 2026-10-28).
