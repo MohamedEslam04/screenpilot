@@ -14,6 +14,7 @@ import { synthesizeLines } from "../voice/index.js";
 import { buildCutArgs, buildCutFilter } from "./cut.js";
 import { renderHtml } from "./html.js";
 import { buildPlan, type RenderPlan } from "./plan.js";
+import { formatPaths, type OutputFormat } from "./formats.js";
 import { partSuffix, type Window, windowPlan } from "./window.js";
 import { CACHE_DIR } from "../brand.js";
 
@@ -24,6 +25,8 @@ export interface PrepareOptions {
   buildDir?: string;
   /** Build only this window (output seconds) for a fast review render. */
   window?: Window;
+  /** Override the storyboard's output size (multi-format export); fps is kept. */
+  size?: { width: number; height: number };
   log?: (msg: string) => void;
 }
 
@@ -39,6 +42,7 @@ export interface Prepared {
 export async function prepareBuild(storyboardPath: string, opts: PrepareOptions = {}): Promise<Prepared> {
   const log = opts.log ?? (() => {});
   const { sb, baseDir, path } = await loadStoryboard(storyboardPath);
+  if (opts.size) sb.output = { ...sb.output, ...opts.size };
   const sourcePath = resolve(baseDir, sb.source);
   if (!existsSync(sourcePath)) throw new Error(`Source video not found: ${sourcePath}`);
   const source = await probeVideo(sourcePath);
@@ -212,6 +216,31 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
     { env: hyperframesEnv() },
   );
   return { ...prepared, output };
+}
+
+export interface FormatRenderResult extends RenderResult {
+  format: string;
+}
+
+/**
+ * Render the storyboard once per format, one after another (each render is
+ * already parallel inside). Every format has its own build dir and output
+ * (`<name>.<format>.build` / `.mp4`); the voice cache lives next to the
+ * storyboard, so each narration line is synthesized once.
+ */
+export async function renderFormats(
+  storyboardPath: string,
+  formats: OutputFormat[],
+  opts: Omit<RenderOptions, "buildDir" | "size"> = {},
+): Promise<FormatRenderResult[]> {
+  const results: FormatRenderResult[] = [];
+  for (const f of formats) {
+    const { buildDir, output } = formatPaths(storyboardPath, f, opts.window, opts.output);
+    opts.log?.(`format ${f.label} (${f.width}x${f.height})`);
+    const r = await renderStoryboard(storyboardPath, { ...opts, output, buildDir, size: { width: f.width, height: f.height } });
+    results.push({ ...r, format: f.label });
+  }
+  return results;
 }
 
 /** Start (or reuse) the HyperFrames Studio preview for a prepared build. */

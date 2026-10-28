@@ -17,7 +17,8 @@ import { initStoryboard } from "./init.js";
 import type { ScreenInfo } from "./record/input/types.js";
 import { type ActiveRecording, startRecording } from "./record/index.js";
 import { remapSession } from "./record/remap.js";
-import { prepareBuild, renderStoryboard, startPreview } from "./render/index.js";
+import { parseFormats } from "./render/formats.js";
+import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
 import { parseWindow } from "./render/window.js";
 import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/load.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
@@ -293,6 +294,7 @@ server.registerTool(
       "Render a storyboard to MP4. Narration never overlaps: when a voice line is longer than its slot the video auto-freezes (see autoHolds in the result). " +
       'Use quality "draft" while iterating (fast), "looks" for a normal render, "delivery" only for the final file. ' +
       "Pass from/to (OUTPUT seconds) to re-render only that window for a fast review; the file is named <storyboard>.part-<from>-<to>.mp4. " +
+      'Pass formats (e.g. ["16:9","9:16","1:1"] or ["1280x720"]) to render one file per format: <storyboard>.<format>.mp4 (16x9, 9x16, 1x1), narration synthesized once. ' +
       "Slow (minutes). Follow with check_output to review the result.",
     inputSchema: {
       storyboard: z.string().describe("Path to storyboard.json"),
@@ -300,10 +302,16 @@ server.registerTool(
       quality: z.enum(["draft", "looks", "delivery"]).optional().describe("Default looks"),
       from: z.number().min(0).optional().describe("Partial render: start, in OUTPUT seconds"),
       to: z.number().min(0).optional().describe("Partial render: end, in OUTPUT seconds"),
+      formats: z.array(z.string()).optional().describe('Output formats, each "16:9", "9:16", "1:1" or "WxH". One file per format; output becomes the base name.'),
     },
   },
-  safe(async ({ storyboard, output, quality, from, to }) => {
-    const r = await renderStoryboard(storyboard, { output, quality, window: parseWindow(from, to), log });
+  safe(async ({ storyboard, output, quality, from, to, formats }) => {
+    const window = parseWindow(from, to);
+    if (formats?.length) {
+      const rs = await renderFormats(storyboard, parseFormats(formats.join(",")), { output, quality, window, log });
+      return text(rs.map((r) => ({ format: r.format, output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings })));
+    }
+    const r = await renderStoryboard(storyboard, { output, quality, window, log });
     return text({ output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
   }),
 );
