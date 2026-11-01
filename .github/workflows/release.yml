@@ -5,6 +5,8 @@ name: Release
 #   ScreenPilot-<version>-windows.zip    alternative: extract, double-click "ScreenPilot Setup.cmd"
 #   ScreenPilot-<version>-windows.mcpb   double-click to install in Claude Desktop only
 #   ScreenPilot-<version>-linux.tar.gz   ./install.sh (adds it to every AI tool)
+#   ScreenPilot-<version>-macos-arm64.zip / -macos-x64.zip   Install ScreenPilot.command (Apple Silicon / Intel)
+#   ScreenPilot-<version>-macos-arm64.mcpb / -macos-x64.mcpb double-click to install in Claude Desktop only
 # Run it by hand (Actions tab) to just build the packages as artifacts.
 on:
   push:
@@ -19,9 +21,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # macOS minutes cost 10x on private repos: these jobs only run for releases and by hand.
-        # macOS is off until the Actions minutes reset: add macos-latest and macos-15-intel back to release the Mac builds.
-        os: [windows-latest, ubuntu-latest]
+        # macOS minutes cost 10x on a private repo (free while the repo is public): these jobs only run for releases and by hand.
+        os: [windows-latest, ubuntu-latest, macos-latest, macos-15-intel]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     steps:

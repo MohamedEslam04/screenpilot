@@ -38,9 +38,9 @@ export const T = {
     dlWin: "Download for Windows", dlLinux: "Download for Linux", fileWin: "ScreenPilot-windows-setup.exe", fileLinux: "ScreenPilot-linux.tar.gz",
     win: ["Double-click the installer.", "If Windows says “Windows protected your PC”, click More info, then Run anyway. The installer is not signed yet.", "Click Install. The first time it also downloads the video renderer (about 100 MB).", "Quit your AI app completely and open it again."],
     linux: ["Extract the archive. You get a ScreenPilot folder.", "Double-click install.sh, or run ./install.sh in a terminal. Do not use sudo.", "Restart your AI app.", "The first time you record, your desktop asks once to allow screen sharing. Allow it."],
-    macNote: "The Mac builds are not part of version 0.4.0. Get them from version 0.2.3; they come back in the next release.",
+    macNote: "Not sure which Mac you have? Apple menu, About This Mac: “Chip: Apple M…” means Apple Silicon, “Processor: Intel” means Intel.",
     mac: ["Download the zip for your Mac and unzip it.", "Open the folder and double-click Install ScreenPilot.command.", "Restart your AI app, then allow it in System Settings, Privacy & Security when macOS asks."],
-    dlMac: "Mac builds in version 0.2.3", installMore: "Full install guide, other AI apps and troubleshooting",
+    dlMacArm: "Download for Mac (Apple Silicon)", dlMacIntel: "Download for Mac (Intel)", fileMacArm: "ScreenPilot-macos-arm64.zip", fileMacIntel: "ScreenPilot-macos-x64.zip", installMore: "Full install guide, other AI apps and troubleshooting",
     worksH: "Works with the AI app you already use",
     worksMore: "and any app that supports MCP servers",
     foot: { about: "ScreenPilot is open source under the MIT license.", names: "Product names belong to their owners. ScreenPilot is an independent project.", learn: "Learn", project: "Project", issues: "Report an issue", releases: "Releases", license: "License", notices: "Third-party notices", security: "Security", contributing: "Contributing" },
@@ -83,9 +83,9 @@ export const T = {
     dlWin: "حمّل لنظام Windows", dlLinux: "حمّل لنظام Linux", fileWin: "ScreenPilot-windows-setup.exe", fileLinux: "ScreenPilot-linux.tar.gz",
     win: ["انقر مرتين على المثبّت.", "إذا قال Windows «Windows protected your PC» فاختر More info ثم Run anyway. المثبّت غير موقّع بعد.", "اضغط Install. في أول مرة ينزّل أيضًا محرّك التصيير (حوالي 100 MB).", "أغلق تطبيق الذكاء الاصطناعي تمامًا ثم افتحه من جديد."],
     linux: ["فكّ ضغط الأرشيف. ستحصل على مجلد ScreenPilot.", "انقر مرتين على install.sh، أو شغّل ‎./install.sh في الطرفية. لا تستخدم sudo.", "أعد تشغيل تطبيق الذكاء الاصطناعي.", "في أول تسجيل يطلب سطح المكتب مرة واحدة السماح بمشاركة الشاشة. اسمح له."],
-    macNote: "نسخ Mac ليست ضمن الإصدار 0.4.0. حمّلها من الإصدار 0.2.3، وستعود في الإصدار القادم.",
+    macNote: "لا تعرف أي جهاز Mac لديك؟ من قائمة Apple اختر About This Mac: «Chip: Apple M…» يعني Apple Silicon، و«Processor: Intel» يعني Intel.",
     mac: ["حمّل ملف zip الخاص بجهازك وفكّ ضغطه.", "افتح المجلد وانقر مرتين على Install ScreenPilot.command.", "أعد تشغيل تطبيق الذكاء الاصطناعي، ثم اسمح له في System Settings ثم Privacy & Security حين يطلب macOS ذلك."],
-    dlMac: "نسخ Mac في الإصدار 0.2.3", installMore: "دليل التثبيت الكامل وتطبيقات أخرى وحل المشكلات",
+    dlMacArm: "حمّل لجهاز Mac (Apple Silicon)", dlMacIntel: "حمّل لجهاز Mac (Intel)", fileMacArm: "ScreenPilot-macos-arm64.zip", fileMacIntel: "ScreenPilot-macos-x64.zip", installMore: "دليل التثبيت الكامل وتطبيقات أخرى وحل المشكلات",
     worksH: "يعمل مع تطبيق الذكاء الاصطناعي الذي تستخدمه",
     worksMore: "وأي تطبيق يدعم خوادم MCP",
     foot: { about: "ScreenPilot مفتوح المصدر برخصة MIT.", names: "أسماء المنتجات ملك لأصحابها. ScreenPilot مشروع مستقل.", learn: "تعلّم", project: "المشروع", issues: "أبلغ عن مشكلة", releases: "الإصدارات", license: "الرخصة", notices: "إشعارات الأطراف الثالثة", security: "الأمان", contributing: "المساهمة" },
@@ -146,7 +146,7 @@ export function landing(lang, { guide, media }) {
     <div class="tablist" role="tablist">${["windows", "linux", "macos"].map((os) => `<button type="button" role="tab" id="tab-${os}" data-os="${os}" aria-controls="p-${os}" aria-selected="false" tabindex="-1">${t.tabs[os]}</button>`).join("")}</div>
     <div class="tabpanel" role="tabpanel" id="p-windows" aria-labelledby="tab-windows" hidden><div class="dl"><a class="btn btn-primary" href="${REL}/latest/download/${t.fileWin}">${esc(t.dlWin)}</a><small>${t.fileWin}</small></div>${ol(t.win)}</div>
     <div class="tabpanel" role="tabpanel" id="p-linux" aria-labelledby="tab-linux" hidden><div class="dl"><a class="btn btn-primary" href="${REL}/latest/download/${t.fileLinux}">${esc(t.dlLinux)}</a><small>${t.fileLinux}</small></div>${ol(t.linux)}</div>
-    <div class="tabpanel" role="tabpanel" id="p-macos" aria-labelledby="tab-macos" hidden><div class="dl"><a class="btn btn-quiet" href="${REL}/tag/v0.2.3">${esc(t.dlMac)}</a></div><div><p class="mac-note">${esc(t.macNote)}</p>${ol(t.mac)}</div></div>
+    <div class="tabpanel" role="tabpanel" id="p-macos" aria-labelledby="tab-macos" hidden><div class="dl"><a class="btn btn-primary" href="${REL}/latest/download/${t.fileMacArm}">${esc(t.dlMacArm)}</a><small>${t.fileMacArm}</small></div><div class="dl"><a class="btn btn-quiet" href="${REL}/latest/download/${t.fileMacIntel}">${esc(t.dlMacIntel)}</a><small>${t.fileMacIntel}</small></div><div><p class="mac-note">${esc(t.macNote)}</p>${ol(t.mac)}</div></div>
   </div>
   <p style="margin-top:22px"><a href="${guide}install.html">${esc(t.installMore)}</a></p>
 </div></section>
