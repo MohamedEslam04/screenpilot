@@ -11,9 +11,12 @@
 // The zip/tarball carry their own Node, so nothing else needs installing.
 
 import { spawn } from "node:child_process";
-import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { APP, APP_TITLE, OUTPUT_ENV } from "../src/brand.js";
+import { APP_ITEMS, tarBin } from "../src/update/index.js";
+import { platformKey, runtimeId } from "../src/update/runtime.js";
 import { makeIco } from "./ico.js";
 import { bundleVcRuntime } from "./vcruntime.js";
 
@@ -85,6 +88,17 @@ async function main(): Promise<void> {
   await sh("pnpm", ["install", "--prod", "--frozen-lockfile", "--config.node-linker=hoisted"], stage);
   for (const f of ["pnpm-lock.yaml", "pnpm-workspace.yaml"]) rmSync(join(stage, f), { force: true });
 
+  // What `screenpilot update` does not replace (node_modules, Node, the platform) gets an id; an update
+  // is only offered between builds with the same id. See src/update.
+  const key = platformKey(platform, process.arch);
+  const runtime = runtimeId({
+    lock: readFileSync(join(root, "pnpm-lock.yaml"), "utf8"),
+    workspace: readFileSync(join(root, "pnpm-workspace.yaml"), "utf8"),
+    nodeMajor: Number(process.versions.node.split(".")[0]),
+    platform: key,
+  });
+  writeFileSync(join(stage, "runtime.json"), `${JSON.stringify({ runtime }, null, 2)}\n`);
+
   if (ffmpegDir) {
     mkdirSync(join(stage, "bin"), { recursive: true });
     for (const tool of ["ffmpeg", "ffprobe"]) copyFileSync(join(ffmpegDir, `${tool}${exe}`), join(stage, "bin", `${tool}${exe}`));
@@ -100,12 +114,27 @@ async function main(): Promise<void> {
   log(`${tools.length} tools`);
   mkdirSync(out, { recursive: true });
 
+  // The app files alone, for `screenpilot update` (a few MB instead of the whole package), and a note
+  // the release job turns into latest.json (scripts/ci/make-latest.mjs).
+  const appArchive = join(out, `${APP_TITLE}-${pkg.version}-app-${key}.tar.gz`);
+  rmSync(appArchive, { force: true });
+  await sh(tarBin(), ["-czf", appArchive, "-C", stage, ...APP_ITEMS.filter((f) => existsSync(join(stage, f)))]);
+  writeFileSync(
+    join(out, `app-${key}.json`),
+    `${JSON.stringify({ key, version: pkg.version, file: `${APP_TITLE}-app-${key}.tar.gz`, sha256: createHash("sha256").update(readFileSync(appArchive)).digest("hex"), size: statSync(appArchive).size, runtime }, null, 2)}\n`,
+  );
+  log(`→ ${appArchive}`);
+
   if (platform === "windows") {
     await packMcpb("windows", "win32", "${HOME}/Videos/ScreenPilot", tools);
 
     // Claude Desktop brings its own Node for the .mcpb; the zip is for every other tool.
     bundleNode();
     bundleVcRuntime(stage, log); // node.exe itself, if it needs the runtime
+    writeFileSync(
+      join(stage, `Update ${APP_TITLE}.cmd`),
+      ["@echo off", 'cd /d "%~dp0"', '"bin\\node.exe" "dist\\cli.js" update', "echo.", "pause", ""].join("\r\n"),
+    );
     await buildInstaller();
     // Opened straight from inside a zip, Windows extracts only this file: tell people to extract everything.
     const setupCmd = (args: string, done: string) =>
@@ -139,7 +168,7 @@ async function main(): Promise<void> {
     const arch = process.arch;
     await packMcpb(`macos-${arch}`, "darwin", "${HOME}/Movies/ScreenPilot", tools);
     bundleNode();
-    for (const f of [`Install ${APP_TITLE}.command`, `Uninstall ${APP_TITLE}.command`]) {
+    for (const f of [`Install ${APP_TITLE}.command`, `Uninstall ${APP_TITLE}.command`, `Update ${APP_TITLE}.command`]) {
       copyFileSync(join(root, "packaging", "macos", f), join(stage, f));
       chmodSync(join(stage, f), 0o755);
     }
@@ -151,8 +180,8 @@ async function main(): Promise<void> {
     log(`→ ${zip}`);
   } else {
     bundleNode();
-    for (const f of ["install.sh", "uninstall.sh"]) copyFileSync(join(root, "packaging", "linux", f), join(stage, f));
-    for (const f of ["install.sh", "uninstall.sh"]) chmodSync(join(stage, f), 0o755);
+    for (const f of ["install.sh", "uninstall.sh", "update.sh"]) copyFileSync(join(root, "packaging", "linux", f), join(stage, f));
+    for (const f of ["install.sh", "uninstall.sh", "update.sh"]) chmodSync(join(stage, f), 0o755);
     const file = join(out, `${APP_TITLE}-${pkg.version}-linux.tar.gz`);
     await sh("tar", ["-czf", file, "-C", dirname(stage), APP_TITLE]);
     log(`→ ${file}`);
