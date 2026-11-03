@@ -30,6 +30,10 @@ screenpilot check sessions/2026-10-27_14-02/storyboard.mp4 --at 2,8,15
 screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo.mp4</code></pre>
 <div class="note">Times in a storyboard and in <code>frames --at</code> are source seconds (the raw recording). Only <code>check --at</code> uses output seconds (the rendered video). See <a href="@guide/storyboard.html">the storyboard reference</a>.</div>
 
+<h2 id="decisions">Decisions first</h2>
+<h3 id="brief">brief</h3>
+<p><code>screenpilot brief</code> prints the decisions an AI app must ask you before it records or builds anything, with the options available on this computer. It is for AI apps that use the CLI; with MCP the <code>brief</code> tool asks you directly. See <a href="@guide/tools.html#decisions">Tools</a>.</p>
+
 <h2 id="record-and-look">Record and look</h2>
 
 <h3 id="record">record</h3>
@@ -118,6 +122,22 @@ screenpilot voices --provider edge --lang ar</code></pre>
 </tbody>
 </table>
 
+<h3 id="script">script</h3>
+<p><code>screenpilot script &lt;storyboard&gt;</code> writes the narration as a script to paste into a text-to-speech website: the text, a short prompt, and a table of the room each line has. Default output <code>&lt;storyboard&gt;.script.md</code>; change it with <code>-o, --out</code>. <a href="@guide/voices.html#external-audio">Voices</a> shows the whole flow.</p>
+
+<h3 id="split-audio">split-audio</h3>
+<p><code>screenpilot split-audio &lt;audio&gt;</code> cuts one recording of the whole script into one WAV per narration line, at the pauses, and sets <code>audio</code> on each line of the storyboard.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--storyboard &lt;file&gt;</code></td><td>The storyboard the audio belongs to. Its narration lines are counted and get their <code>audio</code>.</td></tr>
+<tr><td><code>--lines &lt;n&gt;</code></td><td>Number of lines, when there is no storyboard. Nothing is attached.</td></tr>
+<tr><td><code>-o, --out &lt;dir&gt;</code></td><td>Folder for the clips. Default <code>narration-audio</code> next to the storyboard.</td></tr>
+<tr><td><code>--min-silence &lt;s&gt;</code></td><td>Shortest pause that counts as a line break. Default 0.4. Smaller values are tried when there are too few pauses.</td></tr>
+<tr><td><code>--noise &lt;dB&gt;</code></td><td>Level under which sound counts as silence. Default -35.</td></tr>
+</tbody>
+</table>
+
 <h2 id="render-and-check">Render and check</h2>
 
 <h3 id="render">render</h3>
@@ -128,7 +148,8 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <tr><td><code>-o, --output &lt;file&gt;</code></td><td>Output video. Default <code>&lt;storyboard&gt;.mp4</code>.</td></tr>
 <tr><td><code>-q, --quality &lt;q&gt;</code></td><td><code>draft</code>, <code>looks</code> or <code>delivery</code>. Default <code>looks</code>.</td></tr>
 <tr><td><code>--png-frames</code></td><td>Use lossless source frames: sharper text in the recorded UI, slower.</td></tr>
-<tr><td><code>--workers &lt;n&gt;</code></td><td>Parallel renderers, each a headless Chrome. Default 2.</td></tr>
+<tr><td><code>--workers &lt;n&gt;</code></td><td>Parallel renderers, each a headless Chrome. Default: half your CPU cores, limited by free memory (1 to 6).</td></tr>
+<tr><td><code>--timings</code></td><td>Log how long each stage takes (probe, voice, cut, render, join) and show HyperFrames phase timings.</td></tr>
 <tr><td><code>--from &lt;s&gt;</code>, <code>--to &lt;s&gt;</code></td><td>Render only this window, in <strong>output</strong> seconds. See <a href="@guide/cli.html#partial">Partial renders</a>.</td></tr>
 <tr><td><code>--formats &lt;list&gt;</code></td><td>Render once per format, for example <code>16:9,9:16,1:1</code>. See <a href="@guide/cli.html#formats">Several formats</a>.</td></tr>
 <tr><td><code>--build-dir &lt;dir&gt;</code></td><td>Where the HyperFrames project is written. Not allowed with <code>--formats</code>.</td></tr>
@@ -164,7 +185,7 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <table>
 <thead><tr><th>Level</th><th>Use it for</th></tr></thead>
 <tbody>
-<tr><td><code>draft</code></td><td>Fast renders while you edit. Use this in every review loop.</td></tr>
+<tr><td><code>draft</code></td><td>Fast renders while you edit: 15 fps and a quick cut, about twice as fast. Use this in every review loop.</td></tr>
 <tr><td><code>looks</code></td><td>A normal render. This is the default.</td></tr>
 <tr><td><code>delivery</code></td><td>The final file only. It is the slowest.</td></tr>
 </tbody>
@@ -198,7 +219,8 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <tr><td><code>-o, --output &lt;file&gt;</code></td><td>Output video. Default <code>&lt;sequence&gt;.mp4</code>.</td></tr>
 <tr><td><code>-q, --quality &lt;q&gt;</code></td><td><code>draft</code>, <code>looks</code> or <code>delivery</code>. Default <code>looks</code>.</td></tr>
 <tr><td><code>--png-frames</code></td><td>Use lossless source frames, slower.</td></tr>
-<tr><td><code>--workers &lt;n&gt;</code></td><td>Parallel renderers, each a headless Chrome. Default 2.</td></tr>
+<tr><td><code>--workers &lt;n&gt;</code></td><td>Parallel renderers, each a headless Chrome. Default: half your CPU cores, limited by free memory (1 to 6).</td></tr>
+<tr><td><code>--timings</code></td><td>Log how long each stage takes (probe, voice, cut, render, join) and show HyperFrames phase timings.</td></tr>
 <tr><td><code>--build-dir &lt;dir&gt;</code></td><td>Where the parts are built. Default <code>&lt;sequence&gt;.build</code>.</td></tr>
 </tbody>
 </table>

@@ -26,6 +26,9 @@ import { renderSequence, validateSequence } from "./sequence/index.js";
 import { sequenceJsonSchema } from "./sequence/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
+import { exportScript, importAudio } from "./voice/import.js";
+import { detectBriefEnv } from "./brief/detect.js";
+import { buildBrief } from "./brief/questions.js";
 import { APP, APP_TITLE, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { getDesktop } from "./platform/index.js";
@@ -352,6 +355,44 @@ program
   });
 
 program
+  .command("brief")
+  .description("The decisions to ask the user before recording or building a video (for AI tools that use the CLI instead of MCP)")
+  .action(async () => {
+    const brief = buildBrief(await detectBriefEnv());
+    print({
+      rules: [
+        "Ask the user every question below before you record, drive the desktop, build or render. Do not answer for them and do not install anything for them.",
+        "Show each choice question as an option picker with your question tool (2 to 4 options, the recommended one first). Ask kind=text questions in chat.",
+        "Ask at most 4 questions at once. A question with askWhen is asked only after its parent has one of the listed answers.",
+        "Skip a question only when the user already answered it in their request.",
+      ],
+      questions: brief.questions,
+    });
+  });
+
+program
+  .command("script")
+  .description("Write the narration as a script to paste into an external text-to-speech site")
+  .argument("<storyboard>")
+  .option("-o, --out <file>", "Script file (default: <storyboard>.script.md next to the storyboard)")
+  .action(async (path: string, o: { out?: string }) => {
+    print(await exportScript(path, o.out));
+  });
+
+program
+  .command("split-audio")
+  .description("Cut one recording of the whole script into a file per narration line (at the pauses) and attach them to the storyboard")
+  .argument("<audio>", "Audio file downloaded from the text-to-speech site")
+  .option("--storyboard <file>", "Storyboard whose narration lines the audio belongs to; each line's `audio` is set")
+  .option("--lines <n>", "Number of lines, when there is no storyboard", Number)
+  .option("-o, --out <dir>", "Folder for the per-line files (default: narration-audio next to the storyboard)")
+  .option("--min-silence <s>", "Shortest pause that counts as a line break", Number, 0.4)
+  .option("--noise <dB>", "Level under which sound counts as silence", Number, -35)
+  .action(async (audio: string, o: { storyboard?: string; lines?: number; out?: string; minSilence: number; noise: number }) => {
+    print(await importAudio(audio, { storyboard: o.storyboard, lines: o.lines, out: o.out, minSilence: o.minSilence, noiseDb: o.noise }));
+  });
+
+program
   .command("build")
   .description("Generate voice, cut the video and write the HyperFrames project without rendering")
   .argument("<storyboard>")
@@ -368,13 +409,14 @@ program
   .option("-o, --output <file>", "Output video (default: <storyboard>.mp4)")
   .option("-q, --quality <q>", "draft | looks | delivery", "looks")
   .option("--png-frames", "Lossless source frames: sharper UI text, slower")
-  .option("--workers <n>", "Parallel renderers (each is a headless Chrome)", "2")
+  .option("--workers <n>", "Parallel renderers, each a headless Chrome (default: from CPU cores and free memory)")
+  .option("--timings", "Log how long each stage takes and show HyperFrames phase timings")
   .option("--from <s>", "Render only from this OUTPUT second (fast review; writes <storyboard>.part-<from>-<to>.mp4)", Number)
   .option("--to <s>", "Render only up to this OUTPUT second", Number)
   .option("--formats <list>", "Render once per format, e.g. 16:9,9:16,1:1 or 1280x720 (writes <storyboard>.<format>.mp4)")
   .option("--build-dir <dir>")
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers: string; from?: number; to?: number; formats?: string }) => {
-    const opts = { ...o, workers: Number(o.workers), window: parseWindow(o.from, o.to), log };
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string }) => {
+    const opts = { ...o, workers: o.workers ? Number(o.workers) : undefined, window: parseWindow(o.from, o.to), log };
     if (o.formats) {
       if (o.buildDir) throw new Error("--build-dir cannot be combined with --formats (each format gets its own <name>.<format>.build)");
       const rs = await renderFormats(path, parseFormats(o.formats), opts);
@@ -392,10 +434,11 @@ program
   .option("-o, --output <file>", "Output video (default: <sequence>.mp4)")
   .option("-q, --quality <q>", "draft | looks | delivery", "looks")
   .option("--png-frames", "Lossless source frames: sharper UI text, slower")
-  .option("--workers <n>", "Parallel renderers (each is a headless Chrome)", "2")
+  .option("--workers <n>", "Parallel renderers, each a headless Chrome (default: from CPU cores and free memory)")
+  .option("--timings", "Log how long each stage takes and show HyperFrames phase timings")
   .option("--build-dir <dir>")
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers: string }) => {
-    print(await renderSequence(path, { ...o, workers: Number(o.workers), log }));
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean }) => {
+    print(await renderSequence(path, { ...o, workers: o.workers ? Number(o.workers) : undefined, log }));
   });
 
 program

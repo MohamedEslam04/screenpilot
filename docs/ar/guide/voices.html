@@ -143,6 +143,18 @@ screenpilot doctor</code></pre>
 </ul>
 <div class="warn">جُرّب على Linux مع كرت NVIDIA فقط. لم يُجرَّب على Windows ولا على macOS.</div>
 
+<h2 id="external-audio">صوت من موقع خارجي<a class="a" href="#external-audio" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>الأصوات المدمجة مجانية، لكن خدمات تحويل النص إلى كلام على الويب قد تكون أجود. تصنع الصوت هناك وتضعه على الفيديو: screenpilot يكتب لك السكريبت، وأنت تولّد الصوت، وهو يركّبه على الصورة.</p>
+<ol>
+<li>اكتب التعليق الصوتي في الـ storyboard كالمعتاد، ثم شغّل <code>screenpilot script storyboard.json</code>. يكتب الملف <code>storyboard.script.md</code> وفيه النص الجاهز للصق (فقرة لكل سطر، وسطر فارغ بينها) وتعليمات قصيرة للموقع.</li>
+<li>الصق النص في الموقع وولّد ملف صوت <strong>واحدًا</strong>. كثير من الخطط المجانية تحدّ عدد الحروف أو الطلبات في اليوم، فملف واحد للسكريبت كله هو الأضمن. نزّله.</li>
+<li>شغّل <code>screenpilot split-audio voice.mp3 --storyboard storyboard.json</code>. يقطع الملف عند الوقفات إلى مقطع لكل سطر ويضع <code>audio</code> على كل سطر تعليق.</li>
+<li>صيّر كالمعتاد. السطر الذي فيه <code>audio</code> يشغّل ملفه بدل الصوت، والفيديو يتجمّد كالعادة إذا كان السطر أطول من المتاح له.</li>
+</ol>
+<p>تفضّل ملفًا لكل سطر؟ نزّل كل سطر وحدد <code>narration[].audio</code> بنفسك، مسارًا نسبيًا إلى الـ storyboard. يبقى <code>text</code> هو الترجمة المعروضة.</p>
+<div class="warn">راجع شروط الموقع قبل أن تنشر. الخطط المجانية كثيرًا ما تقتصر على الاستخدام الشخصي أو تشترط ذكر الخدمة. وحدودها تتغير، فاقرأ صفحة الأسعار الحالية.</div>
+<p>إذا قال <code>split-audio</code> إنه وجد وقفات قليلة، ولّد الصوت من جديد مع وقفة أوضح بين الأسطر، أو مرّر <code>--min-silence</code> أصغر. وإذا حذّر من وقفتين متقاربتين في الطول، استمع إلى المقاطع: وقفة طويلة داخل السطر قد تُفهم على أنها فاصل بين سطرين.</p>
+
 <h2 id="own-model">نموذجك الخاص<a class="a" href="#own-model" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>صوت <code>command</code> يشغّل برنامجًا تختاره. يستلم البرنامج النص ويكتب ملف صوت. يصلح لذلك Piper أو Kokoro أو سكربت يستدعي نموذجًا تثق به.</p>
 <p>عرّف الصوت في <code>voices.json</code> داخل مجلد الإعدادات:</p>
@@ -229,7 +241,7 @@ screenpilot doctor</code></pre>
 </table>
 <div class="note">إجابات أخرى في <a href="../../ar/guide/faq.html">الأسئلة الشائعة</a>. سطر الأوامر في <a href="../../ar/guide/cli.html#voice-setup">voice-setup</a> و<a href="../../ar/guide/cli.html#voices">voices</a>.</div>
 <nav class="pager" aria-label="Pager"><a href="storyboard.html" rel="prev"><small>السابق</small>مرجع الـ storyboard</a><a href="sequence.html" rel="next"><small>التالي</small>دمج التسجيلات</a></nav></article>
-  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#choose">اختر المزوّد</a><a href="#edge">أصوات Edge</a><a href="#local-models">النماذج المحلية</a><a href="#own-model">نموذجك الخاص</a><a href="#troubleshooting">حل المشكلات</a></aside>
+  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#choose">اختر المزوّد</a><a href="#edge">أصوات Edge</a><a href="#local-models">النماذج المحلية</a><a href="#external-audio">صوت من موقع خارجي</a><a href="#own-model">نموذجك الخاص</a><a href="#troubleshooting">حل المشكلات</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../../ar/index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot مفتوح المصدر برخصة MIT.</small><small>أسماء المنتجات ملك لأصحابها. ScreenPilot مشروع مستقل.</small></div>

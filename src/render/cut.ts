@@ -7,6 +7,8 @@ export interface CutOptions {
   fps: number;
   sourceDuration: number;
   keepAudio: boolean;
+  /** Fast, lighter intermediate for `-q draft`. */
+  draft?: boolean;
 }
 
 const f = (n: number) => n.toFixed(3);
@@ -24,7 +26,7 @@ function atempoChain(speed: number): string {
 }
 
 /** Filter graph that cuts, speeds up and freezes the source into one CFR stream. */
-export function buildCutFilter(opts: Omit<CutOptions, "source" | "output">): string {
+export function buildCutFilter(opts: Omit<CutOptions, "source" | "output" | "draft">): string {
   const { pieces, fps, sourceDuration, keepAudio } = opts;
   const n = pieces.length;
   const lines: string[] = [];
@@ -79,9 +81,9 @@ export function buildCutArgs(opts: CutOptions, filterScriptPath: string, scriptF
     "-c:v",
     "libx264",
     "-preset",
-    "veryfast",
+    opts.draft ? "ultrafast" : "veryfast",
     "-crf",
-    "16",
+    opts.draft ? "23" : "16",
     "-r",
     String(opts.fps),
     // A keyframe every second keeps headless-Chrome seeking exact and fast.

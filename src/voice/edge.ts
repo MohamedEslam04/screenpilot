@@ -7,6 +7,8 @@ import type { VoiceInfo, VoiceProvider } from "./index.js";
 // Microsoft Edge "read aloud" voices: free, no key, needs network.
 export const edgeProvider: VoiceProvider = {
   id: "edge",
+  // Each line opens its own connection, so a few can run at once.
+  concurrency: 3,
 
   async synthesize(text, voice, rate, outFile) {
     // The service drops a stream now and then; the same line works on retry.

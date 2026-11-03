@@ -80,6 +80,7 @@ export const NarrationSchema = z.object({
   text: z.string().min(1),
   voice: z.string().optional().describe("Override voice, e.g. ar-EG-ShakirNeural"),
   caption: z.boolean().optional().describe("Also show the line as a subtitle (default from voice.subtitles)"),
+  audio: z.string().optional().describe("Ready-made audio file for this line (path relative to the storyboard). Used instead of a voice; text is still the subtitle"),
 });
 
 export const HighlightSchema = z.object({

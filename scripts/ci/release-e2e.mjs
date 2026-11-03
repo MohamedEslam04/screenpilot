@@ -25,7 +25,7 @@ const ffmpeg = join(dirname(command), `ffmpeg${exe}`);
 const ffprobe = join(dirname(command), `ffprobe${exe}`);
 const step = (m) => console.log(`e2e: ${m}`);
 
-const server = spawn(command, args, { env: { ...process.env, ...entry.environment }, stdio: ["pipe", "pipe", "inherit"] });
+const server = spawn(command, args, { env: { ...process.env, ...entry.environment, SCREENPILOT_SKIP_BRIEF: "1" }, stdio: ["pipe", "pipe", "inherit"] });
 const waiting = new Map();
 let buf = "";
 let nextId = 1;
