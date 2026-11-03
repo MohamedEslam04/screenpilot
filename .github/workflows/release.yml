@@ -101,6 +101,7 @@ jobs:
             release/*.zip
             release/*.mcpb
             release/*.tar.gz
+            release/app-*.json
           if-no-files-found: error
 
   release:
@@ -108,6 +109,7 @@ jobs:
     needs: package
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v7
         with:
           path: dist
@@ -117,8 +119,13 @@ jobs:
       - name: Name files without the version
         run: |
           v="${GITHUB_REF_NAME#v}"
-          for f in dist/*; do mv "$f" "${f/-${v}-/-}"; done
+          for f in dist/*; do n="${f/-${v}-/-}"; [ "$f" = "$n" ] || mv "$f" "$n"; done
           ls -la dist
+      # latest.json lets `screenpilot update` replace just the app files (see src/update).
+      - name: Write latest.json
+        run: |
+          node scripts/ci/make-latest.mjs dist
+          cat dist/latest.json
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

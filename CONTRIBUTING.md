@@ -252,6 +252,12 @@ Window framing needs the active window over time: KDE, X11 and Windows log it; o
 
 Renders pick the number of headless-Chrome workers from the machine (`autoWorkers` in `src/render/workers.ts`: half the cores, about 1.5 GB of free memory each, 1 to 6); `--workers N` overrides it. More is faster but can push a desktop that is also running OBS and browsers out of memory. `--timings` logs the time of each stage. `-q draft` also captures at 15 fps and uses a fast cut, so draft renders are about twice as fast.
 
+## App-only updates (`screenpilot update`)
+
+`src/update/` replaces just the app files of an installed copy (`APP_ITEMS`: dist, skill, python, package.json and the licence files, about 350 KB compressed) so users need not download the 130 to 210 MB package. Each release builds `ScreenPilot-app-<platform>.tar.gz` per platform (`scripts/build-mcpb.ts`, next to `runtime.json`), and the release job turns the `app-<platform>.json` notes into `latest.json` (`scripts/ci/make-latest.mjs`, which re-hashes every archive). `update` reads `releases/latest/download/latest.json`, checks the SHA-256, lists the archive (only app files, no links, no `..`), keeps the old files in `.update-backup/<version>` and rolls back on any failure.
+
+An update is only offered between builds with the same **runtime id** (`runtimeId`: hash of `pnpm-lock.yaml` and `pnpm-workspace.yaml`, the Node major and the platform). A release that changes dependencies or bumps the Node major makes the small update refuse and point at the full package, so keep dependency bumps in as few releases as you can. Installs made before 0.6 have no `runtime.json` and need one full install. Test it offline with `screenpilot update --source <folder with latest.json>`. The applying side is CLI-only on purpose: the MCP tool `update_check` only reads.
+
 ## Decisions before work (`brief`)
 
 `src/brief/` holds the questions the user must answer before a video is made (`questions.ts`, pure: what the machine has is passed in), the gate (`gate.ts`: `record_start`, `perform`, `render` and `sequence_render` call `requireBrief`; unattended runs set `SCREENPILOT_SKIP_BRIEF=1`, as `scripts/ci/release-e2e.mjs` does) and the form flow (`elicit.ts`, MCP elicitation). Every choice has 2 to 4 options so any client can show it as a picker; keep it that way when adding a question. The gate cannot prove a person answered (an agent can call `brief` with made-up answers); it makes skipping the questions a deliberate act.

@@ -28,6 +28,7 @@ import { probeVideo } from "./util/media.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
 import { exportScript, importAudio } from "./voice/import.js";
 import { detectBriefEnv } from "./brief/detect.js";
+import { applyUpdate, checkForUpdate, sourceFrom, updateCommand } from "./update/index.js";
 import { buildBrief } from "./brief/questions.js";
 import { APP, APP_TITLE, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
@@ -352,6 +353,17 @@ program
     } finally {
       await provider.close?.();
     }
+  });
+
+program
+  .command("update")
+  .description("Update the app files to the latest release without downloading the whole package")
+  .option("--check", "Only say whether a newer version exists; change nothing")
+  .option("--source <folder|url>", "Read latest.json and the archive from a folder or address instead of GitHub Releases")
+  .action(async (o: { check?: boolean; source?: string }) => {
+    const source = sourceFrom(o.source);
+    if (o.check) print({ ...(await checkForUpdate({ source })), command: updateCommand() });
+    else print(await applyUpdate({ source, log }));
   });
 
 program

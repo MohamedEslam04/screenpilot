@@ -40,6 +40,9 @@ export function configDir(app = APP, previous = PREVIOUS_NAMES): string {
   return dir;
 }
 
+/** GitHub repository that publishes the releases (the updater reads latest.json from it). */
+export const REPO = "MohamedEslam04/screenpilot";
+
 /** Env var naming where sessions go (the desktop extension sets it from its settings). */
 export const OUTPUT_ENV = `${APP.toUpperCase()}_OUTPUT`;
 

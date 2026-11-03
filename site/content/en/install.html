@@ -103,6 +103,15 @@ summary: Install ScreenPilot on Windows, macOS or Linux, add it to your AI apps,
 
 <h2 id="update-uninstall">Update and uninstall</h2>
 <p><strong>Update:</strong> download the new installer and run it. If an AI app is open, the installer asks you to close it first.</p>
+<h3 id="update-small">Update without downloading everything</h3>
+<p>A full download is 130 to 210 MB, but a new version usually changes only a few MB of files: Node, ffmpeg and the libraries stay the same. <code>update</code> downloads just the changed files, checks them, and keeps the old ones in case something goes wrong.</p>
+<ol>
+<li>Ask your AI app: "Is there a new ScreenPilot version?" It reads the latest release and gives you the command to run. It never updates by itself.</li>
+<li>Run that command in a terminal (in PowerShell, put <code>&amp;</code> in front of it), or open the update file in the installed folder: <strong>Update ScreenPilot.cmd</strong> on Windows (<code>%LOCALAPPDATA%\ScreenPilot</code>), <strong>Update ScreenPilot.command</strong> on macOS (<code>~/Library/Application Support/ScreenPilot</code>), <code>update.sh</code> on Linux (<code>~/.local/share/screenpilot</code>).</li>
+<li>Restart your AI apps so they start the new version.</li>
+</ol>
+<p>The old files stay in <code>.update-backup</code> inside the installed folder, and a failed update puts them back by itself. <code>update --check</code> only says whether a newer version exists.</p>
+<div class="warn">The small update is not possible when a release changes the libraries or the Node version, or when your install was made before this feature existed (versions before 0.6). The command then says so and links the full download. The ScreenPilot extension in Claude Desktop (.mcpb) is updated by installing the new .mcpb.</div>
 <ul>
   <li><strong>Windows:</strong> open Settings, then Apps, then Installed apps, find ScreenPilot and choose Uninstall. It also removes ScreenPilot from your AI apps.</li>
   <li><strong>macOS:</strong> double-click <strong>Uninstall ScreenPilot.command</strong> in the downloaded folder. Download it again if you deleted it.</li>

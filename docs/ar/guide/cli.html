@@ -56,6 +56,17 @@ screenpilot check sessions/2026-10-27_14-02/storyboard.mp4 --at 2,8,15
 screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo.mp4</code></pre>
 <div class="note">الأزمنة في الـ storyboard وفي <code>frames --at</code> هي ثوانٍ في المصدر (التسجيل الخام). الأمر <code>check --at</code> وحده يستخدم ثواني الخرج (الفيديو المصيَّر). راجع <a href="../../ar/guide/storyboard.html">مرجع الـ storyboard</a>.</div>
 
+<h2 id="update-app">التحديث<a class="a" href="#update-app" aria-label="رابط إلى هذا القسم">#</a></h2>
+<h3 id="update">update<a class="a" href="#update" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p><code>screenpilot update</code> يستبدل ملفات التطبيق (<code>dist</code> و<code>skill</code> و<code>python</code> وملفات الإصدار) بآخر إصدار، بضعة ميغابايت بدل الحزمة كاملة. يتحقق من SHA-256 للتنزيل، ويحتفظ بالملفات القديمة في <code>.update-backup</code>، ويعيدها إذا فشلت أي خطوة. لا يلمس Node ولا ffmpeg ولا <code>node_modules</code> ولا إعدادات تطبيقات الذكاء الاصطناعي. وإذا غيّر الإصدار هذه الأشياء، أو كنت تشغّل من نسخة مطوّر، يرفض ويذكر السبب. <a href="../../ar/guide/install.html#update-small">صفحة التثبيت</a> تشرح الخطوات لكل نظام.</p>
+<table>
+<thead><tr><th>الخيار</th><th>ما يفعله</th></tr></thead>
+<tbody>
+<tr><td><code>--check</code></td><td>يخبرك فقط إن كانت هناك نسخة أحدث، ويطبع الأمر الذي تشغّله. لا يغيّر شيئًا.</td></tr>
+<tr><td><code>--source &lt;folder|url&gt;</code></td><td>يقرأ <code>latest.json</code> والأرشيف من مجلد أو عنوان بدل GitHub Releases (أجهزة بلا إنترنت، واختبارات).</td></tr>
+</tbody>
+</table>
+
 <h2 id="decisions">القرارات أولًا<a class="a" href="#decisions" aria-label="رابط إلى هذا القسم">#</a></h2>
 <h3 id="brief">brief<a class="a" href="#brief" aria-label="رابط إلى هذا القسم">#</a></h3>
 <p><code>screenpilot brief</code> يطبع القرارات التي يجب على تطبيق الذكاء الاصطناعي أن يسألك عنها قبل أن يسجّل أو يبني أي شيء، مع الخيارات المتاحة على جهازك. هو لتطبيقات الذكاء الاصطناعي التي تستخدم سطر الأوامر؛ أما مع MCP فأداة <code>brief</code> تسألك مباشرة. انظر <a href="../../ar/guide/tools.html#decisions">الأدوات</a>.</p>
@@ -325,7 +336,7 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <p>الأمر <code>screenpilot doctor</code> يفحص هذا الجهاز: ffmpeg وسطح المكتب والشاشات وOBS ومتصفح العرض والأصوات، ومنها فحص "local voice" الذي يُتخطّى إذا لم تُعدّ صوتًا محليًا (فهو اختياري). يطبع تقريرًا بصيغة JSON وسطر ملخص. رمز الخروج دائمًا 0، فاقرأ التقرير. أضف <code>--input</code> لاختبار حقن الإدخال أيضًا، وهو يحرّك المؤشر الفعلي لحظة.</p>
 <div class="note">نفّذ <code>screenpilot doctor</code> أولًا على أي جهاز جديد، وأعد تنفيذه كلما فشل التسجيل أو التحكم.</div>
 <nav class="pager" aria-label="Pager"><a href="install.html" rel="prev"><small>السابق</small>تثبيت ScreenPilot</a><a href="tools.html" rel="next"><small>التالي</small>أدوات MCP</a></nav></article>
-  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#workflow">سير العمل كاملًا</a><a href="#decisions">القرارات أولًا</a><a href="#record-and-look">التسجيل والمعاينة</a><a href="#edit">التحرير</a><a href="#render-and-check">التصيير والفحص</a><a href="#combine">دمج التسجيلات</a><a href="#drive">رؤية سطح المكتب والتحكم فيه</a><a href="#setup-and-checks">إعداد الجهاز وفحصه</a></aside>
+  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#workflow">سير العمل كاملًا</a><a href="#update-app">التحديث</a><a href="#decisions">القرارات أولًا</a><a href="#record-and-look">التسجيل والمعاينة</a><a href="#edit">التحرير</a><a href="#render-and-check">التصيير والفحص</a><a href="#combine">دمج التسجيلات</a><a href="#drive">رؤية سطح المكتب والتحكم فيه</a><a href="#setup-and-checks">إعداد الجهاز وفحصه</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../../ar/index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot مفتوح المصدر برخصة MIT.</small><small>أسماء المنتجات ملك لأصحابها. ScreenPilot مشروع مستقل.</small></div>

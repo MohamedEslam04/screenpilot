@@ -56,6 +56,17 @@ screenpilot check sessions/2026-10-27_14-02/storyboard.mp4 --at 2,8,15
 screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo.mp4</code></pre>
 <div class="note">Times in a storyboard and in <code>frames --at</code> are source seconds (the raw recording). Only <code>check --at</code> uses output seconds (the rendered video). See <a href="../guide/storyboard.html">the storyboard reference</a>.</div>
 
+<h2 id="update-app">Update<a class="a" href="#update-app" aria-label="Link to this section">#</a></h2>
+<h3 id="update">update<a class="a" href="#update" aria-label="Link to this section">#</a></h3>
+<p><code>screenpilot update</code> replaces the app files (<code>dist</code>, <code>skill</code>, <code>python</code> and the version files) with the latest release, a few MB instead of the whole package. It checks the SHA-256 of the download, keeps the old files in <code>.update-backup</code>, and puts them back if a step fails. It never touches Node, ffmpeg, <code>node_modules</code> or your AI app settings. When a release changes those, or when you run from a developer checkout, it refuses and says why. <a href="../guide/install.html#update-small">Install</a> shows the steps for each system.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--check</code></td><td>Only say whether a newer version exists, and print the command to run. Changes nothing.</td></tr>
+<tr><td><code>--source &lt;folder|url&gt;</code></td><td>Read <code>latest.json</code> and the archive from a folder or an address instead of GitHub Releases (offline machines, tests).</td></tr>
+</tbody>
+</table>
+
 <h2 id="decisions">Decisions first<a class="a" href="#decisions" aria-label="Link to this section">#</a></h2>
 <h3 id="brief">brief<a class="a" href="#brief" aria-label="Link to this section">#</a></h3>
 <p><code>screenpilot brief</code> prints the decisions an AI app must ask you before it records or builds anything, with the options available on this computer. It is for AI apps that use the CLI; with MCP the <code>brief</code> tool asks you directly. See <a href="../guide/tools.html#decisions">Tools</a>.</p>
@@ -325,7 +336,7 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <p><code>screenpilot doctor</code> checks this machine: ffmpeg, desktop, monitors, OBS, the demo browser and voices, including a "local voice" check that is skipped when you have not set up a local voice (it is optional). It prints a JSON report and a one-line summary. The exit code is always 0, so read the report. Add <code>--input</code> to also test input injection; this moves the real pointer for a moment.</p>
 <div class="note">Run <code>screenpilot doctor</code> first on a new machine, and again whenever recording or driving fails.</div>
 <nav class="pager" aria-label="Pager"><a href="install.html" rel="prev"><small>Previous</small>Install ScreenPilot</a><a href="tools.html" rel="next"><small>Next</small>MCP tools</a></nav></article>
-  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#workflow">The whole workflow</a><a href="#decisions">Decisions first</a><a href="#record-and-look">Record and look</a><a href="#edit">Edit</a><a href="#render-and-check">Render and check</a><a href="#combine">Combine recordings</a><a href="#drive">See and drive the desktop</a><a href="#setup-and-checks">Set up and check this machine</a></aside>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#workflow">The whole workflow</a><a href="#update-app">Update</a><a href="#decisions">Decisions first</a><a href="#record-and-look">Record and look</a><a href="#edit">Edit</a><a href="#render-and-check">Render and check</a><a href="#combine">Combine recordings</a><a href="#drive">See and drive the desktop</a><a href="#setup-and-checks">Set up and check this machine</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>
