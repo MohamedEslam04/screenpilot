@@ -5,6 +5,14 @@ summary: The tools ScreenPilot gives an AI app, grouped by job: recording, foota
 <p>ScreenPilot runs as an MCP server. Your AI app sees the tools below and calls them for you, so you ask for a video in plain words and the app picks the tools. This page is for developers who want to know exactly what each tool does. The server also sends the workflow to every client when it connects, so apps without a skill know the loop too.</p>
 <p>Times in storyboard tools are source seconds (the raw recording). Positions are normalized 0..1, with x from the left and y from the top. Only <code>check_output</code> uses output seconds.</p>
 
+<h2 id="update-check">Updates</h2>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
+<tbody>
+<tr><td><code>update_check</code></td><td>Says whether a newer release exists (it asks GitHub and changes nothing): <code>up-to-date</code>, <code>available</code>, or <code>blocked</code> with the reason and the full download link. It returns the command the user runs in a terminal to update. There is no tool that updates: the AI app tells you the command and you run it.</td><td>none</td></tr>
+</tbody>
+</table>
+
 <h2 id="decisions">Decisions first</h2>
 <p>Before any recording or render, the AI app must ask you how the video should be made: goal, source, language, which voice (built-in, a website's, your own, or none), look, camera, review and permissions. <code>record_start</code>, <code>perform</code>, <code>render</code> and <code>sequence_render</code> refuse until you answered.</p>
 <table>

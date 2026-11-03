@@ -30,6 +30,17 @@ screenpilot check sessions/2026-10-27_14-02/storyboard.mp4 --at 2,8,15
 screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo.mp4</code></pre>
 <div class="note">Times in a storyboard and in <code>frames --at</code> are source seconds (the raw recording). Only <code>check --at</code> uses output seconds (the rendered video). See <a href="@guide/storyboard.html">the storyboard reference</a>.</div>
 
+<h2 id="update-app">Update</h2>
+<h3 id="update">update</h3>
+<p><code>screenpilot update</code> replaces the app files (<code>dist</code>, <code>skill</code>, <code>python</code> and the version files) with the latest release, a few MB instead of the whole package. It checks the SHA-256 of the download, keeps the old files in <code>.update-backup</code>, and puts them back if a step fails. It never touches Node, ffmpeg, <code>node_modules</code> or your AI app settings. When a release changes those, or when you run from a developer checkout, it refuses and says why. <a href="@guide/install.html#update-small">Install</a> shows the steps for each system.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--check</code></td><td>Only say whether a newer version exists, and print the command to run. Changes nothing.</td></tr>
+<tr><td><code>--source &lt;folder|url&gt;</code></td><td>Read <code>latest.json</code> and the archive from a folder or an address instead of GitHub Releases (offline machines, tests).</td></tr>
+</tbody>
+</table>
+
 <h2 id="decisions">Decisions first</h2>
 <h3 id="brief">brief</h3>
 <p><code>screenpilot brief</code> prints the decisions an AI app must ask you before it records or builds anything, with the options available on this computer. It is for AI apps that use the CLI; with MCP the <code>brief</code> tool asks you directly. See <a href="@guide/tools.html#decisions">Tools</a>.</p>

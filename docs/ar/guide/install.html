@@ -129,6 +129,15 @@
 
 <h2 id="update-uninstall">التحديث والإزالة<a class="a" href="#update-uninstall" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p><strong>التحديث:</strong> نزّل المثبّت الجديد وشغّله. إذا كان تطبيق ذكاء اصطناعي مفتوحًا، يطلب منك المثبّت إغلاقه أولًا.</p>
+<h3 id="update-small">تحديث دون تنزيل كل شيء<a class="a" href="#update-small" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>التنزيل الكامل بين 130 و210 ميغابايت، لكن النسخة الجديدة تغيّر عادةً بضعة ميغابايت فقط من الملفات: Node وffmpeg والمكتبات تبقى كما هي. الأمر <code>update</code> ينزّل الملفات المتغيّرة فقط، ويتحقق منها، ويحتفظ بالقديمة تحسبًا لأي خطأ.</p>
+<ol>
+<li>اسأل تطبيق الذكاء الاصطناعي: "هل توجد نسخة جديدة من ScreenPilot؟" يقرأ آخر إصدار ويعطيك الأمر الذي تشغّله. لا يحدّث من تلقاء نفسه أبدًا.</li>
+<li>شغّل ذلك الأمر في الطرفية (في PowerShell ضع <code>&amp;</code> قبله)، أو افتح ملف التحديث في المجلد المثبّت: <strong>Update ScreenPilot.cmd</strong> على Windows (<code>%LOCALAPPDATA%\ScreenPilot</code>)، و<strong>Update ScreenPilot.command</strong> على macOS (<code>~/Library/Application Support/ScreenPilot</code>)، و<code>update.sh</code> على Linux (<code>~/.local/share/screenpilot</code>).</li>
+<li>أعد تشغيل تطبيقات الذكاء الاصطناعي لتبدأ النسخة الجديدة.</li>
+</ol>
+<p>تبقى الملفات القديمة في <code>.update-backup</code> داخل المجلد المثبّت، وإذا فشل التحديث يعيدها تلقائيًا. الأمر <code>update --check</code> يخبرك فقط إن كانت هناك نسخة أحدث.</p>
+<div class="warn">لا يمكن التحديث الصغير عندما يغيّر الإصدار المكتبات أو نسخة Node، أو عندما يكون تثبيتك قد تم قبل وجود هذه الميزة (الإصدارات قبل 0.6). عندها يخبرك الأمر بذلك ويعطيك رابط التنزيل الكامل. أما إضافة ScreenPilot في Claude Desktop (‏.mcpb) فتُحدَّث بتثبيت ملف .mcpb الجديد.</div>
 <ul>
   <li><strong>Windows:</strong> افتح Settings ثم Apps ثم Installed apps، وابحث عن ScreenPilot واختر Uninstall. يزيل أيضًا ScreenPilot من تطبيقات الذكاء الاصطناعي.</li>
   <li><strong>macOS:</strong> انقر نقرًا مزدوجًا على <strong>Uninstall ScreenPilot.command</strong> في المجلد الذي نزّلته. نزّله من جديد إذا حذفته.</li>

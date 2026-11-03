@@ -31,6 +31,14 @@
   <article class="doc"><h1>MCP tools</h1><p class="summary">The tools ScreenPilot gives an AI app, grouped by job: recording, footage, storyboard, render, combining recordings, desktop control and diagnostics.</p><p>ScreenPilot runs as an MCP server. Your AI app sees the tools below and calls them for you, so you ask for a video in plain words and the app picks the tools. This page is for developers who want to know exactly what each tool does. The server also sends the workflow to every client when it connects, so apps without a skill know the loop too.</p>
 <p>Times in storyboard tools are source seconds (the raw recording). Positions are normalized 0..1, with x from the left and y from the top. Only <code>check_output</code> uses output seconds.</p>
 
+<h2 id="update-check">Updates<a class="a" href="#update-check" aria-label="Link to this section">#</a></h2>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
+<tbody>
+<tr><td><code>update_check</code></td><td>Says whether a newer release exists (it asks GitHub and changes nothing): <code>up-to-date</code>, <code>available</code>, or <code>blocked</code> with the reason and the full download link. It returns the command the user runs in a terminal to update. There is no tool that updates: the AI app tells you the command and you run it.</td><td>none</td></tr>
+</tbody>
+</table>
+
 <h2 id="decisions">Decisions first<a class="a" href="#decisions" aria-label="Link to this section">#</a></h2>
 <p>Before any recording or render, the AI app must ask you how the video should be made: goal, source, language, which voice (built-in, a website's, your own, or none), look, camera, review and permissions. <code>record_start</code>, <code>perform</code>, <code>render</code> and <code>sequence_render</code> refuse until you answered.</p>
 <table>
@@ -168,7 +176,7 @@
 </table>
 <p>Run <code>doctor</code> first on a new machine.</p>
 <nav class="pager" aria-label="Pager"><a href="cli.html" rel="prev"><small>Previous</small>Command line</a><a href="storyboard.html" rel="next"><small>Next</small>Storyboard reference</a></nav></article>
-  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#decisions">Decisions first</a><a href="#recording">Recording</a><a href="#looking">Looking at footage</a><a href="#storyboard">Storyboard</a><a href="#render-check">Render and check</a><a href="#sequence">Combine recordings</a><a href="#desktop">See and drive the desktop</a><a href="#diagnose">Diagnose</a></aside>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#update-check">Updates</a><a href="#decisions">Decisions first</a><a href="#recording">Recording</a><a href="#looking">Looking at footage</a><a href="#storyboard">Storyboard</a><a href="#render-check">Render and check</a><a href="#sequence">Combine recordings</a><a href="#desktop">See and drive the desktop</a><a href="#diagnose">Diagnose</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>
