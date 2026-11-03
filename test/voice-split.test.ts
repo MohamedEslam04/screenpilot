@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { probeDuration } from "../src/util/media.js";
 import { parseSilences, planSplit, splitAudio } from "../src/voice/split.js";
@@ -92,7 +92,7 @@ describe("splitAudio", () => {
     const src = join(dir, "all.wav");
     speechWithPauses(src, [{ speech: 1.5 }, { pause: 1.2 }, { speech: 1 }, { pause: 0.3 }, { speech: 1 }, { pause: 1.2 }, { speech: 2 }]);
     const r = await splitAudio(src, 3, join(dir, "out"));
-    expect(r.files.map((f) => f.split("/").pop())).toEqual(["01.wav", "02.wav", "03.wav"]);
+    expect(r.files.map((f) => basename(f))).toEqual(["01.wav", "02.wav", "03.wav"]);
     const d = await Promise.all(r.files.map(probeDuration));
     expect(d[0]).toBeGreaterThan(1.45);
     expect(d[0]).toBeLessThan(1.75);
