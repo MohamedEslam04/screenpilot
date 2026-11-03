@@ -145,4 +145,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit c0088eb ("docs: agent guide, skill and MCP instructions for sequence, cards, overlays, audio, partial render, formats", 2026-10-28).
+Docs synced to commit 9fef289 ("feat(brief): ask the user the decisions before recording or rendering", 2026-11-03).

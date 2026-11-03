@@ -117,6 +117,18 @@ screenpilot doctor</code></pre>
 </ul>
 <div class="warn">Tested on Linux with an NVIDIA GPU only. Windows and macOS were not tested.</div>
 
+<h2 id="external-audio">Audio from a website</h2>
+<p>The built-in voices are free, but a web text-to-speech service can sound better. You can make the audio there and put it on the video: screenpilot writes the script, you generate the voice, and screenpilot lays it on the picture.</p>
+<ol>
+<li>Write the narration in the storyboard as usual, then run <code>screenpilot script storyboard.json</code>. It writes <code>storyboard.script.md</code> with the text to paste (one paragraph per line, a blank line between them) and a short prompt for the site.</li>
+<li>Paste the text into the site and generate <strong>one</strong> audio file. Many free plans limit characters or requests per day, so one file for the whole script is the safest. Download it.</li>
+<li>Run <code>screenpilot split-audio voice.mp3 --storyboard storyboard.json</code>. It cuts the file at the pauses into one clip per line and sets <code>audio</code> on each narration line.</li>
+<li>Render as usual. A line with <code>audio</code> plays its file instead of a voice, and the video still freezes when a line is longer than its room.</li>
+</ol>
+<p>Prefer one file per line? Download each line and set <code>narration[].audio</code> yourself, a path relative to the storyboard. <code>text</code> stays as the subtitle.</p>
+<div class="warn">Check the terms of the site before you publish. Free plans are often limited to personal use, or require a credit to the service. Their limits change, so read the current pricing page.</div>
+<p>If <code>split-audio</code> says it found too few pauses, generate the audio again with a clearer pause between lines, or pass a smaller <code>--min-silence</code>. If it warns that two pauses are almost as long, listen to the clips: a long pause inside a line can be mistaken for a line break.</p>
+
 <h2 id="own-model">Your own model</h2>
 <p>A <code>command</code> voice runs a program of your choice. The program receives the text and writes an audio file. Piper, Kokoro or a script that calls a model you trust all work.</p>
 <p>Define the voice in <code>voices.json</code>, in the config folder:</p>

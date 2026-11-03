@@ -31,6 +31,16 @@
   <article class="doc"><h1>أدوات MCP</h1><p class="summary">الأدوات التي يمنحها ScreenPilot لتطبيق الذكاء الاصطناعي، مجمّعة حسب المهمة: التسجيل والمقاطع وstoryboard والتصيير ودمج التسجيلات والتحكم بسطح المكتب والتشخيص.</p><p>يعمل ScreenPilot كخادم MCP. يرى تطبيق الذكاء الاصطناعي الأدوات أدناه ويستدعيها عنك، فتطلب الفيديو بكلمات عادية ويختار التطبيق الأدوات. هذه الصفحة للمطورين الذين يريدون معرفة ما تفعله كل أداة بالضبط. ويرسل الخادم سير العمل إلى كل عميل عند الاتصال، فتعرف حتى التطبيقات التي بلا skill الدورة كاملة.</p>
 <p>الأزمنة في أدوات الـ storyboard بثواني المصدر (التسجيل الخام). المواضع مُطبَّعة بين 0 و1، حيث x من اليسار وy من الأعلى. الأداة <code>check_output</code> وحدها تستخدم ثواني الخرج.</p>
 
+<h2 id="decisions">القرارات أولًا<a class="a" href="#decisions" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>قبل أي تسجيل أو تصيير، على تطبيق الذكاء الاصطناعي أن يسألك كيف تريد الفيديو: الهدف والمصدر واللغة وأي صوت (المدمج أو صوت موقع أو صوتك أنت أو بلا صوت) والشكل والكاميرا والمراجعة والصلاحيات. الأدوات <code>record_start</code> و<code>perform</code> و<code>render</code> و<code>sequence_render</code> ترفض العمل حتى تجيب.</p>
+<table>
+<thead><tr><th>الأداة</th><th>ما تفعله</th><th>المدخلات الأساسية</th></tr></thead>
+<tbody>
+<tr><td><code>brief</code></td><td>تسألك القرارات على شكل اختيارات. إذا كان تطبيقك يعرض النماذج تختار هناك مباشرة. وإلا تعيد الاختيارات (من 2 إلى 4 لكل سؤال) ليعرضها التطبيق عليك، ثم يستدعي <code>brief</code> مرة أخرى بإجاباتك. عند اكتمال الإجابات تعيدها مع الخطوات التالية. الخيار الذي يحتاج شيئًا غير موجود على جهازك يُذكر فيه ذلك، مثل نموذج صوت محلي غير مثبّت.</td><td><code>answers</code> و<code>via_agent</code> و<code>reset</code></td></tr>
+</tbody>
+</table>
+<p>اضبط <code>SCREENPILOT_SKIP_BRIEF=1</code> للتشغيل غير المراقب الذي لا يوجد فيه من يُسأل.</p>
+
 <h2 id="recording">التسجيل<a class="a" href="#recording" aria-label="رابط إلى هذا القسم">#</a></h2>
 <table>
 <thead><tr><th>الأداة</th><th>وظيفتها</th><th>أهم المدخلات</th></tr></thead>
@@ -158,7 +168,7 @@
 </table>
 <p>نفّذ <code>doctor</code> أولًا على أي جهاز جديد.</p>
 <nav class="pager" aria-label="Pager"><a href="cli.html" rel="prev"><small>السابق</small>سطر الأوامر</a><a href="storyboard.html" rel="next"><small>التالي</small>مرجع الـ storyboard</a></nav></article>
-  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#recording">التسجيل</a><a href="#looking">معاينة المقاطع</a><a href="#storyboard">Storyboard</a><a href="#render-check">التصيير والفحص</a><a href="#sequence">دمج التسجيلات</a><a href="#desktop">رؤية سطح المكتب والتحكم فيه</a><a href="#diagnose">التشخيص</a></aside>
+  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#decisions">القرارات أولًا</a><a href="#recording">التسجيل</a><a href="#looking">معاينة المقاطع</a><a href="#storyboard">Storyboard</a><a href="#render-check">التصيير والفحص</a><a href="#sequence">دمج التسجيلات</a><a href="#desktop">رؤية سطح المكتب والتحكم فيه</a><a href="#diagnose">التشخيص</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../../ar/index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot مفتوح المصدر برخصة MIT.</small><small>أسماء المنتجات ملك لأصحابها. ScreenPilot مشروع مستقل.</small></div>

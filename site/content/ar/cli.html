@@ -30,6 +30,10 @@ screenpilot check sessions/2026-10-27_14-02/storyboard.mp4 --at 2,8,15
 screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo.mp4</code></pre>
 <div class="note">الأزمنة في الـ storyboard وفي <code>frames --at</code> هي ثوانٍ في المصدر (التسجيل الخام). الأمر <code>check --at</code> وحده يستخدم ثواني الخرج (الفيديو المصيَّر). راجع <a href="@guide/storyboard.html">مرجع الـ storyboard</a>.</div>
 
+<h2 id="decisions">القرارات أولًا</h2>
+<h3 id="brief">brief</h3>
+<p><code>screenpilot brief</code> يطبع القرارات التي يجب على تطبيق الذكاء الاصطناعي أن يسألك عنها قبل أن يسجّل أو يبني أي شيء، مع الخيارات المتاحة على جهازك. هو لتطبيقات الذكاء الاصطناعي التي تستخدم سطر الأوامر؛ أما مع MCP فأداة <code>brief</code> تسألك مباشرة. انظر <a href="@guide/tools.html#decisions">الأدوات</a>.</p>
+
 <h2 id="record-and-look">التسجيل والمعاينة</h2>
 
 <h3 id="record">record</h3>
@@ -118,6 +122,22 @@ screenpilot voices --provider edge --lang ar</code></pre>
 </tbody>
 </table>
 
+<h3 id="script">script</h3>
+<p><code>screenpilot script &lt;storyboard&gt;</code> يكتب التعليق الصوتي كسكريبت للصقه في موقع تحويل النص إلى كلام: النص، وتعليمات قصيرة، وجدول بالمتاح لكل سطر. الخرج الافتراضي <code>&lt;storyboard&gt;.script.md</code>، وتغيّره بـ <code>-o, --out</code>. <a href="@guide/voices.html#external-audio">صفحة الأصوات</a> تشرح الخطوات كاملة.</p>
+
+<h3 id="split-audio">split-audio</h3>
+<p><code>screenpilot split-audio &lt;audio&gt;</code> يقطع تسجيلًا واحدًا للسكريبت كله إلى ملف WAV لكل سطر تعليق عند الوقفات، ويضع <code>audio</code> على كل سطر في الـ storyboard.</p>
+<table>
+<thead><tr><th>الخيار</th><th>ما يفعله</th></tr></thead>
+<tbody>
+<tr><td><code>--storyboard &lt;file&gt;</code></td><td>الـ storyboard الذي يخصه الصوت. تُعدّ أسطر التعليق فيه ويوضع <code>audio</code> على كل منها.</td></tr>
+<tr><td><code>--lines &lt;n&gt;</code></td><td>عدد الأسطر عند عدم وجود storyboard. لا يُربط شيء.</td></tr>
+<tr><td><code>-o, --out &lt;dir&gt;</code></td><td>مجلد المقاطع. الافتراضي <code>narration-audio</code> بجوار الـ storyboard.</td></tr>
+<tr><td><code>--min-silence &lt;s&gt;</code></td><td>أقصر وقفة تُعدّ فاصلًا بين سطرين. الافتراضي 0.4. تُجرَّب قيم أصغر إذا قلّت الوقفات.</td></tr>
+<tr><td><code>--noise &lt;dB&gt;</code></td><td>المستوى الذي يُعدّ ما دونه صمتًا. الافتراضي -35.</td></tr>
+</tbody>
+</table>
+
 <h2 id="render-and-check">التصيير والفحص</h2>
 
 <h3 id="render">render</h3>
@@ -128,7 +148,8 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <tr><td><code>-o, --output &lt;file&gt;</code></td><td>ملف الفيديو الناتج. الافتراضي <code>&lt;storyboard&gt;.mp4</code>.</td></tr>
 <tr><td><code>-q, --quality &lt;q&gt;</code></td><td><code>draft</code> أو <code>looks</code> أو <code>delivery</code>. الافتراضي <code>looks</code>.</td></tr>
 <tr><td><code>--png-frames</code></td><td>يستخدم إطارات مصدر بلا فقدان: نص الواجهة المسجَّلة أوضح، والتصيير أبطأ.</td></tr>
-<tr><td><code>--workers &lt;n&gt;</code></td><td>عدد المصيّرات المتوازية، وكل واحد منها متصفح Chrome بلا واجهة. الافتراضي 2.</td></tr>
+<tr><td><code>--workers &lt;n&gt;</code></td><td>عدد المصيّرات المتوازية، وكل واحد منها متصفح Chrome بلا واجهة. الافتراضي: نصف أنوية المعالج، بحد أقصى حسب الذاكرة الفارغة (من 1 إلى 6).</td></tr>
+<tr><td><code>--timings</code></td><td>يسجّل مدة كل مرحلة (الفحص والصوت والقص والتصيير والدمج) ويعرض توقيتات HyperFrames.</td></tr>
 <tr><td><code>--from &lt;s&gt;</code>, <code>--to &lt;s&gt;</code></td><td>يصيّر هذه النافذة فقط، بثواني <strong>الخرج</strong>. انظر <a href="@guide/cli.html#partial">التصيير الجزئي</a>.</td></tr>
 <tr><td><code>--formats &lt;list&gt;</code></td><td>يصيّر مرة لكل صيغة، مثل <code>16:9,9:16,1:1</code>. انظر <a href="@guide/cli.html#formats">عدة صيغ</a>.</td></tr>
 <tr><td><code>--build-dir &lt;dir&gt;</code></td><td>المجلد الذي يُكتب فيه مشروع HyperFrames. غير مسموح مع <code>--formats</code>.</td></tr>
@@ -164,7 +185,7 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <table>
 <thead><tr><th>المستوى</th><th>متى تستخدمه</th></tr></thead>
 <tbody>
-<tr><td><code>draft</code></td><td>تصيير سريع أثناء التحرير. استخدمه في كل دورة مراجعة.</td></tr>
+<tr><td><code>draft</code></td><td>تصيير سريع أثناء التحرير: 15 إطارًا في الثانية وقص سريع، أسرع بنحو الضعف. استخدمه في كل دورة مراجعة.</td></tr>
 <tr><td><code>looks</code></td><td>تصيير عادي. هو الافتراضي.</td></tr>
 <tr><td><code>delivery</code></td><td>الملف النهائي فقط. هو الأبطأ.</td></tr>
 </tbody>
@@ -198,7 +219,8 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <tr><td><code>-o, --output &lt;file&gt;</code></td><td>ملف الفيديو الناتج. الافتراضي <code>&lt;sequence&gt;.mp4</code>.</td></tr>
 <tr><td><code>-q, --quality &lt;q&gt;</code></td><td><code>draft</code> أو <code>looks</code> أو <code>delivery</code>. الافتراضي <code>looks</code>.</td></tr>
 <tr><td><code>--png-frames</code></td><td>يستخدم إطارات مصدر بلا فقدان، والتصيير أبطأ.</td></tr>
-<tr><td><code>--workers &lt;n&gt;</code></td><td>عدد المصيّرات المتوازية، وكل واحد منها متصفح Chrome بلا واجهة. الافتراضي 2.</td></tr>
+<tr><td><code>--workers &lt;n&gt;</code></td><td>عدد المصيّرات المتوازية، وكل واحد منها متصفح Chrome بلا واجهة. الافتراضي: نصف أنوية المعالج، بحد أقصى حسب الذاكرة الفارغة (من 1 إلى 6).</td></tr>
+<tr><td><code>--timings</code></td><td>يسجّل مدة كل مرحلة (الفحص والصوت والقص والتصيير والدمج) ويعرض توقيتات HyperFrames.</td></tr>
 <tr><td><code>--build-dir &lt;dir&gt;</code></td><td>المجلد الذي تُبنى فيه الأجزاء. الافتراضي <code>&lt;sequence&gt;.build</code>.</td></tr>
 </tbody>
 </table>

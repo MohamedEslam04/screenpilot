@@ -250,7 +250,11 @@ While recording, screenpilot closes notification popups already on screen (KDE) 
 
 Window framing needs the active window over time: KDE, X11 and Windows log it; on other Wayland desktops window views fall back to monitor views.
 
-Renders use 2 headless-Chrome workers by default (`--workers`): more is faster but can push a desktop that is also running OBS and browsers out of memory.
+Renders pick the number of headless-Chrome workers from the machine (`autoWorkers` in `src/render/workers.ts`: half the cores, about 1.5 GB of free memory each, 1 to 6); `--workers N` overrides it. More is faster but can push a desktop that is also running OBS and browsers out of memory. `--timings` logs the time of each stage. `-q draft` also captures at 15 fps and uses a fast cut, so draft renders are about twice as fast.
+
+## Decisions before work (`brief`)
+
+`src/brief/` holds the questions the user must answer before a video is made (`questions.ts`, pure: what the machine has is passed in), the gate (`gate.ts`: `record_start`, `perform`, `render` and `sequence_render` call `requireBrief`; unattended runs set `SCREENPILOT_SKIP_BRIEF=1`, as `scripts/ci/release-e2e.mjs` does) and the form flow (`elicit.ts`, MCP elicitation). Every choice has 2 to 4 options so any client can show it as a picker; keep it that way when adding a question. The gate cannot prove a person answered (an agent can call `brief` with made-up answers); it makes skipping the questions a deliberate act.
 
 ## Look and shot are the agent's choice
 

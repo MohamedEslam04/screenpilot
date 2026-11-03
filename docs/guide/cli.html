@@ -56,6 +56,10 @@ screenpilot check sessions/2026-10-27_14-02/storyboard.mp4 --at 2,8,15
 screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo.mp4</code></pre>
 <div class="note">Times in a storyboard and in <code>frames --at</code> are source seconds (the raw recording). Only <code>check --at</code> uses output seconds (the rendered video). See <a href="../guide/storyboard.html">the storyboard reference</a>.</div>
 
+<h2 id="decisions">Decisions first<a class="a" href="#decisions" aria-label="Link to this section">#</a></h2>
+<h3 id="brief">brief<a class="a" href="#brief" aria-label="Link to this section">#</a></h3>
+<p><code>screenpilot brief</code> prints the decisions an AI app must ask you before it records or builds anything, with the options available on this computer. It is for AI apps that use the CLI; with MCP the <code>brief</code> tool asks you directly. See <a href="../guide/tools.html#decisions">Tools</a>.</p>
+
 <h2 id="record-and-look">Record and look<a class="a" href="#record-and-look" aria-label="Link to this section">#</a></h2>
 
 <h3 id="record">record<a class="a" href="#record" aria-label="Link to this section">#</a></h3>
@@ -144,6 +148,22 @@ screenpilot voices --provider edge --lang ar</code></pre>
 </tbody>
 </table>
 
+<h3 id="script">script<a class="a" href="#script" aria-label="Link to this section">#</a></h3>
+<p><code>screenpilot script &lt;storyboard&gt;</code> writes the narration as a script to paste into a text-to-speech website: the text, a short prompt, and a table of the room each line has. Default output <code>&lt;storyboard&gt;.script.md</code>; change it with <code>-o, --out</code>. <a href="../guide/voices.html#external-audio">Voices</a> shows the whole flow.</p>
+
+<h3 id="split-audio">split-audio<a class="a" href="#split-audio" aria-label="Link to this section">#</a></h3>
+<p><code>screenpilot split-audio &lt;audio&gt;</code> cuts one recording of the whole script into one WAV per narration line, at the pauses, and sets <code>audio</code> on each line of the storyboard.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--storyboard &lt;file&gt;</code></td><td>The storyboard the audio belongs to. Its narration lines are counted and get their <code>audio</code>.</td></tr>
+<tr><td><code>--lines &lt;n&gt;</code></td><td>Number of lines, when there is no storyboard. Nothing is attached.</td></tr>
+<tr><td><code>-o, --out &lt;dir&gt;</code></td><td>Folder for the clips. Default <code>narration-audio</code> next to the storyboard.</td></tr>
+<tr><td><code>--min-silence &lt;s&gt;</code></td><td>Shortest pause that counts as a line break. Default 0.4. Smaller values are tried when there are too few pauses.</td></tr>
+<tr><td><code>--noise &lt;dB&gt;</code></td><td>Level under which sound counts as silence. Default -35.</td></tr>
+</tbody>
+</table>
+
 <h2 id="render-and-check">Render and check<a class="a" href="#render-and-check" aria-label="Link to this section">#</a></h2>
 
 <h3 id="render">render<a class="a" href="#render" aria-label="Link to this section">#</a></h3>
@@ -154,7 +174,8 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <tr><td><code>-o, --output &lt;file&gt;</code></td><td>Output video. Default <code>&lt;storyboard&gt;.mp4</code>.</td></tr>
 <tr><td><code>-q, --quality &lt;q&gt;</code></td><td><code>draft</code>, <code>looks</code> or <code>delivery</code>. Default <code>looks</code>.</td></tr>
 <tr><td><code>--png-frames</code></td><td>Use lossless source frames: sharper text in the recorded UI, slower.</td></tr>
-<tr><td><code>--workers &lt;n&gt;</code></td><td>Parallel renderers, each a headless Chrome. Default 2.</td></tr>
+<tr><td><code>--workers &lt;n&gt;</code></td><td>Parallel renderers, each a headless Chrome. Default: half your CPU cores, limited by free memory (1 to 6).</td></tr>
+<tr><td><code>--timings</code></td><td>Log how long each stage takes (probe, voice, cut, render, join) and show HyperFrames phase timings.</td></tr>
 <tr><td><code>--from &lt;s&gt;</code>, <code>--to &lt;s&gt;</code></td><td>Render only this window, in <strong>output</strong> seconds. See <a href="../guide/cli.html#partial">Partial renders</a>.</td></tr>
 <tr><td><code>--formats &lt;list&gt;</code></td><td>Render once per format, for example <code>16:9,9:16,1:1</code>. See <a href="../guide/cli.html#formats">Several formats</a>.</td></tr>
 <tr><td><code>--build-dir &lt;dir&gt;</code></td><td>Where the HyperFrames project is written. Not allowed with <code>--formats</code>.</td></tr>
@@ -190,7 +211,7 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <table>
 <thead><tr><th>Level</th><th>Use it for</th></tr></thead>
 <tbody>
-<tr><td><code>draft</code></td><td>Fast renders while you edit. Use this in every review loop.</td></tr>
+<tr><td><code>draft</code></td><td>Fast renders while you edit: 15 fps and a quick cut, about twice as fast. Use this in every review loop.</td></tr>
 <tr><td><code>looks</code></td><td>A normal render. This is the default.</td></tr>
 <tr><td><code>delivery</code></td><td>The final file only. It is the slowest.</td></tr>
 </tbody>
@@ -224,7 +245,8 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <tr><td><code>-o, --output &lt;file&gt;</code></td><td>Output video. Default <code>&lt;sequence&gt;.mp4</code>.</td></tr>
 <tr><td><code>-q, --quality &lt;q&gt;</code></td><td><code>draft</code>, <code>looks</code> or <code>delivery</code>. Default <code>looks</code>.</td></tr>
 <tr><td><code>--png-frames</code></td><td>Use lossless source frames, slower.</td></tr>
-<tr><td><code>--workers &lt;n&gt;</code></td><td>Parallel renderers, each a headless Chrome. Default 2.</td></tr>
+<tr><td><code>--workers &lt;n&gt;</code></td><td>Parallel renderers, each a headless Chrome. Default: half your CPU cores, limited by free memory (1 to 6).</td></tr>
+<tr><td><code>--timings</code></td><td>Log how long each stage takes (probe, voice, cut, render, join) and show HyperFrames phase timings.</td></tr>
 <tr><td><code>--build-dir &lt;dir&gt;</code></td><td>Where the parts are built. Default <code>&lt;sequence&gt;.build</code>.</td></tr>
 </tbody>
 </table>
@@ -303,7 +325,7 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <p><code>screenpilot doctor</code> checks this machine: ffmpeg, desktop, monitors, OBS, the demo browser and voices, including a "local voice" check that is skipped when you have not set up a local voice (it is optional). It prints a JSON report and a one-line summary. The exit code is always 0, so read the report. Add <code>--input</code> to also test input injection; this moves the real pointer for a moment.</p>
 <div class="note">Run <code>screenpilot doctor</code> first on a new machine, and again whenever recording or driving fails.</div>
 <nav class="pager" aria-label="Pager"><a href="install.html" rel="prev"><small>Previous</small>Install ScreenPilot</a><a href="tools.html" rel="next"><small>Next</small>MCP tools</a></nav></article>
-  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#workflow">The whole workflow</a><a href="#record-and-look">Record and look</a><a href="#edit">Edit</a><a href="#render-and-check">Render and check</a><a href="#combine">Combine recordings</a><a href="#drive">See and drive the desktop</a><a href="#setup-and-checks">Set up and check this machine</a></aside>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#workflow">The whole workflow</a><a href="#decisions">Decisions first</a><a href="#record-and-look">Record and look</a><a href="#edit">Edit</a><a href="#render-and-check">Render and check</a><a href="#combine">Combine recordings</a><a href="#drive">See and drive the desktop</a><a href="#setup-and-checks">Set up and check this machine</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>

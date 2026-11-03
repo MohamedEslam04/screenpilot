@@ -2,6 +2,14 @@
 
 Turn a screen recording of any desktop app into a polished demo MP4. You write `storyboard.json` (cuts, zooms, captions, highlights, voiceover); screenpilot renders it with HyperFrames and a text-to-speech voice (Edge by default; local models or a user-defined command are optional). Run the CLI as `screenpilot` (or `node dist/cli.js`). An MCP server (`dist/mcp.js`) exposes the same steps as tools; see CONTRIBUTING.md. Claude Code users also get `skill/SKILL.md` with a longer walkthrough and a full storyboard example.
 
+## Before you start: ask the user
+
+Do not record, drive the desktop, build or render before the user has made the decisions only they can make: the goal and audience, where the recording comes from, the language, **which voice** (built-in, a website's voice such as Google AI Studio, their own program or recording, or none), the look, the camera, how they want to review it, and whether you may record and drive their mouse. Never answer for them and never install anything for them.
+
+- MCP: call `brief` first. If the client can show forms the user picks right there; otherwise it returns option pickers (2 to 4 options each, recommended first): show them with your question tool exactly as given, ask the free-text one in chat, then call `brief` again with `answers`. `record_start`, `perform`, `render` and `sequence_render` refuse until it is done. It returns what to do next for the answers.
+- CLI only: run `screenpilot brief`, ask every question it lists the same way (at most 4 at a time; a question with `askWhen` only after its parent has that answer), then continue.
+- Skip a question only when the user already answered it in their request, and pass that answer. Unattended runs set `SCREENPILOT_SKIP_BRIEF=1`.
+
 ## Rules
 
 - Storyboard times are SOURCE seconds (the raw recording). Positions are normalized 0..1 (x from left, y from top). Only `check` uses output seconds.
@@ -9,6 +17,7 @@ Turn a screen recording of any desktop app into a polished demo MP4. You write `
 - Narration never overlaps: render auto-freezes the video when a line overruns. Keep lines short.
 - Iterate with `-q draft`; use `-q delivery` only for the final render.
 - Voice providers: `"voice": {"provider": "local", "name": "voicetut:Sarah", "rate": "+0%"}` (default provider is `edge`). `local` names are `voicetut`, `voicetut:<Voice>` (Egyptian Arabic and English) and `namaa` (Egyptian Arabic only); a line's own `voice` overrides the name, and each line's language is detected. Run `screenpilot voices --provider local` and `screenpilot doctor` ("local voice") to see what is installed. If the user wants free offline voices and none is installed, tell them to run `screenpilot voice-setup voicetut` in a terminal (about 10 GB download); never start it yourself. `command` voices (`"provider": "command"`, `name` = a key in the user's `voices.json`) are defined by the user; you cannot add commands from a storyboard. Details: https://mohamedeslam04.github.io/screenpilot/guide/voices.html
+- Better voice from a website (free web TTS): `screenpilot script storyboard.json` (MCP `script_export`) writes the text to paste (one paragraph per line, no numbers); the user generates ONE audio file and gives it back; `screenpilot split-audio voice.mp3 --storyboard storyboard.json` (MCP `audio_import`) cuts it at the pauses and sets `narration[].audio` (path relative to the storyboard; the line then plays that file, `text` stays the subtitle). Too few pauses: ask for a longer pause between lines or pass `--min-silence`. Free plans have limits and may forbid commercial use; say so.
 
 ## Workflow
 

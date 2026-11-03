@@ -9,6 +9,14 @@ You record (or receive) a raw screen recording, look at it, write `storyboard.js
 
 Each step has an MCP tool and a CLI form (`screenpilot ...`, or `node /abs/path/dist/cli.js ...`). Use whichever is available.
 
+## Before you start: ask the user
+
+Do not record, drive the desktop, build or render before the user has made the decisions only they can make: the goal and audience, where the recording comes from, the language, **which voice** (built-in, a website's voice such as Google AI Studio, their own program or recording, or none), the look, the camera, how they want to review it, and whether you may record and drive their mouse. Never answer for them and never install anything for them.
+
+- MCP: call `brief` first. If the client can show forms the user picks right there; otherwise it returns option pickers (2 to 4 options each, recommended first): show them with your question tool exactly as given, ask the free-text one in chat, then call `brief` again with `answers`. `record_start`, `perform`, `render` and `sequence_render` refuse until it is done. It returns what to do next for the answers.
+- CLI only: run `screenpilot brief`, ask every question it lists the same way (at most 4 at a time; a question with `askWhen` only after its parent has that answer), then continue.
+- Skip a question only when the user already answered it in their request, and pass that answer. Unattended runs set `SCREENPILOT_SKIP_BRIEF=1`.
+
 ## Ground rules
 
 - All times in the storyboard are **SOURCE seconds** (the raw recording), never output seconds. Only `check_output` / `screenpilot check` use output seconds.
@@ -160,6 +168,7 @@ What each part does:
 - `intro` / `outro`: title cards. `music`: `{ "src": "bgm.mp3", "volume": 0.12 }`. `keepSourceAudio`, `output` (1920x1080@30 default) and `theme` (background, padding, radius, accent, font, captionColor, captionBackground, clickRipples, `fonts`: extra Google Fonts, `css`: your own CSS) are optional; see "Design the look" below.
 - Voices: MCP `voices` (lang: "ar-EG") / `screenpilot voices --lang ar-EG`. Egyptian Arabic: `ar-EG-SalmaNeural` (f), `ar-EG-ShakirNeural` (m). English: `en-US-AndrewNeural`, `en-US-AriaNeural`.
 - Local and command voices: set `"voice": {"provider": "local", "name": "voicetut:Sarah", "rate": "+0%"}` (default provider `edge`). Local names: `voicetut` or `voicetut:<Voice>` (Egyptian Arabic and English, 19 voices) and `namaa` (Egyptian Arabic only). A line's own `voice` overrides the name within the same provider (e.g. `namaa` for an Arabic line, `voicetut:Sarah` for an English one); the language of each line is detected, and `rate` becomes a speed factor for voicetut (namaa ignores it). Arabic from VoiceTut is less accurate than English. List installed ones with MCP `voices` (provider: "local") / `screenpilot voices --provider local`, and check `doctor` ("local voice"). If the user wants free offline voices and none is installed, tell them to run `screenpilot voice-setup voicetut` in a terminal (about 10 GB, 30 minutes or more); do not start it yourself. `provider: "command"` voices (`name` = a key in the user's `voices.json`) are defined by the user; you cannot add commands from a storyboard. Details: https://mohamedeslam04.github.io/screenpilot/guide/voices.html
+- Better voice from a website: `screenpilot script storyboard.json` (MCP `script_export`) writes the text to paste (one paragraph per line, no numbers). The user generates ONE audio file on a free web TTS site and gives it back; `screenpilot split-audio voice.mp3 --storyboard storyboard.json` (MCP `audio_import`) cuts it at the pauses and sets `narration[].audio` (path relative to the storyboard; the line plays that file and `text` stays the subtitle). Too few pauses: ask for a longer pause between lines or pass `--min-silence`. Free plans have limits and may forbid commercial use; say so.
 
 ## Design the look (every video is different)
 
