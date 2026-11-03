@@ -27,6 +27,8 @@ import { sequenceJsonSchema } from "./sequence/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
 import { exportScript, importAudio } from "./voice/import.js";
+import { detectBriefEnv } from "./brief/detect.js";
+import { buildBrief } from "./brief/questions.js";
 import { APP, APP_TITLE, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { getDesktop } from "./platform/index.js";
@@ -350,6 +352,22 @@ program
     } finally {
       await provider.close?.();
     }
+  });
+
+program
+  .command("brief")
+  .description("The decisions to ask the user before recording or building a video (for AI tools that use the CLI instead of MCP)")
+  .action(async () => {
+    const brief = buildBrief(await detectBriefEnv());
+    print({
+      rules: [
+        "Ask the user every question below before you record, drive the desktop, build or render. Do not answer for them and do not install anything for them.",
+        "Show each choice question as an option picker with your question tool (2 to 4 options, the recommended one first). Ask kind=text questions in chat.",
+        "Ask at most 4 questions at once. A question with askWhen is asked only after its parent has one of the listed answers.",
+        "Skip a question only when the user already answered it in their request.",
+      ],
+      questions: brief.questions,
+    });
   });
 
 program

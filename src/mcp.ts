@@ -11,6 +11,10 @@ import { audit, checkAppAllowed, checkEnvAllowed } from "./drive/guard.js";
 import { Driver } from "./drive/index.js";
 import { screenshot } from "./drive/see.js";
 import { locate, openBrowser, waitForWeb, withPage } from "./drive/web.js";
+import { detectBriefEnv } from "./brief/detect.js";
+import { elicitBrief } from "./brief/elicit.js";
+import { briefAnswers, rememberBrief, requireBrief, resetBrief } from "./brief/gate.js";
+import { type Answers, applyAnswers, askView, buildBrief, guidance, nextBatch } from "./brief/questions.js";
 import { doctor } from "./doctor.js";
 import { evenTimes, grabFrames } from "./frames.js";
 import { initStoryboard } from "./init.js";
@@ -119,7 +123,7 @@ const norm = z.number().min(0).max(1);
 
 // Sent to every MCP client on connect (Claude, Codex, OpenCode, Cursor…), so
 // any agent knows the workflow without a client-specific skill.
-const INSTRUCTIONS = `${APP_TITLE} makes screen videos. Typical loops:
+const INSTRUCTIONS = `${APP_TITLE} makes screen videos. FIRST, for every new video, call brief: it asks the user the decisions only they can make (goal, source, language, which voice: built-in, a website like Google AI Studio, their own or none, look, camera, review, permissions) as option pickers, and record_start, perform, render and sequence_render refuse until it is done. Never answer for the user, never install anything for them, and do not start recording or building before the answers are in. Typical loops:
 1. User records: record_start (screens "all" or one), user works, record_stop → analyze (look at the contact sheet) → storyboard_init with suggest → edit the storyboard (narration lines, captions, highlights, zooms) → render quality "draft" → check_output frames → fix → render "delivery".
 2. You perform it: screenshot to see the monitors, windows to see apps, browser_open for websites (app: true hides the address bar and tabs, so nothing about this machine shows); in take.json, file paths are relative to the take, so it runs on any machine; try the flow live with pointer_move/click/type_text; then write a take.json (take_schema) and call perform (it records, logs clicks/windows and writes a storyboard), add intro/outro/zooms, render.
 Design every video for its purpose; there is no house style. Before rendering, decide who it's for and where it will be shown, then set the storyboard to match: output size (1920x1080 for YouTube/README/slides, 1080x1920 for Reels/TikTok/Shorts, 1080x1080 for feeds), theme (background, padding, radius, accent, font, caption colors), theme.fonts (any Google Fonts), theme.css (your own CSS for captions, cards, highlights; storyboard_schema lists the classes) and text motion (theme.motion.captions / .cards, or motion per caption: in/out presets fade, rise, drop, slide-left, slide-right, pop, zoom, blur, wipe, words, lines, none; duration, any GSAP ease, stagger). Match the product's brand when you can see it (colors and type from its site or app). Pace and wording follow the audience: short punchy captions for social, calm explanatory ones for tutorials, bilingual lines ("English\nعربي") when asked. Defaults are only a fallback.
@@ -128,6 +132,68 @@ To put another recording in the middle of a video without re-recording the rest:
 Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). Free offline voices: voice.provider "local" with name voicetut:Sarah (Egyptian Arabic and English) or namaa (Egyptian Arabic); voices with provider "local" lists what is installed. If none is installed and the user wants one, tell them to run "screenpilot voice-setup voicetut" in a terminal (about 10 GB; do not start it yourself). Command voices (any program) are defined by the user in voices.json; you cannot add them in a storyboard. For a better voice than the built-in ones, the user can make the audio on a web text-to-speech site: script_export writes the script to paste, the user generates ONE audio file (blank line between lines) and gives it back, then audio_import cuts it per line and sets narration[].audio; render as usual. Warn that free plans have limits and may forbid commercial use. The camera frames the window in use by default. You can run the whole loop yourself: drive live, write the take, perform, render, check_output. If a person is present, ask them not to touch the mouse while you drive; moving it stops the action with a message, and resume carries on from where the pointer is. For unattended runs start the server with SCREENPILOT_INTERRUPT=off. Run doctor first on a new machine.`;
 
 const server = new McpServer({ name: APP, title: APP_TITLE, version: VERSION }, { instructions: INSTRUCTIONS });
+
+let briefDraft: Answers = {};
+const ELICIT_TIMEOUT_MS = 15 * 60_000;
+
+server.registerTool(
+  "brief",
+  {
+    description:
+      "CALL THIS FIRST, before record_start, perform, render or any other work on a new video. It asks the user the decisions only they can make " +
+      "(goal, source, language, which voice: built-in, a website like Google AI Studio, their own, or none; look, camera, review, permissions) as option pickers. " +
+      "record_start, perform, render and sequence_render refuse until it is done. If the client can show forms, the user answers right there. " +
+      "Otherwise this returns status \"ask\" with pickers (2 to 4 options each): show them to the user with your own question tool, exactly as given, recommended first; " +
+      "ask the free-text ones in chat; then call brief again with answers {id: chosen option value, label or the user's own words}. Repeat until status is \"confirmed\". " +
+      "Never answer for the user. Skip a question only when the user already answered it in their request (pass that answer). " +
+      "When confirmed it returns the answers and what to do next.",
+    inputSchema: {
+      answers: z.record(z.string(), z.string()).optional().describe("The user's answers so far, by question id. An option value or label, \"default\" for the recommended one, or free text."),
+      via_agent: z.boolean().optional().describe("Return the pickers for you to ask instead of letting the client show its form."),
+      reset: z.boolean().optional().describe("Ask again for a new video even though the decisions were already made in this session."),
+    },
+  },
+  safe(async ({ answers, via_agent, reset }) => {
+    if (reset) {
+      resetBrief();
+      briefDraft = {};
+    }
+    const decided = briefAnswers();
+    if (decided && !answers) {
+      return text({ status: "confirmed", answers: decided, note: "Already decided in this session. Pass reset: true to ask again for a new video.", next: guidance(decided) });
+    }
+    const brief = buildBrief(await detectBriefEnv());
+    const merged = applyAnswers(brief, briefDraft, answers ?? {});
+    briefDraft = merged.answers;
+    const confirm = () => {
+      rememberBrief(briefDraft);
+      return text({ status: "confirmed", answers: briefDraft, next: guidance(briefDraft) });
+    };
+    if (nextBatch(brief, briefDraft).length === 0) return confirm();
+
+    if (!via_agent && server.server.getClientCapabilities()?.elicitation) {
+      try {
+        const r = await elicitBrief(
+          brief,
+          (req) => server.server.elicitInput(req as Parameters<typeof server.server.elicitInput>[0], { timeout: ELICIT_TIMEOUT_MS }) as ReturnType<Parameters<typeof elicitBrief>[1]>,
+          briefDraft,
+        );
+        briefDraft = r.answers;
+        if (r.status === "confirmed") return confirm();
+        return text({ status: "declined", answers: briefDraft, note: "The user closed the questions. Do not start anything; ask them how they want to continue." });
+      } catch (err) {
+        log(`brief: the client could not show the form (${err instanceof Error ? err.message : err}); asking through the agent`);
+      }
+    }
+    return text({
+      status: "ask",
+      answers: briefDraft,
+      ...(merged.rejected.length ? { blank: merged.rejected } : {}),
+      ...askView(nextBatch(brief, briefDraft)),
+      how: "Show the choices as option pickers with your question tool, exactly as given (labels and descriptions); ask the chat ones in plain chat. Then call brief again with answers {id: the chosen label or value, or the user's own words}.",
+    });
+  }),
+);
 
 server.registerTool(
   "record_start",
@@ -154,6 +220,7 @@ server.registerTool(
     },
   },
   safe(async (a) => {
+    requireBrief("record_start");
     if (recording) throw new Error(`A recording is already running (dir: ${recording.dir}). Call record_stop first.`);
     recording = await startRecording({ ...a, log });
     return text({ recording: true, dir: recording.dir, inputAdapter: recording.inputAdapter, startedAt: new Date().toISOString() });
@@ -365,6 +432,7 @@ server.registerTool(
     },
   },
   safe(async ({ storyboard, output, quality, from, to, formats }) => {
+    requireBrief("render");
     const window = parseWindow(from, to);
     if (formats?.length) {
       const rs = await renderFormats(storyboard, parseFormats(formats.join(",")), { output, quality, window, log });
@@ -412,7 +480,10 @@ server.registerTool(
       quality: z.enum(["draft", "looks", "delivery"]).optional().describe("Default looks"),
     },
   },
-  safe(async ({ sequence, output, quality }) => text(await renderSequence(sequence, { output, quality, log }))),
+  safe(async ({ sequence, output, quality }) => {
+    requireBrief("sequence_render");
+    return text(await renderSequence(sequence, { output, quality, log }));
+  }),
 );
 
 server.registerTool(
@@ -721,6 +792,7 @@ server.registerTool(
     },
   },
   safe(async ({ take, dir, dryRun }): Promise<Result> => {
+    requireBrief("perform");
     if (performing) throw new Error("A take is already running. Call abort to stop it.");
     // performTake opens its own driver; release the live one so two remote-control sessions don't compete.
     await closeDriver();
