@@ -8,6 +8,7 @@ import { lintStoryboard, loadStoryboard, StoryboardError } from "../storyboard/l
 import { clipStoryboard } from "../storyboard/clip.js";
 import type { Storyboard } from "../storyboard/schema.js";
 import { probeVideo } from "../util/media.js";
+import { makeTimer } from "../util/timing.js";
 import { concatParts, type OutputSize, probePart, type Quality } from "./concat.js";
 import { type Sequence, SequenceSchema, type Transition } from "./schema.js";
 
@@ -139,6 +140,8 @@ export interface SequenceRenderOptions {
   buildDir?: string;
   pngFrames?: boolean;
   workers?: number;
+  /** Log how long each stage takes. */
+  timings?: boolean;
   log?: (msg: string) => void;
 }
 
@@ -170,6 +173,7 @@ export async function renderSequence(path: string, opts: SequenceRenderOptions =
         quality,
         pngFrames: opts.pngFrames,
         workers: opts.workers,
+        timings: opts.timings,
         log,
       });
       warnings = r.warnings;
@@ -185,7 +189,9 @@ export async function renderSequence(path: string, opts: SequenceRenderOptions =
   const base = prepared.path.slice(0, -extname(prepared.path).length);
   const output = resolve(opts.output ?? `${base}.mp4`);
   await mkdir(dirname(output), { recursive: true });
-  const joined = await concatParts(media, output, prepared.output, { workDir: prepared.buildDir, quality, log });
+  const joined = await makeTimer(opts.timings, log)("join", () =>
+    concatParts(media, output, prepared.output, { workDir: prepared.buildDir, quality, log }),
+  );
   return { output, duration: (await probeVideo(output)).duration, join: joined.mode, parts: results };
 }
 

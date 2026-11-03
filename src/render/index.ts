@@ -9,14 +9,17 @@ import { lintStoryboard, loadStoryboard } from "../storyboard/load.js";
 import type { Storyboard } from "../storyboard/schema.js";
 import { buildTimeline, planNarrationHolds, type Timeline } from "../storyboard/timeline.js";
 import { run } from "../util/exec.js";
+import { makeTimer } from "../util/timing.js";
 import { ffmpegFilterScriptFlag, probeVideo, type VideoInfo } from "../util/media.js";
 import { synthesizeLines } from "../voice/index.js";
 import { buildCutArgs, buildCutFilter } from "./cut.js";
+import { draftFps } from "./draft.js";
 import { renderHtml } from "./html.js";
 import { formatPaths, type OutputFormat } from "./formats.js";
 import { overlayKind } from "./overlay.js";
 import { buildPlan, type OverlayAsset, type RenderPlan } from "./plan.js";
 import { partSuffix, type Window, windowPlan } from "./window.js";
+import { autoWorkers } from "./workers.js";
 import { CACHE_DIR } from "../brand.js";
 
 const require = createRequire(import.meta.url);
@@ -31,6 +34,10 @@ export interface PrepareOptions {
   /** Voice cache. Default: CACHE_DIR next to the storyboard */
   cacheDir?: string;
   log?: (msg: string) => void;
+  /** Log how long each stage took (and show HyperFrames' own phase timings). */
+  timings?: boolean;
+  /** Draft build: faster, lighter cut. Set by renderStoryboard for `-q draft`. */
+  draft?: boolean;
 }
 
 export interface Prepared {
@@ -44,11 +51,12 @@ export interface Prepared {
 
 export async function prepareBuild(storyboardPath: string, opts: PrepareOptions = {}): Promise<Prepared> {
   const log = opts.log ?? (() => {});
+  const time = makeTimer(opts.timings, log);
   const { sb, baseDir, path } = await loadStoryboard(storyboardPath);
   if (opts.size) sb.output = { ...sb.output, ...opts.size };
   const sourcePath = resolve(baseDir, sb.source);
   if (!existsSync(sourcePath)) throw new Error(`Source video not found: ${sourcePath}`);
-  const source = await probeVideo(sourcePath);
+  const source = await time("probe", () => probeVideo(sourcePath));
   const warnings = lintStoryboard(sb, source.duration);
 
   const buildDir = resolve(opts.buildDir ?? join(baseDir, `${basename(path, extname(path))}${opts.window ? partSuffix(opts.window) : ""}.build`));
@@ -56,10 +64,12 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
 
   // 1. Voice: real durations decide the pacing.
   log(`voice: ${sb.narration.length} line(s)`);
-  const clips = await synthesizeLines(
-    sb.voice.provider,
-    sb.narration.map((l) => ({ text: l.text, voice: l.voice ?? sb.voice.name, rate: sb.voice.rate })),
-    join(opts.cacheDir ?? join(baseDir, CACHE_DIR), "voice"),
+  const clips = await time("voice", () =>
+    synthesizeLines(
+      sb.voice.provider,
+      sb.narration.map((l) => ({ text: l.text, voice: l.voice ?? sb.voice.name, rate: sb.voice.rate })),
+      join(opts.cacheDir ?? join(baseDir, CACHE_DIR), "voice"),
+    ),
   );
   const narration = await Promise.all(
     sb.narration.map(async (l, i) => {
@@ -99,7 +109,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   if (!keepAudio && sb.segments.some((s) => s.mute || (s.volume !== undefined && s.volume !== 1))) {
     warnings.push("segment volume/mute has no effect: the source audio is not kept (set keepSourceAudio: true and use a recording with sound)");
   }
-  await cutVideo(sourcePath, buildDir, timeline, sb, source, keepAudio, log);
+  await time("cut", () => cutVideo(sourcePath, buildDir, timeline, sb, source, keepAudio, !!opts.draft, log));
 
   // 4. Events → click ripples.
   let clicks: { t: number; x: number; y: number }[] = [];
@@ -172,6 +182,7 @@ async function cutVideo(
   sb: Storyboard,
   source: VideoInfo,
   keepAudio: boolean,
+  draft: boolean,
   log: (msg: string) => void,
 ): Promise<void> {
   const filter = buildCutFilter({
@@ -181,7 +192,7 @@ async function cutVideo(
     keepAudio,
   });
   const st = await stat(sourcePath);
-  const key = createHash("sha1").update(`${sourcePath}|${st.size}|${st.mtimeMs}|${filter}`).digest("hex");
+  const key = createHash("sha1").update(`${sourcePath}|${st.size}|${st.mtimeMs}|${filter}|${draft ? "draft" : "full"}`).digest("hex");
   const out = join(buildDir, "edited.mp4");
   const keyFile = join(buildDir, "edited.key");
   if (existsSync(out) && existsSync(keyFile) && (await readFile(keyFile, "utf8")) === key) {
@@ -194,7 +205,7 @@ async function cutVideo(
   await run(
     "ffmpeg",
     buildCutArgs(
-      { source: sourcePath, output: out, pieces: timeline.pieces, fps: sb.output.fps, sourceDuration: source.duration, keepAudio },
+      { source: sourcePath, output: out, pieces: timeline.pieces, fps: sb.output.fps, sourceDuration: source.duration, keepAudio, draft },
       filterPath,
       await ffmpegFilterScriptFlag(),
     ),
@@ -207,7 +218,7 @@ export interface RenderOptions extends PrepareOptions {
   quality?: "draft" | "looks" | "delivery";
   /** Lossless frame extraction; sharper UI text, slower. */
   pngFrames?: boolean;
-  /** Parallel headless Chrome renderers (default 2). */
+  /** Parallel headless Chrome renderers (default: from CPU cores and free memory, see autoWorkers). */
   workers?: number;
 }
 
@@ -226,16 +237,20 @@ export function hyperframesEnv(): NodeJS.ProcessEnv {
 
 export async function renderStoryboard(storyboardPath: string, opts: RenderOptions = {}): Promise<RenderResult> {
   const log = opts.log ?? (() => {});
-  const prepared = await prepareBuild(storyboardPath, opts);
+  const draft = opts.quality === "draft";
+  const prepared = await prepareBuild(storyboardPath, { ...opts, draft });
   const output = resolve(
     opts.output ??
       join(dirname(resolve(storyboardPath)), `${basename(storyboardPath, extname(storyboardPath))}${opts.window ? partSuffix(opts.window) : ""}.mp4`),
   );
   await mkdir(dirname(output), { recursive: true });
-  log(`render: ${output} (${opts.quality ?? "looks"})`);
-  await run(
-    process.execPath,
-    [
+  const workers = opts.workers ?? autoWorkers();
+  log(`render: ${output} (${opts.quality ?? "looks"}, ${workers} worker(s))`);
+  const time = makeTimer(opts.timings, log);
+  await time("render", () =>
+    run(
+      process.execPath,
+      [
       hyperframesBin(),
       "render",
       prepared.buildDir,
@@ -245,12 +260,16 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
       opts.quality ?? "looks",
       "--video-frame-format",
       opts.pngFrames ? "png" : "auto",
-      // Each worker is a headless Chrome (~250 MB+); "auto" can starve a desktop that is also running OBS and browsers.
+      // Each worker is a headless Chrome; autoWorkers leaves cores and memory for a desktop that is also running OBS and browsers.
       "--workers",
-      String(opts.workers ?? 2),
-      "--quiet",
+      String(workers),
+      // Draft: fewer frames to capture. Times are in seconds, so the video length does not change.
+      ...(draft ? ["--fps", String(draftFps(prepared.plan.fps))] : []),
+      // --timings shows HyperFrames' own phase timings, so drop --quiet then.
+      ...(opts.timings ? [] : ["--quiet"]),
     ],
-    { env: hyperframesEnv() },
+    { env: hyperframesEnv(), inherit: opts.timings },
+  ),
   );
   return { ...prepared, output };
 }

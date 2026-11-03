@@ -368,13 +368,14 @@ program
   .option("-o, --output <file>", "Output video (default: <storyboard>.mp4)")
   .option("-q, --quality <q>", "draft | looks | delivery", "looks")
   .option("--png-frames", "Lossless source frames: sharper UI text, slower")
-  .option("--workers <n>", "Parallel renderers (each is a headless Chrome)", "2")
+  .option("--workers <n>", "Parallel renderers, each a headless Chrome (default: from CPU cores and free memory)")
+  .option("--timings", "Log how long each stage takes and show HyperFrames phase timings")
   .option("--from <s>", "Render only from this OUTPUT second (fast review; writes <storyboard>.part-<from>-<to>.mp4)", Number)
   .option("--to <s>", "Render only up to this OUTPUT second", Number)
   .option("--formats <list>", "Render once per format, e.g. 16:9,9:16,1:1 or 1280x720 (writes <storyboard>.<format>.mp4)")
   .option("--build-dir <dir>")
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers: string; from?: number; to?: number; formats?: string }) => {
-    const opts = { ...o, workers: Number(o.workers), window: parseWindow(o.from, o.to), log };
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string }) => {
+    const opts = { ...o, workers: o.workers ? Number(o.workers) : undefined, window: parseWindow(o.from, o.to), log };
     if (o.formats) {
       if (o.buildDir) throw new Error("--build-dir cannot be combined with --formats (each format gets its own <name>.<format>.build)");
       const rs = await renderFormats(path, parseFormats(o.formats), opts);
@@ -392,10 +393,11 @@ program
   .option("-o, --output <file>", "Output video (default: <sequence>.mp4)")
   .option("-q, --quality <q>", "draft | looks | delivery", "looks")
   .option("--png-frames", "Lossless source frames: sharper UI text, slower")
-  .option("--workers <n>", "Parallel renderers (each is a headless Chrome)", "2")
+  .option("--workers <n>", "Parallel renderers, each a headless Chrome (default: from CPU cores and free memory)")
+  .option("--timings", "Log how long each stage takes and show HyperFrames phase timings")
   .option("--build-dir <dir>")
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers: string }) => {
-    print(await renderSequence(path, { ...o, workers: Number(o.workers), log }));
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean }) => {
+    print(await renderSequence(path, { ...o, workers: o.workers ? Number(o.workers) : undefined, log }));
   });
 
 program
