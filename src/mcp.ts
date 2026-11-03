@@ -12,6 +12,7 @@ import { Driver } from "./drive/index.js";
 import { screenshot } from "./drive/see.js";
 import { locate, openBrowser, waitForWeb, withPage } from "./drive/web.js";
 import { detectBriefEnv } from "./brief/detect.js";
+import { checkForUpdate, updateCommand } from "./update/index.js";
 import { elicitBrief } from "./brief/elicit.js";
 import { briefAnswers, rememberBrief, requireBrief, resetBrief } from "./brief/gate.js";
 import { type Answers, applyAnswers, askView, buildBrief, guidance, nextBatch } from "./brief/questions.js";
@@ -378,6 +379,16 @@ server.registerTool(
       }),
     ),
   ),
+);
+
+server.registerTool(
+  "update_check",
+  {
+    description:
+      "Say whether a newer ScreenPilot release exists (asks GitHub; changes nothing). status up-to-date, available or blocked (a small update is not possible: the reason and the full download link are included). " +
+      "To update, tell the user to run the returned command in a terminal themselves; never run it for them. They restart their AI apps afterwards.",
+  },
+  safe(async () => text({ ...(await checkForUpdate()), command: updateCommand() })),
 );
 
 server.registerTool(
