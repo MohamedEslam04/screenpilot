@@ -26,6 +26,7 @@ import { renderSequence, validateSequence } from "./sequence/index.js";
 import { sequenceJsonSchema } from "./sequence/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
+import { exportScript, importAudio } from "./voice/import.js";
 import { APP, APP_TITLE, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { getDesktop } from "./platform/index.js";
@@ -349,6 +350,28 @@ program
     } finally {
       await provider.close?.();
     }
+  });
+
+program
+  .command("script")
+  .description("Write the narration as a script to paste into an external text-to-speech site")
+  .argument("<storyboard>")
+  .option("-o, --out <file>", "Script file (default: <storyboard>.script.md next to the storyboard)")
+  .action(async (path: string, o: { out?: string }) => {
+    print(await exportScript(path, o.out));
+  });
+
+program
+  .command("split-audio")
+  .description("Cut one recording of the whole script into a file per narration line (at the pauses) and attach them to the storyboard")
+  .argument("<audio>", "Audio file downloaded from the text-to-speech site")
+  .option("--storyboard <file>", "Storyboard whose narration lines the audio belongs to; each line's `audio` is set")
+  .option("--lines <n>", "Number of lines, when there is no storyboard", Number)
+  .option("-o, --out <dir>", "Folder for the per-line files (default: narration-audio next to the storyboard)")
+  .option("--min-silence <s>", "Shortest pause that counts as a line break", Number, 0.4)
+  .option("--noise <dB>", "Level under which sound counts as silence", Number, -35)
+  .action(async (audio: string, o: { storyboard?: string; lines?: number; out?: string; minSilence: number; noise: number }) => {
+    print(await importAudio(audio, { storyboard: o.storyboard, lines: o.lines, out: o.out, minSilence: o.minSilence, noiseDb: o.noise }));
   });
 
 program

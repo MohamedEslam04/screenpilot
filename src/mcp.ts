@@ -28,6 +28,7 @@ import { type PerformResult, performTake, resolveTarget, TakeError } from "./tak
 import { TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
+import { exportScript, importAudio } from "./voice/import.js";
 import { APP, APP_TITLE, named, OUTPUT_ENV, PERFORM_TIMEOUT_ENV, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { findWindow, getDesktop } from "./platform/index.js";
@@ -124,7 +125,7 @@ const INSTRUCTIONS = `${APP_TITLE} makes screen videos. Typical loops:
 Design every video for its purpose; there is no house style. Before rendering, decide who it's for and where it will be shown, then set the storyboard to match: output size (1920x1080 for YouTube/README/slides, 1080x1920 for Reels/TikTok/Shorts, 1080x1080 for feeds), theme (background, padding, radius, accent, font, caption colors), theme.fonts (any Google Fonts), theme.css (your own CSS for captions, cards, highlights; storyboard_schema lists the classes) and text motion (theme.motion.captions / .cards, or motion per caption: in/out presets fade, rise, drop, slide-left, slide-right, pop, zoom, blur, wipe, words, lines, none; duration, any GSAP ease, stagger). Match the product's brand when you can see it (colors and type from its site or app). Pace and wording follow the audience: short punchy captions for social, calm explanatory ones for tutorials, bilingual lines ("English\nعربي") when asked. Defaults are only a fallback.
 Choose the shot the same way: which monitors to record (record_start screens / take "screens": one, several or "all") and what the camera shows: "window" follows the app in use (clean product demos), "screen" the whole monitor (OS-level how-tos, context matters), "all" every monitor side by side (work that spans screens, e.g. code on one and the app on the other). Switch per moment with view steps / storyboard views, and zoom only where detail matters.
 To put another recording in the middle of a video without re-recording the rest: write a sequence.json {parts: [{storyboard, from?, to?, transition?}]} (sequence_schema, sequence_validate, sequence_render). Each part is a full storyboard; from/to are source seconds of that storyboard, so the same demo twice ({to: 42}, the feature, {from: 42}) inserts the feature at second 42. Give the storyboards a shared "extends" base so theme, voice and size match. Storyboards also take cards (chapter cards), overlays (logo/image/video), music.duck and segment volume/mute; render takes from/to (output seconds, review one window fast) and formats (e.g. ["16:9","9:16"]).
-Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). Free offline voices: voice.provider "local" with name voicetut:Sarah (Egyptian Arabic and English) or namaa (Egyptian Arabic); voices with provider "local" lists what is installed. If none is installed and the user wants one, tell them to run "screenpilot voice-setup voicetut" in a terminal (about 10 GB; do not start it yourself). Command voices (any program) are defined by the user in voices.json; you cannot add them in a storyboard. The camera frames the window in use by default. You can run the whole loop yourself: drive live, write the take, perform, render, check_output. If a person is present, ask them not to touch the mouse while you drive; moving it stops the action with a message, and resume carries on from where the pointer is. For unattended runs start the server with SCREENPILOT_INTERRUPT=off. Run doctor first on a new machine.`;
+Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). Free offline voices: voice.provider "local" with name voicetut:Sarah (Egyptian Arabic and English) or namaa (Egyptian Arabic); voices with provider "local" lists what is installed. If none is installed and the user wants one, tell them to run "screenpilot voice-setup voicetut" in a terminal (about 10 GB; do not start it yourself). Command voices (any program) are defined by the user in voices.json; you cannot add them in a storyboard. For a better voice than the built-in ones, the user can make the audio on a web text-to-speech site: script_export writes the script to paste, the user generates ONE audio file (blank line between lines) and gives it back, then audio_import cuts it per line and sets narration[].audio; render as usual. Warn that free plans have limits and may forbid commercial use. The camera frames the window in use by default. You can run the whole loop yourself: drive live, write the take, perform, render, check_output. If a person is present, ask them not to touch the mouse while you drive; moving it stops the action with a message, and resume carries on from where the pointer is. For unattended runs start the server with SCREENPILOT_INTERRUPT=off. Run doctor first on a new machine.`;
 
 const server = new McpServer({ name: APP, title: APP_TITLE, version: VERSION }, { instructions: INSTRUCTIONS });
 
@@ -265,6 +266,51 @@ server.registerTool(
       throw err;
     }
   }),
+);
+
+server.registerTool(
+  "script_export",
+  {
+    description:
+      "Write the storyboard's narration as a script file the user can paste into an external text-to-speech site (for a better voice than the built-in ones). " +
+      "Returns the file, the language and the text to paste. Tell the user to generate ONE audio file with a blank line between lines, download it, " +
+      "and give it back: then call audio_import. Free sites often limit characters or requests, and some forbid commercial use: say so.",
+    inputSchema: {
+      storyboard: z.string().describe("Path to storyboard.json"),
+      out: z.string().optional().describe("Script file (default: <storyboard>.script.md)"),
+    },
+  },
+  safe(async ({ storyboard, out }) => text(await exportScript(resolve(storyboard), out && resolve(out)))),
+);
+
+server.registerTool(
+  "audio_import",
+  {
+    description:
+      "Put audio the user made elsewhere on the video. Cuts one recording of the whole script into a file per narration line at the pauses, " +
+      "and sets `audio` on each line of the storyboard (a line with `audio` plays that file instead of a voice). " +
+      "Fails with the number of pauses found when it does not match the lines; then ask for a longer pause between lines or lower min_silence. " +
+      "Next: validate, render quality draft. For one file per line, set narration[].audio yourself instead.",
+    inputSchema: {
+      audio: z.string().describe("Audio file with all the lines (mp3, wav, m4a...)"),
+      storyboard: z.string().optional().describe("Storyboard to attach the files to"),
+      lines: z.number().int().positive().optional().describe("Number of lines when there is no storyboard"),
+      out: z.string().optional().describe("Folder for the per-line files"),
+      min_silence: z.number().positive().optional().describe("Shortest pause that counts, seconds (default 0.4)"),
+      noise_db: z.number().optional().describe("Silence level in dB (default -35)"),
+    },
+  },
+  safe(async ({ audio, storyboard, lines, out, min_silence, noise_db }) =>
+    text(
+      await importAudio(resolve(audio), {
+        storyboard: storyboard && resolve(storyboard),
+        lines,
+        out: out && resolve(out),
+        minSilence: min_silence,
+        noiseDb: noise_db,
+      }),
+    ),
+  ),
 );
 
 server.registerTool(

@@ -11,7 +11,8 @@ import { buildTimeline, planNarrationHolds, type Timeline } from "../storyboard/
 import { run } from "../util/exec.js";
 import { makeTimer } from "../util/timing.js";
 import { ffmpegFilterScriptFlag, probeVideo, type VideoInfo } from "../util/media.js";
-import { synthesizeLines } from "../voice/index.js";
+import { externalClip } from "../voice/external.js";
+import { synthesizeLines, type VoiceClip } from "../voice/index.js";
 import { buildCutArgs, buildCutFilter } from "./cut.js";
 import { draftFps } from "./draft.js";
 import { renderHtml } from "./html.js";
@@ -64,17 +65,21 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
 
   // 1. Voice: real durations decide the pacing.
   log(`voice: ${sb.narration.length} line(s)`);
-  const clips = await time("voice", () =>
-    synthesizeLines(
-      sb.voice.provider,
-      sb.narration.map((l) => ({ text: l.text, voice: l.voice ?? sb.voice.name, rate: sb.voice.rate })),
-      join(opts.cacheDir ?? join(baseDir, CACHE_DIR), "voice"),
-    ),
-  );
+  const clips = await time("voice", async () => {
+    const lines = sb.narration.map((l) => ({ text: l.text, voice: l.voice ?? sb.voice.name, rate: sb.voice.rate }));
+    // Lines with their own audio file skip the voice; the others are synthesized together.
+    const spoken = sb.narration.flatMap((l, i) => (l.audio ? [] : [i]));
+    const made = await synthesizeLines(sb.voice.provider, spoken.map((i) => lines[i]!), join(opts.cacheDir ?? join(baseDir, CACHE_DIR), "voice"));
+    const all: VoiceClip[] = [];
+    spoken.forEach((i, k) => (all[i] = made[k]!));
+    for (const [i, l] of sb.narration.entries()) if (l.audio) all[i] = await externalClip(lines[i]!, resolve(baseDir, l.audio), i);
+    return all;
+  });
   const narration = await Promise.all(
     sb.narration.map(async (l, i) => {
       const clip = clips[i]!;
-      const src = `voice/${basename(clip.file)}`;
+      // Ready-made files keep their extension but get a per-line name, so two "01.mp3" in different folders do not collide.
+      const src = l.audio ? `voice/ext-${i}${extname(clip.file).toLowerCase()}` : `voice/${basename(clip.file)}`;
       await copyFile(clip.file, join(buildDir, src));
       return { ...clip, at: l.at, caption: l.caption ?? sb.voice.subtitles, src };
     }),
