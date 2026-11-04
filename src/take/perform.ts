@@ -4,14 +4,17 @@ import { readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
+import { a11yFind, a11yWait, launchEnv } from "../a11y/index.js";
 import { analyze } from "../analyze/index.js";
 import { Driver, type DriverAction } from "../drive/index.js";
+import { describeError, type Disposition, TargetError } from "../drive/errors.js";
 import { findWindow } from "../platform/index.js";
 import { locate, openBrowser, waitForWeb, withPage } from "../drive/web.js";
 import { initStoryboard } from "../init.js";
 import type { InputEvent } from "../record/events.js";
 import { type ActiveRecording, type RecordResult, startRecording } from "../record/index.js";
 import type { Rect } from "../record/input/types.js";
+import type { WindowInfo } from "../platform/types.js";
 import { normalizeEvents } from "../record/normalize.js";
 import { synthesizeLines } from "../voice/index.js";
 import { openWithDefaultApp } from "./open.js";
@@ -37,6 +40,8 @@ export interface PerformResult {
 }
 
 export class TakeError extends Error {
+  /** Error code and what is safe to do next, when the cause carries them (target errors do). */
+  readonly info: (Disposition & { code?: string; candidates?: string[] }) | undefined;
   constructor(
     readonly index: number,
     readonly step: Step,
@@ -44,6 +49,7 @@ export class TakeError extends Error {
     readonly partial?: PerformResult,
   ) {
     super(`Step ${index + 1} (${Object.keys(step)[0]}) failed: ${cause.message}`);
+    this.info = describeError(cause);
   }
 }
 
@@ -197,13 +203,32 @@ interface StepContext {
 
 /** Where a take/MCP target is on the desktop (global logical px). */
 export async function resolveTarget(t: Target, d: Driver): Promise<{ x: number; y: number }> {
+  if ("a11y" in t) {
+    const m = await a11yFind(d.desktop, t.a11y);
+    return { x: m.cx, y: m.cy };
+  }
   if ("web" in t) return locate(t.web, d);
   if ("window" in t) {
-    const w = findWindow(await d.desktop.listWindows(), t.window);
-    if (!w) throw new Error(`No window matching "${t.window}"`);
+    const windows = await d.desktop.listWindows();
+    const w = pickWindow(windows, t.window);
+    if (!w) throw windowNotFound(windows, t.window);
     return { x: w.x + t.x * w.w, y: w.y + t.y * w.h };
   }
   return d.toGlobal(t);
+}
+
+/** The window a match refers to: of several, the focused one wins, else the first. */
+export function pickWindow(windows: WindowInfo[], match: string): WindowInfo | undefined {
+  const m = match.toLowerCase();
+  const byClass = windows.filter((w) => w.resourceClass.toLowerCase().includes(m));
+  const hits = byClass.length ? byClass : windows.filter((w) => w.caption.toLowerCase().includes(m));
+  return hits.find((w) => w.active) ?? hits[0];
+}
+
+/** "No window matching": says what windows there are, so the next try can match. */
+export function windowNotFound(windows: WindowInfo[], match: string): TargetError {
+  const have = windows.slice(0, 10).map((w) => `${w.resourceClass} "${w.caption.slice(0, 50)}"`);
+  return new TargetError("WINDOW_NOT_FOUND", `No window matching "${match}"${have.length ? `. Open windows: ${have.join("; ")}` : " (this desktop lists no windows)"}`, have);
 }
 
 const expandHome = (s: string) => (s.startsWith("~/") ? join(homedir(), s.slice(2)) : s);
@@ -244,7 +269,8 @@ async function runStep(step: Step, { driver: d, log, baseDir }: StepContext): Pr
     // (a `say` step also has an optional boolean `wait`; it never reaches here)
     await sleep(step.wait * 1000);
   } else if ("waitFor" in step) {
-    await waitForWeb(step.waitFor.web, (step.waitFor.timeout ?? 30) * 1000);
+    if ("a11y" in step.waitFor) await a11yWait(d.desktop, step.waitFor.a11y, (step.waitFor.timeout ?? 30) * 1000);
+    else await waitForWeb(step.waitFor.web, (step.waitFor.timeout ?? 30) * 1000);
   } else if ("waitForWindow" in step) {
     const deadline = Date.now() + (step.waitForWindow.timeout ?? 15) * 1000;
     while (!findWindow(await d.desktop.listWindows(), step.waitForWindow.match)) {
@@ -252,19 +278,20 @@ async function runStep(step: Step, { driver: d, log, baseDir }: StepContext): Pr
       await sleep(300);
     }
   } else if ("focus" in step) {
-    const w = findWindow(await d.desktop.listWindows(), step.focus.match);
-    if (!w) throw new Error(`No window matching "${step.focus.match}"`);
+    const windows = await d.desktop.listWindows();
+    const w = pickWindow(windows, step.focus.match);
+    if (!w) throw windowNotFound(windows, step.focus.match);
     const s = step.focus.screen ? d.screens().find((x) => x.name === step.focus.screen) : undefined;
     await d.desktop.focusWindow(w.id, s ? { screen: s.name } : undefined);
     await sleep(350);
   } else if ("open" in step) {
     const target = /^[a-z][a-z0-9+.-]+:\/\//i.test(step.open) ? step.open : resolve(baseDir, expandHome(step.open));
     log(`open: ${target}`);
-    openWithDefaultApp(target);
+    openWithDefaultApp(target, launchEnv());
   } else if ("run" in step) {
     const [cmd, ...args] = step.run.map(expandHome);
     log(`run: ${cmd}`);
-    spawn(cmd!, args, { cwd: baseDir, detached: true, stdio: "ignore" }).unref();
+    spawn(cmd!, args, { cwd: baseDir, detached: true, stdio: "ignore", env: launchEnv() }).unref();
   }
 }
 

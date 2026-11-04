@@ -249,6 +249,7 @@ export async function doctor(opts: { input?: boolean } = {}): Promise<DoctorRepo
     await add("can record (native)", () => recordSupport(id));
     await add("can drive (input injection)", () => driveSupport(id));
     await add("window control", () => windowSupport(id));
+    await add("accessibility tree", async () => (await import("./a11y/index.js")).a11yStatus(id));
     await add("pointer logging", () => pointerSupport(id));
   }
   await add("windows", async () => {

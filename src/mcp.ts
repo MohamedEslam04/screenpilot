@@ -6,7 +6,9 @@ import { basename, dirname, join, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { a11yFindAll, a11yTree, a11yWait } from "./a11y/index.js";
 import { analyze } from "./analyze/index.js";
+import { describeError } from "./drive/errors.js";
 import { audit, checkAppAllowed, checkEnvAllowed } from "./drive/guard.js";
 import { Driver } from "./drive/index.js";
 import { screenshot } from "./drive/see.js";
@@ -30,7 +32,7 @@ import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { renderSequence, validateSequence } from "./sequence/index.js";
 import { sequenceJsonSchema } from "./sequence/schema.js";
 import { type PerformResult, performTake, resolveTarget, TakeError } from "./take/perform.js";
-import { TargetSchema, takeJsonSchema } from "./take/schema.js";
+import { A11yQuerySchema, TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
 import { exportScript, importAudio } from "./voice/import.js";
@@ -53,10 +55,12 @@ type Result = { content: Content[]; isError?: boolean };
 
 const json = (data: unknown): string => (typeof data === "string" ? data : JSON.stringify(data, null, 2));
 const text = (data: unknown): Result => ({ content: [{ type: "text", text: json(data) }] });
-const fail = (err: unknown): Result => ({
-  content: [{ type: "text", text: err instanceof Error ? err.message : String(err) }],
-  isError: true,
-});
+const fail = (err: unknown): Result => {
+  const message = err instanceof Error ? err.message : String(err);
+  // Target errors say whether anything was sent and whether retrying is safe.
+  const info = describeError(err);
+  return { content: [{ type: "text", text: info ? `${message}\n${JSON.stringify({ code: info.code, delivery: info.delivery, retry: info.retry })}` : message }], isError: true };
+};
 const image = async (file: string): Promise<Content> => ({
   type: "image",
   data: (await readFile(file)).toString("base64"),
@@ -116,7 +120,7 @@ async function getScreens(): Promise<ScreenInfo[]> {
 const DRIVE_NOTE =
   "Coordinates are normalized 0..1 per monitor (x from left, y from top). Take a screenshot first, act, then screenshot again to verify. " +
   "This uses the REAL mouse and keyboard. If a person is at the machine, ask them not to touch the mouse (moving it stops the action; call resume to carry on). Unattended, set SCREENPILOT_INTERRUPT=off. " +
-  "Prefer {web: selector} targets inside the demo browser (browser_open). " +
+  "Prefer {web: selector} targets inside the demo browser (browser_open) and {a11y: {role, name}} targets for native apps (read the UI with a11y_tree first). " +
   "The first use may need a person to approve a remote-control dialog (once, on Wayland; the approval is saved); on macOS the AI app needs Accessibility and Screen Recording permission (errors say where). " +
   "On macOS shortcuts use cmd (e.g. cmd+c), not ctrl. " +
   "Run doctor to see what this desktop supports: on GNOME/other Wayland there is no window control (use {screen, x, y} targets only).";
@@ -130,7 +134,7 @@ const INSTRUCTIONS = `${APP_TITLE} makes screen videos. FIRST, for every new vid
 Design every video for its purpose; there is no house style. Before rendering, decide who it's for and where it will be shown, then set the storyboard to match: output size (1920x1080 for YouTube/README/slides, 1080x1920 for Reels/TikTok/Shorts, 1080x1080 for feeds), theme (background, padding, radius, accent, font, caption colors), theme.fonts (any Google Fonts), theme.css (your own CSS for captions, cards, highlights; storyboard_schema lists the classes) and text motion (theme.motion.captions / .cards, or motion per caption: in/out presets fade, rise, drop, slide-left, slide-right, pop, zoom, blur, wipe, words, lines, none; duration, any GSAP ease, stagger). Match the product's brand when you can see it (colors and type from its site or app). Pace and wording follow the audience: short punchy captions for social, calm explanatory ones for tutorials, bilingual lines ("English\nعربي") when asked. Defaults are only a fallback.
 Choose the shot the same way: which monitors to record (record_start screens / take "screens": one, several or "all") and what the camera shows: "window" follows the app in use (clean product demos), "screen" the whole monitor (OS-level how-tos, context matters), "all" every monitor side by side (work that spans screens, e.g. code on one and the app on the other). Switch per moment with view steps / storyboard views, and zoom only where detail matters.
 To put another recording in the middle of a video without re-recording the rest: write a sequence.json {parts: [{storyboard, from?, to?, transition?}]} (sequence_schema, sequence_validate, sequence_render). Each part is a full storyboard; from/to are source seconds of that storyboard, so the same demo twice ({to: 42}, the feature, {from: 42}) inserts the feature at second 42. Give the storyboards a shared "extends" base so theme, voice and size match. Storyboards also take cards (chapter cards), overlays (logo/image/video), music.duck and segment volume/mute; render takes from/to (output seconds, review one window fast) and formats (e.g. ["16:9","9:16"]).
-Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). Free offline voices: voice.provider "local" with name voicetut:Sarah (Egyptian Arabic and English) or namaa (Egyptian Arabic); voices with provider "local" lists what is installed. If none is installed and the user wants one, tell them to run "screenpilot voice-setup voicetut" in a terminal (about 10 GB; do not start it yourself). Command voices (any program) are defined by the user in voices.json; you cannot add them in a storyboard. For a better voice than the built-in ones, the user can make the audio on a web text-to-speech site: script_export writes the script to paste, the user generates ONE audio file (blank line between lines) and gives it back, then audio_import cuts it per line and sets narration[].audio; render as usual. Warn that free plans have limits and may forbid commercial use. The camera frames the window in use by default. You can run the whole loop yourself: drive live, write the take, perform, render, check_output. If a person is present, ask them not to touch the mouse while you drive; moving it stops the action with a message, and resume carries on from where the pointer is. For unattended runs start the server with SCREENPILOT_INTERRUPT=off. Run doctor first on a new machine.`;
+Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, {a11y: {role, name}} for a control in a native app (a11y_tree lists them; Linux AT-SPI, Qt apps must be launched with QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1), or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). Free offline voices: voice.provider "local" with name voicetut:Sarah (Egyptian Arabic and English) or namaa (Egyptian Arabic); voices with provider "local" lists what is installed. If none is installed and the user wants one, tell them to run "screenpilot voice-setup voicetut" in a terminal (about 10 GB; do not start it yourself). Command voices (any program) are defined by the user in voices.json; you cannot add them in a storyboard. For a better voice than the built-in ones, the user can make the audio on a web text-to-speech site: script_export writes the script to paste, the user generates ONE audio file (blank line between lines) and gives it back, then audio_import cuts it per line and sets narration[].audio; render as usual. Warn that free plans have limits and may forbid commercial use. The camera frames the window in use by default. You can run the whole loop yourself: drive live, write the take, perform, render, check_output. If a person is present, ask them not to touch the mouse while you drive; moving it stops the action with a message, and resume carries on from where the pointer is. For unattended runs start the server with SCREENPILOT_INTERRUPT=off. Run doctor first on a new machine.`;
 
 const server = new McpServer({ name: APP, title: APP_TITLE, version: VERSION }, { instructions: INSTRUCTIONS });
 
@@ -615,7 +619,8 @@ server.registerTool(
   {
     description:
       "Move the real pointer to a target and click. Target is one of {screen?, x, y} (monitor-normalized), {web: selector} " +
-      `(Playwright selector in the demo browser, most reliable) or {window, x, y} (normalized inside a window). ${DRIVE_NOTE}`,
+      "(Playwright selector in the demo browser, most reliable), {a11y: {role, name, app?, nth?}} (a control in a native app, found through the accessibility tree: look it up with a11y_find first) " +
+      `or {window, x, y} (normalized inside a window). ${DRIVE_NOTE}`,
     inputSchema: {
       target: TargetSchema,
       button: z.enum(["left", "right", "middle"]).optional(),
@@ -719,20 +724,67 @@ server.registerTool(
 );
 
 server.registerTool(
+  "a11y_tree",
+  {
+    description:
+      "Read a native app's UI as data through the OS accessibility tree (Linux AT-SPI): a nested list of controls with role, name, states and a rectangle in global screen pixels (x, y, w, h). " +
+      "Cheaper and more exact than reading a screenshot. Use it to find the role and name for an {a11y} target. Default scope: the focused window's app. " +
+      "Qt apps only appear if they were launched with QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 (apps started by a take's run/open steps get it). Apps that draw their own UI (some Electron/GPU apps) expose little. Read-only.",
+    inputSchema: {
+      app: z.string().optional().describe("Window class or title contains. Default: the focused window's app"),
+      interactiveOnly: z.boolean().optional().describe("Only controls and what leads to them. Default true"),
+      maxDepth: z.number().int().min(1).max(40).optional().describe("Default 20"),
+      maxNodes: z.number().int().min(10).max(10000).optional().describe("Default 1500"),
+    },
+  },
+  safe(async ({ app, interactiveOnly, maxDepth, maxNodes }) => {
+    const r = await a11yTree(await getDesktop(), { app, interactiveOnly, maxDepth, maxNodes });
+    const rect = (n: { x: number; y: number; w: number; h: number }) => [Math.round(n.x), Math.round(n.y), Math.round(n.w), Math.round(n.h)];
+    type N = { role: string; name: string; x: number; y: number; w: number; h: number; states: string[]; children: N[] };
+    const shape = (n: N): unknown => ({ role: n.role, ...(n.name ? { name: n.name } : {}), rect: rect(n), ...(n.states.length ? { states: n.states } : {}), ...(n.children.length ? { children: n.children.map(shape) } : {}) });
+    return text({
+      windows: r.windows.map((w) => ({ app: w.app, title: w.title, positionKnown: w.placed, ...(w.truncated ? { truncated: true } : {}), tree: shape(w.root) })),
+      warnings: r.warnings,
+    });
+  }),
+);
+
+server.registerTool(
+  "a11y_find",
+  {
+    description:
+      "Find controls in a native app by role and name through the accessibility tree and return each rectangle in global screen pixels plus its centre (cx, cy). " +
+      "Use it to check an {a11y: {role, name}} target before clicking. One result means the target is safe; several mean you must add nth or a more specific name (a click refuses to guess). Read-only.",
+    inputSchema: A11yQuerySchema.shape,
+  },
+  safe(async (q) => {
+    const desktop = await getDesktop();
+    const all = await a11yFindAll(desktop, q);
+    return text({ count: all.length, matches: all.slice(0, 20), ...(all.length > 20 ? { note: "first 20 shown" } : {}), ...(all.length === 1 ? {} : all.length ? { hint: "several matches: add nth (1-based), exact, or a more specific name" } : { hint: "no match: read the UI with a11y_tree" }) });
+  }),
+);
+
+server.registerTool(
   "wait_for",
   {
     description:
       "Wait until something shows up, so you can verify an action worked without guessing with sleeps: a window (class or title contains `window`) or an element in the demo browser (Playwright selector `web`). " +
+      "or a control in a native app (`a11y`, found through the accessibility tree). " +
       "Give exactly one of them. Fails with an error when the timeout passes. Read-only.",
     inputSchema: {
       window: z.string().optional().describe("Window class or title substring"),
       web: z.string().optional().describe("Playwright selector in the demo browser"),
+      a11y: A11yQuerySchema.optional().describe("Control in a native app: {role, name, app?}"),
       timeout: z.number().positive().max(120).optional().describe("Seconds, default 15"),
     },
   },
-  safe(async ({ window, web, timeout }) => {
-    if (!!window === !!web) throw new Error("Give exactly one of window or web.");
+  safe(async ({ window, web, a11y, timeout }) => {
+    if (Number(!!window) + Number(!!web) + Number(!!a11y) !== 1) throw new Error("Give exactly one of window, web or a11y.");
     const ms = (timeout ?? 15) * 1000;
+    if (a11y) {
+      const m = await a11yWait(await getDesktop(), a11y, ms);
+      return text({ found: { a11y: { role: m.role, name: m.name, app: m.app }, x: m.cx, y: m.cy } });
+    }
     if (web) {
       await waitForWeb(web, ms);
       return text({ found: { web } });
@@ -784,7 +836,7 @@ server.registerTool(
   "take_schema",
   {
     description:
-      "JSON Schema of take.json (a demo the agent performs on the real desktop while recording: say/caption/view/browser/goto/move/click/drag/type/key/scroll/wait/waitFor/waitForWindow/focus/open/run). Read it before writing a take.",
+      "JSON Schema of take.json (a demo the agent performs on the real desktop while recording: say/caption/view/browser/goto/move/click/drag/type/key/scroll/wait/waitFor/waitForWindow/focus/open/run; targets: screen, web, window, a11y). Read it before writing a take.",
   },
   safe(async () => text(takeJsonSchema())),
 );
@@ -815,7 +867,7 @@ server.registerTool(
       return text(r);
     } catch (err) {
       if (err instanceof TakeError) {
-        const result = text({ failedStep: { index: err.index, step: err.step }, error: err.cause.message, partial: err.partial });
+        const result = text({ failedStep: { index: err.index, step: err.step }, error: err.cause.message, ...(err.info ?? {}), partial: err.partial });
         return { ...result, isError: true };
       }
       throw err;

@@ -15,7 +15,9 @@ import { Driver } from "./drive/index.js";
 import { screenshot } from "./drive/see.js";
 import { locate, openBrowser } from "./drive/web.js";
 import type { ScreenInfo } from "./record/input/types.js";
-import { performTake, TakeError } from "./take/perform.js";
+import { a11yFindAll, a11yTree } from "./a11y/index.js";
+import { parseA11yTarget } from "./a11y/parse.js";
+import { performTake, resolveTarget, TakeError } from "./take/perform.js";
 import { takeJsonSchema } from "./take/schema.js";
 import { parseFormats } from "./render/formats.js";
 import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
@@ -253,12 +255,13 @@ drive
   .action(async (t: string) => withDriver((d) => d.moveTo(target(t))));
 drive
   .command("click")
-  .argument("<target>", "screen,x,y or web:<selector>")
+  .argument("<target>", "screen,x,y, web:<selector> or a11y:<role>:<name> (e.g. a11y:button:Save; a11y::Save = any role)")
   .option("--button <b>", "left | right | middle", "left")
   .option("--count <n>", "1 = click, 2 = double", "1")
   .action(async (t: string, o: { button: "left" | "right" | "middle"; count: string }) =>
     withDriver(async (d) => {
       if (t.startsWith("web:")) await d.moveToGlobal(await locate(t.slice(4), d));
+      else if (t.startsWith("a11y:")) await d.moveToGlobal(await resolveTarget({ a11y: parseA11yTarget(t.slice(5)) }, d));
       else await d.moveTo(target(t));
       await d.click(undefined, { button: o.button, count: Number(o.count) });
     }),
@@ -271,6 +274,30 @@ drive
   .command("key")
   .argument("<combo>", 'e.g. "ctrl+l"')
   .action(async (combo: string) => withDriver((d) => d.key(combo)));
+
+const a11y = program.command("a11y").description("Read a native app's UI through the accessibility tree (Linux AT-SPI) and find controls for {a11y} targets");
+a11y
+  .command("tree")
+  .description("Controls of an app with role, name and rectangle in global pixels")
+  .option("--app <app>", "Window class or title contains (default: the focused window's app)")
+  .option("--all", "Include non-interactive elements")
+  .option("--max-depth <n>", "Tree depth", "20")
+  .action(async (o: { app?: string; all?: boolean; maxDepth: string }) => {
+    const desktop = await getDesktop();
+    print(await a11yTree(desktop, { app: o.app, interactiveOnly: !o.all, maxDepth: Number(o.maxDepth) }));
+    process.exit(0);
+  });
+a11y
+  .command("find")
+  .description("Controls matching a role and/or name")
+  .argument("<spec>", "<role>:<name>, e.g. button:Save, or just a name")
+  .option("--app <app>", "Window class or title contains (default: the focused window's app)")
+  .option("--exact", "Match the whole name")
+  .action(async (spec: string, o: { app?: string; exact?: boolean }) => {
+    const desktop = await getDesktop();
+    print(await a11yFindAll(desktop, { ...parseA11yTarget(spec), app: o.app, exact: o.exact }));
+    process.exit(0);
+  });
 
 program
   .command("analyze")
