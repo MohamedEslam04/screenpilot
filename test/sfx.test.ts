@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderHtml } from "../src/render/html.js";
 import { buildPlan } from "../src/render/plan.js";
+import { lintStyle } from "../src/storyboard/lint.js";
 import { BUILTIN_SFX, builtinSfxInput, buildSfxMix, planSfx, sfxInput, typingPresses } from "../src/render/sfx.js";
 import { windowPlan } from "../src/render/window.js";
 import { SfxSchema, SoundsSchema, StoryboardSchema, TypingSchema } from "../src/storyboard/schema.js";
@@ -212,5 +213,20 @@ describe("sfx in the plan", () => {
   it("is trimmed by a partial render like any audio item", () => {
     const w = windowPlan(buildPlan({ ...base, sfxSrc: "sfx.wav" }), { from: 3, to: 6 });
     expect(w.audio).toEqual([{ src: "sfx.wav", start: 0, duration: 3, volume: 1, mediaStart: 3 }]);
+  });
+});
+
+describe("lint for typing and sounds", () => {
+  const lint = (extra: Record<string, unknown>) => lintStyle(sbOf(extra));
+
+  it("warns when typing sounds are on but nothing is marked as typing", () => {
+    expect(lint({ sounds: { typing: true } }).some((m) => /sounds\.typing.*typing/.test(m))).toBe(true);
+    expect(lint({ sounds: { typing: true }, typing: [{ at: 1 }] })).toEqual([]);
+  });
+
+  it("warns about a typing span that makes no sound and shows nothing", () => {
+    expect(lint({ typing: [{ at: 1, dur: 2, text: "hi" }] }).some((m) => /typing\[0\].*nothing/.test(m))).toBe(true);
+    expect(lint({ typing: [{ at: 1, dur: 2, text: "hi", keycaps: true }] })).toEqual([]);
+    expect(lint({ sounds: { typing: true }, typing: [{ at: 1 }] })).toEqual([]);
   });
 });

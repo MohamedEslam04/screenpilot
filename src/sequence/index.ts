@@ -6,7 +6,7 @@ import { CACHE_DIR } from "../brand.js";
 import { renderStoryboard } from "../render/index.js";
 import { lintStoryboard, loadStoryboard, StoryboardError } from "../storyboard/load.js";
 import { clipStoryboard } from "../storyboard/clip.js";
-import type { Storyboard } from "../storyboard/schema.js";
+import { isBuiltinSfx, type Storyboard } from "../storyboard/schema.js";
 import { probeVideo } from "../util/media.js";
 import { makeTimer } from "../util/timing.js";
 import { concatParts, type OutputSize, probePart, type Quality } from "./concat.js";
@@ -90,6 +90,9 @@ async function clipPart(loaded: LoadedSequence, index: number, sb: Storyboard, b
 
 const abs = (baseDir: string, p: string) => (isAbsolute(p) ? p : resolve(baseDir, p));
 
+/** A sound is a built-in name (`builtin:pop`, or `key`, `click`... in `sounds`) or a file; only a file has a path. */
+const soundFile = (baseDir: string, p: string) => (p.startsWith("builtin:") || isBuiltinSfx(p) ? p : abs(baseDir, p));
+
 async function fileStamp(file: string | undefined): Promise<string> {
   if (!file || !existsSync(file)) return "-";
   const st = await stat(file);
@@ -117,6 +120,14 @@ export async function prepareSequence(path: string, opts: { buildDir?: string } 
       events: original.events === undefined ? undefined : abs(baseDir, original.events),
       music: original.music && { ...original.music, src: abs(baseDir, original.music.src) },
       overlays: original.overlays.map((o) => ({ ...o, src: abs(baseDir, o.src) })),
+      narration: original.narration.map((n) => (n.audio === undefined ? n : { ...n, audio: abs(baseDir, n.audio) })),
+      sfx: original.sfx.map((x) => ({ ...x, src: soundFile(baseDir, x.src) })),
+      sounds: original.sounds && {
+        ...original.sounds,
+        ...(typeof original.sounds.clicks === "string" ? { clicks: soundFile(baseDir, original.sounds.clicks) } : {}),
+        ...(typeof original.sounds.typing === "string" ? { typing: soundFile(baseDir, original.sounds.typing) } : {}),
+        ...(typeof original.sounds.cards === "string" ? { cards: soundFile(baseDir, original.sounds.cards) } : {}),
+      },
       output,
       intro: index === 0 ? original.intro : undefined,
       outro: index === last ? original.outro : undefined,
@@ -126,7 +137,10 @@ export async function prepareSequence(path: string, opts: { buildDir?: string } 
     const storyboard = join(dir, "storyboard.json");
     const text = JSON.stringify(sb, null, 2);
     await writeFile(storyboard, text);
-    const stamps = await Promise.all([sb.source, sb.events, sb.music?.src, ...sb.overlays.map((o) => o.src)].map(fileStamp));
+    const sounds = [sb.sounds?.clicks, sb.sounds?.typing, sb.sounds?.cards].filter((x): x is string => typeof x === "string");
+    const stamps = await Promise.all(
+      [sb.source, sb.events, sb.music?.src, ...sb.overlays.map((o) => o.src), ...sb.narration.map((n) => n.audio), ...sb.sfx.map((x) => x.src), ...sounds].map(fileStamp),
+    );
     const key = createHash("sha1").update(`${text}|${stamps.join("|")}`).digest("hex");
     const { transition } = loaded.seq.parts[index]!;
     parts.push({ index, dir, storyboard, output: join(dir, "part.mp4"), cacheDir: join(baseDir, CACHE_DIR), key, sb, transition });

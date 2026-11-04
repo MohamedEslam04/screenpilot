@@ -77,6 +77,32 @@ describe("prepareSequence", () => {
     expect(await readFile(join(dir, "demo.json"), "utf8")).toBe(before);
   });
 
+  it("makes the paths of narration audio, sound effects and custom sounds absolute too, so a part built in seq.build finds them", async () => {
+    const dir = await fixture();
+    await writeJson(join(dir, "demo.json"), {
+      source: "rec.mp4",
+      narration: [{ at: 0.5, text: "hi", audio: "voice/one.mp3" }, { at: 1, text: "plain" }],
+      sfx: [{ at: 1, src: "sounds/pop.wav" }, { at: 1.2, src: "builtin:ding" }],
+      sounds: { clicks: "sounds/tick.wav", typing: "key", cards: true },
+    });
+    const p = await prepareSequence(join(dir, "seq.json"));
+    const d = JSON.parse(await readFile(p.parts[0]!.storyboard, "utf8"));
+    expect(d.narration[0].audio).toBe(join(dir, "voice/one.mp3"));
+    expect(d.narration[1].audio).toBeUndefined();
+    expect(d.sfx.map((x: { src: string }) => x.src)).toEqual([join(dir, "sounds/pop.wav"), "builtin:ding"]);
+    expect(d.sounds).toMatchObject({ clicks: join(dir, "sounds/tick.wav"), typing: "key", cards: true });
+  });
+
+  it("rebuilds a part when one of its sound files changes", async () => {
+    const dir = await fixture();
+    await writeFile(join(dir, "tick.wav"), "a");
+    await writeJson(join(dir, "demo.json"), { source: "rec.mp4", sounds: { clicks: "tick.wav" } });
+    const a = await prepareSequence(join(dir, "seq.json"));
+    await writeFile(join(dir, "tick.wav"), "bbbb");
+    const b = await prepareSequence(join(dir, "seq.json"));
+    expect(b.parts[0]!.key).not.toBe(a.parts[0]!.key);
+  });
+
   it("lets the sequence override the output", async () => {
     const dir = await fixture();
     await writeJson(join(dir, "seq.json"), { output: { fps: 30 }, parts: [{ storyboard: "feature/feature.json" }] });
