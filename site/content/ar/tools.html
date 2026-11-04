@@ -91,7 +91,9 @@ summary: الأدوات التي يمنحها ScreenPilot لتطبيق الذك�
 <tr><td><code>windows</code></td><td>تعرض النوافذ المفتوحة: المعرّف والعنوان والصنف أو التطبيق وpid وهل هي نشطة والأبعاد والشاشة. فارغة على أنظمة سطح المكتب التي لا تتيح التحكم بالنوافذ (GNOME وsway)؛ استخدم أهداف الشاشة هناك.</td><td>لا شيء</td></tr>
 <tr><td><code>browser_open</code></td><td>تفتح متصفح العرض النظيف (له ملف تعريف خاص) أو تعيد استخدامه، وتضعه على شاشة. الخيار <code>app</code> يخفي شريط العنوان والتبويبات فلا يظهر شيء عن الجهاز. بعدها استخدم أهداف <code>{web: selector}</code> والأداة <code>web_locate</code>.</td><td><code>screen</code>, <code>url</code>, <code>app</code></td></tr>
 <tr><td><code>web_locate</code></td><td>تجد عنصرًا في متصفح العرض بمحدد Playwright (CSS أو <code>text=...</code> أو <code>role=...</code>) وتعيد مستطيله بإحداثيات الشاشة بالبكسل. استخدمها للتأكد من وجود الهدف قبل النقر.</td><td><code>selector</code></td></tr>
-<tr><td><code>wait_for</code></td><td>تنتظر حتى تظهر نافذة أو عنصر في المتصفح، لتتحقق من نجاح إجراء بدون تخمين مدة الانتظار. مرّر واحدًا فقط من <code>window</code> أو <code>web</code>. تفشل عند انتهاء المهلة.</td><td><code>window</code> أو <code>web</code>, <code>timeout</code> (بالثواني، الافتراضي 15، الأقصى 120)</td></tr>
+<tr><td><code>a11y_tree</code></td><td>تقرأ واجهة تطبيق أصلي كبيانات عبر شجرة إمكانية الوصول في النظام: عناصر متداخلة مع role وname وstates ومستطيل بإحداثيات الشاشة. أرخص وأدق من لقطة الشاشة. استخدمها لمعرفة role وname لهدف <code>{a11y}</code>. افتراضيًا تشمل تطبيق النافذة المركّز عليها وعناصر التحكم فقط. للقراءة فقط.</td><td><code>app</code>, <code>interactiveOnly</code> (الافتراضي true), <code>maxDepth</code> (20), <code>maxNodes</code> (1500)</td></tr>
+<tr><td><code>a11y_find</code></td><td>تجد عناصر التحكم حسب role وname وتعيد مستطيل كل عنصر ومركزه (<code>cx</code> و<code>cy</code>). نتيجة واحدة تعني أن الهدف آمن للنقر. وإذا تعددت النتائج فأضف <code>nth</code> أو اسمًا أدق. للقراءة فقط.</td><td><code>role</code>, <code>name</code>, <code>app</code>, <code>exact</code>, <code>nth</code></td></tr>
+<tr><td><code>wait_for</code></td><td>تنتظر حتى تظهر نافذة أو عنصر في المتصفح أو عنصر تحكم في تطبيق أصلي، لتتحقق من نجاح إجراء بدون تخمين مدة الانتظار. مرّر واحدًا فقط من <code>window</code> أو <code>web</code> أو <code>a11y</code>. تفشل عند انتهاء المهلة.</td><td><code>window</code> أو <code>web</code> أو <code>a11y</code>, <code>timeout</code> (بالثواني، الافتراضي 15، الأقصى 120)</td></tr>
 <tr><td><code>page_text</code></td><td>تقرأ التبويب الحالي في متصفح العرض كبيانات: العنوان URL والعنوان والنص المرئي. استخدمها لتعرف ما تقوله الصفحة بدل قراءة لقطة شاشة.</td><td><code>maxChars</code> (الافتراضي 4000)</td></tr>
 </tbody>
 </table>
@@ -112,13 +114,14 @@ summary: الأدوات التي يمنحها ScreenPilot لتطبيق الذك�
 </table>
 
 <h3 id="targets">الأهداف</h3>
-<p>الأدوات <code>click</code> و<code>drag</code> و<code>scroll</code> تأخذ هدفًا. له ثلاث صيغ:</p>
+<p>الأدوات <code>click</code> و<code>drag</code> و<code>scroll</code> تأخذ هدفًا. له أربع صيغ:</p>
 <ul>
 <li><code>{web: selector}</code>: عنصر في متصفح العرض بمحدد Playwright. هذه الصيغة الأكثر موثوقية.</li>
+<li><code>{a11y: {role, name, app, exact, nth}}</code>: عنصر تحكم في تطبيق أصلي، يُعثر عليه عبر شجرة إمكانية الوصول. مرّر <code>role</code> أو <code>name</code>. تحقق منه أولًا بـ <code>a11y_find</code>. راجع <a href="@guide/agent-drive.html#a11y">التطبيقات الأصلية</a>.</li>
 <li><code>{screen, x, y}</code>: نقطة على شاشة، مُطبَّعة بين 0 و1. الحقل <code>screen</code> اختياري.</li>
 <li><code>{window, x, y}</code>: نقطة داخل النافذة التي يحتوي صنفها أو عنوانها على النص، مُطبَّعة بين 0 و1.</li>
 </ul>
-<div class="note">على GNOME وغيره من أنظمة Wayland لا يوجد تحكم بالنوافذ. استخدم أهداف <code>{screen, x, y}</code> فقط هناك. نفّذ <code>doctor</code> لترى ما يدعمه سطح المكتب.</div>
+<div class="note">على GNOME وغيره من أنظمة Wayland لا يوجد تحكم بالنوافذ. استخدم أهداف <code>{screen, x, y}</code> هناك؛ يمكن قراءة عناصر <code>{a11y}</code> لكن لا يمكن النقر عليها. نفّذ <code>doctor</code> لترى ما يدعمه سطح المكتب.</div>
 
 <h3 id="perform">الـ takes</h3>
 <p>الـ take ملف <code>take.json</code> ينفّذه الوكيل على سطح المكتب الفعلي أثناء التسجيل.</p>
@@ -145,7 +148,8 @@ summary: الأدوات التي يمنحها ScreenPilot لتطبيق الذك�
 <table>
 <thead><tr><th>الأداة</th><th>وظيفتها</th><th>أهم المدخلات</th></tr></thead>
 <tbody>
-<tr><td><code>doctor</code></td><td>تفحص الجهاز وتعيد <code>{summary, checks}</code>: node وffmpeg وسطح المكتب والشاشات والنوافذ وOBS ومتصفح العرض والأصوات، ومنها فحص "local voice" الذي يُتخطّى إذا لم يُعدّ صوت محلي. لا تفشل أبدًا، فاقرأ التقرير. مع تفعيل <code>input</code> تختبر حقن الإدخال أيضًا وتحرّك المؤشر الفعلي لحظة.</td><td><code>input</code></td></tr>
+<tr><td><code>doctor</code></td><td>تفحص الجهاز وتعيد <code>{summary, checks}</code>: node وffmpeg وسطح المكتب والشاشات والنوافذ وOBS ومتصفح العرض والأصوات، ومنها فحص "accessibility tree" وفحص "local voice" الذي يُتخطّى إذا لم يُعدّ صوت محلي. لا تفشل أبدًا، فاقرأ التقرير. مع تفعيل <code>input</code> تختبر حقن الإدخال أيضًا وتحرّك المؤشر الفعلي لحظة.</td><td><code>input</code></td></tr>
 </tbody>
 </table>
 <p>نفّذ <code>doctor</code> أولًا على أي جهاز جديد.</p>
+<p>عندما يتعذّر حل هدف، ينتهي الخطأ بسطر JSON هو <code>{code, delivery, retry}</code>. راجع <a href="@guide/agent-drive.html#a11y-errors">أخطاء الأهداف</a>.</p>

@@ -145,4 +145,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 570d51b ("build(release): publish the app files and latest.json with every release", 2026-11-03).
+Docs synced to commit ef8fbb0 ("feat(a11y): macOS AX tree source and tests for window-target errors", 2026-11-04).

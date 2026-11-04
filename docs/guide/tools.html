@@ -117,7 +117,9 @@
 <tr><td><code>windows</code></td><td>Lists open windows: id, title, class or app, pid, whether active, geometry and monitor. Empty on desktops without window control (GNOME, sway); use screen targets there.</td><td>none</td></tr>
 <tr><td><code>browser_open</code></td><td>Opens, or reuses, the clean demo browser (its own profile) and places it on a monitor. <code>app</code> hides the address bar and tabs, so nothing about the machine shows. After that, use <code>{web: selector}</code> targets and <code>web_locate</code>.</td><td><code>screen</code>, <code>url</code>, <code>app</code></td></tr>
 <tr><td><code>web_locate</code></td><td>Finds an element in the demo browser by Playwright selector (CSS, <code>text=...</code>, <code>role=...</code>) and returns its rectangle in screen pixels. Use it to check that a target exists before you click.</td><td><code>selector</code></td></tr>
-<tr><td><code>wait_for</code></td><td>Waits until a window or a browser element shows up, so you can verify an action without guessing with sleeps. Give exactly one of <code>window</code> or <code>web</code>. It fails when the timeout passes.</td><td><code>window</code> or <code>web</code>, <code>timeout</code> (seconds, default 15, max 120)</td></tr>
+<tr><td><code>a11y_tree</code></td><td>Reads a native app's UI as data through the OS accessibility tree: nested controls with role, name, states and a rectangle in screen pixels. Cheaper and more exact than a screenshot. Use it to find the role and name for an <code>{a11y}</code> target. By default it covers the focused window's app and only controls. Read-only.</td><td><code>app</code>, <code>interactiveOnly</code> (default true), <code>maxDepth</code> (20), <code>maxNodes</code> (1500)</td></tr>
+<tr><td><code>a11y_find</code></td><td>Finds controls by role and name and returns each rectangle plus its centre (<code>cx</code>, <code>cy</code>). One result means the target is safe to click. Several mean you must add <code>nth</code> or a more specific name. Read-only.</td><td><code>role</code>, <code>name</code>, <code>app</code>, <code>exact</code>, <code>nth</code></td></tr>
+<tr><td><code>wait_for</code></td><td>Waits until a window, a browser element or a native control shows up, so you can verify an action without guessing with sleeps. Give exactly one of <code>window</code>, <code>web</code> or <code>a11y</code>. It fails when the timeout passes.</td><td><code>window</code>, <code>web</code> or <code>a11y</code>, <code>timeout</code> (seconds, default 15, max 120)</td></tr>
 <tr><td><code>page_text</code></td><td>Reads the demo browser's current tab as data: URL, title and visible text. Use it to check what a page says instead of reading a screenshot.</td><td><code>maxChars</code> (default 4000)</td></tr>
 </tbody>
 </table>
@@ -138,13 +140,14 @@
 </table>
 
 <h3 id="targets">Targets<a class="a" href="#targets" aria-label="Link to this section">#</a></h3>
-<p><code>click</code>, <code>drag</code> and <code>scroll</code> take a target. There are three forms:</p>
+<p><code>click</code>, <code>drag</code> and <code>scroll</code> take a target. There are four forms:</p>
 <ul>
 <li><code>{web: selector}</code>: an element in the demo browser, by Playwright selector. This is the most reliable form.</li>
+<li><code>{a11y: {role, name, app, exact, nth}}</code>: a control in a native app, found through the accessibility tree. Give a <code>role</code> or a <code>name</code>. Look it up with <code>a11y_find</code> first. See <a href="../guide/agent-drive.html#a11y">Native apps</a>.</li>
 <li><code>{screen, x, y}</code>: a point on a monitor, normalized 0..1. <code>screen</code> is optional.</li>
 <li><code>{window, x, y}</code>: a point inside the window whose class or title contains the text, normalized 0..1.</li>
 </ul>
-<div class="note">On GNOME and other Wayland desktops there is no window control. Use <code>{screen, x, y}</code> targets only there. Run <code>doctor</code> to see what the desktop supports.</div>
+<div class="note">On GNOME and other Wayland desktops there is no window control. Use <code>{screen, x, y}</code> targets there; <code>{a11y}</code> controls can be read but not clicked. Run <code>doctor</code> to see what the desktop supports.</div>
 
 <h3 id="perform">Takes<a class="a" href="#perform" aria-label="Link to this section">#</a></h3>
 <p>A take is a <code>take.json</code> that the agent performs on the real desktop while recording.</p>
@@ -171,10 +174,11 @@
 <table>
 <thead><tr><th>Tool</th><th>What it does</th><th>Key inputs</th></tr></thead>
 <tbody>
-<tr><td><code>doctor</code></td><td>Checks the machine and returns <code>{summary, checks}</code>: node, ffmpeg, desktop, monitors, windows, OBS, demo browser and voices, including a "local voice" check that is skipped when no local voice is set up. It never fails, so read the report. With <code>input</code> on, it also tests input injection and briefly moves the real pointer.</td><td><code>input</code></td></tr>
+<tr><td><code>doctor</code></td><td>Checks the machine and returns <code>{summary, checks}</code>: node, ffmpeg, desktop, monitors, windows, OBS, demo browser and voices, including an "accessibility tree" check and a "local voice" check that is skipped when no local voice is set up. It never fails, so read the report. With <code>input</code> on, it also tests input injection and briefly moves the real pointer.</td><td><code>input</code></td></tr>
 </tbody>
 </table>
 <p>Run <code>doctor</code> first on a new machine.</p>
+<p>When a target cannot be resolved, the error ends with a JSON line <code>{code, delivery, retry}</code>. See <a href="../guide/agent-drive.html#a11y-errors">Target errors</a>.</p>
 <nav class="pager" aria-label="Pager"><a href="cli.html" rel="prev"><small>Previous</small>Command line</a><a href="storyboard.html" rel="next"><small>Next</small>Storyboard reference</a></nav></article>
   <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#update-check">Updates</a><a href="#decisions">Decisions first</a><a href="#recording">Recording</a><a href="#looking">Looking at footage</a><a href="#storyboard">Storyboard</a><a href="#render-check">Render and check</a><a href="#sequence">Combine recordings</a><a href="#desktop">See and drive the desktop</a><a href="#diagnose">Diagnose</a></aside>
 </div></main>

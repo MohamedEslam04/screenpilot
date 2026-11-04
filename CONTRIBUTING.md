@@ -63,7 +63,7 @@ screenpilot picks a desktop backend by itself (`screenpilot doctor` shows which 
 |---|---|---|---|---|
 | **KDE Plasma, Wayland** (`kde`) | PipeWire portal streams + GStreamer | RemoteDesktop portal (approve once) | KWin scripts | KWin pointer; clicks need the `input` group |
 | **Any X11 session** (`x11`): GNOME on Xorg, Linux Mint Cinnamon/MATE/Xfce, KDE X11, ... | ffmpeg `x11grab` | XTest (any Unicode text, no clipboard or layout switch) | EWMH window manager | XQueryPointer + global hook |
-| **GNOME and other Wayland desktops** (`portal`) | PipeWire portal streams + GStreamer (asks once) | RemoteDesktop portal (approve once) | not available: focus/fit steps and `{web}` targets fail with a clear error; window-framed views fall back to monitor views | none (Wayland hides the pointer); performed takes still log their own clicks |
+| **GNOME and other Wayland desktops** (`portal`) | PipeWire portal streams + GStreamer (asks once) | RemoteDesktop portal (approve once) | not available: focus/fit steps and `{web}` targets fail with a clear error (`{a11y}` controls can be read but not clicked); window-framed views fall back to monitor views | none (Wayland hides the pointer); performed takes still log their own clicks |
 | **sway, Hyprland and other wlroots** (`portal`) | ScreenCast portal + GStreamer (asks once) | not available (no RemoteDesktop portal) | not available | none |
 | **Windows 10/11** (`windows`) | ffmpeg `gdigrab` | SendInput | Win32 | cursor polling + global hook |
 | **macOS 12+**, Apple Silicon and Intel (`macos`) | ffmpeg `avfoundation` (Screen Recording permission) | CGEvent (Accessibility permission) | Accessibility API | Quartz polling + global hook (Input Monitoring) |
@@ -190,7 +190,8 @@ Copy or symlink `skill/` to `~/.claude/skills/screenpilot` to give Claude Code t
 | `screenshot`, `windows` | See the desktop: per-monitor images (optional 0..1 grid) and the KWin window list |
 | `focus_window`, `pointer_move`, `click`, `drag`, `scroll`, `key`, `type_text` | Drive the real mouse and keyboard (coordinates normalized 0..1 per monitor) |
 | `browser_open`, `web_locate` | Clean demo browser; find an element's screen rectangle by selector |
-| `wait_for`, `page_text` | Check an action worked: wait for a window or a browser element; read the demo browser's URL, title and visible text |
+| `a11y_tree`, `a11y_find` | Read a native app's UI through the accessibility tree (role, name, states, rectangle); find controls by role and name for `{a11y}` targets |
+| `wait_for`, `page_text` | Check an action worked: wait for a window, a browser element or a native control (`a11y`); read the demo browser's URL, title and visible text |
 | `take_schema`, `perform`, `abort` | Schema of `take.json`; perform a take (`dryRun` to rehearse); stop driving |
 | `resume` | Carry on after someone moved the pointer and stopped the action (the driver stays open) |
 
@@ -220,7 +221,23 @@ screenpilot perform take.json                      # record + drive; writes sess
 screenpilot record --screens all                   # record every monitor side by side (manual demos too)
 ```
 
-Targets in a take: `{screen, x, y}` (normalized 0..1 per monitor), `{web: "selector"}` (Playwright selector in the demo browser; preferred) or `{window: "match", x, y}`. `screenpilot take-schema` / MCP `take_schema` print the full `take.json` schema.
+Targets in a take: `{screen, x, y}` (normalized 0..1 per monitor), `{web: "selector"}` (Playwright selector in the demo browser; preferred), `{a11y: {role?, name?, app?, exact?, nth?}}` (a control in a native app) or `{window: "match", x, y}`. `screenpilot take-schema` / MCP `take_schema` print the full `take.json` schema.
+
+Accessibility targets (`src/a11y/`)
+
+`{a11y}` locates a control through the OS accessibility tree and resolves to its centre in global pixels; the real pointer then moves and clicks (no semantic invoke), so recordings keep a visible cursor. It works in `click`, `move`, `drag`, `scroll.at` and `waitFor: {a11y: {...}, timeout}`. `role` is an alias (`button`, `checkbox`, `radio`, `tab`, `textbox`, `menuitem`, `combobox`, `listitem`...) or an AT-SPI name (`push button`); `name` is contains, case-insensitive (`exact: true` for the whole name); either is required. Several matches throw `AMBIGUOUS_TARGET` with a candidate list unless `nth` (1-based) is given. Without `app` the focused window's app is searched when the desktop can tell, else every app.
+
+```sh
+screenpilot a11y tree [--app X] [--all]            # controls with role, name, rect (--all: non-interactive too)
+screenpilot a11y find button:Save [--app X] [--exact]
+screenpilot drive click a11y:button:Save           # a11y::Save = any role
+```
+
+- Layout: `locate.ts` is pure (aliases, matching, placing trees in global pixels, `pickMatch`), `atspi.ts` is the Linux transport (raw D-Bus calls through dbus-next, because Qt does not answer introspection), `ax.ts` is macOS, `index.ts` orchestrates (`a11yTree`, `a11yFind`, `a11yFindAll`, `a11yWait`, `launchEnv`). `doctor` has an "accessibility tree" check.
+- Linux works on KDE Wayland (window position from KWin) and X11 (extents are global). On GNOME and wlroots Wayland there is no window position: `a11y_tree` still reads controls (`positionKnown: false`, window-relative rects) but clicking fails with `POSITION_UNKNOWN`. macOS uses the AX API (Accessibility permission; the app is found through its window list). Windows throws `A11Y_UNAVAILABLE`.
+- Verification: the KDE Wayland path was tested on a real machine. The macOS and X11 paths are implemented but not yet verified on real machines.
+- Qt apps only appear on the accessibility bus when launched with `QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1` (`QT_ACCESSIBILITY=1` alone was not enough). Apps a take starts with `run`/`open` get both variables; an already running Qt app must be restarted. Apps that draw their own UI (some Electron/GPU apps) expose little or nothing; Chromium needs `--force-renderer-accessibility` (the demo browser uses `{web}` instead).
+- Errors (`TargetError`, `src/drive/errors.ts`): `ELEMENT_NOT_FOUND`, `AMBIGUOUS_TARGET`, `APP_NOT_FOUND`, `WINDOW_NOT_FOUND`, `A11Y_UNAVAILABLE`, `POSITION_UNKNOWN`, `TIMEOUT`, each with `delivery: "not_delivered"` and `retry: "safe"` (no input was sent). MCP tool errors end with a JSON line `{code, delivery, retry}`; a failed `perform` returns code, delivery, retry and candidates next to `failedStep`. `{window}` targets and `focus` list the windows that exist when nothing matches, and prefer the focused window when several match.
 
 Safety
 
@@ -410,7 +427,8 @@ CI: GitHub Actions. `.github/workflows/ci.yml` (Linux: typecheck, tests, build; 
 ## Limitations
 
 - Driving the desktop (`perform`, `drive`, `screenshot`) works on KDE Wayland, X11, GNOME Wayland (no window control), Windows and macOS; not on wlroots compositors.
-- Wayland desktops other than KDE expose no window list and no pointer position: no window framing, no `{web}`/`{window}` targets, no pointer log for your own recordings.
+- Wayland desktops other than KDE expose no window list and no pointer position: no window framing, no `{web}`/`{window}` targets, no clicking `{a11y}` targets (they can be read), no pointer log for your own recordings.
+- `{a11y}` targets are not available on Windows yet.
 - The default Edge voices need the internet and are an unofficial service that may change. Local voices (`voice-setup`) were tested on Linux with an NVIDIA GPU only; Windows, macOS and CPU speed are untested. `voice-setup` needs `uv` and about 10 GB; local models are slower than real time on a 4 GB card.
 - Native recording covers Linux (Wayland through the screen-cast portal, X11 through ffmpeg), Windows and macOS.
 - X11 with fractional/HiDPI scaling is recorded in X pixels as reported by XRandR.
