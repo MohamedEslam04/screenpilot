@@ -1,0 +1,214 @@
+import { describe, expect, it } from "vitest";
+import { renderHtml } from "../src/render/html.js";
+import { buildPlan } from "../src/render/plan.js";
+import { typingPresses } from "../src/render/typing.js";
+import { windowPlan } from "../src/render/window.js";
+import { lintStyle } from "../src/storyboard/lint.js";
+import { AnnotationSchema, StoryboardSchema, ThemeSchema, TypingSchema } from "../src/storyboard/schema.js";
+import { buildTimeline } from "../src/storyboard/timeline.js";
+
+const pt = (x: number, y: number) => ({ x, y });
+const arrow = { type: "arrow", at: 2, from: pt(0.1, 0.5), to: pt(0.5, 0.5) };
+const box = { type: "box", at: 3, dur: 2, x: 0.2, y: 0.2, w: 0.3, h: 0.1 };
+const blur = { type: "blur", at: 4, dur: 2, x: 0.6, y: 0.1, w: 0.2, h: 0.05 };
+
+function sbOf(extra: Record<string, unknown>) {
+  return StoryboardSchema.parse({ source: "r.mp4", ...extra });
+}
+
+function planOf(extra: Record<string, unknown>, segments: { in: number; out: number }[] = []) {
+  const sb = sbOf({ segments: segments.map((s) => ({ ...s, speed: 1 })), ...extra });
+  const timeline = buildTimeline({ segments: sb.segments, holds: [], sourceDuration: 20, offset: sb.intro?.dur ?? 0 });
+  return buildPlan({ sb, timeline, editedSrc: "e.mp4", editedHasAudio: false, source: { width: 1920, height: 1080 }, narration: [], clicks: [] });
+}
+
+const html = (extra: Record<string, unknown>) => renderHtml(planOf(extra), { gsapSrc: "g.js" });
+
+describe("annotations in the schema", () => {
+  const parse = (a: unknown) => StoryboardSchema.safeParse({ source: "r.mp4", annotations: [a] });
+
+  it("defaults to none and applies the defaults of each type", () => {
+    expect(sbOf({}).annotations).toEqual([]);
+    expect(AnnotationSchema.parse(arrow)).toMatchObject({ type: "arrow", dur: 3, width: 8 });
+    expect(AnnotationSchema.parse(box)).toMatchObject({ type: "box", shape: "box" });
+    expect(AnnotationSchema.parse(blur)).toMatchObject({ type: "blur", mode: "blur", strength: 18 });
+  });
+
+  it("rejects what cannot be drawn", () => {
+    expect(parse({ type: "arrow", at: 1, from: pt(0.1, 0.1) }).success).toBe(false);
+    expect(parse({ ...arrow, to: pt(1.2, 0.5) }).success).toBe(false);
+    expect(parse({ ...arrow, width: 40 }).success).toBe(false);
+    expect(parse({ ...blur, w: 0 }).success).toBe(false);
+    expect(parse({ ...blur, strength: 1 }).success).toBe(false);
+    expect(parse({ ...blur, mode: "pixelate" }).success).toBe(false);
+    expect(parse({ ...box, shape: "star" }).success).toBe(false);
+    expect(parse({ type: "spiral", at: 1 }).success).toBe(false);
+  });
+
+  it("accepts labels, colors, ellipses and solid redaction", () => {
+    expect(parse({ ...arrow, label: "Click here", color: "#ff0066", width: 12 }).success).toBe(true);
+    expect(parse({ ...box, shape: "ellipse", label: "Total", motion: { in: "pop" } }).success).toBe(true);
+    expect(parse({ ...blur, mode: "solid", color: "#111111" }).success).toBe(true);
+  });
+
+  it("takes keycaps on a typing span", () => {
+    expect(TypingSchema.parse({ at: 1, text: "hi", keycaps: true })).toEqual({ at: 1, dur: 3, text: "hi", keycaps: true });
+  });
+});
+
+describe("annotations in the plan", () => {
+  it("maps source times to output times through the cuts and drops the ones that are cut", () => {
+    const p = planOf({ annotations: [{ ...box, at: 7 }, { ...box, at: 1 }] }, [{ in: 5, out: 15 }]);
+    expect(p.annotations).toHaveLength(1);
+    expect(p.annotations[0]).toMatchObject({ kind: "box", start: 2, end: 4, x: 0.2, w: 0.3, shape: "box" });
+  });
+
+  it("uses the theme accent unless a color is given, and black for solid redaction", () => {
+    const p = planOf({ theme: { accent: "#00ff00" }, annotations: [arrow, { ...box, color: "#123456" }, { ...blur, mode: "solid" }] });
+    expect(p.annotations.map((a) => ("color" in a ? a.color : undefined))).toEqual(["#00ff00", "#123456", "#0b0b0b"]);
+  });
+
+  it("has no annotations for a storyboard that has none", () => {
+    expect(planOf({}).annotations).toEqual([]);
+    expect(planOf({}).keys).toEqual([]);
+  });
+});
+
+describe("annotations in the page", () => {
+  it("draws an arrow in camera space: a shaft that draws on, a head, a label", () => {
+    const p = planOf({ annotations: [{ ...arrow, label: "Look <here>", color: '#f06"' }] });
+    const out = renderHtml(p, { gsapSrc: "g.js" });
+    expect(out).toContain('class="clip ann ann-arrow"');
+    expect(out).toContain("<polygon");
+    expect(out).toContain('class="shaft"');
+    expect(out).toContain("stroke-dasharray");
+    expect(out).toContain("Look &lt;here&gt;");
+    expect(out).not.toContain('#f06"');
+    const w = p.cam.w;
+    const h = p.cam.h;
+    expect(out).toContain(`x1="${Math.round(0.1 * w * 1000) / 1000}"`);
+    expect(out).toContain(`y1="${Math.round(0.5 * h * 1000) / 1000}"`);
+    expect(out).toContain('tl.fromTo("#an0 .shaft"');
+    expect(out).toContain('tl.fromTo("#an0 .head"');
+  });
+
+  it("puts the head of an arrow on the tip, not past it", () => {
+    const p = planOf({ annotations: [{ ...arrow, from: pt(0.1, 0.5), to: pt(0.5, 0.5) }] });
+    const out = renderHtml(p, { gsapSrc: "g.js" });
+    const m = /<polygon[^>]*points="([^"]+)"/.exec(out)!;
+    const xs = m[1]!.split(" ").map((pair) => Number(pair.split(",")[0]));
+    expect(Math.max(...xs)).toBeCloseTo(0.5 * p.cam.w, 1);
+  });
+
+  it("draws a box and an ellipse with an optional label", () => {
+    const b = html({ annotations: [{ ...box, label: "Total" }] });
+    expect(b).toContain('class="clip ann ann-box"');
+    expect(b).toContain(">Total<");
+    expect(b).not.toContain("border-radius:50%");
+    expect(html({ annotations: [{ ...box, shape: "ellipse" }] })).toContain("border-radius:50%");
+  });
+
+  it("covers the region with a blur or a solid fill, shown at once with no fade", () => {
+    const b = html({ annotations: [blur] });
+    expect(b).toContain('class="clip ann ann-blur"');
+    expect(b).toContain("backdrop-filter:blur(18px)");
+    expect(b).not.toContain('"#an0"');
+    const s = html({ annotations: [{ ...blur, mode: "solid", color: "#111111" }] });
+    expect(s).toContain("background:#111111");
+    expect(s).not.toContain("backdrop-filter");
+    expect(s).not.toContain('"#an0"');
+  });
+
+  it("numbers annotations in plan order", () => {
+    const out = html({ annotations: [arrow, box, blur] });
+    expect(out).toContain('id="an0"');
+    expect(out).toContain('id="an1"');
+    expect(out).toContain('id="an2"');
+  });
+
+  it("lists the classes for theme.css", () => {
+    expect(ThemeSchema.shape.css.description).toMatch(/\.ann-arrow.*\.ann-box.*\.ann-blur.*\.keys/);
+  });
+});
+
+describe("annotations in a partial render", () => {
+  const p = planOf({ annotations: [{ ...box, at: 2, dur: 4 }] });
+
+  it("trims them to the window and settles one that started before it", () => {
+    const w = windowPlan(p, { from: 3, to: 5 });
+    expect(w.annotations).toHaveLength(1);
+    expect(w.annotations[0]).toMatchObject({ start: 0, end: 2, settled: true });
+  });
+
+  it("keeps the entrance when the window starts before it", () => {
+    const w = windowPlan(p, { from: 1, to: 4 });
+    expect(w.annotations[0]).toMatchObject({ start: 1, end: 3 });
+    expect(w.annotations[0]).not.toHaveProperty("settled");
+  });
+
+  it("drops the ones outside the window", () => {
+    expect(windowPlan(p, { from: 8, to: 10 }).annotations).toEqual([]);
+  });
+});
+
+describe("keycaps", () => {
+  const typing = { at: 2, dur: 2, text: "hi there", keycaps: true };
+
+  it("reveals each word on the press that finishes it, the same presses that make the typing sound", () => {
+    const p = planOf({ typing: [typing] });
+    const presses = typingPresses({ at: 2, dur: 2, text: "hi there" }, 0);
+    expect(p.keys).toHaveLength(1);
+    expect(p.keys[0]!.words).toEqual([
+      { text: "hi", at: presses[1] },
+      { text: "there", at: presses[7] },
+    ]);
+    expect(p.keys[0]!.start).toBe(2);
+    expect(p.keys[0]!.end).toBeCloseTo(presses[7]! + 0.8, 3);
+  });
+
+  it("is off without keycaps or without text", () => {
+    expect(planOf({ typing: [{ ...typing, keycaps: false }] }).keys).toEqual([]);
+    expect(planOf({ typing: [{ at: 2, dur: 2, keycaps: true }] }).keys).toEqual([]);
+  });
+
+  it("follows the cuts: a span cut out entirely is dropped", () => {
+    expect(planOf({ typing: [typing] }, [{ in: 10, out: 20 }]).keys).toEqual([]);
+  });
+
+  it("is drawn on the stage with one tween per word", () => {
+    const p = planOf({ typing: [typing] });
+    const out = renderHtml(p, { gsapSrc: "g.js" });
+    expect(out).toContain('class="clip keys"');
+    expect(out).toContain('<span class="w">hi</span>');
+    expect(out).toContain('<span class="w">there</span>');
+    expect(out.match(/tl\.fromTo\("#ky0 \.w:nth-child/g)).toHaveLength(2);
+  });
+
+  it("shows the words already typed when a partial render starts in the middle", () => {
+    const p = planOf({ typing: [typing] });
+    const at = p.keys[0]!.words[1]!.at;
+    const w = windowPlan(p, { from: at - 0.1, to: at + 1 });
+    expect(w.keys[0]!.words[0]!.at).toBe(0);
+    expect(w.keys[0]!.words[1]!.at).toBeCloseTo(0.1, 3);
+  });
+});
+
+describe("lint for annotations", () => {
+  it("warns about a tiny blur, a zero-length arrow and keycaps without text", () => {
+    const sb = sbOf({
+      annotations: [
+        { ...blur, w: 0.01, h: 0.01 },
+        { ...arrow, from: pt(0.3, 0.3), to: pt(0.3, 0.3) },
+      ],
+      typing: [{ at: 1, dur: 2, keycaps: true }],
+    });
+    const out = lintStyle(sb);
+    expect(out.some((m) => /annotations\[0\].*blur.*small/.test(m))).toBe(true);
+    expect(out.some((m) => /annotations\[1\].*arrow.*no length/.test(m))).toBe(true);
+    expect(out.some((m) => /typing\[0\].*keycaps.*text/.test(m))).toBe(true);
+  });
+
+  it("is quiet for sensible annotations", () => {
+    expect(lintStyle(sbOf({ annotations: [arrow, box, blur], typing: [{ at: 1, dur: 2, text: "hi", keycaps: true }] }))).toEqual([]);
+  });
+});

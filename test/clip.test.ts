@@ -35,6 +35,11 @@ const sb = StoryboardSchema.parse({
     { at: 41, dur: 3, text: "straddles the cut" },
     { at: 52, dur: 2 },
   ],
+  annotations: [
+    { type: "blur", at: 1, dur: 2, x: 0.1, y: 0.1, w: 0.2, h: 0.1 },
+    { type: "arrow", at: 41, dur: 3, from: { x: 0.1, y: 0.1 }, to: { x: 0.4, y: 0.4 } },
+    { type: "box", at: 45, dur: 2, x: 0.1, y: 0.1, w: 0.2, h: 0.1 },
+  ],
   narration: [
     { at: 2, text: "first" },
     { at: 41, text: "cut mid-line" },
@@ -59,6 +64,21 @@ describe("clipStoryboard sounds", () => {
     const second = clipStoryboard(sb, { from: 42 }, 60);
     expect(second.sfx.map((x) => x.at)).toEqual([42, 58]);
     expect(second.typing.map((x) => x.at)).toEqual([52]);
+  });
+});
+
+describe("clipStoryboard annotations", () => {
+  it("cuts annotations to the range like captions and keeps each part's own", () => {
+    const first = clipStoryboard(sb, { to: 42 }, 60);
+    expect(first.annotations.map((a) => [a.type, a.at, a.dur])).toEqual([
+      ["blur", 1, 2],
+      ["arrow", 41, 1],
+    ]);
+    const second = clipStoryboard(sb, { from: 42 }, 60);
+    expect(second.annotations.map((a) => [a.type, a.at, a.dur])).toEqual([
+      ["arrow", 42, 2],
+      ["box", 45, 2],
+    ]);
   });
 });
 

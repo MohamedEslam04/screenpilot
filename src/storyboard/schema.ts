@@ -93,6 +93,44 @@ export const HighlightSchema = z.object({
   label: z.string().optional(),
 });
 
+const point = z.object({ x: norm, y: norm });
+const annotationTime = { at: time, dur: z.number().positive().default(3) };
+const annotationRect = {
+  x: norm,
+  y: norm,
+  w: norm.refine((v) => v > 0, { message: "w must be > 0" }),
+  h: norm.refine((v) => v > 0, { message: "h must be > 0" }),
+};
+
+export const AnnotationSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("arrow"),
+    ...annotationTime,
+    from: point.describe("Tail of the arrow, 0..1 of the recording"),
+    to: point.describe("Tip of the arrow (what it points at), 0..1 of the recording"),
+    label: z.string().optional().describe("Text at the tail"),
+    color: z.string().min(1).optional().describe("CSS color (default: theme.accent)"),
+    width: z.number().min(2).max(24).default(8).describe("Line width in px"),
+  }),
+  z.object({
+    type: z.literal("box"),
+    ...annotationTime,
+    ...annotationRect,
+    shape: z.enum(["box", "ellipse"]).default("box"),
+    label: z.string().optional(),
+    color: z.string().min(1).optional().describe("CSS color (default: theme.accent)"),
+    motion: MotionSchema.optional().describe("Entrance and exit (default pop in, fade out)"),
+  }),
+  z.object({
+    type: z.literal("blur"),
+    ...annotationTime,
+    ...annotationRect,
+    mode: z.enum(["blur", "solid"]).default("blur").describe("blur hides detail; solid covers it completely (use it for anything secret)"),
+    strength: z.number().min(2).max(80).default(18).describe("Blur radius in px (mode blur)"),
+    color: z.string().min(1).optional().describe("Fill for mode solid (default near-black)"),
+  }),
+]);
+
 export const CardSchema = z.object({
   title: z.string().min(1),
   subtitle: z.string().optional(),
@@ -150,7 +188,8 @@ export const ThemeSchema = z.object({
       "Your own CSS, applied after the built-in styles, to design the look of this video. Elements: #root (whole frame; its background), " +
         "#frame (the recording box), .card / .card-inner / .card h1 / .card p (intro and outro), .text (captions; .text.pill, .text.subtitle, " +
         ".text.title; the visible box is .text.<style> > span; .text .ln is one line of a multi-line caption), .pos-bottom / .pos-top / .pos-center, " +
-        ".hl and .hl span (highlights), .callout span, .ripple (click ripples).",
+        ".hl and .hl span (highlights), .callout span, .ripple (click ripples), .ann-arrow, .ann-box, .ann-blur and .ann-label (annotations), " +
+        ".keys (typing key-caps).",
     ),
 });
 
@@ -225,6 +264,7 @@ export const TypingSchema = z.object({
   at: time.describe("Source time the typing starts"),
   dur: z.number().positive().default(3).describe("How long the typing lasts (s)"),
   text: z.string().optional().describe("What is typed: one press per character; without it about 7 presses a second"),
+  keycaps: z.boolean().optional().describe("Show the typed text on screen, word by word as it is typed (needs text)"),
 });
 
 const soundChoice = z.union([z.boolean(), z.string().min(1)]).optional();
@@ -263,6 +303,10 @@ export const StoryboardSchema = z.object({
   views: z.array(ViewSchema).default([]).describe("Camera follows the action: which screen is shown from each time on"),
   captions: z.array(CaptionSchema).default([]),
   highlights: z.array(HighlightSchema).default([]),
+  annotations: z
+    .array(AnnotationSchema)
+    .default([])
+    .describe("Arrows, boxes and blur/solid redaction on the recording (0..1 of the recording, so they follow zooms); use blur type solid for anything secret"),
   narration: z.array(NarrationSchema).default([]),
   intro: CardSchema.optional(),
   outro: CardSchema.optional(),
@@ -289,6 +333,7 @@ export type Caption = z.output<typeof CaptionSchema>;
 export type Motion = z.output<typeof MotionSchema>;
 export type Narration = z.output<typeof NarrationSchema>;
 export type Highlight = z.output<typeof HighlightSchema>;
+export type Annotation = z.output<typeof AnnotationSchema>;
 export type Overlay = z.output<typeof OverlaySchema>;
 export type Sfx = z.output<typeof SfxSchema>;
 export type Typing = z.output<typeof TypingSchema>;

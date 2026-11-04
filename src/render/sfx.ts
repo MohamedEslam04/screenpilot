@@ -7,6 +7,9 @@ import type { Timeline } from "../storyboard/timeline.js";
 import { run } from "../util/exec.js";
 import { ffmpegFilterScriptFlag } from "../util/media.js";
 import { outroFadeIn } from "./plan.js";
+import { typingPresses } from "./typing.js";
+
+export { typingPresses };
 
 // Sound effects. Every hit (explicit sfx[] and the automatic click/key/card sounds)
 // is mixed into ONE wav, so the composition carries a single <audio> element however
@@ -19,9 +22,6 @@ const SAMPLE_RATE = 48000;
 /** No two automatic sounds of one kind closer than this in the output (s); a sped-up stretch would otherwise machine-gun. */
 const CLICK_GAP = 0.05;
 const TYPING_GAP = 0.06;
-/** Presses a second of typing without text, and the most a text can make. */
-const TYPING_RATE = 7;
-const MAX_PRESSES = 400;
 
 // Built-in sounds are synthesized by ffmpeg when a render needs them, so nothing is
 // downloaded, shipped or licensed. aevalsrc's random(0) is seeded the same way every
@@ -65,27 +65,6 @@ export interface SfxHit {
   /** Output seconds. */
   at: number;
   volume: number;
-}
-
-/** Small seeded generator, so a typing rhythm is the same on every render. */
-function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/** Source times of the key presses of a typing span: one per character (or ~7 a second), evenly spread with a little human unevenness. */
-export function typingPresses(span: { at: number; dur: number; text?: string }, seed: number): number[] {
-  const n = span.text !== undefined ? Math.min(span.text.length, MAX_PRESSES) : Math.round(span.dur * TYPING_RATE);
-  if (n <= 0) return [];
-  const step = span.dur / n;
-  const rnd = mulberry32(Math.imul(seed + 1, 2654435761) ^ Math.round(span.at * 1000));
-  return Array.from({ length: n }, (_, i) => round(span.at + (i + 0.5) * step + (rnd() - 0.5) * step * 0.5));
 }
 
 export interface PlanSfxInput {

@@ -1,5 +1,5 @@
 import type { DuckTween } from "./duck.js";
-import type { AudioItem, CardItem, OverlayItem, RenderPlan } from "./plan.js";
+import type { AnnotationItem, AudioItem, CardItem, KeysItem, OverlayItem, RenderPlan } from "./plan.js";
 import type { CamState, CamTween } from "./zoom.js";
 import { IDENTITY } from "./zoom.js";
 
@@ -112,6 +112,20 @@ export function windowPlan(plan: RenderPlan, win: Window): RenderPlan {
     highlights: plan.highlights.flatMap((h) => {
       const c = clip(h.start, h.end, from, to);
       return c ? [{ ...h, start: c.start, end: round(c.start + c.dur) }] : [];
+    }),
+    annotations: plan.annotations.flatMap((a): AnnotationItem[] => {
+      const c = clip(a.start, a.end, from, to);
+      if (!c) return [];
+      const span = { start: c.start, end: round(c.start + c.dur) };
+      // An entrance the window cut off would replay from nothing, so such an arrow or box starts settled.
+      return [{ ...a, ...span, ...(c.headCut > 0 && a.kind !== "blur" ? { settled: true } : {}) }];
+    }),
+    keys: plan.keys.flatMap((k): KeysItem[] => {
+      const c = clip(k.start, k.end, from, to);
+      if (!c) return [];
+      // Words typed before the window are already there when it opens.
+      const words = k.words.filter((w) => w.at < to).map((w) => ({ ...w, at: round(Math.max(0, w.at - from)) }));
+      return words.length ? [{ start: c.start, end: round(c.start + c.dur), words }] : [];
     }),
     ripples: plan.ripples.filter((r) => r.t >= from && r.t < to).map((r) => ({ ...r, t: shift(r.t) })),
   };

@@ -7,7 +7,7 @@ import { normalizeSegments } from "./timeline.js";
 //   slices [0, 42) and [42, end] together keep every item once.
 // - holds, narration and views are kept when their `at` is in the range.
 //   Narration that started before `from` is dropped (a line can't resume mid-word).
-// - zooms, captions and highlights are cut to the range: one that started
+// - zooms, captions, highlights and annotations are cut to the range: one that started
 //   before `from` and still runs then is re-timed to start at `from`, one that
 //   runs past `to` ends there. If less than MIN_SPAN of it is left, it is dropped.
 // - sfx and typing spans are kept like holds (by their `at`): a typing span is
@@ -66,6 +66,7 @@ export function clipStoryboard(sb: Storyboard, range: { from?: number; to?: numb
     zooms: clipSpan(sb.zooms),
     captions: clipSpan(sb.captions),
     highlights: clipSpan(sb.highlights),
+    annotations: clipSpan(sb.annotations),
     narration: sb.narration.filter((n) => inRange(n.at)),
     sfx: sb.sfx.filter((x) => inRange(x.at)),
     typing: sb.typing.filter((t) => inRange(t.at)),

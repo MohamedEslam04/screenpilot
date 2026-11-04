@@ -2,9 +2,13 @@ import { MUSIC_FADE_IN, MUSIC_FADE_OUT, type Motion, type Overlay, type Storyboa
 import type { Timeline } from "../storyboard/timeline.js";
 import type { VoiceClip } from "../voice/index.js";
 import { type DuckTween, planDuck } from "./duck.js";
+import { typingPresses } from "./typing.js";
 import { type CamTween, FULL, planCamera, planViewCamera, type Rect, type ViewSpan, type ZoomSpan } from "./zoom.js";
 
 // Everything the HTML generator needs, already in OUTPUT seconds.
+
+/** Seconds typed text stays on screen after the last press. */
+const KEYS_HOLD = 0.8;
 
 export interface Box {
   left: number;
@@ -32,6 +36,25 @@ export interface HighlightItem {
   w: number;
   h: number;
   label?: string;
+}
+
+interface Pt {
+  x: number;
+  y: number;
+}
+
+/** Arrows, boxes and blur on the recording; positions are 0..1 of the source (they live in the camera). */
+export type AnnotationItem = { start: number; end: number } & (
+  | { kind: "arrow"; from: Pt; to: Pt; label?: string; color: string; width: number; settled?: boolean }
+  | { kind: "box"; x: number; y: number; w: number; h: number; shape: "box" | "ellipse"; label?: string; color: string; motion?: Motion; settled?: boolean }
+  | { kind: "blur"; x: number; y: number; w: number; h: number; mode: "blur" | "solid"; strength: number; color: string }
+);
+
+/** Typed text on screen: each word shows on the press that finishes it (output seconds). */
+export interface KeysItem {
+  start: number;
+  end: number;
+  words: { text: string; at: number }[];
 }
 
 export interface Ripple {
@@ -105,6 +128,8 @@ export interface RenderPlan {
   camera: CamTween[];
   texts: TextItem[];
   highlights: HighlightItem[];
+  annotations: AnnotationItem[];
+  keys: KeysItem[];
   ripples: Ripple[];
   audio: AudioItem[];
   cards: CardItem[];
@@ -279,6 +304,35 @@ export function buildPlan(input: PlanInput): RenderPlan {
     if (m) highlights.push({ start: m.start, end: m.end, x: h.x, y: h.y, w: h.w, h: h.h, label: h.label });
   }
 
+  const annotations: AnnotationItem[] = [];
+  for (const a of sb.annotations) {
+    const m = tl.mapSpan(a.at, a.dur);
+    if (!m) continue;
+    const span = { start: m.start, end: m.end };
+    if (a.type === "arrow") annotations.push({ ...span, kind: "arrow", from: a.from, to: a.to, label: a.label, color: a.color ?? sb.theme.accent, width: a.width });
+    else if (a.type === "box") {
+      annotations.push({ ...span, kind: "box", x: a.x, y: a.y, w: a.w, h: a.h, shape: a.shape, label: a.label, color: a.color ?? sb.theme.accent, motion: a.motion });
+    } else annotations.push({ ...span, kind: "blur", x: a.x, y: a.y, w: a.w, h: a.h, mode: a.mode, strength: a.strength, color: a.color ?? "#0b0b0b" });
+  }
+
+  const keys: KeysItem[] = [];
+  sb.typing.forEach((t, i) => {
+    if (!t.keycaps || !t.text) return;
+    const presses = typingPresses(t, i);
+    const mapped = presses.map((p) => tl.toOutput(p));
+    if (mapped.every((x) => x === null)) return;
+    // A press in a cut region shows with the next one that is still there.
+    let next: number | null = null;
+    for (let k = mapped.length - 1; k >= 0; k--) {
+      if (mapped[k] === null) mapped[k] = next;
+      else next = mapped[k]!;
+    }
+    const at = (k: number) => round(mapped[Math.min(k, mapped.length - 1)] ?? next ?? 0);
+    const words = [...t.text.matchAll(/\S+/g)].map((m) => ({ text: m[0], at: at(m.index! + m[0].length - 1) }));
+    const last = words.at(-1)!.at;
+    keys.push({ start: round(tl.toOutput(t.at) ?? words[0]!.at), end: round(Math.min(last + KEYS_HOLD, duration)), words });
+  });
+
   const ripples: Ripple[] = [];
   if (sb.theme.clickRipples) {
     for (const c of input.clicks) {
@@ -319,6 +373,8 @@ export function buildPlan(input: PlanInput): RenderPlan {
     camera: firstRect ? planViewCamera(viewSpans(), spans, frame, cam) : planCamera(spans, frame.w, frame.h),
     texts: texts.map((t) => ({ ...t, start: round(t.start), end: round(t.end) })).sort((a, b) => a.start - b.start),
     highlights,
+    annotations,
+    keys,
     ripples,
     audio,
     cards,

@@ -13,6 +13,8 @@ const ZOOM_SCALE = { min: 1.4, max: 2.5 };
 const MAX_SPEED = 8;
 const STACK_WINDOW = 1; // s
 const STACK_RADIUS = 0.15; // normalized distance counted as "the same point"
+const MIN_BLUR_AREA = 0.0005; // fraction of the recording
+const MIN_ARROW = 0.01; // normalized length
 const DURATION = { min: 15, max: 90 }; // s, output
 
 const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
@@ -86,6 +88,19 @@ export function lintStyle(sb: Storyboard): string[] {
         out.push(`zooms[${zi}], highlights[${hi}] and captions[${ci}] (callout) stack on the same point within ${STACK_WINDOW}s; pick one or two`);
       });
     });
+  });
+
+  // Annotations and key-caps.
+  sb.annotations.forEach((a, i) => {
+    if (a.type === "blur" && a.w * a.h < MIN_BLUR_AREA) {
+      out.push(`annotations[${i}] blur covers a very small area (${(a.w * 100).toFixed(1)}% x ${(a.h * 100).toFixed(1)}% of the recording); check it covers all of what you want hidden`);
+    }
+    if (a.type === "arrow" && Math.hypot(a.to.x - a.from.x, a.to.y - a.from.y) < MIN_ARROW) {
+      out.push(`annotations[${i}] arrow has no length (from and to are the same point) and will not be drawn`);
+    }
+  });
+  sb.typing.forEach((t, i) => {
+    if (t.keycaps && !t.text) out.push(`typing[${i}] has keycaps but no text; set text to the words that are typed`);
   });
 
   sb.segments.forEach((s, i) => {
