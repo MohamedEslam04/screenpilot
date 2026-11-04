@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { a11yFind, a11yFindAll, a11yTree, a11yWait, launchEnv } from "../src/a11y/index.js";
+import { a11yFind, a11yFindAll, a11yTree, a11yWait, launchEnv, sourceFor } from "../src/a11y/index.js";
 import { parseA11yTarget } from "../src/a11y/parse.js";
 import type { A11ySource, RawNode, RawWindow } from "../src/a11y/types.js";
 import { TargetError } from "../src/drive/errors.js";
+// Static on purpose: perform.js pulls in the recorder and voice code, and importing it inside a test blew the 5 s limit on a slow CI runner.
+import { pickWindow, TakeError, windowNotFound } from "../src/take/perform.js";
+import { StepSchema, TargetSchema } from "../src/take/schema.js";
 import type { WindowInfo } from "../src/platform/types.js";
 
 const btn = (name: string, x: number): RawNode => ({ role: "push button", name, rect: { x, y: 10, w: 50, h: 20 }, states: ["showing"], children: [] });
@@ -63,7 +66,6 @@ describe("a11yFind", () => {
   });
 
   it("has a source for every desktop", async () => {
-    const { sourceFor } = await import("../src/a11y/index.js");
     for (const id of ["kde", "x11", "portal", "windows", "macos"] as const) expect((await sourceFor(id))?.id).toBeTruthy();
   });
 
@@ -123,7 +125,6 @@ describe("parseA11yTarget", () => {
 
 describe("take schema", () => {
   it("accepts a11y targets and waits, and rejects empty queries", async () => {
-    const { TargetSchema, StepSchema } = await import("../src/take/schema.js");
     expect(TargetSchema.safeParse({ a11y: { role: "button", name: "Save" } }).success).toBe(true);
     expect(TargetSchema.safeParse({ a11y: {} }).success).toBe(false);
     expect(TargetSchema.safeParse({ a11y: { name: "x", bogus: 1 } }).success).toBe(false);
@@ -137,7 +138,6 @@ describe("window targets", () => {
   const w = (o: Partial<WindowInfo>): WindowInfo => ({ id: "1", caption: "t", resourceClass: "konsole", pid: 1, active: false, minimized: false, x: 0, y: 0, w: 100, h: 100, output: "eDP-1", ...o });
 
   it("prefers the focused window when several match", async () => {
-    const { pickWindow } = await import("../src/take/perform.js");
     const wins = [w({ id: "a" }), w({ id: "b", active: true }), w({ id: "c", resourceClass: "dolphin" })];
     expect(pickWindow(wins, "konsole")?.id).toBe("b");
     expect(pickWindow(wins, "dolphin")?.id).toBe("c");
@@ -145,7 +145,6 @@ describe("window targets", () => {
   });
 
   it("lists the open windows when none matches", async () => {
-    const { windowNotFound } = await import("../src/take/perform.js");
     const e = windowNotFound([w({ caption: "Terminal" })], "gimp");
     expect(e.code).toBe("WINDOW_NOT_FOUND");
     expect(e.message).toContain('konsole "Terminal"');
@@ -155,7 +154,6 @@ describe("window targets", () => {
 
 describe("TakeError disposition", () => {
   it("carries code, delivery and retry from a target error", async () => {
-    const { TakeError } = await import("../src/take/perform.js");
     const err = new TakeError(2, { wait: 1 }, new TargetError("AMBIGUOUS_TARGET", "two match", ["a", "b"]));
     expect(err.info).toEqual({ code: "AMBIGUOUS_TARGET", delivery: "not_delivered", retry: "safe", candidates: ["a", "b"] });
     expect(new TakeError(0, { wait: 1 }, new Error("boom")).info).toBeUndefined();
