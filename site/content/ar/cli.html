@@ -163,6 +163,9 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <tr><td><code>--timings</code></td><td>يسجّل مدة كل مرحلة (الفحص والصوت والقص والتصيير والدمج) ويعرض توقيتات HyperFrames.</td></tr>
 <tr><td><code>--from &lt;s&gt;</code>, <code>--to &lt;s&gt;</code></td><td>يصيّر هذه النافذة فقط، بثواني <strong>الخرج</strong>. انظر <a href="@guide/cli.html#partial">التصيير الجزئي</a>.</td></tr>
 <tr><td><code>--formats &lt;list&gt;</code></td><td>يصيّر مرة لكل صيغة، مثل <code>16:9,9:16,1:1</code>. انظر <a href="@guide/cli.html#formats">عدة صيغ</a>.</td></tr>
+<tr><td><code>--subtitles &lt;list&gt;</code></td><td>يكتب أيضًا ملفات ترجمة من التعليق الصوتي: <code>srt</code> أو <code>vtt</code> أو <code>srt,vtt</code>. انظر <a href="@guide/cli.html#extras">ملفات الترجمة والمخرجات الإضافية</a>.</td></tr>
+<tr><td><code>--also &lt;list&gt;</code></td><td>يصنع أيضًا ملف <code>gif</code> أو <code>webm</code> أو صورة <code>poster</code> بصيغة PNG من الفيديو النهائي (قائمة مفصولة بفواصل).</td></tr>
+<tr><td><code>--poster-at &lt;s&gt;</code></td><td>وقت إطار الـ poster بثواني الخرج. الافتراضي: ربع المدة.</td></tr>
 <tr><td><code>--build-dir &lt;dir&gt;</code></td><td>المجلد الذي يُكتب فيه مشروع HyperFrames. غير مسموح مع <code>--formats</code>.</td></tr>
 </tbody>
 </table>
@@ -191,6 +194,21 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <li>يعمل <code>--from</code> و<code>--to</code> مع <code>--formats</code> معًا: تصبح الملفات <code>&lt;name&gt;.9x16.part-12-20.mp4</code>.</li>
 </ul>
 <div class="warn">التصدير الطولي أو المربع لتسجيل عرضي يقصّ الصورة. الـ views التي تؤطر نافذة تملأ الإطار، فيُقتطع الضلع الأطول للنافذة. أما views الشاشة فتُظهر الشاشة كاملة. انظر إلى مسودة 9:16 قبل أن تسلّمها.</div>
+
+<h3 id="extras">ملفات الترجمة والمخرجات الإضافية</h3>
+<p>المنصات التي تقبل ملف ترجمة (YouTube وLinkedIn وVimeo) تريد الكلمات ملفًّا لا محروقة في الصورة. يكتبها <code>--subtitles</code> من التعليق الصوتي، بتوقيت الفيديو نفسه، بجوار ملف MP4. تدخل كل أسطر التعليق، حتى السطر الذي أخفيته من الصورة بـ <code>"caption": false</code>.</p>
+<pre><code class="language-sh">screenpilot render storyboard.json -q delivery -o demo.mp4 --subtitles srt,vtt --also gif,poster</code></pre>
+<table>
+<thead><tr><th>الخيار</th><th>الملف</th><th>ملاحظات</th></tr></thead>
+<tbody>
+<tr><td><code>--subtitles srt</code></td><td><code>demo.srt</code></td><td>صيغة SubRip، الأوسع قبولًا.</td></tr>
+<tr><td><code>--subtitles vtt</code></td><td><code>demo.vtt</code></td><td>صيغة WebVTT للويب.</td></tr>
+<tr><td><code>--also gif</code></td><td><code>demo.gif</code></td><td>GIF متحرك، بعرض 800 بكسل و12 إطارًا في الثانية، بلا صوت. يكبر حجمه سريعًا: استخدمه لمقطع قصير أو README أو محادثة.</td></tr>
+<tr><td><code>--also webm</code></td><td><code>demo.webm</code></td><td>فيديو VP9 مع صوت Opus. أصغر من MP4 للويب.</td></tr>
+<tr><td><code>--also poster</code></td><td><code>demo.poster.png</code></td><td>إطار واحد بالحجم الكامل، للصورة المصغرة أو للسمة <code>poster</code> في وسم الفيديو. اضبط وقته بـ <code>--poster-at</code>.</td></tr>
+</tbody>
+</table>
+<p>تُسرد الملفات تحت <code>files</code> في النتيجة. وهي تتبع <code>--from</code> و<code>--to</code> (الرندر الجزئي يكتب ترجمة تلك النافذة) و<code>--formats</code> (مجموعة لكل صيغة).</p>
 
 <h3 id="quality">مستويات الجودة</h3>
 <table>

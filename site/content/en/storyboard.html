@@ -51,9 +51,40 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 <tr><td><code>speed</code></td><td><code>1</code></td><td>Playback speed, 0.25 to 16. Use 4 to 8 to fast-forward loading and waiting.</td></tr>
 <tr><td><code>volume</code></td><td><code>1</code></td><td>Level of this segment's source audio, 0 to 4. Needs <code>keepSourceAudio</code>.</td></tr>
 <tr><td><code>mute</code></td><td><code>false</code></td><td>Silence this segment's source audio. Same as <code>volume</code> 0.</td></tr>
+<tr><td><code>speedTo</code></td><td>none</td><td>Ramp the speed from <code>speed</code> at the start of the segment to this value by its end, 0.25 to 16. See <a href="@guide/storyboard.html#speed-ramps">Speed ramps</a>.</td></tr>
+<tr><td><code>transition</code></td><td>none</td><td>Blend into this segment instead of a hard cut. See <a href="@guide/storyboard.html#transitions">Transitions</a>.</td></tr>
 </tbody>
 </table>
 <p>A narration line placed inside a cut region is dropped, with a warning. <code>volume</code> and <code>mute</code> only matter when the source audio is kept: without <code>keepSourceAudio: true</code> and a recording that has sound, the render warns that they have no effect.</p>
+
+<h3 id="speed-ramps">Speed ramps</h3>
+<p>A constant 8x fast-forward starts and stops with a jolt. Set <code>speedTo</code> and the speed changes smoothly over the segment instead: <code>"speed": 1, "speedTo": 8</code> eases from normal speed into a fast-forward, and <code>"speed": 8, "speedTo": 1</code> eases back out of it. The change is even to the eye (it multiplies by the same factor each step), and it works the same with narration holds and cuts. Use a segment of a second or more; the video gets shorter by what the speed-up saves, and narration and captions follow the new timing.</p>
+<pre><code class="language-json">"segments": [
+  { "in": 0, "out": 6 },
+  { "in": 6, "out": 20, "speed": 1, "speedTo": 8 },
+  { "in": 20, "out": 40, "speed": 8, "speedTo": 1 }
+]</code></pre>
+
+<h3 id="transitions">Transitions</h3>
+<p>Between two segments there is a hard cut by default. Give the second one a <code>transition</code> to blend it in over the end of the one before:</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>type</code></td><td>required</td><td><code>crossfade</code>, <code>fade-black</code>, <code>fade-white</code>, <code>wipe-left</code>, <code>wipe-right</code>, <code>slide-left</code> or <code>slide-right</code>.</td></tr>
+<tr><td><code>dur</code></td><td><code>0.5</code></td><td>Seconds the two pieces overlap, 0.1 to 3. At most half of either piece.</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>The overlap shortens the video</strong> by <code>dur</code>: the two pictures play at the same time. Narration, captions and zooms are placed on the new timing, so the source times you write do not change.</li>
+<li>The sound blends too (a cross-fade).</li>
+<li>It is ignored on the first segment, which has nothing before it. If a segment starts with a hold, the transition goes into the freeze.</li>
+<li>To blend two <em>different recordings</em>, use <a href="@guide/sequence.html">Combine recordings</a>, which has the same transitions between parts.</li>
+</ul>
+<pre><code class="language-json">"segments": [
+  { "in": 0, "out": 12 },
+  { "in": 30, "out": 45, "transition": { "type": "crossfade", "dur": 0.6 } },
+  { "in": 60, "out": 80, "transition": { "type": "fade-black", "dur": 0.8 } }
+]</code></pre>
 
 <h2 id="holds">Holds</h2>
 <p><code>holds</code> freeze the video on one frame, to give a caption or a line room.</p>
@@ -335,6 +366,7 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 <tr><td><code>font</code></td><td>Inter, Cairo, system-ui</td><td>CSS font family.</td></tr>
 <tr><td><code>captionColor</code></td><td><code>#ffffff</code></td><td>Caption text color.</td></tr>
 <tr><td><code>captionBackground</code></td><td>dark, translucent</td><td>Caption box color.</td></tr>
+<tr><td><code>grade</code></td><td>none</td><td>Color grade of the recording only (not the cards, captions or background): <code>brightness</code> (-1 to 1), <code>contrast</code> (0 to 2), <code>saturation</code> (0 to 3, 0 is black and white) and <code>gamma</code> (0.1 to 4). Only the values you set change, for example <code>{ "contrast": 1.1, "saturation": 1.2 }</code>.</td></tr>
 <tr><td><code>clickRipples</code></td><td><code>true</code></td><td>Draw a ripple on every recorded click. Needs <code>events</code>.</td></tr>
 <tr><td><code>fonts</code></td><td><code>[]</code></td><td>Extra Google Fonts to load, as css2 family specs such as <code>"Tajawal:wght@400;700"</code> or <code>"Space Grotesk:wght@500;700"</code>. Then use them in <code>font</code> or <code>css</code>.</td></tr>
 <tr><td><code>css</code></td><td>empty</td><td>Your own CSS, applied after the built-in styles.</td></tr>

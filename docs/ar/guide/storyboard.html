@@ -77,9 +77,40 @@
 <tr><td><code>speed</code></td><td><code>1</code></td><td>سرعة التشغيل من 0.25 إلى 16. استخدم 4 إلى 8 لتسريع التحميل والانتظار.</td></tr>
 <tr><td><code>volume</code></td><td><code>1</code></td><td>مستوى صوت المصدر في هذا الـ segment، من 0 إلى 4. يحتاج إلى <code>keepSourceAudio</code>.</td></tr>
 <tr><td><code>mute</code></td><td><code>false</code></td><td>يُسكت صوت المصدر في هذا الـ segment. مثل <code>volume</code> بقيمة 0.</td></tr>
+<tr><td><code>speedTo</code></td><td>لا شيء</td><td>يدرّج السرعة من <code>speed</code> عند بداية الـ segment إلى هذه القيمة عند نهايته، من 0.25 إلى 16. انظر <a href="../../ar/guide/storyboard.html#speed-ramps">تدرّج السرعة</a>.</td></tr>
+<tr><td><code>transition</code></td><td>لا شيء</td><td>يمزج الدخول إلى هذا الـ segment بدل القطع الحاد. انظر <a href="../../ar/guide/storyboard.html#transitions">الانتقالات</a>.</td></tr>
 </tbody>
 </table>
 <p>إذا وقع سطر تعليق صوتي داخل منطقة مقصوصة، يُحذف مع تحذير. و<code>volume</code> و<code>mute</code> لهما أثر فقط عندما يبقى صوت المصدر: بدون <code>keepSourceAudio: true</code> وتسجيل فيه صوت، ينبّهك التصيير إلى أنهما بلا أثر.</p>
+
+<h3 id="speed-ramps">تدرّج السرعة (speed ramps)<a class="a" href="#speed-ramps" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>التسريع الثابت 8x يبدأ وينتهي بهزة. اضبط <code>speedTo</code> فتتغير السرعة بسلاسة على امتداد الـ segment: <code>"speed": 1, "speedTo": 8</code> تنساب من السرعة العادية إلى تسريع، و<code>"speed": 8, "speedTo": 1</code> تعود منه. التغير متساوٍ للعين (يُضرب في العامل نفسه كل خطوة)، ويعمل بالطريقة نفسها مع توقفات التعليق الصوتي والقص. استخدم segment بطول ثانية فأكثر؛ يقصر الفيديو بمقدار ما يوفره التسريع، ويتبع التعليق الصوتي والعناوين التوقيت الجديد.</p>
+<pre><code class="language-json">"segments": [
+  { "in": 0, "out": 6 },
+  { "in": 6, "out": 20, "speed": 1, "speedTo": 8 },
+  { "in": 20, "out": 40, "speed": 8, "speedTo": 1 }
+]</code></pre>
+
+<h3 id="transitions">الانتقالات (transitions)<a class="a" href="#transitions" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>بين segmentين يوجد قطع حاد افتراضيًّا. أعطِ الثاني <code>transition</code> ليمتزج على نهاية الذي قبله:</p>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>type</code></td><td>مطلوب</td><td>أحد: <code>crossfade</code> أو <code>fade-black</code> أو <code>fade-white</code> أو <code>wipe-left</code> أو <code>wipe-right</code> أو <code>slide-left</code> أو <code>slide-right</code>.</td></tr>
+<tr><td><code>dur</code></td><td><code>0.5</code></td><td>ثواني تداخل القطعتين، من 0.1 إلى 3. بحد أقصى نصف أي من القطعتين.</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>التداخل يقصّر الفيديو</strong> بمقدار <code>dur</code>: تعمل الصورتان في الوقت نفسه. يوضع التعليق الصوتي والعناوين والتكبيرات على التوقيت الجديد، فلا تتغير أوقات المصدر التي تكتبها.</li>
+<li>الصوت يمتزج أيضًا (تلاشٍ متقاطع).</li>
+<li>يُتجاهل على أول segment لأنه لا شيء قبله. وإن بدأ الـ segment بتوقف (hold) فالانتقال يدخل إلى الصورة المجمّدة.</li>
+<li>لمزج <em>تسجيلين مختلفين</em> استخدم <a href="../../ar/guide/sequence.html">دمج التسجيلات</a>، وفيه الانتقالات نفسها بين الأجزاء.</li>
+</ul>
+<pre><code class="language-json">"segments": [
+  { "in": 0, "out": 12 },
+  { "in": 30, "out": 45, "transition": { "type": "crossfade", "dur": 0.6 } },
+  { "in": 60, "out": 80, "transition": { "type": "fade-black", "dur": 0.8 } }
+]</code></pre>
 
 <h2 id="holds">Holds<a class="a" href="#holds" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>الـ <code>holds</code> تجمّد الفيديو عند إطار واحد، لتعطي caption أو سطرًا صوتيًا وقتًا كافيًا.</p>
@@ -361,6 +392,7 @@
 <tr><td><code>font</code></td><td>Inter وCairo وsystem-ui</td><td>عائلة الخط في CSS.</td></tr>
 <tr><td><code>captionColor</code></td><td><code>#ffffff</code></td><td>لون نص الـ caption.</td></tr>
 <tr><td><code>captionBackground</code></td><td>داكن شبه شفاف</td><td>لون مربع الـ caption.</td></tr>
+<tr><td><code>grade</code></td><td>لا شيء</td><td>تدرّج لوني للتسجيل فقط (لا البطاقات ولا العناوين ولا الخلفية): <code>brightness</code> (من -1 إلى 1) و<code>contrast</code> (من 0 إلى 2) و<code>saturation</code> (من 0 إلى 3، والصفر أبيض وأسود) و<code>gamma</code> (من 0.1 إلى 4). تتغير القيم التي تضبطها فقط، مثل <code>{ "contrast": 1.1, "saturation": 1.2 }</code>.</td></tr>
 <tr><td><code>clickRipples</code></td><td><code>true</code></td><td>يرسم تموّجًا عند كل نقرة مسجَّلة. يحتاج إلى <code>events</code>.</td></tr>
 <tr><td><code>fonts</code></td><td><code>[]</code></td><td>خطوط Google إضافية للتحميل، بصيغة css2 مثل <code>"Tajawal:wght@400;700"</code> أو <code>"Space Grotesk:wght@500;700"</code>. ثم استخدمها في <code>font</code> أو <code>css</code>.</td></tr>
 <tr><td><code>css</code></td><td>فارغ</td><td>CSS خاص بك، يُطبَّق بعد الأنماط المدمجة.</td></tr>

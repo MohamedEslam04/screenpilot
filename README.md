@@ -145,4 +145,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 9ff5711 ("feat(annotations): arrows, boxes and blur/solid cover-ups, and key-caps for typing spans", 2026-11-04).
+Docs synced to commit 96fd938 ("feat(editing): speed ramps, segment transitions, color grade, subtitle files, gif/webm/poster", 2026-11-04).
