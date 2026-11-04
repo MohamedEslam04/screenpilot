@@ -7,6 +7,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { a11yCheck } from "./a11y-check.js";
 import { Driver } from "../src/drive/index.js";
 import { screenshot } from "../src/drive/see.js";
 import { locate, openBrowser, withPage } from "../src/drive/web.js";
@@ -151,6 +152,11 @@ async function main(): Promise<void> {
     if (!driver) throw new Error("needs driver");
     notepad = await waitWindow(driver, "notepad.exe");
     return `window ${notepad.id} pid ${notepad.pid} "${notepad.caption}"`;
+  });
+
+  await check("notepad: accessibility tree (UI Automation)", async () => {
+    if (!driver || !notepad) throw new Error("needs notepad window");
+    return a11yCheck(driver.desktop, "notepad", notepad, 24);
   });
 
   await check("notepad: focus on monitor at 16:9", async () => {

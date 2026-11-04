@@ -5,6 +5,7 @@
 // Checks that need a privacy permission this process does not have
 // (Accessibility, Screen Recording: TCC) are reported as "blocked", not
 // failed: a CI runner cannot click those switches.
+import { a11yCheck } from "./a11y-check.js";
 import { spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -208,6 +209,12 @@ async function main(): Promise<void> {
     await run("open", ["-a", "TextEdit", file]);
     textEdit = await waitWindow("TextEdit");
     return `window ${textEdit.id} pid ${textEdit.pid} "${textEdit.caption}" ${rectText(textEdit)}`;
+  });
+
+  await check("textedit: accessibility tree (AX API)", async () => {
+    needAx();
+    if (!textEdit) throw new Error("needs a TextEdit window");
+    return a11yCheck(await getDesktop(), "TextEdit", textEdit, 8);
   });
 
   await check("textedit: focus on display at 16:9", async () => {
