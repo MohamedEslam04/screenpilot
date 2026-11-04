@@ -145,4 +145,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 1fe42a8 ("feat(a11y): Windows UI Automation source (PowerShell script + pure parser)", 2026-11-04).
+Docs synced to commit d2180ad ("test: wait for the text area in the a11y smoke check and report roles on failure", 2026-11-04).
