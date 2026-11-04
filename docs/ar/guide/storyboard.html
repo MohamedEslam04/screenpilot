@@ -61,6 +61,7 @@
 <tr><td><code>cards</code></td><td><code>[]</code></td><td>بطاقات فصول في منتصف الفيديو. انظر <a href="../../ar/guide/storyboard.html#chapter-cards">بطاقات الفصول</a>.</td></tr>
 <tr><td><code>overlays</code></td><td><code>[]</code></td><td>صور وفيديو وشعارات فوق الإطار. انظر <a href="../../ar/guide/storyboard.html#overlays">الـ overlays</a>.</td></tr>
 <tr><td><code>music</code></td><td>لا شيء</td><td>موسيقى خلفية، ويمكن خفضها تحت الصوت.</td></tr>
+<tr><td><code>sfx</code> و<code>sounds</code></td><td><code>[]</code> ولا شيء</td><td>مؤثرات صوتية في أوقات تختارها، وأصوات تلقائية للنقرات والمفاتيح والبطاقات. انظر <a href="../../ar/guide/storyboard.html#sound-effects">المؤثرات الصوتية</a>.</td></tr>
 </tbody>
 </table>
 
@@ -214,10 +215,48 @@
 </tbody>
 </table>
 
+<h2 id="sound-effects">المؤثرات الصوتية<a class="a" href="#sound-effects" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>حقلان يضيفان أصواتًا قصيرة: <code>sfx</code> يشغّل صوتًا في وقت تختاره، و<code>sounds</code> يضيفها تلقائيًّا من النقرات وضغطات المفاتيح المسجَّلة ومن بطاقات العناوين. تُدمج كل الأصوات في مسار واحد، فلا تبطئ القائمة الطويلة الرندر، وينفّذ الرندر الجزئي (<code>--from</code> و<code>--to</code>) الأصوات الصحيحة.</p>
+<p>الصوت إما اسم من الأصوات المضمَّنة وإما ملف نسبي إلى الـ storyboard. يولّد ffmpeg الأصوات المضمَّنة أثناء الرندر، فلا شيء يُنزَّل ولا يُثبَّت:</p>
+<table>
+<thead><tr><th>الاسم</th><th>الصوت</th></tr></thead>
+<tbody>
+<tr><td><code>builtin:click</code></td><td>نقرة قصيرة ساطعة.</td></tr>
+<tr><td><code>builtin:key</code></td><td>نقرة أنعم وأخفض للكتابة.</td></tr>
+<tr><td><code>builtin:pop</code></td><td>فرقعة سريعة صاعدة.</td></tr>
+<tr><td><code>builtin:ding</code></td><td>جرس للنتيجة أو النجاح.</td></tr>
+<tr><td><code>builtin:whoosh</code></td><td>صوت انسياب ناعم للبطاقة أو تغيير المشهد.</td></tr>
+</tbody>
+</table>
+<p>الحقل <code>sfx</code> قائمة أصوات في أوقات المصدر:</p>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>at</code></td><td>مطلوب</td><td>وقت المصدر الذي يُشغَّل فيه الصوت. وقت داخل منطقة محذوفة يُسقط الصوت مع تحذير.</td></tr>
+<tr><td><code>src</code></td><td>مطلوب</td><td><code>builtin:&lt;name&gt;</code> أو ملف صوتي نسبي إلى الـ storyboard.</td></tr>
+<tr><td><code>volume</code></td><td><code>1</code></td><td>من 0 إلى 4.</td></tr>
+</tbody>
+</table>
+<p>الحقل <code>sounds</code> يشغّل الأصوات التلقائية. أعطِ أي حقل القيمة <code>true</code> للصوت المضمَّن، أو اسمًا أو ملفًا لاستخدام صوتك:</p>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>clicks</code></td><td>متوقف</td><td>صوت عند كل نقرة مسجَّلة. يحتاج <code>events</code>. القيمة <code>true</code> تعني <code>builtin:click</code>.</td></tr>
+<tr><td><code>keys</code></td><td>متوقف</td><td>صوت عند كل ضغطة مفتاح مسجَّلة، بحد أقصى 12 في الثانية. يحتاج <code>events</code>. القيمة <code>true</code> تعني <code>builtin:key</code>.</td></tr>
+<tr><td><code>cards</code></td><td>متوقف</td><td>صوت عند ظهور المقدمة وكل بطاقة فصل والخاتمة. القيمة <code>true</code> تعني <code>builtin:whoosh</code>.</td></tr>
+<tr><td><code>volume</code></td><td><code>0.5</code></td><td>مستوى هذه الأصوات التلقائية، من 0 إلى 2. عناصر <code>sfx</code> لها <code>volume</code> خاص.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-json">"sounds": { "clicks": true, "keys": true, "cards": true, "volume": 0.5 },
+"sfx": [
+  { "at": 21.5, "src": "builtin:ding" },
+  { "at": 30, "src": "assets/applause.wav", "volume": 0.7 }
+]</code></pre>
+
 <h2 id="extends">مشاركة المظهر بـ extends<a class="a" href="#extends" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>الحقل <code>extends</code> يشير إلى storyboard أساسي، نسبيًا إلى هذا الملف. استخدمه حين تريد أن تتشابه عدة فيديوهات في المظهر والصوت: يمتد كل منها من الأساس نفسه ويضيف تسجيله الخاص. وبه يأخذ مقطع الميزة مظهر العرض الذي ينضم إليه داخل <a href="../../ar/guide/sequence.html">sequence</a>.</p>
 <ul>
-<li><strong>تُورَّث خمسة حقول:</strong> <code>theme</code> و<code>voice</code> و<code>output</code> و<code>music</code> و<code>keepSourceAudio</code>. أما الباقي (<code>source</code> وsegments وzooms وcaptions وnarration وintro وoutro وغيرها) فلا يُورَّث أبدًا.</li>
+<li><strong>تُورَّث ستة حقول:</strong> <code>theme</code> و<code>voice</code> و<code>output</code> و<code>music</code> و<code>sounds</code> و<code>keepSourceAudio</code>. أما الباقي (<code>source</code> وsegments وzooms وcaptions وnarration وintro وoutro وغيرها) فلا يُورَّث أبدًا.</li>
 <li><strong>الابن يتغلب.</strong> الكائنات تُدمج مفتاحًا مفتاحًا، فالابن الذي يضبط <code>theme.accent</code> فقط يحتفظ بباقي حقول القالب من الأساس. أما المصفوفات فتُستبدل ولا تُدمج، مثل <code>theme.fonts</code>.</li>
 <li><strong>السلاسل تعمل.</strong> يمكن للأساس أن يمتد من storyboard آخر. والدورة (cycle) خطأ يذكر السلسلة.</li>
 <li><strong>المسارات تبقى صحيحة.</strong> يُعاد كتابة <code>music.src</code> القادم من الأساس ليشير إلى الملف نفسه انطلاقًا من مجلد الابن.</li>
@@ -383,7 +422,7 @@
 </ul>
 <div class="note">اعمل على مراحل. اكتب segments والتعليق الصوتي أولًا، وصيّر مسودة بـ <code>-q draft</code>، وراجعها بـ <code>check</code>، ثم أضف zooms وcaptions. غيّر نوعًا واحدًا من الأشياء في كل مرة.</div>
 <nav class="pager" aria-label="Pager"><a href="tools.html" rel="prev"><small>السابق</small>أدوات MCP</a><a href="voices.html" rel="next"><small>التالي</small>الأصوات</a></nav></article>
-  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#basics">القواعد الثلاث</a><a href="#top-level">حقول المستوى الأعلى</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#narration">Narration</a><a href="#cards">Intro وoutro</a><a href="#chapter-cards">بطاقات الفصول</a><a href="#overlays">Overlays</a><a href="#music">Music</a><a href="#extends">مشاركة المظهر بـ extends</a><a href="#views">الشاشات والزوايا</a><a href="#output">الخرج والصوت</a><a href="#theme">القالب (theme)</a><a href="#example">مثال كامل</a><a href="#lint">تحذيرات الأسلوب</a><a href="#style">إرشادات الأسلوب</a></aside>
+  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#basics">القواعد الثلاث</a><a href="#top-level">حقول المستوى الأعلى</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#narration">Narration</a><a href="#cards">Intro وoutro</a><a href="#chapter-cards">بطاقات الفصول</a><a href="#overlays">Overlays</a><a href="#music">Music</a><a href="#sound-effects">المؤثرات الصوتية</a><a href="#extends">مشاركة المظهر بـ extends</a><a href="#views">الشاشات والزوايا</a><a href="#output">الخرج والصوت</a><a href="#theme">القالب (theme)</a><a href="#example">مثال كامل</a><a href="#lint">تحذيرات الأسلوب</a><a href="#style">إرشادات الأسلوب</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../../ar/index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot مفتوح المصدر برخصة MIT.</small><small>أسماء المنتجات ملك لأصحابها. ScreenPilot مشروع مستقل.</small></div>

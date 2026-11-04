@@ -1,6 +1,6 @@
 <!--
 title: Storyboard reference
-summary: The storyboard.json format: segments, holds, zooms, captions, highlights, narration, cards, overlays, music, extends, theme and output, with a full example.
+summary: The storyboard.json format: segments, holds, zooms, captions, highlights, narration, cards, overlays, music, sound effects, extends, theme and output, with a full example.
 -->
 <p>A storyboard is a JSON file that describes the edit. The AI app writes it for you, but you can read it, change it and render it yourself. <code>screenpilot schema</code> (or the <code>storyboard_schema</code> tool) prints the authoritative JSON Schema. This page explains each field.</p>
 
@@ -35,6 +35,7 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 <tr><td><code>cards</code></td><td><code>[]</code></td><td>Chapter cards in the middle of the video. See <a href="@guide/storyboard.html#chapter-cards">Chapter cards</a>.</td></tr>
 <tr><td><code>overlays</code></td><td><code>[]</code></td><td>Images, video and logos on top of the frame. See <a href="@guide/storyboard.html#overlays">Overlays</a>.</td></tr>
 <tr><td><code>music</code></td><td>none</td><td>Background music, optionally ducked under the voice.</td></tr>
+<tr><td><code>sfx</code>, <code>sounds</code></td><td><code>[]</code>, none</td><td>Sound effects at chosen times, and automatic click, key and card sounds. See <a href="@guide/storyboard.html#sound-effects">Sound effects</a>.</td></tr>
 </tbody>
 </table>
 
@@ -188,10 +189,48 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 </tbody>
 </table>
 
+<h2 id="sound-effects">Sound effects</h2>
+<p>Two fields add short sounds: <code>sfx</code> plays a sound at a time you choose, and <code>sounds</code> adds them automatically from the recorded clicks and key presses and from the title cards. Every sound is mixed into one track, so a long list does not slow the render, and a partial render (<code>--from</code>, <code>--to</code>) plays the right ones.</p>
+<p>A sound is either one of the built-in names or a file relative to the storyboard. The built-in sounds are made by ffmpeg while rendering, so there is nothing to download or install:</p>
+<table>
+<thead><tr><th>Name</th><th>Sound</th></tr></thead>
+<tbody>
+<tr><td><code>builtin:click</code></td><td>A short, bright tick.</td></tr>
+<tr><td><code>builtin:key</code></td><td>A softer, lower tick for typing.</td></tr>
+<tr><td><code>builtin:pop</code></td><td>A quick upward pop.</td></tr>
+<tr><td><code>builtin:ding</code></td><td>A bell, for a result or a success.</td></tr>
+<tr><td><code>builtin:whoosh</code></td><td>A soft sweep, for a card or a change of scene.</td></tr>
+</tbody>
+</table>
+<p><code>sfx</code> is a list of sounds at source times:</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>at</code></td><td>required</td><td>Source time the sound plays. A time in a cut region drops the sound and warns.</td></tr>
+<tr><td><code>src</code></td><td>required</td><td><code>builtin:&lt;name&gt;</code> or an audio file, relative to the storyboard.</td></tr>
+<tr><td><code>volume</code></td><td><code>1</code></td><td>0 to 4.</td></tr>
+</tbody>
+</table>
+<p><code>sounds</code> turns on the automatic ones. Give a field <code>true</code> for the built-in, or a name or file to use your own:</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>clicks</code></td><td>off</td><td>A sound on every recorded click. Needs <code>events</code>. <code>true</code> means <code>builtin:click</code>.</td></tr>
+<tr><td><code>keys</code></td><td>off</td><td>A sound on every recorded key press, at most 12 a second. Needs <code>events</code>. <code>true</code> means <code>builtin:key</code>.</td></tr>
+<tr><td><code>cards</code></td><td>off</td><td>A sound as the intro, each chapter card and the outro come in. <code>true</code> means <code>builtin:whoosh</code>.</td></tr>
+<tr><td><code>volume</code></td><td><code>0.5</code></td><td>Level of these automatic sounds, 0 to 2. <code>sfx</code> items have their own <code>volume</code>.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-json">"sounds": { "clicks": true, "keys": true, "cards": true, "volume": 0.5 },
+"sfx": [
+  { "at": 21.5, "src": "builtin:ding" },
+  { "at": 30, "src": "assets/applause.wav", "volume": 0.7 }
+]</code></pre>
+
 <h2 id="extends">Share a look with extends</h2>
 <p><code>extends</code> points at a base storyboard, relative to this file. Use it when several videos should look and sound the same: each one extends the same base and adds its own recording. It is how a feature clip takes the look of the demo it joins in a <a href="@guide/sequence.html">sequence</a>.</p>
 <ul>
-<li><strong>Five fields are inherited:</strong> <code>theme</code>, <code>voice</code>, <code>output</code>, <code>music</code> and <code>keepSourceAudio</code>. Everything else (<code>source</code>, segments, zooms, captions, narration, intro, outro and the rest) is never inherited.</li>
+<li><strong>Six fields are inherited:</strong> <code>theme</code>, <code>voice</code>, <code>output</code>, <code>music</code>, <code>sounds</code> and <code>keepSourceAudio</code>. Everything else (<code>source</code>, segments, zooms, captions, narration, intro, outro and the rest) is never inherited.</li>
 <li><strong>The child wins.</strong> Objects merge key by key, so a child that sets only <code>theme.accent</code> keeps the base's other theme fields. Arrays replace instead of merging, for example <code>theme.fonts</code>.</li>
 <li><strong>Chains work.</strong> The base can extend another storyboard. A cycle is an error that lists the chain.</li>
 <li><strong>Paths stay valid.</strong> <code>music.src</code> from the base is rewritten to point at the same file from the child's folder.</li>
