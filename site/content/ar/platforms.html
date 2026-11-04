@@ -19,7 +19,7 @@ summary: ما الذي يستطيعه ScreenPilot على كل سطح مكتب: �
     <tr><td>macOS 12 وما بعده، Apple Silicon وIntel (<code>macos</code>)</td><td>ffmpeg <code>avfoundation</code> (إذن Screen Recording)</td><td>CGEvent (إذن Accessibility)</td><td>Accessibility API</td><td>استطلاع Quartz + global hook (إذن Input Monitoring)</td></tr>
   </tbody>
 </table>
-<p>يمكن أيضاً العثور على التطبيقات الأصلية بحسب role وname عبر شجرة إمكانية الوصول (أهداف <code>{a11y}</code>): على KDE Wayland عبر AT-SPI (مُختبر)، وعلى X11 بالطريقة نفسها (مُختبر على خادم X متداخل)، وعلى macOS عبر Accessibility API (مُختبر على جهاز macOS حقيقي في CI) وعلى Windows عبر UI Automation (تجريبي: تُوجد نافذة التطبيق لكن قد تغيب بعض العناصر داخلها). وعلى GNOME وأسطح Wayland الأخرى يمكن قراءة الشجرة لكن لا يمكن النقر على عنصر، لأن سطح المكتب لا يخبر بموضع النافذة. راجع <a href="@guide/agent-drive.html#a11y">التطبيقات الأصلية</a>.</p>
+<p>يمكن أيضاً العثور على التطبيقات الأصلية بحسب role وname عبر شجرة إمكانية الوصول (أهداف <code>{a11y}</code>): على KDE Wayland عبر AT-SPI (مُختبر)، وعلى X11 بالطريقة نفسها (مُختبر على خادم X متداخل)، وعلى macOS عبر Accessibility API (مُختبر على جهاز macOS حقيقي في CI) وعلى Windows عبر UI Automation (مُختبر على جهاز Windows حقيقي في CI). وعلى GNOME وأسطح Wayland الأخرى يمكن قراءة الشجرة لكن لا يمكن النقر على عنصر، لأن سطح المكتب لا يخبر بموضع النافذة. راجع <a href="@guide/agent-drive.html#a11y">التطبيقات الأصلية</a>.</p>
 <p>لفرض واجهة بعينها اضبط متغير البيئة <code>SCREENPILOT_DESKTOP</code> على <code>kde</code> أو <code>x11</code> أو <code>portal</code> أو <code>windows</code> أو <code>macos</code>.</p>
 <div class="note">KDE Wayland يُستخدم يوميًا. أما Windows وX11 وmacOS فلكل منها اختبار آلي على جهاز حقيقي في CI. لم يُجرَّب GNOME وHyprland على أجهزة حقيقية بعد.</div>
 
@@ -86,7 +86,7 @@ sudo apt install gstreamer1.0-tools gstreamer1.0-pipewire gstreamer1.0-plugins-u
 <ul>
   <li>تعمل قيادة سطح المكتب على KDE Wayland وX11 وGNOME Wayland (دون التحكم بالنوافذ) وWindows وmacOS. ولا تعمل على سطوح wlroots (sway وHyprland). أما التسجيل فيعمل هناك.</li>
   <li>سطوح Wayland غير KDE لا تعرض قائمة نوافذ ولا موضع المؤشر. وهذا يعني: لا تأطير بالنوافذ، ولا أهداف <code>{web}</code> أو <code>{window}</code>، ولا نقر على أهداف <code>{a11y}</code> (يمكن قراءتها)، ولا سجل للمؤشر في تسجيلاتك أنت.</li>
-  <li>أهداف <code>{a11y}</code> على Windows تعمل عبر UI Automation (تجريبية: تُوجد نافذة التطبيق لكن لم يُعثر بعد على عناصر التحكم داخل Notepad الجديد)، ولا يمكن قراءة تطبيق يعمل بصلاحيات المسؤول إلا إذا كان تطبيق الذكاء الاصطناعي يعمل بها أيضاً. وتطبيقات Qt تحتاج إلى <code>QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1</code> عند بدئها، والتطبيقات التي ترسم واجهتها بنفسها تُظهر القليل أو لا شيء.</li>
+  <li>أهداف <code>{a11y}</code> على Windows تعمل عبر UI Automation (مُختبرة على جهاز Windows حقيقي؛ والتطبيقات التي تُظهر عناصرها كألواح عادية فقط، مثل حقل النص في Notepad الكلاسيكي، لا يظهر فيها عنصر: استخدم <code>{window, x, y}</code> أو <code>{screen, x, y}</code>)، ولا يمكن قراءة تطبيق يعمل بصلاحيات المسؤول إلا إذا كان تطبيق الذكاء الاصطناعي يعمل بها أيضاً. وتطبيقات Qt تحتاج إلى <code>QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1</code> عند بدئها، والتطبيقات التي ترسم واجهتها بنفسها تُظهر القليل أو لا شيء.</li>
   <li>أصوات Edge الافتراضية تحتاج إلى الإنترنت، وهي خدمة غير رسمية قد تتغير.</li>
   <li>الأصوات المحلية (VoiceTut وNAMAA) جُرّبت على Linux مع بطاقة رسوميات NVIDIA فقط. ولم تُجرَّب على Windows أو macOS أو الأجهزة التي ليس فيها سوى المعالج.</li>
   <li>الإخراج ليس سريعًا. استخدم المسودة أثناء التجريب.</li>

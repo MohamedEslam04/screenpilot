@@ -83,7 +83,7 @@ screenpilot perform take.json                      # record and drive; writes th
   <li><strong>Linux مع X11:</strong> يعمل بالطريقة نفسها (مُختبر على خادم X متداخل بلا مدير نوافذ، ولم يُختبر بعد على سطح مكتب X11 كامل).</li>
   <li><strong>GNOME وأسطح Wayland الأخرى:</strong> لا يخبر سطح المكتب بموضع النافذة. يمكن قراءة الشجرة (<code>a11y_tree</code>) لكن النقر يفشل مع <code>POSITION_UNKNOWN</code>. استخدم أهداف <code>{screen, x, y}</code> هناك.</li>
   <li><strong>macOS:</strong> مبني على Accessibility API ومُختبر على جهاز macOS حقيقي في CI. يحتاج تطبيق الذكاء الاصطناعي إلى إذن Accessibility.</li>
-  <li><strong>Windows:</strong> مبني على UI Automation عبر سكربت PowerShell قصير (لا شيء يلزم تثبيته) لكنه تجريبي: يجد نافذة التطبيق، أما عناصر التحكم داخل Notepad الجديد فلم يُعثر عليها بعد (قيد التحقيق)، فقد تغيب بعض العناصر. ولا يمكن قراءة تطبيق يعمل بصلاحيات المسؤول إلا إذا كان تطبيق الذكاء الاصطناعي يعمل بها أيضاً.</li>
+  <li><strong>Windows:</strong> مبني على UI Automation عبر سكربت PowerShell قصير (لا شيء يلزم تثبيته) ومُختبر على جهاز Windows حقيقي في CI. والتطبيقات التي تُظهر عناصرها لـ UI Automation كألواح عادية فقط (مثل حقل النص في Notepad الكلاسيكي) لا يظهر فيها عنصر: استخدم أهداف <code>{window, x, y}</code> أو <code>{screen, x, y}</code> معها. ولا يمكن قراءة تطبيق يعمل بصلاحيات المسؤول إلا إذا كان تطبيق الذكاء الاصطناعي يعمل بها أيضاً.</li>
 </ul>
 <div class="warn">تطبيقات Qt لا تظهر في شجرة إمكانية الوصول إلا إذا بدأت بالمتغير <code>QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1</code>. التطبيقات التي يشغّلها الـ take بالخطوتين <code>run</code> و<code>open</code> تحصل عليه تلقائياً. أما تطبيق Qt يعمل بالفعل فيجب إعادة تشغيله. والتطبيقات التي ترسم واجهتها بنفسها (بعض تطبيقات Electron وما يُرسم بالـ GPU) تُظهر القليل أو لا شيء. ويحتاج Chromium إلى <code>--force-renderer-accessibility</code>؛ وفي متصفح العرض استخدم أهداف <code>{web}</code> بدلاً من ذلك.</div>
 
@@ -184,7 +184,7 @@ screenpilot perform take.json                      # record and drive; writes th
 <h2 id="platforms">ما الذي يدعمه كل سطح مكتب</h2>
 <p>يعمل التحكم على KDE Plasma وأي سطح مكتب X11 وGNOME على Wayland وWindows وmacOS. ولا يعمل على sway وHyprland، مع أن التسجيل يعمل عليهما.</p>
 <ul>
-  <li><strong>KDE Plasma وأسطح مكتب X11 وWindows وmacOS:</strong> كل ما في هذه الصفحة يعمل، بما فيه أهداف <code>{web}</code> و<code>{window}</code> والخطوتان <code>focus</code> و<code>waitForWindow</code>. وأهداف <code>{a11y}</code> مُختبرة على KDE Plasma وعلى X11 (خادم X متداخل)، وعلى macOS (مُختبرة على جهاز macOS حقيقي في CI)، وتجريبية على Windows (انظر أعلاه).</li>
+  <li><strong>KDE Plasma وأسطح مكتب X11 وWindows وmacOS:</strong> كل ما في هذه الصفحة يعمل، بما فيه أهداف <code>{web}</code> و<code>{window}</code> والخطوتان <code>focus</code> و<code>waitForWindow</code>. وأهداف <code>{a11y}</code> مُختبرة على KDE Plasma وعلى X11 (خادم X متداخل)، وعلى macOS وWindows (مُختبرة على جهاز حقيقي في CI؛ انظر أعلاه لحد Windows).</li>
   <li><strong>GNOME على Wayland:</strong> لا يوجد تحكم بالنوافذ. استخدم أهداف <code>{ "screen", "x", "y" }</code> فقط. الخطوتان <code>focus</code> و<code>waitForWindow</code> وأهداف <code>{window}</code> و<code>{web}</code> تفشل مع رسالة خطأ. يمكن قراءة عناصر <code>{a11y}</code> لكن لا يمكن النقر عليها.</li>
   <li><strong>sway وHyprland:</strong> التحكم غير ممكن.</li>
 </ul>

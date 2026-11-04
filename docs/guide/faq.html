@@ -137,7 +137,7 @@
 <ul>
   <li><strong>Qt apps</strong> (KDE apps, for example) only appear if they were started with <code>QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1</code>. Apps that a take starts get it automatically. Quit a Qt app that is already running and let the agent start it again.</li>
   <li><strong>Apps that draw their own interface</strong> (some Electron and GPU-drawn apps) show little or nothing. Ask the agent to use <code>{screen, x, y}</code> targets for them.</li>
-  <li><strong>Windows</strong> support for finding controls is experimental: the app window is found, but controls inside some apps (the new Notepad, for example) may be missing. Use <code>{screen, x, y}</code> targets for them.</li>
+  <li><strong>Windows</strong> reads controls through UI Automation. Some apps expose their controls to it only as plain panes, so no button or text area shows up (the text area of the classic Notepad, for example). Ask the agent to use <code>{window, x, y}</code> or <code>{screen, x, y}</code> targets for those apps.</li>
   <li><strong>GNOME and other Wayland desktops</strong> let the agent read the controls but not click them, because the desktop does not say where a window is. The error is <code>POSITION_UNKNOWN</code>.</li>
   <li><strong>Several controls match.</strong> The agent never guesses. It gets a list of candidates and adds <code>nth</code> or a more specific name.</li>
 </ul>

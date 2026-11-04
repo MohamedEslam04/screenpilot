@@ -83,7 +83,7 @@ screenpilot perform take.json                      # record and drive; writes th
   <li><strong>Linux, X11:</strong> works the same way (tested on a nested X server without a window manager; not yet on a full X11 desktop).</li>
   <li><strong>GNOME and other Wayland desktops:</strong> the desktop does not tell where a window is. The tree can be read (<code>a11y_tree</code>), but a click fails with <code>POSITION_UNKNOWN</code>. Use <code>{screen, x, y}</code> targets there.</li>
   <li><strong>macOS:</strong> built on the Accessibility API and tested on a real macOS runner in CI. The AI app needs the Accessibility permission.</li>
-  <li><strong>Windows:</strong> built on UI Automation, read by a short PowerShell script (nothing to install), but experimental: it finds the app window, but controls inside the new Notepad were not found yet (being investigated), so some controls may be missing. An app running as administrator cannot be read unless the AI app runs as administrator too.</li>
+  <li><strong>Windows:</strong> built on UI Automation, read by a short PowerShell script (nothing to install) and tested on a real Windows runner in CI. Apps that expose their controls to UI Automation only as plain panes (the text area of the classic Notepad, for example) show no control there: use <code>{window, x, y}</code> or <code>{screen, x, y}</code> targets for those. An app running as administrator cannot be read unless the AI app runs as administrator too.</li>
 </ul>
 <div class="warn">Qt apps only appear in the accessibility tree if they were started with <code>QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1</code>. Apps that a take starts with <code>run</code> or <code>open</code> get it automatically. A Qt app that is already running must be restarted. Apps that draw their own interface (some Electron and GPU-drawn apps) show little or nothing. Chromium needs <code>--force-renderer-accessibility</code>; in the demo browser use <code>{web}</code> targets instead.</div>
 
@@ -184,7 +184,7 @@ screenpilot perform take.json                      # record and drive; writes th
 <h2 id="platforms">What each desktop supports</h2>
 <p>Driving works on KDE Plasma, any X11 desktop, GNOME on Wayland, Windows and macOS. It does not work on sway or Hyprland, where recording still works.</p>
 <ul>
-  <li><strong>KDE Plasma, X11 desktops, Windows, macOS:</strong> everything in this page works, including <code>{web}</code> and <code>{window}</code> targets, <code>focus</code> and <code>waitForWindow</code>. <code>{a11y}</code> targets are tested on KDE Plasma and on X11 (nested X server), on macOS (tested on a real macOS runner in CI), and experimental on Windows (see above).</li>
+  <li><strong>KDE Plasma, X11 desktops, Windows, macOS:</strong> everything in this page works, including <code>{web}</code> and <code>{window}</code> targets, <code>focus</code> and <code>waitForWindow</code>. <code>{a11y}</code> targets are tested on KDE Plasma and on X11 (nested X server), on macOS and on Windows (both tested on a real runner in CI; see above for the Windows limit).</li>
   <li><strong>GNOME on Wayland:</strong> no window control. Use only <code>{ "screen", "x", "y" }</code> targets. The <code>focus</code> and <code>waitForWindow</code> steps and the <code>{window}</code> and <code>{web}</code> targets fail with an error. <code>{a11y}</code> controls can be read but not clicked.</li>
   <li><strong>sway, Hyprland:</strong> driving is not possible.</li>
 </ul>
