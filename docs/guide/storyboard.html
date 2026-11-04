@@ -56,6 +56,7 @@
 <tr><td><code>screens</code>, <code>views</code></td><td><code>[]</code></td><td>Multi-monitor recordings. See <a href="../guide/storyboard.html#views">Screens and views</a>.</td></tr>
 <tr><td><code>captions</code></td><td><code>[]</code></td><td>On-screen text.</td></tr>
 <tr><td><code>highlights</code></td><td><code>[]</code></td><td>Boxes around parts of the screen.</td></tr>
+<tr><td><code>annotations</code></td><td><code>[]</code></td><td>Arrows, outlines and blur or solid cover-ups on the recording. See <a href="../guide/storyboard.html#annotations">Annotations</a>.</td></tr>
 <tr><td><code>narration</code></td><td><code>[]</code></td><td>Voiceover lines.</td></tr>
 <tr><td><code>intro</code>, <code>outro</code></td><td>none</td><td>Title cards before and after the video.</td></tr>
 <tr><td><code>cards</code></td><td><code>[]</code></td><td>Chapter cards in the middle of the video. See <a href="../guide/storyboard.html#chapter-cards">Chapter cards</a>.</td></tr>
@@ -135,6 +136,27 @@
 <tr><td><code>label</code></td><td>none</td><td>Optional text on the box.</td></tr>
 </tbody>
 </table>
+
+<h2 id="annotations">Annotations<a class="a" href="#annotations" aria-label="Link to this section">#</a></h2>
+<p><code>annotations</code> draw on the recording itself: an arrow to point at something, an outline around it, or a blur or solid block to hide it. Positions are 0..1 of the recording, like highlights, so they stay on the right spot when the camera zooms or pans. Every item has a <code>type</code>, an <code>at</code> (source time) and a <code>dur</code> (default 3).</p>
+<table>
+<thead><tr><th>Type</th><th>Fields</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>arrow</code></td><td><code>from</code>, <code>to</code>, <code>label</code>, <code>color</code>, <code>width</code> (2 to 24, default 8)</td><td>An arrow from <code>from</code> (the tail) to <code>to</code> (the tip) that draws itself on. <code>label</code> sits at the tail.</td></tr>
+<tr><td><code>box</code></td><td><code>x</code>, <code>y</code>, <code>w</code>, <code>h</code>, <code>shape</code> (<code>box</code> or <code>ellipse</code>), <code>label</code>, <code>color</code>, <code>motion</code></td><td>An outline around a region. Unlike a highlight it does not dim the rest of the screen. Pops in and fades out unless you set <code>motion</code>.</td></tr>
+<tr><td><code>blur</code></td><td><code>x</code>, <code>y</code>, <code>w</code>, <code>h</code>, <code>mode</code> (<code>blur</code> or <code>solid</code>), <code>strength</code> (2 to 80, default 18), <code>color</code></td><td>Hides a region. <code>blur</code> blurs what is behind it; <code>solid</code> covers it with <code>color</code> (default near-black).</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Use <code>solid</code> for anything secret.</strong> A light blur of small text can still be readable. Check the rendered frames with <code>check</code> before you share the video.</li>
+<li><strong>Covers appear and disappear on the exact frame</strong>, with no fade, so what they hide is never visible for a moment.</li>
+<li><code>color</code> is any CSS color; arrows and boxes default to <code>theme.accent</code>.</li>
+</ul>
+<pre><code class="language-json">"annotations": [
+  { "type": "arrow", "at": 4, "dur": 3, "from": { "x": 0.2, "y": 0.2 }, "to": { "x": 0.45, "y": 0.4 }, "label": "Start here" },
+  { "type": "box", "at": 8, "dur": 2.5, "x": 0.55, "y": 0.15, "w": 0.3, "h": 0.12, "label": "Total" },
+  { "type": "blur", "at": 12, "dur": 4, "mode": "solid", "x": 0.1, "y": 0.1, "w": 0.35, "h": 0.06 }
+]</code></pre>
 
 <h2 id="narration">Narration<a class="a" href="#narration" aria-label="Link to this section">#</a></h2>
 <p>Each line is spoken by the storyboard's voice and mixed into the video. By default that is an Edge voice; see <a href="../guide/voices.html">Voices</a> for local models and your own programs. Narration never overlaps: when a line overruns its slot, the video freezes to make room.</p>
@@ -273,6 +295,7 @@
 <tr><td><code>at</code></td><td>required</td><td>Source time the typing starts.</td></tr>
 <tr><td><code>dur</code></td><td><code>3</code></td><td>How long it lasts, in seconds.</td></tr>
 <tr><td><code>text</code></td><td>none</td><td>What is typed. Gives one press per character; without it you get about 7 presses a second. The rhythm is a little uneven, and the same on every render.</td></tr>
+<tr><td><code>keycaps</code></td><td>off</td><td>Shows the typed text on screen in a small key-cap bar, one word at a time, each word on the press that finishes it (the same presses as the typing sound). Needs <code>text</code>.</td></tr>
 </tbody>
 </table>
 <pre><code class="language-json">"sounds": { "clicks": true, "typing": true, "cards": true, "volume": 0.5 },
@@ -356,6 +379,8 @@
 <li><code>.hl</code> and <code>.hl span</code>: highlights.</li>
 <li><code>.callout span</code>: callout bubbles.</li>
 <li><code>.ripple</code>: click ripples.</li>
+<li><code>.ann-arrow</code>, <code>.ann-box</code>, <code>.ann-blur</code> and <code>.ann-label</code>: annotations.</li>
+<li><code>.keys</code>: typed text (key-caps).</li>
 </ul>
 
 <h3 id="motion">Motion<a class="a" href="#motion" aria-label="Link to this section">#</a></h3>
@@ -451,7 +476,7 @@
 </ul>
 <div class="note">Work in passes. Write segments and narration first, render a draft with <code>-q draft</code>, look at it with <code>check</code>, then add zooms and captions. Change one kind of thing at a time.</div>
 <nav class="pager" aria-label="Pager"><a href="tools.html" rel="prev"><small>Previous</small>MCP tools</a><a href="voices.html" rel="next"><small>Next</small>Voices</a></nav></article>
-  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#basics">The three rules</a><a href="#top-level">Top-level fields</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#narration">Narration</a><a href="#cards">Intro and outro</a><a href="#chapter-cards">Chapter cards</a><a href="#overlays">Overlays</a><a href="#music">Music</a><a href="#audio">Audio mix</a><a href="#sound-effects">Sound effects</a><a href="#extends">Share a look with extends</a><a href="#views">Screens and views</a><a href="#output">Output and voice</a><a href="#theme">Theme</a><a href="#example">A complete example</a><a href="#lint">Style warnings</a><a href="#style">Style guidance</a></aside>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#basics">The three rules</a><a href="#top-level">Top-level fields</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#annotations">Annotations</a><a href="#narration">Narration</a><a href="#cards">Intro and outro</a><a href="#chapter-cards">Chapter cards</a><a href="#overlays">Overlays</a><a href="#music">Music</a><a href="#audio">Audio mix</a><a href="#sound-effects">Sound effects</a><a href="#extends">Share a look with extends</a><a href="#views">Screens and views</a><a href="#output">Output and voice</a><a href="#theme">Theme</a><a href="#example">A complete example</a><a href="#lint">Style warnings</a><a href="#style">Style guidance</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>

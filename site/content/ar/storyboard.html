@@ -30,6 +30,7 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <tr><td><code>screens</code>, <code>views</code></td><td><code>[]</code></td><td>تسجيلات الشاشات المتعددة. انظر <a href="@guide/storyboard.html#views">الشاشات والزوايا</a>.</td></tr>
 <tr><td><code>captions</code></td><td><code>[]</code></td><td>نص على الشاشة.</td></tr>
 <tr><td><code>highlights</code></td><td><code>[]</code></td><td>مربعات حول أجزاء من الشاشة.</td></tr>
+<tr><td><code>annotations</code></td><td><code>[]</code></td><td>أسهم وإطارات وتغطية بالتمويه أو بلون ثابت فوق التسجيل. انظر <a href="@guide/storyboard.html#annotations">الشروحات</a>.</td></tr>
 <tr><td><code>narration</code></td><td><code>[]</code></td><td>أسطر التعليق الصوتي.</td></tr>
 <tr><td><code>intro</code>, <code>outro</code></td><td>لا شيء</td><td>بطاقات العنوان قبل الفيديو وبعده.</td></tr>
 <tr><td><code>cards</code></td><td><code>[]</code></td><td>بطاقات فصول في منتصف الفيديو. انظر <a href="@guide/storyboard.html#chapter-cards">بطاقات الفصول</a>.</td></tr>
@@ -109,6 +110,27 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <tr><td><code>label</code></td><td>لا شيء</td><td>نص اختياري على المربع.</td></tr>
 </tbody>
 </table>
+
+<h2 id="annotations">الشروحات (annotations)</h2>
+<p>تُرسم <code>annotations</code> على التسجيل نفسه: سهم للإشارة إلى شيء، أو إطار حوله، أو تمويه أو كتلة ملونة لإخفائه. المواضع من 0 إلى 1 من التسجيل، كما في الـ highlights، فتبقى في مكانها الصحيح عندما تكبّر الكاميرا أو تنتقل. لكل عنصر <code>type</code> و<code>at</code> (وقت المصدر) و<code>dur</code> (الافتراضي 3).</p>
+<table>
+<thead><tr><th>النوع</th><th>الحقول</th><th>ماذا يفعل</th></tr></thead>
+<tbody>
+<tr><td><code>arrow</code></td><td><code>from</code> و<code>to</code> و<code>label</code> و<code>color</code> و<code>width</code> (من 2 إلى 24، الافتراضي 8)</td><td>سهم من <code>from</code> (الذيل) إلى <code>to</code> (الرأس) يرسم نفسه تدريجيًّا. الـ <code>label</code> عند الذيل.</td></tr>
+<tr><td><code>box</code></td><td><code>x</code> و<code>y</code> و<code>w</code> و<code>h</code> و<code>shape</code> (<code>box</code> أو <code>ellipse</code>) و<code>label</code> و<code>color</code> و<code>motion</code></td><td>إطار حول منطقة. خلافًا للـ highlight لا يعتّم باقي الشاشة. يظهر بحركة pop ويختفي بتلاشٍ ما لم تضبط <code>motion</code>.</td></tr>
+<tr><td><code>blur</code></td><td><code>x</code> و<code>y</code> و<code>w</code> و<code>h</code> و<code>mode</code> (<code>blur</code> أو <code>solid</code>) و<code>strength</code> (من 2 إلى 80، الافتراضي 18) و<code>color</code></td><td>يخفي منطقة. الوضع <code>blur</code> يموّه ما خلفه؛ والوضع <code>solid</code> يغطيه بالقيمة <code>color</code> (الافتراضي أسود يكاد).</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>استخدم <code>solid</code> لأي شيء سري.</strong> التمويه الخفيف للنص الصغير قد يبقى مقروءًا. افحص الإطارات المرندرة بـ <code>check</code> قبل مشاركة الفيديو.</li>
+<li><strong>تظهر التغطيات وتختفي في الإطار المحدد تمامًا</strong>، دون تلاشٍ، فلا يظهر ما تخفيه ولو للحظة.</li>
+<li>الحقل <code>color</code> أي لون CSS؛ والأسهم والإطارات تأخذ <code>theme.accent</code> افتراضيًّا.</li>
+</ul>
+<pre><code class="language-json">"annotations": [
+  { "type": "arrow", "at": 4, "dur": 3, "from": { "x": 0.2, "y": 0.2 }, "to": { "x": 0.45, "y": 0.4 }, "label": "ابدأ من هنا" },
+  { "type": "box", "at": 8, "dur": 2.5, "x": 0.55, "y": 0.15, "w": 0.3, "h": 0.12, "label": "الإجمالي" },
+  { "type": "blur", "at": 12, "dur": 4, "mode": "solid", "x": 0.1, "y": 0.1, "w": 0.35, "h": 0.06 }
+]</code></pre>
 
 <h2 id="narration">Narration</h2>
 <p>يقرأ كل سطر صوتُ الـ storyboard ويُمزج في الفيديو. الافتراضي صوت Edge؛ انظر <a href="@guide/voices.html">الأصوات</a> للنماذج المحلية ولبرامجك الخاصة. التعليق الصوتي لا يتداخل أبدًا: إذا تجاوز سطر مكانه، يتجمد الفيديو ليفسح له.</p>
@@ -247,6 +269,7 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <tr><td><code>at</code></td><td>مطلوب</td><td>وقت المصدر الذي تبدأ فيه الكتابة.</td></tr>
 <tr><td><code>dur</code></td><td><code>3</code></td><td>مدتها بالثواني.</td></tr>
 <tr><td><code>text</code></td><td>لا شيء</td><td>ما يُكتب. يعطي ضغطة لكل حرف؛ وبدونه تحصل على نحو 7 ضغطات في الثانية. الإيقاع غير منتظم قليلًا، ويتكرر نفسه في كل رندر.</td></tr>
+<tr><td><code>keycaps</code></td><td>متوقف</td><td>يعرض النص المكتوب على الشاشة في شريط مفاتيح صغير، كلمة بكلمة، وتظهر كل كلمة عند الضغطة التي تكملها (الضغطات نفسها التي تصدر صوت الكتابة). يحتاج <code>text</code>.</td></tr>
 </tbody>
 </table>
 <pre><code class="language-json">"sounds": { "clicks": true, "typing": true, "cards": true, "volume": 0.5 },
@@ -330,6 +353,8 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <li><code>.hl</code> و<code>.hl span</code>: الـ highlights.</li>
 <li><code>.callout span</code>: فقاعات callout.</li>
 <li><code>.ripple</code>: تموّجات النقر.</li>
+<li><code>.ann-arrow</code> و<code>.ann-box</code> و<code>.ann-blur</code> و<code>.ann-label</code>: الشروحات.</li>
+<li><code>.keys</code>: النص المكتوب (شريط المفاتيح).</li>
 </ul>
 
 <h3 id="motion">الحركة (motion)</h3>

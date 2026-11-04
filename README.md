@@ -145,4 +145,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 239ab3d ("feat(audio): music loop, offset, range and fades; duck under overlays; loudness normalization; denoise", 2026-11-04).
+Docs synced to commit 9ff5711 ("feat(annotations): arrows, boxes and blur/solid cover-ups, and key-caps for typing spans", 2026-11-04).
