@@ -16,6 +16,8 @@ import { normalizeEvents } from "../record/normalize.js";
 import { synthesizeLines } from "../voice/index.js";
 import { openWithDefaultApp } from "./open.js";
 import { type Step, type Take, TakeSchema, type Target } from "./schema.js";
+import type { Typing } from "../storyboard/schema.js";
+import { typingSpan } from "./typing.js";
 import { CACHE_DIR } from "../brand.js";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -80,6 +82,7 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
   const narration: { at: number; text: string; voice?: string }[] = [];
   const captions: { at: number; dur: number; text: string; position: "bottom" | "top" | "center" }[] = [];
   const views: { at: number; screen: string; transition: "pan" }[] = [];
+  const typings: Typing[] = [];
   let rec: ActiveRecording | undefined;
   let t0 = performance.now();
   const now = () => (performance.now() - t0) / 1000;
@@ -120,7 +123,9 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
         } else if ("view" in step) {
           views.push({ at: round(now()), screen: step.view, transition: "pan" });
         } else {
+          const started = now();
           await runStep(step, ctx);
+          if ("type" in step) typings.push(typingSpan(step, started, now()));
         }
         timeline.push({ index: i, t: round(now()), kind });
       } catch (err) {
@@ -163,6 +168,8 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
   else sb.views = [];
   sb.narration = narration;
   sb.captions = captions;
+  // Where the take typed (a secret is timed, never copied): mark them so sounds.typing can play on them.
+  if (typings.length) sb.typing = typings;
   sb.voice = { name: take.voice.name, rate: take.voice.rate, gap: take.voice.gap };
   await writeFile(storyboard, `${JSON.stringify(sb, null, 2)}\n`);
   return { dir: recResult.dir, storyboard, recording: recResult, steps: timeline, warnings };

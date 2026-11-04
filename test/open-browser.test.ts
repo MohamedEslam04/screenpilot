@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { browserCandidates } from "../src/drive/web.js";
+import { browserCandidates, browserStartTimeout, waitUntil } from "../src/drive/web.js";
 import { openCommand } from "../src/take/open.js";
 
 describe("openCommand", () => {
@@ -46,5 +46,36 @@ describe("browserCandidates", () => {
 
   it("skips Windows roots that are not set", () => {
     expect(browserCandidates({ LOCALAPPDATA: "C:\\L" }, "win32")).toHaveLength(3);
+  });
+});
+
+describe("waitUntil", () => {
+  it("returns as soon as the check passes, without sleeping again", async () => {
+    let calls = 0;
+    const slept: number[] = [];
+    const ok = await waitUntil(async () => ++calls === 3, { timeoutMs: 10_000, intervalMs: 250, sleep: async (ms) => void slept.push(ms) });
+    expect(ok).toBe(true);
+    expect(calls).toBe(3);
+    expect(slept).toEqual([250, 250]);
+  });
+
+  it("gives up after the timeout, having asked once more at the end", async () => {
+    let calls = 0;
+    const ok = await waitUntil(async () => (calls++, false), { timeoutMs: 1000, intervalMs: 250, sleep: async () => {} });
+    expect(ok).toBe(false);
+    expect(calls).toBe(5);
+  });
+
+  it("passes when the check passes on the very last try", async () => {
+    let calls = 0;
+    expect(await waitUntil(async () => ++calls === 5, { timeoutMs: 1000, intervalMs: 250, sleep: async () => {} })).toBe(true);
+  });
+});
+
+describe("browserStartTimeout", () => {
+  it("allows a cold start on a slow machine 45 s, and macOS (Gatekeeper check) a minute", () => {
+    expect(browserStartTimeout("linux", false)).toBe(45_000);
+    expect(browserStartTimeout("win32", false)).toBe(45_000);
+    expect(browserStartTimeout("darwin", true)).toBe(60_000);
   });
 });

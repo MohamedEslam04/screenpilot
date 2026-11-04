@@ -1,5 +1,5 @@
 import type { Storyboard } from "./schema.js";
-import { normalizeSegments } from "./timeline.js";
+import { normalizeSegments, speedAt } from "./timeline.js";
 
 // A slice of a storyboard: only source range [from, to] of it. Rules:
 // - Ranges are half-open, [from, to): something at exactly `to` belongs to the
@@ -7,9 +7,13 @@ import { normalizeSegments } from "./timeline.js";
 //   slices [0, 42) and [42, end] together keep every item once.
 // - holds, narration and views are kept when their `at` is in the range.
 //   Narration that started before `from` is dropped (a line can't resume mid-word).
-// - zooms, captions and highlights are cut to the range: one that started
+// - zooms, captions, highlights and annotations are cut to the range: one that started
 //   before `from` and still runs then is re-timed to start at `from`, one that
 //   runs past `to` ends there. If less than MIN_SPAN of it is left, it is dropped.
+// - sfx and typing spans are kept like holds (by their `at`): a typing span is
+//   never cut short, because its presses are spread over its whole text.
+// - A segment with `speedTo` (a speed ramp) keeps its curve when cut: each piece
+//   starts and ends at the speed the whole segment has at those times.
 // - cards are kept like holds (by their `at`). Overlays with an `at` are cut to
 //   the range like zooms (an open-ended one just starts at `from`); overlays
 //   without an `at` (whole video, or `dur` only) are kept in every slice.
@@ -28,7 +32,11 @@ export function clipStoryboard(sb: Storyboard, range: { from?: number; to?: numb
   const all = normalizeSegments(sb.segments, sourceDuration);
   const end = all.at(-1)?.out ?? sourceDuration;
   const segments = all
-    .map((s) => ({ ...s, in: Math.max(s.in, from), out: Math.min(s.out, to) }))
+    .map((s) => {
+      const cut = { ...s, in: Math.max(s.in, from), out: Math.min(s.out, to) };
+      // A ramp keeps its curve: each piece starts and ends at the speed the whole segment has there.
+      return s.speedTo === undefined ? cut : { ...cut, speed: speedAt(s, cut.in), speedTo: speedAt(s, cut.out) };
+    })
     .filter((s) => s.out > s.in + EPS);
   if (segments.length === 0) throw new Error(`range from ${from}s to ${to}s keeps nothing of the storyboard's segments`);
 
@@ -64,7 +72,10 @@ export function clipStoryboard(sb: Storyboard, range: { from?: number; to?: numb
     zooms: clipSpan(sb.zooms),
     captions: clipSpan(sb.captions),
     highlights: clipSpan(sb.highlights),
+    annotations: clipSpan(sb.annotations),
     narration: sb.narration.filter((n) => inRange(n.at)),
+    sfx: sb.sfx.filter((x) => inRange(x.at)),
+    typing: sb.typing.filter((t) => inRange(t.at)),
     views: kept,
   };
 }

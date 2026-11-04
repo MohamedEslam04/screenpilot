@@ -99,6 +99,78 @@ export function renderHtml(plan: RenderPlan, opts: { gsapSrc: string }): string 
     js.push(`tl.to("#hl${i}", { opacity: 0, duration: 0.3 }, ${n(Math.max(h.start + 0.35, h.end - 0.3))});`);
   });
 
+  // Annotations (camera space like highlights, so they follow the zoom): arrows, boxes, blur and solid redaction.
+  plan.annotations.forEach((a, i) => {
+    const id = `an${i}`;
+    const rect = (r: { x: number; y: number; w: number; h: number }) =>
+      `left:${n(r.x * cam.w)}px;top:${n(r.y * cam.h)}px;width:${n(r.w * cam.w)}px;height:${n(r.h * cam.h)}px`;
+    if (a.kind === "blur") {
+      // No fade in or out: whatever is being hidden must never show, not even for a few frames.
+      const look = a.mode === "solid" ? `background:${esc(a.color)}` : `backdrop-filter:blur(${n(a.strength)}px);-webkit-backdrop-filter:blur(${n(a.strength)}px)`;
+      camEls.push(`<div id="${id}" class="clip ann ann-blur" ${timed(a.start, a.end)} style="${rect(a)};${look}"></div>`);
+      return;
+    }
+    if (a.kind === "box") {
+      const style = `${rect(a)};border:6px solid ${esc(a.color)};border-radius:${a.shape === "ellipse" ? "50%" : "12px"}`;
+      camEls.push(
+        `<div id="${id}" class="clip ann ann-box" ${timed(a.start, a.end)} style="${style}">` +
+          `${a.label ? `<span class="ann-label" dir="auto">${esc(a.label)}</span>` : ""}</div>`,
+      );
+      const m = { in: "pop", out: "fade", ...a.motion } as Motion;
+      if (m.in === "words" || m.in === "lines" || m.in === "wipe") m.in = "fade";
+      if (m.out === "words" || m.out === "lines" || m.out === "wipe") m.out = "fade";
+      if (a.settled) m.in = "none";
+      js.push(...motionJs(`#${id}`, m, a.start, a.end, "text", ""));
+      return;
+    }
+    const x1 = a.from.x * cam.w;
+    const y1 = a.from.y * cam.h;
+    const x2 = a.to.x * cam.w;
+    const y2 = a.to.y * cam.h;
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    if (len < 1) return;
+    // The head sits on the tip; the shaft stops where the head starts.
+    const head = Math.min(Math.max(a.width * 3, 22), len * 0.6);
+    const ux = (x2 - x1) / len;
+    const uy = (y2 - y1) / len;
+    const bx = x2 - ux * head;
+    const by = y2 - uy * head;
+    const wing = head * 0.5;
+    const points = [[x2, y2], [bx - uy * wing, by + ux * wing], [bx + uy * wing, by - ux * wing]].map(([px, py]) => `${n(px!)},${n(py!)}`).join(" ");
+    const shaft = Math.hypot(bx - x1, by - y1);
+    const color = esc(a.color);
+    const label = a.label
+      ? `<div class="ann-label" dir="auto" style="left:${n(x1)}px;top:${n(y1)}px;transform:translate(-50%,${y2 >= y1 ? "-125%" : "25%"})">${esc(a.label)}</div>`
+      : "";
+    camEls.push(
+      `<div id="${id}" class="clip ann ann-arrow" ${timed(a.start, a.end)} style="left:0;top:0;width:${n(cam.w)}px;height:${n(cam.h)}px">` +
+        `<svg width="${n(cam.w)}" height="${n(cam.h)}" viewBox="0 0 ${n(cam.w)} ${n(cam.h)}" style="position:absolute;left:0;top:0;overflow:visible">` +
+        `<line class="shaft" x1="${n(x1)}" y1="${n(y1)}" x2="${n(bx)}" y2="${n(by)}" stroke="${color}" stroke-width="${n(a.width)}" stroke-linecap="round" stroke-dasharray="${n(shaft)}" />` +
+        `<polygon class="head" points="${points}" fill="${color}" /></svg>${label}</div>`,
+    );
+    if (!a.settled) {
+      const origin = `${n(x2)} ${n(y2)}`;
+      js.push(`tl.fromTo("#${id} .shaft", { strokeDashoffset: ${n(shaft)} }, { strokeDashoffset: 0, duration: 0.4, ease: "power2.out" }, ${n(a.start)});`);
+      js.push(
+        `tl.fromTo("#${id} .head", { opacity: 0, scale: 0.3, svgOrigin: "${origin}" }, { opacity: 1, scale: 1, svgOrigin: "${origin}", duration: 0.2, ease: "back.out(2)" }, ${n(a.start + 0.3)});`,
+      );
+    }
+    js.push(`tl.to("#${id}", { opacity: 0, duration: 0.25 }, ${n(Math.max(a.start + 0.5, a.end - 0.25))});`);
+  });
+
+  // Typed text, a word at a time on the press that finishes it (on the stage, so zooms do not scale it).
+  plan.keys.forEach((k, i) => {
+    const id = `ky${i}`;
+    els.push(
+      `<div id="${id}" class="clip keys" ${timed(k.start, k.end)}><span dir="auto">${k.words.map((w) => `<span class="w">${esc(w.text)}</span>`).join(" ")}</span></div>`,
+    );
+    js.push(`tl.fromTo("#${id}", { opacity: 0 }, { opacity: 1, duration: 0.15 }, ${n(k.start)});`);
+    k.words.forEach((w, j) => {
+      js.push(`tl.fromTo("#${id} .w:nth-child(${j + 1})", { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.12, ease: "power2.out" }, ${n(w.at)});`);
+    });
+    js.push(`tl.to("#${id}", { opacity: 0, duration: 0.25 }, ${n(Math.max(k.start + 0.15, k.end - 0.25))});`);
+  });
+
   // Texts
   const subtitles = plan.texts.filter((t) => t.style === "subtitle");
   plan.texts.forEach((t, i) => {
@@ -196,6 +268,16 @@ html, body { width: ${W}px; height: ${H}px; overflow: hidden; background: #000; 
 .pos-bottom-raised { bottom: ${subtitleBottom + 110}px; }
 .pos-top { top: ${frame.top + Math.round(H * 0.045)}px; }
 .pos-center { top: 50%; margin-top: -60px; }
+.ann { position: absolute; }
+.ann-arrow { pointer-events: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,.4)); }
+.ann-label { position: absolute; white-space: nowrap; background: ${theme.accent}; color: #111; font-weight: 700; font-size: 26px; padding: 6px 14px; border-radius: 10px; }
+.ann-box { box-sizing: border-box; }
+.ann-box .ann-label { left: -6px; bottom: calc(100% + 10px); }
+.ann-blur { border-radius: 6px; }
+.keys { position: absolute; left: ${frame.left + Math.round(frame.w * 0.03)}px; top: ${frame.top + frame.h - Math.round(frame.h * 0.14)}px; }
+.keys > span { display: inline-block; color: #fff; background: rgba(15, 23, 42, 0.88); font: 600 34px ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+  padding: 10px 22px; border-radius: 14px; border-bottom: 5px solid rgba(255,255,255,.28); }
+.keys .w { display: inline-block; }
 .ov { position: absolute; }
 .ov-media { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .card { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: ${theme.background}; }

@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Storyboard reference · ScreenPilot</title>
-<meta name="description" content="The storyboard.json format: segments, holds, zooms, captions, highlights, narration, cards, overlays, music, extends, theme and output, with a full example.">
+<meta name="description" content="The storyboard.json format: segments, holds, zooms, captions, highlights, narration, cards, overlays, music, sound effects, extends, theme and output, with a full example.">
 <link rel="canonical" href="https://mohamedeslam04.github.io/screenpilot/guide/storyboard.html">
 <link rel="alternate" hreflang="en" href="https://mohamedeslam04.github.io/screenpilot/guide/storyboard.html">
 <link rel="alternate" hreflang="ar" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/storyboard.html">
 <link rel="alternate" hreflang="x-default" href="https://mohamedeslam04.github.io/screenpilot/guide/storyboard.html">
-<meta property="og:type" content="article"><meta property="og:title" content="Storyboard reference · ScreenPilot"><meta property="og:description" content="The storyboard.json format: segments, holds, zooms, captions, highlights, narration, cards, overlays, music, extends, theme and output, with a full example.">
+<meta property="og:type" content="article"><meta property="og:title" content="Storyboard reference · ScreenPilot"><meta property="og:description" content="The storyboard.json format: segments, holds, zooms, captions, highlights, narration, cards, overlays, music, sound effects, extends, theme and output, with a full example.">
 <meta property="og:url" content="https://mohamedeslam04.github.io/screenpilot/guide/storyboard.html"><meta property="og:image" content="https://mohamedeslam04.github.io/screenpilot/assets/og.png"><meta property="og:site_name" content="ScreenPilot"><meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0b132b">
@@ -28,13 +28,13 @@
 </div></header>
 <main id="main"><div class="wrap docs">
   <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html" aria-current=page>Storyboard reference</a><a href="voices.html">Voices</a><a href="sequence.html">Combine recordings</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
-  <article class="doc"><h1>Storyboard reference</h1><p class="summary">The storyboard.json format: segments, holds, zooms, captions, highlights, narration, cards, overlays, music, extends, theme and output, with a full example.</p><p>A storyboard is a JSON file that describes the edit. The AI app writes it for you, but you can read it, change it and render it yourself. <code>screenpilot schema</code> (or the <code>storyboard_schema</code> tool) prints the authoritative JSON Schema. This page explains each field.</p>
+  <article class="doc"><h1>Storyboard reference</h1><p class="summary">The storyboard.json format: segments, holds, zooms, captions, highlights, narration, cards, overlays, music, sound effects, extends, theme and output, with a full example.</p><p>A storyboard is a JSON file that describes the edit. The AI app writes it for you, but you can read it, change it and render it yourself. <code>screenpilot schema</code> (or the <code>storyboard_schema</code> tool) prints the authoritative JSON Schema. This page explains each field.</p>
 
 <h2 id="basics">The three rules<a class="a" href="#basics" aria-label="Link to this section">#</a></h2>
 <ul>
 <li><strong>Times are source seconds.</strong> They count from the start of the raw recording, never from the rendered video. Cuts and speed changes do not move them. Only <code>screenpilot check</code> and the <code>check_output</code> tool use output seconds.</li>
 <li><strong>Positions are normalized 0..1.</strong> <code>x</code> runs from the left edge and <code>y</code> from the top edge of the recording. Read them from a frame with <code>frames --grid</code>.</li>
-<li><strong>Paths are relative to the storyboard file.</strong> This applies to <code>source</code>, <code>events</code>, <code>extends</code>, <code>music.src</code> and <code>overlays[].src</code>.</li>
+<li><strong>Paths are relative to the storyboard file.</strong> This applies to <code>source</code>, <code>events</code>, <code>extends</code>, <code>music.src</code>, <code>sfx[].src</code> and <code>overlays[].src</code>.</li>
 </ul>
 <p>Every field except <code>source</code> is optional. Run <code>screenpilot validate storyboard.json</code> after each edit. It reports schema errors and warnings: overlapping segments, items past the end of the source, views that name an unknown screen, and callouts without <code>x</code> and <code>y</code>. It also gives style advice: see <a href="../guide/storyboard.html#lint">Style warnings</a>.</p>
 
@@ -56,11 +56,14 @@
 <tr><td><code>screens</code>, <code>views</code></td><td><code>[]</code></td><td>Multi-monitor recordings. See <a href="../guide/storyboard.html#views">Screens and views</a>.</td></tr>
 <tr><td><code>captions</code></td><td><code>[]</code></td><td>On-screen text.</td></tr>
 <tr><td><code>highlights</code></td><td><code>[]</code></td><td>Boxes around parts of the screen.</td></tr>
+<tr><td><code>annotations</code></td><td><code>[]</code></td><td>Arrows, outlines and blur or solid cover-ups on the recording. See <a href="../guide/storyboard.html#annotations">Annotations</a>.</td></tr>
 <tr><td><code>narration</code></td><td><code>[]</code></td><td>Voiceover lines.</td></tr>
 <tr><td><code>intro</code>, <code>outro</code></td><td>none</td><td>Title cards before and after the video.</td></tr>
 <tr><td><code>cards</code></td><td><code>[]</code></td><td>Chapter cards in the middle of the video. See <a href="../guide/storyboard.html#chapter-cards">Chapter cards</a>.</td></tr>
 <tr><td><code>overlays</code></td><td><code>[]</code></td><td>Images, video and logos on top of the frame. See <a href="../guide/storyboard.html#overlays">Overlays</a>.</td></tr>
 <tr><td><code>music</code></td><td>none</td><td>Background music, optionally ducked under the voice.</td></tr>
+<tr><td><code>audio</code></td><td>none</td><td>Loudness normalization and noise reduction. See <a href="../guide/storyboard.html#audio">Audio mix</a>.</td></tr>
+<tr><td><code>sfx</code>, <code>sounds</code>, <code>typing</code></td><td><code>[]</code>, none, <code>[]</code></td><td>Sound effects at chosen times, and automatic click, typing and card sounds. See <a href="../guide/storyboard.html#sound-effects">Sound effects</a>.</td></tr>
 </tbody>
 </table>
 
@@ -74,9 +77,40 @@
 <tr><td><code>speed</code></td><td><code>1</code></td><td>Playback speed, 0.25 to 16. Use 4 to 8 to fast-forward loading and waiting.</td></tr>
 <tr><td><code>volume</code></td><td><code>1</code></td><td>Level of this segment's source audio, 0 to 4. Needs <code>keepSourceAudio</code>.</td></tr>
 <tr><td><code>mute</code></td><td><code>false</code></td><td>Silence this segment's source audio. Same as <code>volume</code> 0.</td></tr>
+<tr><td><code>speedTo</code></td><td>none</td><td>Ramp the speed from <code>speed</code> at the start of the segment to this value by its end, 0.25 to 16. See <a href="../guide/storyboard.html#speed-ramps">Speed ramps</a>.</td></tr>
+<tr><td><code>transition</code></td><td>none</td><td>Blend into this segment instead of a hard cut. See <a href="../guide/storyboard.html#transitions">Transitions</a>.</td></tr>
 </tbody>
 </table>
 <p>A narration line placed inside a cut region is dropped, with a warning. <code>volume</code> and <code>mute</code> only matter when the source audio is kept: without <code>keepSourceAudio: true</code> and a recording that has sound, the render warns that they have no effect.</p>
+
+<h3 id="speed-ramps">Speed ramps<a class="a" href="#speed-ramps" aria-label="Link to this section">#</a></h3>
+<p>A constant 8x fast-forward starts and stops with a jolt. Set <code>speedTo</code> and the speed changes smoothly over the segment instead: <code>"speed": 1, "speedTo": 8</code> eases from normal speed into a fast-forward, and <code>"speed": 8, "speedTo": 1</code> eases back out of it. The change is even to the eye (it multiplies by the same factor each step), and it works the same with narration holds and cuts. Use a segment of a second or more; the video gets shorter by what the speed-up saves, and narration and captions follow the new timing.</p>
+<pre><code class="language-json">"segments": [
+  { "in": 0, "out": 6 },
+  { "in": 6, "out": 20, "speed": 1, "speedTo": 8 },
+  { "in": 20, "out": 40, "speed": 8, "speedTo": 1 }
+]</code></pre>
+
+<h3 id="transitions">Transitions<a class="a" href="#transitions" aria-label="Link to this section">#</a></h3>
+<p>Between two segments there is a hard cut by default. Give the second one a <code>transition</code> to blend it in over the end of the one before:</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>type</code></td><td>required</td><td><code>crossfade</code>, <code>fade-black</code>, <code>fade-white</code>, <code>wipe-left</code>, <code>wipe-right</code>, <code>slide-left</code> or <code>slide-right</code>.</td></tr>
+<tr><td><code>dur</code></td><td><code>0.5</code></td><td>Seconds the two pieces overlap, 0.1 to 3. At most half of either piece.</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>The overlap shortens the video</strong> by <code>dur</code>: the two pictures play at the same time. Narration, captions and zooms are placed on the new timing, so the source times you write do not change.</li>
+<li>The sound blends too (a cross-fade).</li>
+<li>It is ignored on the first segment, which has nothing before it. If a segment starts with a hold, the transition goes into the freeze.</li>
+<li>To blend two <em>different recordings</em>, use <a href="../guide/sequence.html">Combine recordings</a>, which has the same transitions between parts.</li>
+</ul>
+<pre><code class="language-json">"segments": [
+  { "in": 0, "out": 12 },
+  { "in": 30, "out": 45, "transition": { "type": "crossfade", "dur": 0.6 } },
+  { "in": 60, "out": 80, "transition": { "type": "fade-black", "dur": 0.8 } }
+]</code></pre>
 
 <h2 id="holds">Holds<a class="a" href="#holds" aria-label="Link to this section">#</a></h2>
 <p><code>holds</code> freeze the video on one frame, to give a caption or a line room.</p>
@@ -133,6 +167,27 @@
 <tr><td><code>label</code></td><td>none</td><td>Optional text on the box.</td></tr>
 </tbody>
 </table>
+
+<h2 id="annotations">Annotations<a class="a" href="#annotations" aria-label="Link to this section">#</a></h2>
+<p><code>annotations</code> draw on the recording itself: an arrow to point at something, an outline around it, or a blur or solid block to hide it. Positions are 0..1 of the recording, like highlights, so they stay on the right spot when the camera zooms or pans. Every item has a <code>type</code>, an <code>at</code> (source time) and a <code>dur</code> (default 3).</p>
+<table>
+<thead><tr><th>Type</th><th>Fields</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>arrow</code></td><td><code>from</code>, <code>to</code>, <code>label</code>, <code>color</code>, <code>width</code> (2 to 24, default 8)</td><td>An arrow from <code>from</code> (the tail) to <code>to</code> (the tip) that draws itself on. <code>label</code> sits at the tail.</td></tr>
+<tr><td><code>box</code></td><td><code>x</code>, <code>y</code>, <code>w</code>, <code>h</code>, <code>shape</code> (<code>box</code> or <code>ellipse</code>), <code>label</code>, <code>color</code>, <code>motion</code></td><td>An outline around a region. Unlike a highlight it does not dim the rest of the screen. Pops in and fades out unless you set <code>motion</code>.</td></tr>
+<tr><td><code>blur</code></td><td><code>x</code>, <code>y</code>, <code>w</code>, <code>h</code>, <code>mode</code> (<code>blur</code> or <code>solid</code>), <code>strength</code> (2 to 80, default 18), <code>color</code></td><td>Hides a region. <code>blur</code> blurs what is behind it; <code>solid</code> covers it with <code>color</code> (default near-black).</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Use <code>solid</code> for anything secret.</strong> A light blur of small text can still be readable. Check the rendered frames with <code>check</code> before you share the video.</li>
+<li><strong>Covers appear and disappear on the exact frame</strong>, with no fade, so what they hide is never visible for a moment.</li>
+<li><code>color</code> is any CSS color; arrows and boxes default to <code>theme.accent</code>.</li>
+</ul>
+<pre><code class="language-json">"annotations": [
+  { "type": "arrow", "at": 4, "dur": 3, "from": { "x": 0.2, "y": 0.2 }, "to": { "x": 0.45, "y": 0.4 }, "label": "Start here" },
+  { "type": "box", "at": 8, "dur": 2.5, "x": 0.55, "y": 0.15, "w": 0.3, "h": 0.12, "label": "Total" },
+  { "type": "blur", "at": 12, "dur": 4, "mode": "solid", "x": 0.1, "y": 0.1, "w": 0.35, "h": 0.06 }
+]</code></pre>
 
 <h2 id="narration">Narration<a class="a" href="#narration" aria-label="Link to this section">#</a></h2>
 <p>Each line is spoken by the storyboard's voice and mixed into the video. By default that is an Edge voice; see <a href="../guide/voices.html">Voices</a> for local models and your own programs. Narration never overlaps: when a line overruns its slot, the video freezes to make room.</p>
@@ -202,6 +257,11 @@
 <tr><td><code>src</code></td><td>required</td><td>Path to an audio file, relative to the storyboard.</td></tr>
 <tr><td><code>volume</code></td><td><code>0.12</code></td><td>0 to 1. Keep it low so it does not cover the voice.</td></tr>
 <tr><td><code>duck</code></td><td>none</td><td>Lowers the music while someone speaks. See below.</td></tr>
+<tr><td><code>fadeIn</code></td><td><code>1</code></td><td>Seconds to fade in, 0 to 30.</td></tr>
+<tr><td><code>fadeOut</code></td><td><code>2</code></td><td>Seconds to fade out at the end, 0 to 30.</td></tr>
+<tr><td><code>loop</code></td><td>off</td><td>Repeat a track that is shorter than the music's range. Without it the music just ends.</td></tr>
+<tr><td><code>offset</code></td><td><code>0</code></td><td>Start this many seconds into the file.</td></tr>
+<tr><td><code>from</code>, <code>to</code></td><td>whole video</td><td>Source times the music starts and ends. By default it plays from the first frame, intro included, to the last, outro included. A time in a cut region is ignored with a warning.</td></tr>
 </tbody>
 </table>
 <p>Ducking makes the music quieter under each narration line and brings it back after. Give <code>duck</code> any of these fields, or an empty object <code>{}</code> for the defaults:</p>
@@ -211,16 +271,78 @@
 <tr><td><code>amount</code></td><td><code>0.6</code></td><td>How much quieter the music gets, 0 to 1. 0.6 means 60% lower.</td></tr>
 <tr><td><code>attack</code></td><td><code>0.2</code></td><td>Seconds the music takes to go down, finishing as the line starts. 0 to 5.</td></tr>
 <tr><td><code>release</code></td><td><code>0.5</code></td><td>Seconds the music takes to come back after the line. 0 to 5.</td></tr>
+<tr><td><code>under</code></td><td><code>["narration"]</code></td><td>What lowers the music: <code>"narration"</code>, <code>"overlays"</code> (video overlays that play their own sound), or both.</td></tr>
 </tbody>
 </table>
+<p>With <code>loop</code>, <code>offset</code>, <code>from</code> or <code>to</code> the track is prepared once with ffmpeg (fades included) and cached, so a change to the storyboard that does not touch the music does not redo it.</p>
+
+<h2 id="audio">Audio mix<a class="a" href="#audio" aria-label="Link to this section">#</a></h2>
+<p><code>audio</code> shapes the sound of the whole video:</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>loudness</code></td><td>off</td><td>Normalizes the finished video to a target loudness, so every video you make sounds equally loud. <code>{}</code> means -16 LUFS, a good level for the web and social media. Fields: <code>target</code> (LUFS, -70 to -5; -14 for streaming, -23 for broadcast) and <code>truePeak</code> (dBTP, -9 to 0, default -1.5). It measures the mix, then applies one plain gain, so the dynamics are left alone. A partial render (<code>--from</code>, <code>--to</code>) is normalized on its own, so its level differs from the full video.</td></tr>
+<tr><td><code>denoise</code></td><td>off</td><td>Reduces steady background noise (a fan, hiss) in the recording's own sound by about 18 dB. Needs <code>keepSourceAudio</code>.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-json">"audio": { "loudness": { "target": -16 }, "denoise": true }</code></pre>
+
+<h2 id="sound-effects">Sound effects<a class="a" href="#sound-effects" aria-label="Link to this section">#</a></h2>
+<p>Two fields add short sounds: <code>sfx</code> plays a sound at a time you choose, and <code>sounds</code> adds them automatically: on every recorded click, on typing you mark with <code>typing</code>, and as the title cards come in. Every sound is mixed into one track, so a long list does not slow the render, and a partial render (<code>--from</code>, <code>--to</code>) plays the right ones.</p>
+<p>A sound is either one of the built-in names or a file relative to the storyboard. The built-in sounds are made by ffmpeg while rendering, so there is nothing to download or install:</p>
+<table>
+<thead><tr><th>Name</th><th>Sound</th></tr></thead>
+<tbody>
+<tr><td><code>builtin:click</code></td><td>A short, bright tick.</td></tr>
+<tr><td><code>builtin:key</code></td><td>A softer, lower tick for typing.</td></tr>
+<tr><td><code>builtin:pop</code></td><td>A quick upward pop.</td></tr>
+<tr><td><code>builtin:ding</code></td><td>A bell, for a result or a success.</td></tr>
+<tr><td><code>builtin:whoosh</code></td><td>A soft sweep, for a card or a change of scene.</td></tr>
+</tbody>
+</table>
+<p><code>sfx</code> is a list of sounds at source times:</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>at</code></td><td>required</td><td>Source time the sound plays. A time in a cut region drops the sound and warns.</td></tr>
+<tr><td><code>src</code></td><td>required</td><td><code>builtin:&lt;name&gt;</code> or an audio file, relative to the storyboard.</td></tr>
+<tr><td><code>volume</code></td><td><code>1</code></td><td>0 to 4.</td></tr>
+</tbody>
+</table>
+<p><code>sounds</code> turns on the automatic ones. Give a field <code>true</code> for the built-in, or a name or file to use your own:</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>clicks</code></td><td>off</td><td>A sound on every recorded click. Needs <code>events</code>. <code>true</code> means <code>builtin:click</code>.</td></tr>
+<tr><td><code>typing</code></td><td>off</td><td>A typing sound for every press of every <code>typing</code> span (below). <code>true</code> means <code>builtin:key</code>.</td></tr>
+<tr><td><code>cards</code></td><td>off</td><td>A sound as the intro, each chapter card and the outro come in. <code>true</code> means <code>builtin:whoosh</code>.</td></tr>
+<tr><td><code>volume</code></td><td><code>0.5</code></td><td>Level of these automatic sounds, 0 to 2. <code>sfx</code> items have their own <code>volume</code>.</td></tr>
+</tbody>
+</table>
+<p>ScreenPilot never records the keyboard, so it cannot know when someone typed. <code>typing</code> is the list of stretches of the recording where they did. A take performed by the agent marks them for you, one for each <code>type</code> step (a secret taken from an environment variable is timed but its text is never copied). For your own recording, add them by hand:</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>at</code></td><td>required</td><td>Source time the typing starts.</td></tr>
+<tr><td><code>dur</code></td><td><code>3</code></td><td>How long it lasts, in seconds.</td></tr>
+<tr><td><code>text</code></td><td>none</td><td>What is typed. Gives one press per character; without it you get about 7 presses a second. The rhythm is a little uneven, and the same on every render.</td></tr>
+<tr><td><code>keycaps</code></td><td>off</td><td>Shows the typed text on screen in a small key-cap bar, one word at a time, each word on the press that finishes it (the same presses as the typing sound). Needs <code>text</code>.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-json">"sounds": { "clicks": true, "typing": true, "cards": true, "volume": 0.5 },
+"typing": [{ "at": 12, "dur": 2.5, "text": "hello@example.com" }],
+"sfx": [
+  { "at": 21.5, "src": "builtin:ding" },
+  { "at": 30, "src": "assets/applause.wav", "volume": 0.7 }
+]</code></pre>
 
 <h2 id="extends">Share a look with extends<a class="a" href="#extends" aria-label="Link to this section">#</a></h2>
 <p><code>extends</code> points at a base storyboard, relative to this file. Use it when several videos should look and sound the same: each one extends the same base and adds its own recording. It is how a feature clip takes the look of the demo it joins in a <a href="../guide/sequence.html">sequence</a>.</p>
 <ul>
-<li><strong>Five fields are inherited:</strong> <code>theme</code>, <code>voice</code>, <code>output</code>, <code>music</code> and <code>keepSourceAudio</code>. Everything else (<code>source</code>, segments, zooms, captions, narration, intro, outro and the rest) is never inherited.</li>
+<li><strong>Seven fields are inherited:</strong> <code>theme</code>, <code>voice</code>, <code>output</code>, <code>music</code>, <code>sounds</code>, <code>audio</code> and <code>keepSourceAudio</code>. Everything else (<code>source</code>, segments, zooms, captions, narration, intro, outro and the rest) is never inherited.</li>
 <li><strong>The child wins.</strong> Objects merge key by key, so a child that sets only <code>theme.accent</code> keeps the base's other theme fields. Arrays replace instead of merging, for example <code>theme.fonts</code>.</li>
 <li><strong>Chains work.</strong> The base can extend another storyboard. A cycle is an error that lists the chain.</li>
-<li><strong>Paths stay valid.</strong> <code>music.src</code> from the base is rewritten to point at the same file from the child's folder.</li>
+<li><strong>Paths stay valid.</strong> <code>music.src</code> and any sound file in <code>sounds</code> from the base are rewritten to point at the same file from the child's folder.</li>
 </ul>
 <pre><code class="language-json">{
   "extends": "../demo.json",
@@ -270,6 +392,7 @@
 <tr><td><code>font</code></td><td>Inter, Cairo, system-ui</td><td>CSS font family.</td></tr>
 <tr><td><code>captionColor</code></td><td><code>#ffffff</code></td><td>Caption text color.</td></tr>
 <tr><td><code>captionBackground</code></td><td>dark, translucent</td><td>Caption box color.</td></tr>
+<tr><td><code>grade</code></td><td>none</td><td>Color grade of the recording only (not the cards, captions or background): <code>brightness</code> (-1 to 1), <code>contrast</code> (0 to 2), <code>saturation</code> (0 to 3, 0 is black and white) and <code>gamma</code> (0.1 to 4). Only the values you set change, for example <code>{ "contrast": 1.1, "saturation": 1.2 }</code>.</td></tr>
 <tr><td><code>clickRipples</code></td><td><code>true</code></td><td>Draw a ripple on every recorded click. Needs <code>events</code>.</td></tr>
 <tr><td><code>fonts</code></td><td><code>[]</code></td><td>Extra Google Fonts to load, as css2 family specs such as <code>"Tajawal:wght@400;700"</code> or <code>"Space Grotesk:wght@500;700"</code>. Then use them in <code>font</code> or <code>css</code>.</td></tr>
 <tr><td><code>css</code></td><td>empty</td><td>Your own CSS, applied after the built-in styles.</td></tr>
@@ -288,6 +411,8 @@
 <li><code>.hl</code> and <code>.hl span</code>: highlights.</li>
 <li><code>.callout span</code>: callout bubbles.</li>
 <li><code>.ripple</code>: click ripples.</li>
+<li><code>.ann-arrow</code>, <code>.ann-box</code>, <code>.ann-blur</code> and <code>.ann-label</code>: annotations.</li>
+<li><code>.keys</code>: typed text (key-caps).</li>
 </ul>
 
 <h3 id="motion">Motion<a class="a" href="#motion" aria-label="Link to this section">#</a></h3>
@@ -383,7 +508,7 @@
 </ul>
 <div class="note">Work in passes. Write segments and narration first, render a draft with <code>-q draft</code>, look at it with <code>check</code>, then add zooms and captions. Change one kind of thing at a time.</div>
 <nav class="pager" aria-label="Pager"><a href="tools.html" rel="prev"><small>Previous</small>MCP tools</a><a href="voices.html" rel="next"><small>Next</small>Voices</a></nav></article>
-  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#basics">The three rules</a><a href="#top-level">Top-level fields</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#narration">Narration</a><a href="#cards">Intro and outro</a><a href="#chapter-cards">Chapter cards</a><a href="#overlays">Overlays</a><a href="#music">Music</a><a href="#extends">Share a look with extends</a><a href="#views">Screens and views</a><a href="#output">Output and voice</a><a href="#theme">Theme</a><a href="#example">A complete example</a><a href="#lint">Style warnings</a><a href="#style">Style guidance</a></aside>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#basics">The three rules</a><a href="#top-level">Top-level fields</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#annotations">Annotations</a><a href="#narration">Narration</a><a href="#cards">Intro and outro</a><a href="#chapter-cards">Chapter cards</a><a href="#overlays">Overlays</a><a href="#music">Music</a><a href="#audio">Audio mix</a><a href="#sound-effects">Sound effects</a><a href="#extends">Share a look with extends</a><a href="#views">Screens and views</a><a href="#output">Output and voice</a><a href="#theme">Theme</a><a href="#example">A complete example</a><a href="#lint">Style warnings</a><a href="#style">Style guidance</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>

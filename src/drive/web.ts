@@ -16,6 +16,29 @@ const CDP_URL = `http://127.0.0.1:${CDP_PORT}`;
 const CANDIDATES = ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "brave-browser", "microsoft-edge"];
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Ask `check` every `intervalMs` until it passes or `timeoutMs` is used up (one last ask at the end). */
+export async function waitUntil(
+  check: () => Promise<boolean>,
+  o: { timeoutMs: number; intervalMs: number; sleep?: (ms: number) => Promise<void> },
+): Promise<boolean> {
+  const wait = o.sleep ?? sleep;
+  const tries = Math.ceil(o.timeoutMs / o.intervalMs);
+  for (let i = 0; i < tries; i++) {
+    if (await check()) return true;
+    await wait(o.intervalMs);
+  }
+  return check();
+}
+
+/**
+ * How long to wait for a freshly started demo browser to open its debugging port. A cold start
+ * (first run of a profile, a busy CI runner) takes well over the 15 s this used to allow.
+ * macOS checks an app the first time LaunchServices opens it (Gatekeeper), which takes longer.
+ */
+export function browserStartTimeout(platform: NodeJS.Platform, viaLaunchServices: boolean): number {
+  return platform === "darwin" && viaLaunchServices ? 60_000 : 45_000;
+}
+
 /** Where a Chromium-based browser may live, best first (the `<APP>_BROWSER` override is handled by findBrowser). */
 export function browserCandidates(env: Record<string, string | undefined>, platform: NodeJS.Platform): string[] {
   if (platform === "win32") {
@@ -113,11 +136,19 @@ export async function openBrowser(
       o.stderr?.on("data", (d: Buffer) => (err += d));
       o.on("close", (code) => code && opts.log?.(`open -a ${app} failed (${code}): ${err.trim()}`));
     }
-    else spawn(bin, args, { detached: true, stdio: "ignore" }).unref();
-    // macOS checks an app the first time LaunchServices opens it (Gatekeeper): that can take a while.
-    const tries = app ? 240 : 60;
-    for (let i = 0; i < tries && !(await cdpUp()); i++) await sleep(250);
-    if (!(await cdpUp())) throw new Error("The demo browser did not open its debugging port.");
+    let exited: number | null | undefined;
+    if (!app) {
+      const child = spawn(bin, args, { detached: true, stdio: "ignore" });
+      child.on("exit", (code) => (exited = code));
+      child.unref();
+    }
+    const timeoutMs = browserStartTimeout(process.platform, !!app);
+    const started = Date.now();
+    if (!(await waitUntil(cdpUp, { timeoutMs, intervalMs: 250 }))) {
+      // Chrome may also hand the window to an instance that already runs and exit, so an exit code is only a hint.
+      const why = exited === undefined ? "it was still starting" : `the browser process exited (code ${exited})`;
+      throw new Error(`The demo browser did not open its debugging port within ${Math.round((Date.now() - started) / 1000)} s (${why}).`);
+    }
   }
   await singleTab(opts.url);
   await allowDownloads();
