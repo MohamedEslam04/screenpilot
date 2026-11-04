@@ -79,6 +79,20 @@ describe("placeWindows", () => {
     expect([five.x, five.y]).toEqual([752, 622]);
   });
 
+  it("handles global extents when the window list reports the outer frame with decorations (X11 + window manager)", () => {
+    // EWMH gives the outer frame (636,306 648x518); AT-SPI global extents are the client area (640,340 640x480).
+    const global: RawWindow = { ...calc, rect: { x: 640, y: 340, w: 640, h: 480 }, root: node("frame", "KCalc", [640, 340, 640, 480], [node("push button", "Five", [752, 622, 100, 52])]) };
+    const [p] = placeWindows([global], [win({ x: 636, y: 306, w: 648, h: 518 })], false);
+    const five = flatten(p!).find((n) => n.name === "Five")!;
+    expect([five.x, five.y]).toEqual([752, 622]);
+  });
+
+  it("subtracts window decorations when extents are relative and the window list reports the outer frame (Xwayland)", () => {
+    const [p] = placeWindows([calc], [win({ x: 636, y: 306, w: 648, h: 518 })], false);
+    const five = flatten(p!).find((n) => n.name === "Five")!;
+    expect([five.x, five.y]).toEqual([752, 622]); // client origin (640,340) + (112,282)
+  });
+
   it("picks the window by pid and title when an app has several", () => {
     const other = win({ id: "2", caption: "Other", x: 10, y: 20, w: 300, h: 200 });
     const [p] = placeWindows([calc], [other, win({})], false);

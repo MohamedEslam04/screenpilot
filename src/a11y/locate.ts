@@ -1,6 +1,6 @@
 import { TargetError } from "../drive/errors.js";
 import type { WindowInfo } from "../platform/types.js";
-import type { A11yMatch, A11yNode, A11yQuery, PlacedWindow, RawNode, RawWindow } from "./types.js";
+import type { A11yMatch, A11yNode, A11yQuery, PlacedWindow, RawNode, RawWindow, Rect } from "./types.js";
 
 // Pure part of the accessibility locator: put raw trees in global desktop
 // pixels, find elements, refuse to guess between several.
@@ -78,6 +78,26 @@ function pickSized(c: WindowInfo[], w: RawWindow): WindowInfo | undefined {
   return c.find((x) => near(x.w, w.rect!.w) && near(x.h, w.rect!.h)) ?? c[0];
 }
 
+/**
+ * What to add to a tree's extents to get global pixels. Extents are either
+ * global already (X11) or relative to the window (Wayland: the frame sits at
+ * 0,0). The desktop's window list may give the client area (KDE) or the outer
+ * frame with border and title bar (EWMH window managers), so for relative
+ * extents the decoration is skipped: equal side and bottom borders, the rest on top.
+ */
+function originOffset(frame: Rect, win: WindowInfo): { dx: number; dy: number } {
+  const slack = 8;
+  const relative = frame.x === 0 && frame.y === 0 && (win.x !== 0 || win.y !== 0);
+  const inside =
+    frame.x >= win.x - slack && frame.y >= win.y - slack && frame.x + frame.w <= win.x + win.w + slack && frame.y + frame.h <= win.y + win.h + slack;
+  if (!relative && inside) return { dx: 0, dy: 0 }; // already global
+  const dW = win.w - frame.w;
+  const dH = win.h - frame.h;
+  const side = dW > 0 && dW <= 40 ? dW / 2 : 0;
+  const top = dH > 0 && dH <= 120 ? dH - side : 0;
+  return { dx: win.x + side - frame.x, dy: win.y + top - frame.y };
+}
+
 function convert(n: RawNode, dx: number, dy: number): A11yNode {
   return {
     role: n.role,
@@ -106,8 +126,7 @@ export function placeWindows(raw: RawWindow[], windows: WindowInfo[], assumeGlob
     let dy = 0;
     let placed = assumeGlobal;
     if (dw && frame) {
-      dx = dw.x - frame.x;
-      dy = dw.y - frame.y;
+      ({ dx, dy } = originOffset(frame, dw));
       placed = true;
     }
     return {
