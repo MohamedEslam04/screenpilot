@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderHtml } from "../src/render/html.js";
 import { buildPlan } from "../src/render/plan.js";
-import { typingPresses } from "../src/render/typing.js";
+import { pressFor, typingPresses } from "../src/render/typing.js";
 import { windowPlan } from "../src/render/window.js";
 import { lintStyle } from "../src/storyboard/lint.js";
 import { AnnotationSchema, StoryboardSchema, ThemeSchema, TypingSchema } from "../src/storyboard/schema.js";
@@ -171,6 +171,20 @@ describe("keycaps", () => {
     expect(planOf({ typing: [{ at: 2, dur: 2, keycaps: true }] }).keys).toEqual([]);
   });
 
+  it("skips a text with no words at all instead of failing the render", () => {
+    expect(planOf({ typing: [{ at: 2, dur: 2, text: "   ", keycaps: true }] }).keys).toEqual([]);
+    expect(planOf({ typing: [{ at: 2, dur: 2, text: "\n\t", keycaps: true }] }).keys).toEqual([]);
+  });
+
+  it("keeps every word on its own press in a very long text (over 400 characters)", () => {
+    const text = "w ".repeat(400).trim();
+    const p = planOf({ typing: [{ at: 1, dur: 15, text, keycaps: true }] });
+    const times = p.keys[0]!.words.map((w) => w.at);
+    expect(times).toHaveLength(400);
+    expect(new Set(times).size).toBe(400);
+    expect(times).toEqual([...times].sort((a, b) => a - b));
+  });
+
   it("follows the cuts: a span cut out entirely is dropped", () => {
     expect(planOf({ typing: [typing] }, [{ in: 10, out: 20 }]).keys).toEqual([]);
   });
@@ -193,6 +207,19 @@ describe("keycaps", () => {
   });
 });
 
+describe("pressFor", () => {
+  it("is the character index itself when every character has a press", () => {
+    for (const i of [0, 1, 7, 19]) expect(pressFor(i, 20, 20)).toBe(i);
+  });
+
+  it("spreads the characters over fewer presses and never goes past the last one", () => {
+    expect(pressFor(0, 800, 400)).toBe(0);
+    expect(pressFor(399, 800, 400)).toBe(199);
+    expect(pressFor(799, 800, 400)).toBe(399);
+    expect(pressFor(5000, 800, 400)).toBe(399);
+  });
+});
+
 describe("lint for annotations", () => {
   it("warns about a tiny blur, a zero-length arrow and keycaps without text", () => {
     const sb = sbOf({
@@ -206,6 +233,7 @@ describe("lint for annotations", () => {
     expect(out.some((m) => /annotations\[0\].*blur.*small/.test(m))).toBe(true);
     expect(out.some((m) => /annotations\[1\].*arrow.*no length/.test(m))).toBe(true);
     expect(out.some((m) => /typing\[0\].*keycaps.*text/.test(m))).toBe(true);
+    expect(lintStyle(sbOf({ typing: [{ at: 1, dur: 2, text: "  ", keycaps: true }] })).some((m) => /typing\[0\].*keycaps.*text/.test(m))).toBe(true);
   });
 
   it("is quiet for sensible annotations", () => {

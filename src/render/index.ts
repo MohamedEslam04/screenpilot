@@ -17,7 +17,7 @@ import { buildCutArgs, buildCutFilter } from "./cut.js";
 import { draftFps } from "./draft.js";
 import { renderHtml } from "./html.js";
 import { formatPaths, type OutputFormat } from "./formats.js";
-import { type ExtraFormat, exportExtras } from "./export.js";
+import { checkPosterAt, type ExtraFormat, exportExtras } from "./export.js";
 import { overlayKind } from "./overlay.js";
 import { type LoudnessTarget, normalizeLoudness } from "./loudness.js";
 import { planMusicRange, prepareMusic } from "./music.js";
@@ -287,6 +287,7 @@ export function hyperframesEnv(): NodeJS.ProcessEnv {
 export async function renderStoryboard(storyboardPath: string, opts: RenderOptions = {}): Promise<RenderResult> {
   const log = opts.log ?? (() => {});
   const draft = opts.quality === "draft";
+  checkPosterAt(opts.posterAt);
   const prepared = await prepareBuild(storyboardPath, { ...opts, draft });
   const output = resolve(
     opts.output ??

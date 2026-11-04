@@ -100,6 +100,15 @@ describe("storyboard extends", () => {
     expect(sb.sounds).toEqual({ clicks: "../brand/audio/tick.wav", typing: "key", cards: true, volume: 0.3 });
   });
 
+  it("rebases a custom typing sound file, not just clicks and cards", async () => {
+    const dir = await files({
+      "brand/base.json": { source: "b.mp4", sounds: { typing: "audio/key.wav", clicks: "pop", cards: "audio/whoosh.wav" } },
+      "demos/child.json": { extends: "../brand/base.json", source: "c.mp4" },
+    });
+    const { sb } = await loadStoryboard(join(dir, "demos/child.json"));
+    expect(sb.sounds).toMatchObject({ typing: "../brand/audio/key.wav", clicks: "pop", cards: "../brand/audio/whoosh.wav" });
+  });
+
   it("is documented in the JSON schema", () => {
     const schema = storyboardJsonSchema() as { properties: Record<string, { description?: string }> };
     expect(schema.properties.extends?.description).toMatch(/theme/);

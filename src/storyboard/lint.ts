@@ -104,7 +104,7 @@ export function lintStyle(sb: Storyboard): string[] {
   if (sb.sounds?.typing && sb.typing.length === 0) out.push("sounds.typing is on but there are no typing spans; add typing: [{ at, dur, text }] where the recording shows typing");
   sb.typing.forEach((t, i) => {
     if (!t.keycaps && !sb.sounds?.typing) out.push(`typing[${i}] does nothing: turn on sounds.typing for a typing sound or keycaps (with text) to show the typed words`);
-    if (t.keycaps && !t.text) out.push(`typing[${i}] has keycaps but no text; set text to the words that are typed`);
+    if (t.keycaps && !t.text?.trim()) out.push(`typing[${i}] has keycaps but no text; set text to the words that are typed`);
   });
 
   sb.segments.forEach((s, i) => {

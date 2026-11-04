@@ -1,4 +1,5 @@
 import { rename, rm } from "node:fs/promises";
+import { extname } from "node:path";
 import { run } from "../util/exec.js";
 import { probeVideo } from "../util/media.js";
 
@@ -53,7 +54,11 @@ export function buildLoudnormArgs(input: string, output: string, t: LoudnessTarg
   const filter =
     `${head(t)}:measured_I=${m.input_i}:measured_TP=${m.input_tp}:measured_LRA=${m.input_lra}:measured_thresh=${m.input_thresh}` +
     `:offset=${m.target_offset}:linear=true,aresample=48000`;
-  return ["-y", "-loglevel", "error", "-i", input, "-c:v", "copy", "-af", filter, "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", output];
+  // aac and faststart belong to the MP4 family; WebM takes Opus and has no movflags.
+  const ext = extname(output).toLowerCase();
+  const audio = ext === ".webm" ? ["-c:a", "libopus", "-b:a", "160k"] : ["-c:a", "aac", "-b:a", "192k"];
+  const flags = [".mp4", ".m4v", ".mov"].includes(ext) ? ["-movflags", "+faststart"] : [];
+  return ["-y", "-loglevel", "error", "-i", input, "-c:v", "copy", "-af", filter, ...audio, ...flags, output];
 }
 
 export interface LoudnessResult {

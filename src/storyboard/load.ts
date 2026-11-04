@@ -99,7 +99,7 @@ async function resolveExtends(raw: unknown, abs: string, chain: string[] = []): 
     if (isObject(inherited.sounds)) {
       // A custom sound file is relative to the base; a built-in name or `true` stays as it is.
       const sounds: Json = { ...inherited.sounds };
-      for (const k of ["clicks", "keys", "cards"]) {
+      for (const k of ["clicks", "typing", "cards"]) {
         const v = sounds[k];
         if (typeof v === "string" && !v.startsWith("builtin:") && !isBuiltinSfx(v) && !isAbsolute(v)) {
           sounds[k] = relative(dirname(abs), resolve(dirname(basePath), v)).split(sep).join("/");

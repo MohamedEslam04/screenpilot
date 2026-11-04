@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildGifArgs, buildPosterArgs, buildWebmArgs, extraPath, parseExtras, posterTime } from "../src/render/export.js";
+import { buildGifArgs, buildPosterArgs, buildWebmArgs, checkPosterAt, extraPath, parseExtras, posterTime } from "../src/render/export.js";
 
 describe("parseExtras", () => {
   it("reads a comma list, once each", () => {
@@ -63,5 +63,18 @@ describe("buildPosterArgs", () => {
     expect(a.slice(a.indexOf("-ss"), a.indexOf("-ss") + 2)).toEqual(["-ss", "7.5"]);
     expect(a).toContain("-frames:v");
     expect(a.at(-1)).toBe("out.png");
+  });
+});
+
+describe("checkPosterAt", () => {
+  it("accepts no time or a real one", () => {
+    expect(() => checkPosterAt(undefined)).not.toThrow();
+    expect(() => checkPosterAt(0)).not.toThrow();
+    expect(() => checkPosterAt(12.5)).not.toThrow();
+  });
+
+  it("rejects NaN and infinity before anything is rendered", () => {
+    expect(() => checkPosterAt(Number.NaN)).toThrow(/--poster-at/);
+    expect(() => checkPosterAt(Infinity)).toThrow(/--poster-at/);
   });
 });

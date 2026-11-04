@@ -19,6 +19,16 @@ function mulberry32(seed: number): () => number {
   };
 }
 
+/**
+ * The press that shows character `charIndex` of a text of `textLength` characters, when there
+ * are `pressCount` presses (fewer than the characters in a very long text): the characters
+ * are spread evenly over the presses, so later words do not all pile up on the last one.
+ */
+export function pressFor(charIndex: number, textLength: number, pressCount: number): number {
+  if (textLength <= 0 || pressCount <= 0) return 0;
+  return Math.min(pressCount - 1, Math.max(0, Math.ceil(((charIndex + 1) * pressCount) / textLength) - 1));
+}
+
 /** Source times of the key presses of a typing span: one per character (or ~7 a second), evenly spread with a little human unevenness. */
 export function typingPresses(span: { at: number; dur: number; text?: string }, seed: number): number[] {
   const n = span.text !== undefined ? Math.min(span.text.length, MAX_PRESSES) : Math.round(span.dur * TYPING_RATE);

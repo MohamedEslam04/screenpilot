@@ -33,6 +33,11 @@ export function buildWebmArgs(input: string, output: string): string[] {
   return ["-y", "-loglevel", "error", "-i", input, "-map", "0:v", "-map", "0:a?", "-c:v", "libvpx-vp9", "-crf", "32", "-b:v", "0", "-row-mt", "1", "-c:a", "libopus", "-b:a", "96k", output];
 }
 
+/** Reject a poster time that is not a number (`--poster-at nope` gives NaN) before a render is wasted on it. */
+export function checkPosterAt(at: number | undefined): void {
+  if (at !== undefined && !Number.isFinite(at)) throw new Error("--poster-at must be a number of seconds");
+}
+
 /** Where the poster frame is taken: `at` kept inside the video, by default a quarter of the way in. */
 export function posterTime(duration: number, at: number | undefined): number {
   if (at === undefined) return Math.round(duration * 25) / 100;

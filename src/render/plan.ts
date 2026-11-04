@@ -2,7 +2,7 @@ import { MUSIC_FADE_IN, MUSIC_FADE_OUT, type Motion, type Overlay, type Storyboa
 import type { Timeline } from "../storyboard/timeline.js";
 import type { VoiceClip } from "../voice/index.js";
 import { type DuckTween, planDuck } from "./duck.js";
-import { typingPresses } from "./typing.js";
+import { pressFor, typingPresses } from "./typing.js";
 import { type CamTween, FULL, planCamera, planViewCamera, type Rect, type ViewSpan, type ZoomSpan } from "./zoom.js";
 
 // Everything the HTML generator needs, already in OUTPUT seconds.
@@ -339,7 +339,9 @@ export function buildPlan(input: PlanInput): RenderPlan {
       else next = mapped[k]!;
     }
     const at = (k: number) => round(mapped[Math.min(k, mapped.length - 1)] ?? next ?? 0);
-    const words = [...t.text.matchAll(/\S+/g)].map((m) => ({ text: m[0], at: at(m.index! + m[0].length - 1) }));
+    const text = t.text;
+    const words = [...text.matchAll(/\S+/g)].map((m) => ({ text: m[0], at: at(pressFor(m.index! + m[0].length - 1, text.length, mapped.length)) }));
+    if (words.length === 0) return;
     const last = words.at(-1)!.at;
     keys.push({ start: round(tl.toOutput(t.at) ?? words[0]!.at), end: round(Math.min(last + KEYS_HOLD, duration)), words });
   });

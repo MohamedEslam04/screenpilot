@@ -202,6 +202,19 @@ describe("loudness normalization", () => {
     expect(a.slice(-3)).toEqual(["-f", "null", "-"]);
   });
 
+  it("picks the audio codec and flags the container takes", () => {
+    const m = parseLoudnorm(stderr)!;
+    const args = (out: string) => buildLoudnormArgs("in.mp4", out, target, m).join(" ");
+    for (const out of ["out.mp4", "OUT.MP4", "out.mov", "out.m4v"]) {
+      expect(args(out)).toContain("-c:a aac");
+      expect(args(out)).toContain("-movflags +faststart");
+    }
+    expect(args("out.webm")).toContain("-c:a libopus");
+    expect(args("out.webm")).not.toContain("movflags");
+    expect(args("out.mkv")).toContain("-c:a aac");
+    expect(args("out.mkv")).not.toContain("movflags");
+  });
+
   it("applies the measurement linearly, keeps the picture and goes back to 48 kHz", () => {
     const m = parseLoudnorm(stderr)!;
     const a = buildLoudnormArgs("in.mp4", "out.mp4", target, m);
