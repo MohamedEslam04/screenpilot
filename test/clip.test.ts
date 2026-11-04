@@ -25,6 +25,16 @@ const sb = StoryboardSchema.parse({
     { at: 45, text: "late" },
   ],
   highlights: [{ at: 41.7, dur: 0.6, x: 0, y: 0, w: 0.1, h: 0.1 }],
+  sfx: [
+    { at: 3, src: "builtin:pop" },
+    { at: 42, src: "builtin:ding" },
+    { at: 58, src: "builtin:pop" },
+  ],
+  typing: [
+    { at: 5, dur: 2, text: "early" },
+    { at: 41, dur: 3, text: "straddles the cut" },
+    { at: 52, dur: 2 },
+  ],
   narration: [
     { at: 2, text: "first" },
     { at: 41, text: "cut mid-line" },
@@ -39,6 +49,17 @@ const sb = StoryboardSchema.parse({
     { at: 35, screen: "B", transition: "cut" },
     { at: 48, screen: "A" },
   ],
+});
+
+describe("clipStoryboard sounds", () => {
+  it("keeps sfx and typing spans by their start, so each lands in exactly one part", () => {
+    const first = clipStoryboard(sb, { to: 42 }, 60);
+    expect(first.sfx.map((x) => x.at)).toEqual([3]);
+    expect(first.typing.map((x) => x.at)).toEqual([5, 41]);
+    const second = clipStoryboard(sb, { from: 42 }, 60);
+    expect(second.sfx.map((x) => x.at)).toEqual([42, 58]);
+    expect(second.typing.map((x) => x.at)).toEqual([52]);
+  });
 });
 
 describe("clipStoryboard", () => {

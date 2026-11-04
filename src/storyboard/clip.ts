@@ -10,6 +10,8 @@ import { normalizeSegments } from "./timeline.js";
 // - zooms, captions and highlights are cut to the range: one that started
 //   before `from` and still runs then is re-timed to start at `from`, one that
 //   runs past `to` ends there. If less than MIN_SPAN of it is left, it is dropped.
+// - sfx and typing spans are kept like holds (by their `at`): a typing span is
+//   never cut short, because its presses are spread over its whole text.
 // - cards are kept like holds (by their `at`). Overlays with an `at` are cut to
 //   the range like zooms (an open-ended one just starts at `from`); overlays
 //   without an `at` (whole video, or `dur` only) are kept in every slice.
@@ -65,6 +67,8 @@ export function clipStoryboard(sb: Storyboard, range: { from?: number; to?: numb
     captions: clipSpan(sb.captions),
     highlights: clipSpan(sb.highlights),
     narration: sb.narration.filter((n) => inRange(n.at)),
+    sfx: sb.sfx.filter((x) => inRange(x.at)),
+    typing: sb.typing.filter((t) => inRange(t.at)),
     views: kept,
   };
 }
