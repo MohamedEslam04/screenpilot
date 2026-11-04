@@ -22,12 +22,12 @@ export async function sourceFor(id: DesktopId): Promise<A11ySource | undefined> 
     case "macos":
       return (await import("./ax.js")).axSource;
     case "windows":
-      return undefined;
+      return (await import("./uia.js")).uiaSource;
   }
 }
 
 const NO_SOURCE = (id: string) =>
-  new TargetError("A11Y_UNAVAILABLE", `Accessibility targets are not available on ${id} yet (Linux has AT-SPI, macOS the AX API). Use {window, x, y} or {screen, x, y} targets there.`);
+  new TargetError("A11Y_UNAVAILABLE", `Accessibility targets are not available on ${id} yet (Linux has AT-SPI, macOS the AX API, Windows UI Automation). Use {window, x, y} or {screen, x, y} targets there.`);
 
 async function need(desktop: DesktopLike, source?: A11ySource): Promise<A11ySource> {
   const s = source ?? (await sourceFor(desktop.id));
@@ -77,7 +77,7 @@ async function read(desktop: DesktopLike, o: { app?: string; maxDepth: number; m
     );
   }
   const minimized = new Set(windows.filter((w) => w.minimized).map((w) => w.id));
-  const placed = placeWindows(raw.windows, windows, desktop.id === "x11" || desktop.id === "macos").filter((p) => !(p.window && minimized.has(p.window.id)));
+  const placed = placeWindows(raw.windows, windows, desktop.id === "x11" || desktop.id === "macos" || desktop.id === "windows").filter((p) => !(p.window && minimized.has(p.window.id)));
   return { placed, warnings: raw.warnings };
 }
 
@@ -127,7 +127,7 @@ export async function a11yWait(desktop: DesktopLike, q: A11yQuery, timeoutMs: nu
 
 export async function a11yStatus(id: DesktopId): Promise<{ ok: boolean; detail: string; skipped?: boolean }> {
   const s = await sourceFor(id);
-  if (!s) return { ok: true, skipped: true, detail: `not built for ${id} yet (Linux has AT-SPI, macOS the AX API)` };
+  if (!s) return { ok: true, skipped: true, detail: `not built for ${id} yet (Linux has AT-SPI, macOS the AX API, Windows UI Automation)` };
   return s.status();
 }
 

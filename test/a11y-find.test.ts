@@ -62,8 +62,9 @@ describe("a11yFind", () => {
     expect(e.code).toBe("ELEMENT_NOT_FOUND");
   });
 
-  it("says when the OS has no accessibility source", async () => {
-    await expect(a11yFind({ id: "windows", windowControl: true, listWindows: async () => [] }, { name: "x" })).rejects.toMatchObject({ code: "A11Y_UNAVAILABLE" });
+  it("has a source for every desktop", async () => {
+    const { sourceFor } = await import("../src/a11y/index.js");
+    for (const id of ["kde", "x11", "portal", "windows", "macos"] as const) expect((await sourceFor(id))?.id).toBeTruthy();
   });
 
   it("turns a failing source into A11Y_UNAVAILABLE", async () => {
