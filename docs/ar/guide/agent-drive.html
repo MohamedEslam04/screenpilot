@@ -106,7 +106,7 @@ screenpilot perform take.json                      # record and drive; writes th
 <h3 id="a11y-support">أين يعمل<a class="a" href="#a11y-support" aria-label="رابط إلى هذا القسم">#</a></h3>
 <ul>
   <li><strong>Linux مع KDE Wayland:</strong> يعمل عبر AT-SPI (مُختبر على KDE Plasma).</li>
-  <li><strong>Linux مع X11:</strong> مبني بالطريقة نفسها لكنه لم يُختبر بعد على سطح مكتب X11 حقيقي.</li>
+  <li><strong>Linux مع X11:</strong> يعمل بالطريقة نفسها (مُختبر على خادم X متداخل بلا مدير نوافذ، ولم يُختبر بعد على سطح مكتب X11 كامل).</li>
   <li><strong>GNOME وأسطح Wayland الأخرى:</strong> لا يخبر سطح المكتب بموضع النافذة. يمكن قراءة الشجرة (<code>a11y_tree</code>) لكن النقر يفشل مع <code>POSITION_UNKNOWN</code>. استخدم أهداف <code>{screen, x, y}</code> هناك.</li>
   <li><strong>macOS:</strong> مبني على Accessibility API لكنه لم يُختبر بعد على جهاز Mac حقيقي. يحتاج تطبيق الذكاء الاصطناعي إلى إذن Accessibility.</li>
   <li><strong>Windows:</strong> مبني على UI Automation عبر سكربت PowerShell قصير (لا شيء يلزم تثبيته) لكنه لم يُختبر بعد على جهاز Windows حقيقي. ولا يمكن قراءة تطبيق يعمل بصلاحيات المسؤول إلا إذا كان تطبيق الذكاء الاصطناعي يعمل بها أيضاً.</li>
@@ -210,7 +210,7 @@ screenpilot perform take.json                      # record and drive; writes th
 <h2 id="platforms">ما الذي يدعمه كل سطح مكتب<a class="a" href="#platforms" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>يعمل التحكم على KDE Plasma وأي سطح مكتب X11 وGNOME على Wayland وWindows وmacOS. ولا يعمل على sway وHyprland، مع أن التسجيل يعمل عليهما.</p>
 <ul>
-  <li><strong>KDE Plasma وأسطح مكتب X11 وWindows وmacOS:</strong> كل ما في هذه الصفحة يعمل، بما فيه أهداف <code>{web}</code> و<code>{window}</code> والخطوتان <code>focus</code> و<code>waitForWindow</code>. وأهداف <code>{a11y}</code> مُختبرة على KDE Plasma ومبنية لـ X11 وWindows وmacOS (لم تُختبر عليها بعد).</li>
+  <li><strong>KDE Plasma وأسطح مكتب X11 وWindows وmacOS:</strong> كل ما في هذه الصفحة يعمل، بما فيه أهداف <code>{web}</code> و<code>{window}</code> والخطوتان <code>focus</code> و<code>waitForWindow</code>. وأهداف <code>{a11y}</code> مُختبرة على KDE Plasma وعلى X11 (خادم X متداخل)، ومبنية لـ Windows وmacOS (لم تُختبر عليهما بعد).</li>
   <li><strong>GNOME على Wayland:</strong> لا يوجد تحكم بالنوافذ. استخدم أهداف <code>{ "screen", "x", "y" }</code> فقط. الخطوتان <code>focus</code> و<code>waitForWindow</code> وأهداف <code>{window}</code> و<code>{web}</code> تفشل مع رسالة خطأ. يمكن قراءة عناصر <code>{a11y}</code> لكن لا يمكن النقر عليها.</li>
   <li><strong>sway وHyprland:</strong> التحكم غير ممكن.</li>
 </ul>

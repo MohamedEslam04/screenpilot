@@ -106,7 +106,7 @@ screenpilot perform take.json                      # record and drive; writes th
 <h3 id="a11y-support">Where it works<a class="a" href="#a11y-support" aria-label="Link to this section">#</a></h3>
 <ul>
   <li><strong>Linux, KDE Wayland:</strong> works, through AT-SPI (tested on KDE Plasma).</li>
-  <li><strong>Linux, X11:</strong> built the same way, but not yet tested on a real X11 desktop.</li>
+  <li><strong>Linux, X11:</strong> works the same way (tested on a nested X server without a window manager; not yet on a full X11 desktop).</li>
   <li><strong>GNOME and other Wayland desktops:</strong> the desktop does not tell where a window is. The tree can be read (<code>a11y_tree</code>), but a click fails with <code>POSITION_UNKNOWN</code>. Use <code>{screen, x, y}</code> targets there.</li>
   <li><strong>macOS:</strong> built on the Accessibility API, but not yet tested on a real Mac. The AI app needs the Accessibility permission.</li>
   <li><strong>Windows:</strong> built on UI Automation, read by a short PowerShell script (nothing to install), but not yet tested on a real Windows machine. An app running as administrator cannot be read unless the AI app runs as administrator too.</li>
@@ -210,7 +210,7 @@ screenpilot perform take.json                      # record and drive; writes th
 <h2 id="platforms">What each desktop supports<a class="a" href="#platforms" aria-label="Link to this section">#</a></h2>
 <p>Driving works on KDE Plasma, any X11 desktop, GNOME on Wayland, Windows and macOS. It does not work on sway or Hyprland, where recording still works.</p>
 <ul>
-  <li><strong>KDE Plasma, X11 desktops, Windows, macOS:</strong> everything in this page works, including <code>{web}</code> and <code>{window}</code> targets, <code>focus</code> and <code>waitForWindow</code>. <code>{a11y}</code> targets are tested on KDE Plasma and built for X11, Windows and macOS (not yet tested there).</li>
+  <li><strong>KDE Plasma, X11 desktops, Windows, macOS:</strong> everything in this page works, including <code>{web}</code> and <code>{window}</code> targets, <code>focus</code> and <code>waitForWindow</code>. <code>{a11y}</code> targets are tested on KDE Plasma and on X11 (nested X server), and built for Windows and macOS (not yet tested there).</li>
   <li><strong>GNOME on Wayland:</strong> no window control. Use only <code>{ "screen", "x", "y" }</code> targets. The <code>focus</code> and <code>waitForWindow</code> steps and the <code>{window}</code> and <code>{web}</code> targets fail with an error. <code>{a11y}</code> controls can be read but not clicked.</li>
   <li><strong>sway, Hyprland:</strong> driving is not possible.</li>
 </ul>
