@@ -293,7 +293,7 @@ async function main(): Promise<void> {
   await check("textedit: click through an {a11y} target", async () => {
     needAx();
     if (!driver || !textEdit) throw new Error("needs driver + TextEdit window");
-    const SENTENCE = "a11y click ok";
+    const SENTENCE = "A11y click ok"; // starts with a capital: TextEdit capitalizes a lowercase first letter
     const w = await refresh(textEdit.id);
     await driver.desktop.focusWindow(w.id);
     await sleep(300);
