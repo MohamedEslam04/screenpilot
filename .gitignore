@@ -11,3 +11,6 @@ release/
 wayland-smoke-report/
 
 __pycache__/
+
+# graphify knowledge-graph output
+graphify-out/
