@@ -26,7 +26,3 @@ export function clicksOf(events: InputEvent[]): { t: number; x: number; y: numbe
     .filter((e) => e.type === "down" && e.x !== undefined && e.y !== undefined)
     .map((e) => ({ t: e.t, x: e.x!, y: e.y! }));
 }
-
-export function keysOf(events: InputEvent[]): { t: number; key?: string }[] {
-  return events.filter((e) => e.type === "key").map((e) => ({ t: e.t, key: e.key }));
-}

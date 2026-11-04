@@ -1,30 +1,30 @@
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { keysOf } from "../src/record/events.js";
 import { renderHtml } from "../src/render/html.js";
 import { buildPlan } from "../src/render/plan.js";
-import { BUILTIN_SFX, builtinSfxInput, buildSfxMix, planSfx, sfxInput } from "../src/render/sfx.js";
+import { BUILTIN_SFX, builtinSfxInput, buildSfxMix, planSfx, sfxInput, typingPresses } from "../src/render/sfx.js";
 import { windowPlan } from "../src/render/window.js";
-import { SfxSchema, SoundsSchema, StoryboardSchema } from "../src/storyboard/schema.js";
+import { SfxSchema, SoundsSchema, StoryboardSchema, TypingSchema } from "../src/storyboard/schema.js";
 import { buildTimeline } from "../src/storyboard/timeline.js";
 
 function sbOf(extra: Record<string, unknown>) {
   return StoryboardSchema.parse({ source: "r.mp4", ...extra });
 }
 
-function plan(extra: Record<string, unknown>, o: { clicks?: { t: number; x: number; y: number }[]; keys?: { t: number }[]; duration?: number } = {}) {
+function plan(extra: Record<string, unknown>, o: { clicks?: { t: number; x: number; y: number }[]; duration?: number } = {}) {
   const sb = sbOf(extra);
   // Chapter cards are holds, as in prepareBuild.
   const holds = sb.cards.map((c, card) => ({ at: c.at, dur: c.dur, card }));
   const timeline = buildTimeline({ segments: sb.segments, holds, sourceDuration: o.duration ?? 20, offset: sb.intro?.dur ?? 0 });
   const total = timeline.videoEnd + (sb.outro?.dur ?? 0);
-  return planSfx({ sb, timeline, clicks: o.clicks ?? [], keys: o.keys ?? [], duration: total });
+  return planSfx({ sb, timeline, clicks: o.clicks ?? [], duration: total });
 }
 
 describe("sfx in the schema", () => {
   it("defaults to no sounds", () => {
     const sb = sbOf({});
     expect(sb.sfx).toEqual([]);
+    expect(sb.typing).toEqual([]);
     expect(sb.sounds).toBeUndefined();
   });
 
@@ -33,19 +33,34 @@ describe("sfx in the schema", () => {
     expect(SfxSchema.safeParse({ at: -1, src: "a.wav" }).success).toBe(false);
     expect(SfxSchema.safeParse({ at: 1, src: "" }).success).toBe(false);
     expect(SfxSchema.safeParse({ at: 1, src: "a.wav", volume: 9 }).success).toBe(false);
-    expect(SoundsSchema.parse({ clicks: true })).toMatchObject({ clicks: true, volume: 0.5 });
+    expect(SoundsSchema.parse({ clicks: true, typing: "pop" })).toMatchObject({ clicks: true, typing: "pop", volume: 0.5 });
+    expect(TypingSchema.parse({ at: 2 })).toEqual({ at: 2, dur: 3 });
+    expect(TypingSchema.parse({ at: 2, dur: 1.5, text: "hello" })).toEqual({ at: 2, dur: 1.5, text: "hello" });
+    expect(TypingSchema.safeParse({ at: 2, dur: 0 }).success).toBe(false);
+    expect(TypingSchema.safeParse({ at: -1 }).success).toBe(false);
     expect(SoundsSchema.safeParse({ volume: 3 }).success).toBe(false);
   });
 });
 
-describe("keysOf", () => {
-  it("keeps only key events", () => {
-    const keys = keysOf([
-      { t: 1, type: "down", x: 0.1, y: 0.2 },
-      { t: 2, type: "key", key: "a" },
-      { t: 3, type: "key" },
-    ]);
-    expect(keys).toEqual([{ t: 2, key: "a" }, { t: 3 }]);
+describe("typingPresses", () => {
+  it("makes one press per character, or about 7 a second without text", () => {
+    expect(typingPresses({ at: 2, dur: 3, text: "hello world" }, 0)).toHaveLength(11);
+    expect(typingPresses({ at: 2, dur: 3 }, 0)).toHaveLength(21);
+    expect(typingPresses({ at: 2, dur: 3, text: "" }, 0)).toEqual([]);
+  });
+
+  it("keeps every press inside the span, in order, and is repeatable", () => {
+    const a = typingPresses({ at: 10, dur: 2, text: "some typing here" }, 3);
+    expect(a).toEqual(typingPresses({ at: 10, dur: 2, text: "some typing here" }, 3));
+    expect(a).toEqual([...a].sort((x, y) => x - y));
+    expect(a.every((t) => t >= 10 && t < 12)).toBe(true);
+  });
+
+  it("is not perfectly even, but differs between spans", () => {
+    const a = typingPresses({ at: 0, dur: 2, text: "abcdefghij" }, 0);
+    const gaps = a.slice(1).map((t, i) => +(t - a[i]!).toFixed(4));
+    expect(new Set(gaps).size).toBeGreaterThan(1);
+    expect(typingPresses({ at: 0, dur: 2, text: "abcdefghij" }, 1)).not.toEqual(a);
   });
 });
 
@@ -95,15 +110,34 @@ describe("planSfx", () => {
   });
 
   it("does nothing for sounds that are off", () => {
-    expect(plan({ sounds: { clicks: false, keys: false } }, { clicks: [{ t: 3, x: 0, y: 0 }], keys: [{ t: 4 }] }).hits).toEqual([]);
-    expect(plan({}, { clicks: [{ t: 3, x: 0, y: 0 }] }).hits).toEqual([]);
+    const typing = [{ at: 4, dur: 2 }];
+    expect(plan({ sounds: { clicks: false, typing: false }, typing }, { clicks: [{ t: 3, x: 0, y: 0 }] }).hits).toEqual([]);
+    expect(plan({ typing }, { clicks: [{ t: 3, x: 0, y: 0 }] }).hits).toEqual([]);
   });
 
-  it("throttles key sounds to one per 80 ms", () => {
-    const keys = [1, 1.02, 1.05, 1.1, 1.15, 1.3].map((t) => ({ t }));
-    const r = plan({ sounds: { keys: true } }, { keys });
-    expect(r.hits.map((h) => h.at)).toEqual([1, 1.1, 1.3]);
-    expect(r.hits.every((h) => h.src === "builtin:key")).toBe(true);
+  it("throttles click sounds that land within 50 ms of each other once the speed-up is applied", () => {
+    const r = plan({ segments: [{ in: 0, out: 20, speed: 8 }], sounds: { clicks: true } }, { clicks: [{ t: 8, x: 0, y: 0 }, { t: 8.2, x: 0, y: 0 }, { t: 12, x: 0, y: 0 }] });
+    expect(r.hits.map((h) => h.at)).toEqual([1, 1.5]);
+  });
+
+  it("plays a typing sound for each press of a typing span, at sounds.volume", () => {
+    const r = plan({ sounds: { typing: true, volume: 0.3 }, typing: [{ at: 4, dur: 2, text: "hello" }] });
+    expect(r.hits).toHaveLength(5);
+    expect(r.hits.every((h) => h.src === "builtin:key" && h.volume === 0.3)).toBe(true);
+    expect(r.hits.every((h) => h.at >= 4 && h.at < 6)).toBe(true);
+  });
+
+  it("maps typing presses through the timeline and skips the ones in cut regions", () => {
+    const r = plan({ segments: [{ in: 5, out: 15 }], sounds: { typing: "pop" }, typing: [{ at: 3, dur: 4, text: "abcdefgh" }] });
+    expect(r.hits.length).toBeGreaterThan(0);
+    expect(r.hits.length).toBeLessThan(8);
+    expect(r.hits.every((h) => h.src === "builtin:pop" && h.at >= 0 && h.at < 2)).toBe(true);
+  });
+
+  it("warns when a whole typing span is in a cut region", () => {
+    const r = plan({ segments: [{ in: 5, out: 15 }], sounds: { typing: true }, typing: [{ at: 1, dur: 2, text: "abc" }] });
+    expect(r.hits).toEqual([]);
+    expect(r.warnings[0]).toContain("typing[0]");
   });
 
   it("drops auto sounds that fall in cut regions without warning", () => {

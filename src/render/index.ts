@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { basename, dirname, extname, join, resolve } from "node:path";
-import { clicksOf, keysOf, readEvents } from "../record/events.js";
+import { clicksOf, readEvents } from "../record/events.js";
 import { lintTimeline } from "../storyboard/lint.js";
 import { lintStoryboard, loadStoryboard } from "../storyboard/load.js";
 import type { Storyboard } from "../storyboard/schema.js";
@@ -119,21 +119,18 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
 
   // 4. Events → click ripples.
   let clicks: { t: number; x: number; y: number }[] = [];
-  let keys: { t: number }[] = [];
   if (sb.events) {
     const eventsPath = resolve(baseDir, sb.events);
     if (existsSync(eventsPath)) {
-      const events = await readEvents(eventsPath);
-      clicks = clicksOf(events);
-      keys = keysOf(events);
+      clicks = clicksOf(await readEvents(eventsPath));
     } else warnings.push(`events file not found: ${eventsPath}`);
-  } else if (sb.sounds?.clicks || sb.sounds?.keys) {
-    warnings.push("sounds.clicks / sounds.keys need `events` (the events.jsonl from the recording); no click or key sounds were added");
+  } else if (sb.sounds?.clicks) {
+    warnings.push("sounds.clicks needs `events` (the events.jsonl from the recording); no click sounds were added");
   }
 
   // 4b. Sound effects: all of them mixed into one track.
   const total = round3(timeline.videoEnd + (sb.outro?.dur ?? 0));
-  const sfxPlan = planSfx({ sb, timeline, clicks, keys, duration: total });
+  const sfxPlan = planSfx({ sb, timeline, clicks, duration: total });
   warnings.push(...sfxPlan.warnings);
   const sfxMix = await time("sfx", () => mixSfx(sfxPlan.hits, { baseDir, buildDir, duration: total, log }));
   warnings.push(...sfxMix.warnings);

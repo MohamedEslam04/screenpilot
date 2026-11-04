@@ -197,12 +197,18 @@ export const SfxSchema = z.object({
   volume: z.number().min(0).max(4).default(1),
 });
 
+export const TypingSchema = z.object({
+  at: time.describe("Source time the typing starts"),
+  dur: z.number().positive().default(3).describe("How long the typing lasts (s)"),
+  text: z.string().optional().describe("What is typed: one press per character; without it about 7 presses a second"),
+});
+
 const soundChoice = z.union([z.boolean(), z.string().min(1)]).optional();
 
 export const SoundsSchema = z
   .object({
     clicks: soundChoice.describe('Play a sound on every recorded click (needs events): true = "builtin:click", or a built-in name / sound file'),
-    keys: soundChoice.describe('Play a sound on every recorded key press (needs events; at most 12 per second): true = "builtin:key"'),
+    typing: soundChoice.describe('Play a typing sound for every press of every typing[] span: true = "builtin:key", or a built-in name / sound file'),
     cards: soundChoice.describe('Play a sound as the intro, chapter cards and outro come in: true = "builtin:whoosh"'),
     volume: z.number().min(0).max(2).default(0.5).describe("Level of these automatic sounds (sfx[] items have their own volume)"),
   })
@@ -239,6 +245,10 @@ export const StoryboardSchema = z.object({
   overlays: z.array(OverlaySchema).default([]).describe("Images or videos placed on top of the output frame (logos, picture-in-picture)"),
   cards: z.array(ChapterCardSchema).default([]).describe("Chapter cards in the middle of the video; each freezes the picture for dur seconds"),
   music: MusicSchema.optional(),
+  typing: z
+    .array(TypingSchema)
+    .default([])
+    .describe("Spans where someone types in the recording: each gets typing sounds (sounds.typing). The recorder never logs keys, so you mark the spans"),
   sfx: z.array(SfxSchema).default([]).describe("Sound effects at source times (a file or a builtin:name); see also sounds for automatic ones"),
   sounds: SoundsSchema.optional(),
 });
@@ -256,6 +266,7 @@ export type Narration = z.output<typeof NarrationSchema>;
 export type Highlight = z.output<typeof HighlightSchema>;
 export type Overlay = z.output<typeof OverlaySchema>;
 export type Sfx = z.output<typeof SfxSchema>;
+export type Typing = z.output<typeof TypingSchema>;
 export type Theme = z.output<typeof ThemeSchema>;
 
 export function storyboardJsonSchema(): unknown {

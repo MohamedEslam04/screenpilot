@@ -93,11 +93,11 @@ describe("storyboard extends", () => {
 
   it("inherits sounds and rebases custom sound files, but not the built-in names", async () => {
     const dir = await files({
-      "brand/base.json": { source: "b.mp4", sounds: { clicks: "audio/tick.wav", keys: "key", cards: true, volume: 0.3 } },
+      "brand/base.json": { source: "b.mp4", sounds: { clicks: "audio/tick.wav", typing: "key", cards: true, volume: 0.3 } },
       "demos/child.json": { extends: "../brand/base.json", source: "c.mp4" },
     });
     const { sb } = await loadStoryboard(join(dir, "demos/child.json"));
-    expect(sb.sounds).toEqual({ clicks: "../brand/audio/tick.wav", keys: "key", cards: true, volume: 0.3 });
+    expect(sb.sounds).toEqual({ clicks: "../brand/audio/tick.wav", typing: "key", cards: true, volume: 0.3 });
   });
 
   it("is documented in the JSON schema", () => {
