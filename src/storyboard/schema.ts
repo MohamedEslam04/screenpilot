@@ -176,12 +176,36 @@ export const DuckSchema = z.object({
   amount: z.number().min(0).max(1).default(0.6).describe("How much quieter the music gets while someone speaks (0.6 = 60% lower)"),
   attack: z.number().min(0).max(5).default(0.2).describe("Seconds the music takes to go down, finishing as the line starts"),
   release: z.number().min(0).max(5).default(0.5).describe("Seconds the music takes to come back after the line"),
+  under: z
+    .array(z.enum(["narration", "overlays"]))
+    .min(1)
+    .optional()
+    .describe('What lowers the music: "narration" (default), "overlays" (video overlays that play their own sound), or both'),
 });
+
+export const MUSIC_FADE_IN = 1;
+export const MUSIC_FADE_OUT = 2;
 
 export const MusicSchema = z.object({
   src: z.string(),
   volume: z.number().min(0).max(1).default(0.12),
   duck: DuckSchema.optional().describe("Lower the music under narration"),
+  fadeIn: z.number().min(0).max(30).optional().describe("Seconds to fade in (default 1)"),
+  fadeOut: z.number().min(0).max(30).optional().describe("Seconds to fade out at the end (default 2)"),
+  loop: z.boolean().optional().describe("Repeat a track that is shorter than the video (default: it just ends)"),
+  offset: z.number().min(0).optional().describe("Start this many seconds into the file (default 0)"),
+  from: time.optional().describe("Source time the music starts (default: the start of the video, intro included)"),
+  to: time.optional().describe("Source time the music ends (default: the end of the video, outro included)"),
+});
+
+export const LoudnessSchema = z.object({
+  target: z.number().min(-70).max(-5).default(-16).describe("Integrated loudness in LUFS: -16 for web and social, -14 for streaming, -23 for broadcast"),
+  truePeak: z.number().min(-9).max(0).default(-1.5).describe("Highest true peak in dBTP"),
+});
+
+export const AudioSchema = z.object({
+  loudness: LoudnessSchema.optional().describe("Normalize the whole mix of the final video to a target loudness (use {} for -16 LUFS)"),
+  denoise: z.boolean().optional().describe("Reduce steady background noise in the recording's own audio (needs keepSourceAudio)"),
 });
 
 /** Sounds ffmpeg synthesizes while rendering (see render/sfx.ts). */
@@ -215,7 +239,7 @@ export const SoundsSchema = z
   .describe("Automatic sound effects from recorded events and cards");
 
 /** Keys a storyboard takes from the one it `extends` (deep-merged, the child wins). */
-export const INHERITED_KEYS = ["theme", "voice", "output", "music", "sounds", "keepSourceAudio"] as const;
+export const INHERITED_KEYS = ["theme", "voice", "output", "music", "sounds", "audio", "keepSourceAudio"] as const;
 
 export const StoryboardSchema = z.object({
   version: z.literal(1).default(1),
@@ -251,6 +275,7 @@ export const StoryboardSchema = z.object({
     .describe("Spans where someone types in the recording: each gets typing sounds (sounds.typing). The recorder never logs keys, so you mark the spans"),
   sfx: z.array(SfxSchema).default([]).describe("Sound effects at source times (a file or a builtin:name); see also sounds for automatic ones"),
   sounds: SoundsSchema.optional(),
+  audio: AudioSchema.optional(),
 });
 
 export type Storyboard = z.output<typeof StoryboardSchema>;

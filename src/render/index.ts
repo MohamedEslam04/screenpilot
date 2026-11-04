@@ -18,6 +18,8 @@ import { draftFps } from "./draft.js";
 import { renderHtml } from "./html.js";
 import { formatPaths, type OutputFormat } from "./formats.js";
 import { overlayKind } from "./overlay.js";
+import { type LoudnessTarget, normalizeLoudness } from "./loudness.js";
+import { planMusicRange, prepareMusic } from "./music.js";
 import { mixSfx, planSfx } from "./sfx.js";
 import { buildPlan, type OverlayAsset, type RenderPlan } from "./plan.js";
 import { partSuffix, type Window, windowPlan } from "./window.js";
@@ -49,6 +51,8 @@ export interface Prepared {
   source: VideoInfo;
   warnings: string[];
   autoHolds: { at: number; dur: number }[];
+  /** Normalize the finished video to this loudness (storyboard audio.loudness). */
+  loudness?: LoudnessTarget;
 }
 
 export async function prepareBuild(storyboardPath: string, opts: PrepareOptions = {}): Promise<Prepared> {
@@ -115,6 +119,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   if (!keepAudio && sb.segments.some((s) => s.mute || (s.volume !== undefined && s.volume !== 1))) {
     warnings.push("segment volume/mute has no effect: the source audio is not kept (set keepSourceAudio: true and use a recording with sound)");
   }
+  if (sb.audio?.denoise && !keepAudio) warnings.push("audio.denoise has no effect: the source audio is not kept (set keepSourceAudio: true and use a recording with sound)");
   await time("cut", () => cutVideo(sourcePath, buildDir, timeline, sb, source, keepAudio, !!opts.draft, log));
 
   // 4. Events → click ripples.
@@ -135,13 +140,25 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   const sfxMix = await time("sfx", () => mixSfx(sfxPlan.hits, { baseDir, buildDir, duration: total, log }));
   warnings.push(...sfxMix.warnings);
 
-  // 5. Music.
+  // 5. Music: straight into the composition, or prepared first for a loop, offset or from/to range.
   let musicSrc: string | undefined;
+  let musicClip: { start: number; duration: number } | undefined;
   if (sb.music) {
     const m = resolve(baseDir, sb.music.src);
     if (existsSync(m)) {
-      musicSrc = `music${extname(m)}`;
-      await copyFile(m, join(buildDir, musicSrc));
+      const range = planMusicRange(sb.music, timeline, total);
+      warnings.push(...range.warnings);
+      if (range.custom) {
+        const prepared = await time("music", () => prepareMusic(sb.music!, m, range, { buildDir, log }));
+        warnings.push(...prepared.warnings);
+        if (prepared.file) {
+          musicSrc = prepared.file;
+          musicClip = { start: range.start, duration: prepared.length };
+        }
+      } else {
+        musicSrc = `music${extname(m)}`;
+        await copyFile(m, join(buildDir, musicSrc));
+      }
     } else warnings.push(`music file not found: ${m}`);
   }
 
@@ -176,6 +193,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     narration,
     clicks,
     musicSrc,
+    musicClip,
     overlays,
     sfxSrc: sfxMix.file,
   });
@@ -189,7 +207,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   await writeFile(join(buildDir, "plan.json"), JSON.stringify({ plan, autoHolds, warnings }, null, 2));
   log(`composition: ${buildDir}/index.html (${plan.duration.toFixed(2)}s)`);
 
-  return { buildDir, plan, timeline, source, warnings, autoHolds };
+  return { buildDir, plan, timeline, source, warnings, autoHolds, loudness: sb.audio?.loudness };
 }
 
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -209,6 +227,7 @@ async function cutVideo(
     fps: sb.output.fps,
     sourceDuration: source.duration,
     keepAudio,
+    denoise: !!sb.audio?.denoise,
   });
   const st = await stat(sourcePath);
   const key = createHash("sha1").update(`${sourcePath}|${st.size}|${st.mtimeMs}|${filter}|${draft ? "draft" : "full"}`).digest("hex");
@@ -290,6 +309,14 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
     { env: hyperframesEnv(), inherit: opts.timings },
   ),
   );
+  if (prepared.loudness) {
+    const target = prepared.loudness;
+    await time("loudness", async () => {
+      const r = await normalizeLoudness(output, target);
+      if (r.applied) log(`loudness: ${r.measured!.input_i} LUFS -> ${target.target} LUFS`);
+      else prepared.warnings.push(`audio.loudness was not applied: ${r.reason}`);
+    });
+  }
   return { ...prepared, output };
 }
 

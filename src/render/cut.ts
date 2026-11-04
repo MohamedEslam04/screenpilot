@@ -7,11 +7,16 @@ export interface CutOptions {
   fps: number;
   sourceDuration: number;
   keepAudio: boolean;
+  /** Reduce steady noise in the source audio. */
+  denoise?: boolean;
   /** Fast, lighter intermediate for `-q draft`. */
   draft?: boolean;
 }
 
 const f = (n: number) => n.toFixed(3);
+
+/** FFT denoise: 18 dB less steady noise, tracking the noise level (the defaults assume -50 dB and change nothing on a normal recording). */
+const DENOISE = "afftdn=nr=18:nf=-30:tn=1";
 
 /** atempo accepts 0.5..100 per instance; chain for slower speeds. */
 function atempoChain(speed: number): string {
@@ -27,7 +32,7 @@ function atempoChain(speed: number): string {
 
 /** Filter graph that cuts, speeds up and freezes the source into one CFR stream. */
 export function buildCutFilter(opts: Omit<CutOptions, "source" | "output" | "draft">): string {
-  const { pieces, fps, sourceDuration, keepAudio } = opts;
+  const { pieces, fps, sourceDuration, keepAudio, denoise } = opts;
   const n = pieces.length;
   const lines: string[] = [];
   const vSplit = Array.from({ length: n }, (_, i) => `[vs${i}]`).join("");
@@ -43,7 +48,7 @@ export function buildCutFilter(opts: Omit<CutOptions, "source" | "output" | "dra
       lines.push(`[vs${i}]trim=start=${f(p.in)}:end=${f(p.out)},setpts=(PTS-STARTPTS)/${p.speed},fps=${fps}[v${i}]`);
       if (keepAudio) {
         const gain = p.volume === 1 ? "" : `,volume=${+p.volume.toFixed(3)}`;
-        lines.push(`[as${i}]atrim=start=${f(p.in)}:end=${f(p.out)},asetpts=PTS-STARTPTS,${atempoChain(p.speed)}${gain}[a${i}]`);
+        lines.push(`[as${i}]atrim=start=${f(p.in)}:end=${f(p.out)},asetpts=PTS-STARTPTS,${atempoChain(p.speed)}${denoise ? `,${DENOISE}` : ""}${gain}[a${i}]`);
       }
     } else {
       const at = Math.min(p.at, lastFrame);

@@ -1,4 +1,4 @@
-import type { Motion, Overlay, Storyboard, Theme, View } from "../storyboard/schema.js";
+import { MUSIC_FADE_IN, MUSIC_FADE_OUT, type Motion, type Overlay, type Storyboard, type Theme, type View } from "../storyboard/schema.js";
 import type { Timeline } from "../storyboard/timeline.js";
 import type { VoiceClip } from "../voice/index.js";
 import { type DuckTween, planDuck } from "./duck.js";
@@ -126,6 +126,8 @@ export interface PlanInput {
   narration: (VoiceClip & { at: number; caption: boolean; src: string })[];
   clicks: ClickEvent[];
   musicSrc?: string;
+  /** Output seconds the prepared music track (music.ts) plays; its fades are already in the file. Without it the music spans the video. */
+  musicClip?: { start: number; duration: number };
   /** One entry per storyboard.overlays item; undefined when its file is missing. */
   overlays?: (OverlayAsset | undefined)[];
   /** The mixed sound effects track (sfx.ts), as long as the video. */
@@ -207,16 +209,16 @@ export function buildPlan(input: PlanInput): RenderPlan {
       texts.push({ start, end: start + n.duration, text: n.text, position: "bottom", style: "subtitle" });
     }
   }
+  let musicItem: AudioItem | undefined;
   if (input.musicSrc && sb.music) {
-    const item: AudioItem = { src: input.musicSrc, start: 0, duration, volume: sb.music.volume, fadeIn: 1, fadeOut: 2 };
-    if (sb.music.duck) {
-      // Duck under the narration only; overlay sound is not part of this list yet.
-      const voice = audio.map((a) => ({ start: a.start, end: a.start + a.duration }));
-      const duck = planDuck(voice, sb.music.volume, sb.music.duck, duration);
-      if (duck.length > 0) item.duck = duck;
-    }
-    audio.push(item);
+    musicItem = input.musicClip
+      ? { src: input.musicSrc, start: input.musicClip.start, duration: input.musicClip.duration, volume: sb.music.volume }
+      : { src: input.musicSrc, start: 0, duration, volume: sb.music.volume, fadeIn: sb.music.fadeIn ?? MUSIC_FADE_IN, fadeOut: sb.music.fadeOut ?? MUSIC_FADE_OUT };
+    audio.push(musicItem);
   }
+  // The voice lines that exist so far; overlay sound is added below, once the overlays are known.
+  const narrationSpans = audio.filter((a) => a !== musicItem).map((a) => ({ start: a.start, end: a.start + a.duration }));
+  const overlaySpans: { start: number; end: number }[] = [];
 
   if (input.sfxSrc) audio.push({ src: input.sfxSrc, start: 0, duration, volume: 1 });
 
@@ -257,9 +259,19 @@ export function buildPlan(input: PlanInput): RenderPlan {
       clips,
     });
     if (asset.kind === "video" && asset.hasAudio && !o.mute) {
-      for (const c of clips) audio.push({ src: asset.src, start: c.start, duration: c.duration, volume: 1 });
+      for (const c of clips) {
+        audio.push({ src: asset.src, start: c.start, duration: c.duration, volume: 1 });
+        overlaySpans.push({ start: c.start, end: c.start + c.duration });
+      }
     }
   });
+
+  if (musicItem && sb.music?.duck) {
+    const under = sb.music.duck.under ?? ["narration"];
+    const spans = [...(under.includes("narration") ? narrationSpans : []), ...(under.includes("overlays") ? overlaySpans : [])];
+    const duck = planDuck(spans, sb.music.volume, sb.music.duck, duration);
+    if (duck.length > 0) musicItem.duck = duck;
+  }
 
   const highlights: HighlightItem[] = [];
   for (const h of sb.highlights) {
