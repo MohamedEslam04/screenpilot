@@ -8,13 +8,25 @@ import { APP } from "../brand.js";
 const time = z.number().min(0);
 const norm = z.number().min(0).max(1);
 
+export const SegmentTransitionSchema = z.object({
+  type: z.enum(["crossfade", "fade-black", "fade-white", "wipe-left", "wipe-right", "slide-left", "slide-right"]).describe("How this segment comes in over the end of the one before it"),
+  dur: z.number().min(0.1).max(3).default(0.5).describe("Seconds the two overlap (at most half of either piece); the video gets this much shorter"),
+});
+
 export const SegmentSchema = z
   .object({
     in: time.describe("Source start (s)"),
     out: time.describe("Source end (s)"),
     speed: z.number().min(0.25).max(16).default(1).describe("Playback speed; >1 fast-forwards boring parts"),
+    speedTo: z
+      .number()
+      .min(0.25)
+      .max(16)
+      .optional()
+      .describe("Ramp the speed from `speed` at the start of the segment to this by its end (eases in or out of a fast-forward); needs a segment of a second or more"),
     volume: z.number().min(0).max(4).optional().describe("Source audio level of this segment (default 1); needs keepSourceAudio"),
     mute: z.boolean().optional().describe("Silence this segment's source audio (same as volume 0)"),
+    transition: SegmentTransitionSchema.optional().describe("Blend into this segment instead of a hard cut (ignored on the first segment)"),
   })
   .refine((s) => s.out > s.in, { message: "segment.out must be greater than segment.in" });
 
@@ -161,6 +173,13 @@ export const ChapterCardSchema = z.object({
   subtitle: z.string().optional(),
 });
 
+export const GradeSchema = z.object({
+  brightness: z.number().min(-1).max(1).default(0),
+  contrast: z.number().min(0).max(2).default(1),
+  saturation: z.number().min(0).max(3).default(1).describe("0 is black and white, 1 unchanged, 1.2 a little richer"),
+  gamma: z.number().min(0.1).max(4).default(1).describe("Below 1 darkens the mid-tones, above 1 lifts them"),
+});
+
 export const ThemeSchema = z.object({
   background: z.string().default("linear-gradient(135deg, #1e1b4b 0%, #4338ca 55%, #0ea5e9 100%)"),
   padding: z.number().min(0).max(0.2).default(0.05).describe("Space around the recording, fraction of output width"),
@@ -170,6 +189,7 @@ export const ThemeSchema = z.object({
   font: z.string().default("'Inter', 'Cairo', system-ui, sans-serif"),
   captionColor: z.string().default("#ffffff"),
   captionBackground: z.string().default("rgba(15, 23, 42, 0.82)"),
+  grade: GradeSchema.optional().describe("Color grade of the recording (not the cards or text); only the values you set change"),
   clickRipples: z.boolean().default(true).describe("Draw a ripple on every recorded click (needs events.jsonl)"),
   motion: z
     .object({

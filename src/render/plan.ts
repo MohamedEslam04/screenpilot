@@ -50,6 +50,13 @@ export type AnnotationItem = { start: number; end: number } & (
   | { kind: "blur"; x: number; y: number; w: number; h: number; mode: "blur" | "solid"; strength: number; color: string }
 );
 
+/** One narration line as a subtitle cue (output seconds), whether or not it is burned into the picture. */
+export interface SubtitleItem {
+  start: number;
+  end: number;
+  text: string;
+}
+
 /** Typed text on screen: each word shows on the press that finishes it (output seconds). */
 export interface KeysItem {
   start: number;
@@ -130,6 +137,8 @@ export interface RenderPlan {
   highlights: HighlightItem[];
   annotations: AnnotationItem[];
   keys: KeysItem[];
+  /** Every narration line, for the .srt/.vtt files. */
+  subtitles: SubtitleItem[];
   ripples: Ripple[];
   audio: AudioItem[];
   cards: CardItem[];
@@ -226,9 +235,11 @@ export function buildPlan(input: PlanInput): RenderPlan {
   }
 
   const audio: AudioItem[] = [];
+  const subtitles: SubtitleItem[] = [];
   for (const n of input.narration) {
     const start = tl.toOutput(n.at);
     if (start === null) continue;
+    subtitles.push({ start: round(start), end: round(start + n.duration), text: n.text });
     audio.push({ src: n.src, start: round(start), duration: round(n.duration), volume: sb.voice.volume });
     if (n.caption) {
       texts.push({ start, end: start + n.duration, text: n.text, position: "bottom", style: "subtitle" });
@@ -375,6 +386,7 @@ export function buildPlan(input: PlanInput): RenderPlan {
     highlights,
     annotations,
     keys,
+    subtitles: subtitles.sort((a, b) => a.start - b.start),
     ripples,
     audio,
     cards,

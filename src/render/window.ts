@@ -1,5 +1,5 @@
 import type { DuckTween } from "./duck.js";
-import type { AnnotationItem, AudioItem, CardItem, KeysItem, OverlayItem, RenderPlan } from "./plan.js";
+import type { AnnotationItem, AudioItem, CardItem, KeysItem, OverlayItem, RenderPlan, SubtitleItem } from "./plan.js";
 import type { CamState, CamTween } from "./zoom.js";
 import { IDENTITY } from "./zoom.js";
 
@@ -126,6 +126,10 @@ export function windowPlan(plan: RenderPlan, win: Window): RenderPlan {
       // Words typed before the window are already there when it opens.
       const words = k.words.filter((w) => w.at < to).map((w) => ({ ...w, at: round(Math.max(0, w.at - from)) }));
       return words.length ? [{ start: c.start, end: round(c.start + c.dur), words }] : [];
+    }),
+    subtitles: plan.subtitles.flatMap((x): SubtitleItem[] => {
+      const c = clip(x.start, x.end, from, to);
+      return c ? [{ ...x, start: c.start, end: round(c.start + c.dur) }] : [];
     }),
     ripples: plan.ripples.filter((r) => r.t >= from && r.t < to).map((r) => ({ ...r, t: shift(r.t) })),
   };

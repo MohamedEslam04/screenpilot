@@ -29,6 +29,7 @@ const plan: RenderPlan = {
   highlights: [{ start: 12, end: 14, x: 0.1, y: 0.1, w: 0.2, h: 0.2 }],
   annotations: [],
   keys: [],
+  subtitles: [],
   ripples: [
     { t: 11, x: 0.5, y: 0.5 },
     { t: 13, x: 0.5, y: 0.5 },

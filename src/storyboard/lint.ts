@@ -11,6 +11,8 @@ const MAX_CAPTION_WORDS = 6;
 const MAX_WORDS_PER_SECOND = 3;
 const ZOOM_SCALE = { min: 1.4, max: 2.5 };
 const MAX_SPEED = 8;
+const MAX_TRANSITION = 2; // s
+const MIN_RAMP = 1; // s of source a speed ramp needs to read as one
 const STACK_WINDOW = 1; // s
 const STACK_RADIUS = 0.15; // normalized distance counted as "the same point"
 const MIN_BLUR_AREA = 0.0005; // fraction of the recording
@@ -104,7 +106,15 @@ export function lintStyle(sb: Storyboard): string[] {
   });
 
   sb.segments.forEach((s, i) => {
-    if (s.speed > MAX_SPEED) out.push(`segments[${i}] runs at ${s.speed}x (over ${MAX_SPEED}x); it will look like a glitch, cut it instead`);
+    const top = Math.max(s.speed, s.speedTo ?? 0);
+    if (top > MAX_SPEED) out.push(`segments[${i}] runs at ${+top.toFixed(2)}x (over ${MAX_SPEED}x); it will look like a glitch, cut it instead`);
+    if (s.transition && i === 0) out.push(`segments[0] has a transition but is the first segment, so there is nothing before it to blend with`);
+    if (s.transition && s.transition.dur > MAX_TRANSITION) {
+      out.push(`segments[${i}] transition is long (${fix(s.transition.dur)}s, over ${MAX_TRANSITION}s); it also makes the video that much shorter, use 0.3-1s`);
+    }
+    if (s.speedTo !== undefined && s.speedTo !== s.speed && s.out - s.in < MIN_RAMP) {
+      out.push(`segments[${i}] has a speed ramp but is only ${fix(s.out - s.in)}s long (too short to see it); use a segment of ${MIN_RAMP}s or more`);
+    }
   });
 
   return out;

@@ -17,10 +17,12 @@ import { buildCutArgs, buildCutFilter } from "./cut.js";
 import { draftFps } from "./draft.js";
 import { renderHtml } from "./html.js";
 import { formatPaths, type OutputFormat } from "./formats.js";
+import { type ExtraFormat, exportExtras } from "./export.js";
 import { overlayKind } from "./overlay.js";
 import { type LoudnessTarget, normalizeLoudness } from "./loudness.js";
 import { planMusicRange, prepareMusic } from "./music.js";
 import { mixSfx, planSfx } from "./sfx.js";
+import { type SubtitleFormat, writeSubtitles } from "./subtitles.js";
 import { buildPlan, type OverlayAsset, type RenderPlan } from "./plan.js";
 import { partSuffix, type Window, windowPlan } from "./window.js";
 import { autoWorkers } from "./workers.js";
@@ -228,6 +230,7 @@ async function cutVideo(
     sourceDuration: source.duration,
     keepAudio,
     denoise: !!sb.audio?.denoise,
+    grade: sb.theme.grade,
   });
   const st = await stat(sourcePath);
   const key = createHash("sha1").update(`${sourcePath}|${st.size}|${st.mtimeMs}|${filter}|${draft ? "draft" : "full"}`).digest("hex");
@@ -258,10 +261,18 @@ export interface RenderOptions extends PrepareOptions {
   pngFrames?: boolean;
   /** Parallel headless Chrome renderers (default: from CPU cores and free memory, see autoWorkers). */
   workers?: number;
+  /** Write subtitle files (from the narration) next to the video. */
+  subtitles?: SubtitleFormat[];
+  /** Also make a GIF, a WebM or a poster frame from the finished video. */
+  also?: ExtraFormat[];
+  /** Poster frame time, in OUTPUT seconds (default: a quarter of the way in). */
+  posterAt?: number;
 }
 
 export interface RenderResult extends Prepared {
   output: string;
+  /** Subtitle and extra files that were written next to the video. */
+  files: string[];
 }
 
 export function hyperframesBin(): string {
@@ -317,7 +328,11 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
       else prepared.warnings.push(`audio.loudness was not applied: ${r.reason}`);
     });
   }
-  return { ...prepared, output };
+  const files: string[] = [];
+  if (opts.subtitles?.length) files.push(...(await writeSubtitles(prepared.plan.subtitles, output, opts.subtitles)));
+  if (opts.also?.length) files.push(...(await time("extras", () => exportExtras(output, opts.also!, { posterAt: opts.posterAt }))));
+  for (const f of files) log(`wrote ${f}`);
+  return { ...prepared, output, files };
 }
 
 export interface FormatRenderResult extends RenderResult {
