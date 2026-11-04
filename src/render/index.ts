@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { basename, dirname, extname, join, resolve } from "node:path";
-import { clicksOf, readEvents } from "../record/events.js";
+import { clicksOf, keysOf, readEvents } from "../record/events.js";
 import { lintTimeline } from "../storyboard/lint.js";
 import { lintStoryboard, loadStoryboard } from "../storyboard/load.js";
 import type { Storyboard } from "../storyboard/schema.js";
@@ -18,6 +18,7 @@ import { draftFps } from "./draft.js";
 import { renderHtml } from "./html.js";
 import { formatPaths, type OutputFormat } from "./formats.js";
 import { overlayKind } from "./overlay.js";
+import { mixSfx, planSfx } from "./sfx.js";
 import { buildPlan, type OverlayAsset, type RenderPlan } from "./plan.js";
 import { partSuffix, type Window, windowPlan } from "./window.js";
 import { autoWorkers } from "./workers.js";
@@ -118,11 +119,24 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
 
   // 4. Events → click ripples.
   let clicks: { t: number; x: number; y: number }[] = [];
+  let keys: { t: number }[] = [];
   if (sb.events) {
     const eventsPath = resolve(baseDir, sb.events);
-    if (existsSync(eventsPath)) clicks = clicksOf(await readEvents(eventsPath));
-    else warnings.push(`events file not found: ${eventsPath}`);
+    if (existsSync(eventsPath)) {
+      const events = await readEvents(eventsPath);
+      clicks = clicksOf(events);
+      keys = keysOf(events);
+    } else warnings.push(`events file not found: ${eventsPath}`);
+  } else if (sb.sounds?.clicks || sb.sounds?.keys) {
+    warnings.push("sounds.clicks / sounds.keys need `events` (the events.jsonl from the recording); no click or key sounds were added");
   }
+
+  // 4b. Sound effects: all of them mixed into one track.
+  const total = round3(timeline.videoEnd + (sb.outro?.dur ?? 0));
+  const sfxPlan = planSfx({ sb, timeline, clicks, keys, duration: total });
+  warnings.push(...sfxPlan.warnings);
+  const sfxMix = await time("sfx", () => mixSfx(sfxPlan.hits, { baseDir, buildDir, duration: total, log }));
+  warnings.push(...sfxMix.warnings);
 
   // 5. Music.
   let musicSrc: string | undefined;
@@ -166,6 +180,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     clicks,
     musicSrc,
     overlays,
+    sfxSrc: sfxMix.file,
   });
   const plan = opts.window ? windowPlan(fullPlan, opts.window) : fullPlan;
   await copyFile(require.resolve("gsap/dist/gsap.min.js"), join(buildDir, "gsap.min.js"));
@@ -179,6 +194,8 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
 
   return { buildDir, plan, timeline, source, warnings, autoHolds };
 }
+
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
 async function cutVideo(
   sourcePath: string,

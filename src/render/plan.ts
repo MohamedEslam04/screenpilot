@@ -128,6 +128,13 @@ export interface PlanInput {
   musicSrc?: string;
   /** One entry per storyboard.overlays item; undefined when its file is missing. */
   overlays?: (OverlayAsset | undefined)[];
+  /** The mixed sound effects track (sfx.ts), as long as the video. */
+  sfxSrc?: string;
+}
+
+/** Seconds the outro cross-fades in over the end of the video. */
+export function outroFadeIn(videoDuration: number): number {
+  return round(Math.min(0.5, videoDuration / 4));
 }
 
 /** Fit the recording inside the output with the theme's padding. */
@@ -211,6 +218,8 @@ export function buildPlan(input: PlanInput): RenderPlan {
     audio.push(item);
   }
 
+  if (input.sfxSrc) audio.push({ src: input.sfxSrc, start: 0, duration, volume: 1 });
+
   const overlays: OverlayItem[] = [];
   const firstIn = tl.pieces.find((p) => p.kind === "play")?.in ?? 0;
   sb.overlays.forEach((o, i) => {
@@ -276,7 +285,7 @@ export function buildPlan(input: PlanInput): RenderPlan {
   }
   if (sb.outro) {
     // Overlap the last moment of the video so the outro cross-fades in.
-    const fadeIn = round(Math.min(0.5, tl.videoDuration / 4));
+    const fadeIn = outroFadeIn(tl.videoDuration);
     cards.push({
       start: round(tl.videoEnd - fadeIn),
       dur: round(outroDur + fadeIn),

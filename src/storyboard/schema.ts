@@ -184,8 +184,28 @@ export const MusicSchema = z.object({
   duck: DuckSchema.optional().describe("Lower the music under narration"),
 });
 
+export const SfxSchema = z.object({
+  at: time.describe("Source time the sound plays"),
+  src: z
+    .string()
+    .min(1)
+    .describe('A sound file (relative to the storyboard) or a built-in: "builtin:click", "builtin:key", "builtin:whoosh", "builtin:pop", "builtin:ding"'),
+  volume: z.number().min(0).max(4).default(1),
+});
+
+const soundChoice = z.union([z.boolean(), z.string().min(1)]).optional();
+
+export const SoundsSchema = z
+  .object({
+    clicks: soundChoice.describe('Play a sound on every recorded click (needs events): true = "builtin:click", or a built-in name / sound file'),
+    keys: soundChoice.describe('Play a sound on every recorded key press (needs events; at most 12 per second): true = "builtin:key"'),
+    cards: soundChoice.describe('Play a sound as the intro, chapter cards and outro come in: true = "builtin:whoosh"'),
+    volume: z.number().min(0).max(2).default(0.5).describe("Level of these automatic sounds (sfx[] items have their own volume)"),
+  })
+  .describe("Automatic sound effects from recorded events and cards");
+
 /** Keys a storyboard takes from the one it `extends` (deep-merged, the child wins). */
-export const INHERITED_KEYS = ["theme", "voice", "output", "music", "keepSourceAudio"] as const;
+export const INHERITED_KEYS = ["theme", "voice", "output", "music", "sounds", "keepSourceAudio"] as const;
 
 export const StoryboardSchema = z.object({
   version: z.literal(1).default(1),
@@ -215,6 +235,8 @@ export const StoryboardSchema = z.object({
   overlays: z.array(OverlaySchema).default([]).describe("Images or videos placed on top of the output frame (logos, picture-in-picture)"),
   cards: z.array(ChapterCardSchema).default([]).describe("Chapter cards in the middle of the video; each freezes the picture for dur seconds"),
   music: MusicSchema.optional(),
+  sfx: z.array(SfxSchema).default([]).describe("Sound effects at source times (a file or a builtin:name); see also sounds for automatic ones"),
+  sounds: SoundsSchema.optional(),
 });
 
 export type Storyboard = z.output<typeof StoryboardSchema>;
@@ -229,6 +251,7 @@ export type Motion = z.output<typeof MotionSchema>;
 export type Narration = z.output<typeof NarrationSchema>;
 export type Highlight = z.output<typeof HighlightSchema>;
 export type Overlay = z.output<typeof OverlaySchema>;
+export type Sfx = z.output<typeof SfxSchema>;
 export type Theme = z.output<typeof ThemeSchema>;
 
 export function storyboardJsonSchema(): unknown {
