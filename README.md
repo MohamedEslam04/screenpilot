@@ -145,4 +145,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 76f353b ("Merge origin/main into feat/a11y-locator", 2026-11-04).
+Docs synced to commit 15d5aa2 ("feat(brief): recommendations follow the existing video and the user's usual choices; optional content; one-question shortcut", 2026-11-04).
