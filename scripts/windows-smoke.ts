@@ -12,7 +12,7 @@ import { Driver } from "../src/drive/index.js";
 import { screenshot } from "../src/drive/see.js";
 import { locate, openBrowser, withPage } from "../src/drive/web.js";
 import { startRecording } from "../src/record/index.js";
-import { performTake } from "../src/take/perform.js";
+import { performTake, resolveTarget } from "../src/take/perform.js";
 import { getDesktop, type WindowInfo } from "../src/platform/index.js";
 import type { ScreenInfo } from "../src/record/input/types.js";
 import { run } from "../src/util/exec.js";
@@ -162,7 +162,25 @@ async function main(): Promise<void> {
     const w = await waitWindow(driver, "mspaint.exe", 15_000);
     try {
       await sleep(2000);
-      return await a11yCheck(driver.desktop, "mspaint", w, 24, { role: "button", name: "Close", exact: true });
+      const tree = await a11yCheck(driver.desktop, "mspaint", w, 24, { role: "button", name: "Close", exact: true });
+
+      // The real pointer, aimed by an {a11y} target: the title bar's Maximize (or Restore) button must change the window.
+      const before = await refresh(driver, w.id);
+      let label = "Maximize";
+      let p: { x: number; y: number };
+      try {
+        p = await resolveTarget({ a11y: { app: "mspaint", role: "button", name: "Maximize", exact: true } }, driver);
+      } catch {
+        label = "Restore";
+        p = await resolveTarget({ a11y: { app: "mspaint", role: "button", name: "Restore", exact: true } }, driver);
+      }
+      await driver.moveToGlobal(p, { dur: 0.3 });
+      await driver.click();
+      await sleep(1200);
+      const after = await refresh(driver, w.id);
+      const changed = Math.abs(after.w - before.w) > 20 || Math.abs(after.h - before.h) > 20 || Math.abs(after.x - before.x) > 20 || Math.abs(after.y - before.y) > 20;
+      if (!changed) throw new Error(`clicked ${label} at (${Math.round(p.x)},${Math.round(p.y)}) but the window stayed ${rectText(before)}`);
+      return `${tree}; clicked ${label} at (${Math.round(p.x)},${Math.round(p.y)}): window ${rectText(before)} -> ${rectText(after)}`;
     } finally {
       await run("taskkill", ["/PID", String(w.pid), "/F"]).catch(() => undefined);
     }
