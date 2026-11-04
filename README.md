@@ -145,4 +145,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 7e40009 ("docs: Windows a11y verified on a real runner by diagnostic; Notepad limit documented", 2026-11-04).
+Docs synced to commit b676164 ("test: macOS a11y click check types a capitalised sentence (TextEdit autocapitalises)", 2026-11-04).
