@@ -2,6 +2,18 @@
 // Every choice has 2-4 options so a client can show it as an option picker; text
 // questions are asked in chat. Pure: what this machine has is passed in.
 
+/** Where a suggested answer came from. */
+export type SuggestionSource = "project" | "usual";
+
+/** Answers to recommend instead of the fixed defaults: what the existing video was made with, then what the user usually picks. */
+export interface Suggested {
+  answers: Record<string, string>;
+  from: Record<string, SuggestionSource>;
+  /** Description of what the existing video shows, offered as the content. */
+  content?: string;
+  project?: { file: string; summary: string };
+}
+
 export interface BriefEnv {
   /** A local voice model is set up (voices.json or the env var names a Python). */
   localVoice: boolean;
@@ -9,6 +21,8 @@ export interface BriefEnv {
   commandVoices: string[];
   /** The desktop screenpilot can drive, when one was detected. */
   desktop?: { id: string; windowControl: boolean };
+  /** Context for the recommendations (an existing project, the user's usual choices). */
+  suggested?: Suggested;
 }
 
 export interface BriefOption {
@@ -42,6 +56,10 @@ export interface BriefQuestion {
   options: BriefOption[];
   /** Only asked when the earlier answer `id` is one of `in`. */
   askWhen?: { id: BriefId; in: string[] };
+  /** Never blocks: the brief is done without an answer. */
+  optional?: boolean;
+  /** A ready answer for a text question (e.g. taken from the existing video). */
+  suggestion?: string;
 }
 
 export interface Brief {
@@ -72,8 +90,10 @@ export function buildBrief(env: BriefEnv): Brief {
       id: "content",
       kind: "text",
       header: "Content",
-      question: "What should the video show, and is anything on screen private (keys, emails, customer data)?",
+      question: "What should the video show, and is anything on screen private (keys, emails, customer data)? Optional: skip it if the project already says.",
       options: [],
+      optional: true,
+      ...(env.suggested?.content ? { suggestion: env.suggested.content } : {}),
     },
     {
       id: "goal",
@@ -210,10 +230,67 @@ export function buildBrief(env: BriefEnv): Brief {
       ],
     },
   ];
-  return { questions };
+  return { questions: env.suggested ? applySuggestions(questions, env.suggested) : questions };
+}
+
+const REASON: Record<SuggestionSource, string> = { project: "Same as your existing video", usual: "Your usual choice" };
+
+/** Make the recommended option the one the project (or the user's habit) points at, first in the list. */
+function applySuggestions(questions: BriefQuestion[], s: Suggested): BriefQuestion[] {
+  return questions.map((q) => {
+    if (q.kind !== "choice") return q;
+    const value = s.answers[q.id];
+    const hit = value === undefined ? undefined : q.options.find((o) => o.value === value && o.available);
+    if (!hit) return q;
+    const reason = REASON[s.from[q.id] ?? "usual"];
+    const options: BriefOption[] = q.options.map((o) => {
+      const { recommended: _drop, ...rest } = o;
+      return o === hit ? { ...rest, recommended: true, description: `${reason}. ${o.description}` } : rest;
+    });
+    options.sort((a, b) => Number(!!b.recommended) - Number(!!a.recommended));
+    return { ...q, options };
+  });
 }
 
 export type Answers = Record<string, string>;
+
+const applicable = (q: BriefQuestion, answers: Answers): boolean => {
+  if (!q.askWhen) return true;
+  const parent = answers[q.askWhen.id];
+  return parent !== undefined && q.askWhen.in.includes(parent);
+};
+
+/** What still blocks the brief: unanswered, applicable questions that are not optional. */
+export function pending(brief: Brief, answers: Answers): BriefQuestion[] {
+  return brief.questions.filter((q) => !q.optional && answers[q.id] === undefined && applicable(q, answers));
+}
+
+/** Every unanswered question that applies, each with its recommended option (or the content suggestion); answers already given stay. */
+export function recommendedAnswers(brief: Brief, given: Answers): Answers {
+  const answers = { ...given };
+  for (const q of brief.questions) {
+    if (answers[q.id] !== undefined || !applicable(q, answers)) continue;
+    if (q.kind === "text") {
+      if (q.suggestion) answers[q.id] = q.suggestion;
+      continue;
+    }
+    const pick = q.options.find((o) => o.recommended && o.available) ?? q.options.find((o) => o.available);
+    if (pick) answers[q.id] = pick.value;
+  }
+  return answers;
+}
+
+/** One line per decision, for showing a whole setup at once. */
+export function summaryLines(brief: Brief, answers: Answers): string[] {
+  const lines: string[] = [];
+  for (const q of brief.questions) {
+    const v = answers[q.id];
+    if (!v) continue;
+    const label = q.kind === "choice" ? (q.options.find((o) => o.value === v)?.label ?? v) : v;
+    lines.push(`${q.header}: ${label}`);
+  }
+  return lines;
+}
 
 /** At most this many questions go to the user at once (a picker shows four). */
 const BATCH = 4;
@@ -223,11 +300,7 @@ export function nextBatch(brief: Brief, answers: Answers): BriefQuestion[] {
   const out: BriefQuestion[] = [];
   for (const q of brief.questions) {
     if (out.length >= BATCH) break;
-    if (answers[q.id] !== undefined) continue;
-    if (q.askWhen) {
-      const parent = answers[q.askWhen.id];
-      if (parent === undefined || !q.askWhen.in.includes(parent)) continue;
-    }
+    if (answers[q.id] !== undefined || !applicable(q, answers)) continue;
     out.push(q);
   }
   return out;
@@ -247,7 +320,8 @@ export function applyAnswers(brief: Brief, current: Answers, given: Record<strin
     if (!q) continue;
     const text = String(raw ?? "").trim();
     if (!text) {
-      rejected.push(id);
+      if (q.optional) answers[id] = ""; // skipped on purpose
+      else rejected.push(id);
       continue;
     }
     if (q.kind === "text") {
