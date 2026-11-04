@@ -35,6 +35,7 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <tr><td><code>cards</code></td><td><code>[]</code></td><td>بطاقات فصول في منتصف الفيديو. انظر <a href="@guide/storyboard.html#chapter-cards">بطاقات الفصول</a>.</td></tr>
 <tr><td><code>overlays</code></td><td><code>[]</code></td><td>صور وفيديو وشعارات فوق الإطار. انظر <a href="@guide/storyboard.html#overlays">الـ overlays</a>.</td></tr>
 <tr><td><code>music</code></td><td>لا شيء</td><td>موسيقى خلفية، ويمكن خفضها تحت الصوت.</td></tr>
+<tr><td><code>audio</code></td><td>لا شيء</td><td>ضبط علو الصوت وتقليل الضجيج. انظر <a href="@guide/storyboard.html#audio">مزج الصوت</a>.</td></tr>
 <tr><td><code>sfx</code> و<code>sounds</code> و<code>typing</code></td><td><code>[]</code> ولا شيء و<code>[]</code></td><td>مؤثرات صوتية في أوقات تختارها، وأصوات تلقائية للنقرات والكتابة والبطاقات. انظر <a href="@guide/storyboard.html#sound-effects">المؤثرات الصوتية</a>.</td></tr>
 </tbody>
 </table>
@@ -177,6 +178,11 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <tr><td><code>src</code></td><td>مطلوب</td><td>مسار ملف صوتي نسبي إلى الـ storyboard.</td></tr>
 <tr><td><code>volume</code></td><td><code>0.12</code></td><td>من 0 إلى 1. اجعله منخفضًا كي لا يغطي الصوت.</td></tr>
 <tr><td><code>duck</code></td><td>لا شيء</td><td>يخفض الموسيقى أثناء الكلام. انظر أدناه.</td></tr>
+<tr><td><code>fadeIn</code></td><td><code>1</code></td><td>ثواني التلاشي عند الدخول، من 0 إلى 30.</td></tr>
+<tr><td><code>fadeOut</code></td><td><code>2</code></td><td>ثواني التلاشي عند النهاية، من 0 إلى 30.</td></tr>
+<tr><td><code>loop</code></td><td>متوقف</td><td>يكرر المقطع إن كان أقصر من مدى الموسيقى. من دونه تنتهي الموسيقى ببساطة.</td></tr>
+<tr><td><code>offset</code></td><td><code>0</code></td><td>يبدأ من هذه الثانية داخل الملف.</td></tr>
+<tr><td><code>from</code> و<code>to</code></td><td>الفيديو كله</td><td>وقتا المصدر اللذان تبدأ عندهما الموسيقى وتنتهي. افتراضيًّا تعمل من أول إطار، بما فيه المقدمة، إلى آخر إطار، بما فيه الخاتمة. الوقت داخل منطقة محذوفة يُتجاهل مع تحذير.</td></tr>
 </tbody>
 </table>
 <p>الـ ducking يجعل الموسيقى أهدأ تحت كل سطر تعليق ثم يعيدها بعده. أعطِ <code>duck</code> أيًّا من الحقول التالية، أو كائنًا فارغًا <code>{}</code> للقيم الافتراضية:</p>
@@ -186,8 +192,21 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <tr><td><code>amount</code></td><td><code>0.6</code></td><td>مقدار انخفاض الموسيقى، من 0 إلى 1. القيمة 0.6 تعني انخفاضًا بنسبة 60%.</td></tr>
 <tr><td><code>attack</code></td><td><code>0.2</code></td><td>الثواني التي تستغرقها الموسيقى لتنخفض، وتنتهي حين يبدأ السطر. من 0 إلى 5.</td></tr>
 <tr><td><code>release</code></td><td><code>0.5</code></td><td>الثواني التي تستغرقها الموسيقى لتعود بعد السطر. من 0 إلى 5.</td></tr>
+<tr><td><code>under</code></td><td><code>["narration"]</code></td><td>ما الذي يخفض الموسيقى: <code>"narration"</code> أو <code>"overlays"</code> (طبقات الفيديو التي تشغّل صوتها) أو الاثنان معًا.</td></tr>
 </tbody>
 </table>
+<p>مع <code>loop</code> أو <code>offset</code> أو <code>from</code> أو <code>to</code> يُجهَّز المقطع مرة واحدة بـ ffmpeg (مع التلاشي) ويُخزَّن مؤقتًا، فلا يعاد تجهيزه عند تعديل أمور أخرى في الـ storyboard.</p>
+
+<h2 id="audio">مزج الصوت</h2>
+<p>الحقل <code>audio</code> يضبط صوت الفيديو كله:</p>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>loudness</code></td><td>متوقف</td><td>يضبط الفيديو النهائي على مستوى علو صوت مستهدف، فتبدو كل فيديوهاتك بالعلو نفسه. القيمة <code>{}</code> تعني -16 LUFS، وهو مستوى مناسب للويب والتواصل الاجتماعي. حقوله: <code>target</code> (وحدة LUFS، من -70 إلى -5؛ القيمة -14 للبث، و-23 للإذاعة) و<code>truePeak</code> (وحدة dBTP، من -9 إلى 0، والافتراضي -1.5). يقيس المزيج ثم يطبّق كسبًا بسيطًا واحدًا، فلا يمس الديناميكيات. الرندر الجزئي (<code>--from</code> و<code>--to</code>) يُضبط وحده، فيختلف مستواه عن الفيديو الكامل.</td></tr>
+<tr><td><code>denoise</code></td><td>متوقف</td><td>يقلل الضجيج الثابت (مروحة، فحيح) في صوت التسجيل نفسه بنحو 18 ديسيبل. يحتاج <code>keepSourceAudio</code>.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-json">"audio": { "loudness": { "target": -16 }, "denoise": true }</code></pre>
 
 <h2 id="sound-effects">المؤثرات الصوتية</h2>
 <p>حقلان يضيفان أصواتًا قصيرة: <code>sfx</code> يشغّل صوتًا في وقت تختاره، و<code>sounds</code> يضيفها تلقائيًّا: عند كل نقرة مسجَّلة، وعلى الكتابة التي تحددها بـ <code>typing</code>، وعند دخول بطاقات العناوين. تُدمج كل الأصوات في مسار واحد، فلا تبطئ القائمة الطويلة الرندر، وينفّذ الرندر الجزئي (<code>--from</code> و<code>--to</code>) الأصوات الصحيحة.</p>
@@ -240,7 +259,7 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <h2 id="extends">مشاركة المظهر بـ extends</h2>
 <p>الحقل <code>extends</code> يشير إلى storyboard أساسي، نسبيًا إلى هذا الملف. استخدمه حين تريد أن تتشابه عدة فيديوهات في المظهر والصوت: يمتد كل منها من الأساس نفسه ويضيف تسجيله الخاص. وبه يأخذ مقطع الميزة مظهر العرض الذي ينضم إليه داخل <a href="@guide/sequence.html">sequence</a>.</p>
 <ul>
-<li><strong>تُورَّث ستة حقول:</strong> <code>theme</code> و<code>voice</code> و<code>output</code> و<code>music</code> و<code>sounds</code> و<code>keepSourceAudio</code>. أما الباقي (<code>source</code> وsegments وzooms وcaptions وnarration وintro وoutro وغيرها) فلا يُورَّث أبدًا.</li>
+<li><strong>تُورَّث سبعة حقول:</strong> <code>theme</code> و<code>voice</code> و<code>output</code> و<code>music</code> و<code>sounds</code> و<code>audio</code> و<code>keepSourceAudio</code>. أما الباقي (<code>source</code> وsegments وzooms وcaptions وnarration وintro وoutro وغيرها) فلا يُورَّث أبدًا.</li>
 <li><strong>الابن يتغلب.</strong> الكائنات تُدمج مفتاحًا مفتاحًا، فالابن الذي يضبط <code>theme.accent</code> فقط يحتفظ بباقي حقول القالب من الأساس. أما المصفوفات فتُستبدل ولا تُدمج، مثل <code>theme.fonts</code>.</li>
 <li><strong>السلاسل تعمل.</strong> يمكن للأساس أن يمتد من storyboard آخر. والدورة (cycle) خطأ يذكر السلسلة.</li>
 <li><strong>المسارات تبقى صحيحة.</strong> يُعاد كتابة <code>music.src</code> وأي ملف صوت في <code>sounds</code> قادم من الأساس ليشير إلى الملف نفسه انطلاقًا من مجلد الابن.</li>

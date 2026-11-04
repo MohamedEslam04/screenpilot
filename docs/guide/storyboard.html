@@ -61,6 +61,7 @@
 <tr><td><code>cards</code></td><td><code>[]</code></td><td>Chapter cards in the middle of the video. See <a href="../guide/storyboard.html#chapter-cards">Chapter cards</a>.</td></tr>
 <tr><td><code>overlays</code></td><td><code>[]</code></td><td>Images, video and logos on top of the frame. See <a href="../guide/storyboard.html#overlays">Overlays</a>.</td></tr>
 <tr><td><code>music</code></td><td>none</td><td>Background music, optionally ducked under the voice.</td></tr>
+<tr><td><code>audio</code></td><td>none</td><td>Loudness normalization and noise reduction. See <a href="../guide/storyboard.html#audio">Audio mix</a>.</td></tr>
 <tr><td><code>sfx</code>, <code>sounds</code>, <code>typing</code></td><td><code>[]</code>, none, <code>[]</code></td><td>Sound effects at chosen times, and automatic click, typing and card sounds. See <a href="../guide/storyboard.html#sound-effects">Sound effects</a>.</td></tr>
 </tbody>
 </table>
@@ -203,6 +204,11 @@
 <tr><td><code>src</code></td><td>required</td><td>Path to an audio file, relative to the storyboard.</td></tr>
 <tr><td><code>volume</code></td><td><code>0.12</code></td><td>0 to 1. Keep it low so it does not cover the voice.</td></tr>
 <tr><td><code>duck</code></td><td>none</td><td>Lowers the music while someone speaks. See below.</td></tr>
+<tr><td><code>fadeIn</code></td><td><code>1</code></td><td>Seconds to fade in, 0 to 30.</td></tr>
+<tr><td><code>fadeOut</code></td><td><code>2</code></td><td>Seconds to fade out at the end, 0 to 30.</td></tr>
+<tr><td><code>loop</code></td><td>off</td><td>Repeat a track that is shorter than the music's range. Without it the music just ends.</td></tr>
+<tr><td><code>offset</code></td><td><code>0</code></td><td>Start this many seconds into the file.</td></tr>
+<tr><td><code>from</code>, <code>to</code></td><td>whole video</td><td>Source times the music starts and ends. By default it plays from the first frame, intro included, to the last, outro included. A time in a cut region is ignored with a warning.</td></tr>
 </tbody>
 </table>
 <p>Ducking makes the music quieter under each narration line and brings it back after. Give <code>duck</code> any of these fields, or an empty object <code>{}</code> for the defaults:</p>
@@ -212,8 +218,21 @@
 <tr><td><code>amount</code></td><td><code>0.6</code></td><td>How much quieter the music gets, 0 to 1. 0.6 means 60% lower.</td></tr>
 <tr><td><code>attack</code></td><td><code>0.2</code></td><td>Seconds the music takes to go down, finishing as the line starts. 0 to 5.</td></tr>
 <tr><td><code>release</code></td><td><code>0.5</code></td><td>Seconds the music takes to come back after the line. 0 to 5.</td></tr>
+<tr><td><code>under</code></td><td><code>["narration"]</code></td><td>What lowers the music: <code>"narration"</code>, <code>"overlays"</code> (video overlays that play their own sound), or both.</td></tr>
 </tbody>
 </table>
+<p>With <code>loop</code>, <code>offset</code>, <code>from</code> or <code>to</code> the track is prepared once with ffmpeg (fades included) and cached, so a change to the storyboard that does not touch the music does not redo it.</p>
+
+<h2 id="audio">Audio mix<a class="a" href="#audio" aria-label="Link to this section">#</a></h2>
+<p><code>audio</code> shapes the sound of the whole video:</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>loudness</code></td><td>off</td><td>Normalizes the finished video to a target loudness, so every video you make sounds equally loud. <code>{}</code> means -16 LUFS, a good level for the web and social media. Fields: <code>target</code> (LUFS, -70 to -5; -14 for streaming, -23 for broadcast) and <code>truePeak</code> (dBTP, -9 to 0, default -1.5). It measures the mix, then applies one plain gain, so the dynamics are left alone. A partial render (<code>--from</code>, <code>--to</code>) is normalized on its own, so its level differs from the full video.</td></tr>
+<tr><td><code>denoise</code></td><td>off</td><td>Reduces steady background noise (a fan, hiss) in the recording's own sound by about 18 dB. Needs <code>keepSourceAudio</code>.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-json">"audio": { "loudness": { "target": -16 }, "denoise": true }</code></pre>
 
 <h2 id="sound-effects">Sound effects<a class="a" href="#sound-effects" aria-label="Link to this section">#</a></h2>
 <p>Two fields add short sounds: <code>sfx</code> plays a sound at a time you choose, and <code>sounds</code> adds them automatically: on every recorded click, on typing you mark with <code>typing</code>, and as the title cards come in. Every sound is mixed into one track, so a long list does not slow the render, and a partial render (<code>--from</code>, <code>--to</code>) plays the right ones.</p>
@@ -266,7 +285,7 @@
 <h2 id="extends">Share a look with extends<a class="a" href="#extends" aria-label="Link to this section">#</a></h2>
 <p><code>extends</code> points at a base storyboard, relative to this file. Use it when several videos should look and sound the same: each one extends the same base and adds its own recording. It is how a feature clip takes the look of the demo it joins in a <a href="../guide/sequence.html">sequence</a>.</p>
 <ul>
-<li><strong>Six fields are inherited:</strong> <code>theme</code>, <code>voice</code>, <code>output</code>, <code>music</code>, <code>sounds</code> and <code>keepSourceAudio</code>. Everything else (<code>source</code>, segments, zooms, captions, narration, intro, outro and the rest) is never inherited.</li>
+<li><strong>Seven fields are inherited:</strong> <code>theme</code>, <code>voice</code>, <code>output</code>, <code>music</code>, <code>sounds</code>, <code>audio</code> and <code>keepSourceAudio</code>. Everything else (<code>source</code>, segments, zooms, captions, narration, intro, outro and the rest) is never inherited.</li>
 <li><strong>The child wins.</strong> Objects merge key by key, so a child that sets only <code>theme.accent</code> keeps the base's other theme fields. Arrays replace instead of merging, for example <code>theme.fonts</code>.</li>
 <li><strong>Chains work.</strong> The base can extend another storyboard. A cycle is an error that lists the chain.</li>
 <li><strong>Paths stay valid.</strong> <code>music.src</code> and any sound file in <code>sounds</code> from the base are rewritten to point at the same file from the child's folder.</li>
@@ -432,7 +451,7 @@
 </ul>
 <div class="note">Work in passes. Write segments and narration first, render a draft with <code>-q draft</code>, look at it with <code>check</code>, then add zooms and captions. Change one kind of thing at a time.</div>
 <nav class="pager" aria-label="Pager"><a href="tools.html" rel="prev"><small>Previous</small>MCP tools</a><a href="voices.html" rel="next"><small>Next</small>Voices</a></nav></article>
-  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#basics">The three rules</a><a href="#top-level">Top-level fields</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#narration">Narration</a><a href="#cards">Intro and outro</a><a href="#chapter-cards">Chapter cards</a><a href="#overlays">Overlays</a><a href="#music">Music</a><a href="#sound-effects">Sound effects</a><a href="#extends">Share a look with extends</a><a href="#views">Screens and views</a><a href="#output">Output and voice</a><a href="#theme">Theme</a><a href="#example">A complete example</a><a href="#lint">Style warnings</a><a href="#style">Style guidance</a></aside>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#basics">The three rules</a><a href="#top-level">Top-level fields</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#narration">Narration</a><a href="#cards">Intro and outro</a><a href="#chapter-cards">Chapter cards</a><a href="#overlays">Overlays</a><a href="#music">Music</a><a href="#audio">Audio mix</a><a href="#sound-effects">Sound effects</a><a href="#extends">Share a look with extends</a><a href="#views">Screens and views</a><a href="#output">Output and voice</a><a href="#theme">Theme</a><a href="#example">A complete example</a><a href="#lint">Style warnings</a><a href="#style">Style guidance</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>
