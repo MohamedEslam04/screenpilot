@@ -191,7 +191,7 @@ screenpilot perform take.json                      # record and drive; writes th
 }</code></pre>
 
 <h2 id="output">What perform gives you<a class="a" href="#output" aria-label="Link to this section">#</a></h2>
-<p>A performed take produces a session folder with the video, <code>events.jsonl</code> (the clicks come from what the driver did, so they are exact) and a <code>storyboard.json</code>. The storyboard already has zooms placed on the clicks, your narration and captions at the right times, and the camera views. Edit it like any storyboard.</p>
+<p>A performed take produces a session folder with the video, <code>events.jsonl</code> (the clicks come from what the driver did, so they are exact) and a <code>storyboard.json</code>. The storyboard already has zooms placed on the clicks, your narration and captions at the right times, and the camera views. Each <code>type</code> step is also marked as a <code>typing</code> span (a secret from an environment variable is timed, never copied), so <code>sounds.typing</code> can play on it. Edit it like any storyboard.</p>
 <p>From the CLI the folder is <code>sessions/&lt;timestamp&gt;</code> unless you pass <code>--dir</code>. From an AI app it is a new folder in the <strong>ScreenPilot</strong> folder inside your Videos folder (Movies on a Mac).</p>
 <p>When a step fails, the take stops, keeps whatever was recorded so far, and reports which step failed. In an AI app the result has <code>failedStep</code>, <code>error</code> and <code>partial</code>, plus <code>code</code>, <code>delivery</code>, <code>retry</code> and <code>candidates</code> when the step failed on a target (see <a href="#a11y-errors">Target errors</a>). Look at the partial recording to see where it went wrong.</p>
 

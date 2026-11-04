@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { run } from "../util/exec.js";
+import { XFADE } from "../render/xfade.js";
 import { ffmpegFilterScriptFlag } from "../util/media.js";
 import type { Transition } from "./schema.js";
 
@@ -50,14 +51,6 @@ export async function probePart(file: string): Promise<PartMedia> {
 /** A part and how it enters from the previous one. */
 export type JoinPart = PartMedia & { transition?: Transition };
 
-const XFADE: Record<Exclude<Transition["type"], "cut">, string> = {
-  crossfade: "fade",
-  "fade-black": "fadeblack",
-  "wipe-left": "wipeleft",
-  "wipe-right": "wiperight",
-  "slide-left": "slideleft",
-  "slide-right": "slideright",
-};
 
 /**
  * Seconds each part overlaps the one before it: its transition's length, at
@@ -121,8 +114,8 @@ export function buildConcatFilter(
       lines.push(`${v}[v${i}]concat=n=2:v=1:a=0${nv}`);
       if (audio) lines.push(`${a}[a${i}]concat=n=2:v=0:a=1${na}`);
     } else {
-      const type = parts[i]!.transition!.type as keyof typeof XFADE;
-      lines.push(`${v}[v${i}]xfade=transition=${XFADE[type]}:duration=${f(o)}:offset=${f(length - o)}${nv}`);
+      const type = parts[i]!.transition!.type;
+      lines.push(`${v}[v${i}]xfade=transition=${XFADE[type]!}:duration=${f(o)}:offset=${f(length - o)}${nv}`);
       if (audio) lines.push(`${a}[a${i}]acrossfade=d=${f(o)}${na}`);
     }
     length += parts[i]!.duration - o;

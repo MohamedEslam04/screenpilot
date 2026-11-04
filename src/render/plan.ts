@@ -1,10 +1,14 @@
-import type { Motion, Overlay, Storyboard, Theme, View } from "../storyboard/schema.js";
+import { MUSIC_FADE_IN, MUSIC_FADE_OUT, type Motion, type Overlay, type Storyboard, type Theme, type View } from "../storyboard/schema.js";
 import type { Timeline } from "../storyboard/timeline.js";
 import type { VoiceClip } from "../voice/index.js";
 import { type DuckTween, planDuck } from "./duck.js";
+import { pressFor, typingPresses } from "./typing.js";
 import { type CamTween, FULL, planCamera, planViewCamera, type Rect, type ViewSpan, type ZoomSpan } from "./zoom.js";
 
 // Everything the HTML generator needs, already in OUTPUT seconds.
+
+/** Seconds typed text stays on screen after the last press. */
+const KEYS_HOLD = 0.8;
 
 export interface Box {
   left: number;
@@ -32,6 +36,32 @@ export interface HighlightItem {
   w: number;
   h: number;
   label?: string;
+}
+
+interface Pt {
+  x: number;
+  y: number;
+}
+
+/** Arrows, boxes and blur on the recording; positions are 0..1 of the source (they live in the camera). */
+export type AnnotationItem = { start: number; end: number } & (
+  | { kind: "arrow"; from: Pt; to: Pt; label?: string; color: string; width: number; settled?: boolean }
+  | { kind: "box"; x: number; y: number; w: number; h: number; shape: "box" | "ellipse"; label?: string; color: string; motion?: Motion; settled?: boolean }
+  | { kind: "blur"; x: number; y: number; w: number; h: number; mode: "blur" | "solid"; strength: number; color: string }
+);
+
+/** One narration line as a subtitle cue (output seconds), whether or not it is burned into the picture. */
+export interface SubtitleItem {
+  start: number;
+  end: number;
+  text: string;
+}
+
+/** Typed text on screen: each word shows on the press that finishes it (output seconds). */
+export interface KeysItem {
+  start: number;
+  end: number;
+  words: { text: string; at: number }[];
 }
 
 export interface Ripple {
@@ -105,6 +135,10 @@ export interface RenderPlan {
   camera: CamTween[];
   texts: TextItem[];
   highlights: HighlightItem[];
+  annotations: AnnotationItem[];
+  keys: KeysItem[];
+  /** Every narration line, for the .srt/.vtt files. */
+  subtitles: SubtitleItem[];
   ripples: Ripple[];
   audio: AudioItem[];
   cards: CardItem[];
@@ -126,8 +160,17 @@ export interface PlanInput {
   narration: (VoiceClip & { at: number; caption: boolean; src: string })[];
   clicks: ClickEvent[];
   musicSrc?: string;
+  /** Output seconds the prepared music track (music.ts) plays; its fades are already in the file. Without it the music spans the video. */
+  musicClip?: { start: number; duration: number };
   /** One entry per storyboard.overlays item; undefined when its file is missing. */
   overlays?: (OverlayAsset | undefined)[];
+  /** The mixed sound effects track (sfx.ts), as long as the video. */
+  sfxSrc?: string;
+}
+
+/** Seconds the outro cross-fades in over the end of the video. */
+export function outroFadeIn(videoDuration: number): number {
+  return round(Math.min(0.5, videoDuration / 4));
 }
 
 /** Fit the recording inside the output with the theme's padding. */
@@ -192,24 +235,28 @@ export function buildPlan(input: PlanInput): RenderPlan {
   }
 
   const audio: AudioItem[] = [];
+  const subtitles: SubtitleItem[] = [];
   for (const n of input.narration) {
     const start = tl.toOutput(n.at);
     if (start === null) continue;
+    subtitles.push({ start: round(start), end: round(start + n.duration), text: n.text });
     audio.push({ src: n.src, start: round(start), duration: round(n.duration), volume: sb.voice.volume });
     if (n.caption) {
       texts.push({ start, end: start + n.duration, text: n.text, position: "bottom", style: "subtitle" });
     }
   }
+  let musicItem: AudioItem | undefined;
   if (input.musicSrc && sb.music) {
-    const item: AudioItem = { src: input.musicSrc, start: 0, duration, volume: sb.music.volume, fadeIn: 1, fadeOut: 2 };
-    if (sb.music.duck) {
-      // Duck under the narration only; overlay sound is not part of this list yet.
-      const voice = audio.map((a) => ({ start: a.start, end: a.start + a.duration }));
-      const duck = planDuck(voice, sb.music.volume, sb.music.duck, duration);
-      if (duck.length > 0) item.duck = duck;
-    }
-    audio.push(item);
+    musicItem = input.musicClip
+      ? { src: input.musicSrc, start: input.musicClip.start, duration: input.musicClip.duration, volume: sb.music.volume }
+      : { src: input.musicSrc, start: 0, duration, volume: sb.music.volume, fadeIn: sb.music.fadeIn ?? MUSIC_FADE_IN, fadeOut: sb.music.fadeOut ?? MUSIC_FADE_OUT };
+    audio.push(musicItem);
   }
+  // The voice lines that exist so far; overlay sound is added below, once the overlays are known.
+  const narrationSpans = audio.filter((a) => a !== musicItem).map((a) => ({ start: a.start, end: a.start + a.duration }));
+  const overlaySpans: { start: number; end: number }[] = [];
+
+  if (input.sfxSrc) audio.push({ src: input.sfxSrc, start: 0, duration, volume: 1 });
 
   const overlays: OverlayItem[] = [];
   const firstIn = tl.pieces.find((p) => p.kind === "play")?.in ?? 0;
@@ -248,15 +295,56 @@ export function buildPlan(input: PlanInput): RenderPlan {
       clips,
     });
     if (asset.kind === "video" && asset.hasAudio && !o.mute) {
-      for (const c of clips) audio.push({ src: asset.src, start: c.start, duration: c.duration, volume: 1 });
+      for (const c of clips) {
+        audio.push({ src: asset.src, start: c.start, duration: c.duration, volume: 1 });
+        overlaySpans.push({ start: c.start, end: c.start + c.duration });
+      }
     }
   });
+
+  if (musicItem && sb.music?.duck) {
+    const under = sb.music.duck.under ?? ["narration"];
+    const spans = [...(under.includes("narration") ? narrationSpans : []), ...(under.includes("overlays") ? overlaySpans : [])];
+    const duck = planDuck(spans, sb.music.volume, sb.music.duck, duration);
+    if (duck.length > 0) musicItem.duck = duck;
+  }
 
   const highlights: HighlightItem[] = [];
   for (const h of sb.highlights) {
     const m = tl.mapSpan(h.at, h.dur);
     if (m) highlights.push({ start: m.start, end: m.end, x: h.x, y: h.y, w: h.w, h: h.h, label: h.label });
   }
+
+  const annotations: AnnotationItem[] = [];
+  for (const a of sb.annotations) {
+    const m = tl.mapSpan(a.at, a.dur);
+    if (!m) continue;
+    const span = { start: m.start, end: m.end };
+    if (a.type === "arrow") annotations.push({ ...span, kind: "arrow", from: a.from, to: a.to, label: a.label, color: a.color ?? sb.theme.accent, width: a.width });
+    else if (a.type === "box") {
+      annotations.push({ ...span, kind: "box", x: a.x, y: a.y, w: a.w, h: a.h, shape: a.shape, label: a.label, color: a.color ?? sb.theme.accent, motion: a.motion });
+    } else annotations.push({ ...span, kind: "blur", x: a.x, y: a.y, w: a.w, h: a.h, mode: a.mode, strength: a.strength, color: a.color ?? "#0b0b0b" });
+  }
+
+  const keys: KeysItem[] = [];
+  sb.typing.forEach((t, i) => {
+    if (!t.keycaps || !t.text) return;
+    const presses = typingPresses(t, i);
+    const mapped = presses.map((p) => tl.toOutput(p));
+    if (mapped.every((x) => x === null)) return;
+    // A press in a cut region shows with the next one that is still there.
+    let next: number | null = null;
+    for (let k = mapped.length - 1; k >= 0; k--) {
+      if (mapped[k] === null) mapped[k] = next;
+      else next = mapped[k]!;
+    }
+    const at = (k: number) => round(mapped[Math.min(k, mapped.length - 1)] ?? next ?? 0);
+    const text = t.text;
+    const words = [...text.matchAll(/\S+/g)].map((m) => ({ text: m[0], at: at(pressFor(m.index! + m[0].length - 1, text.length, mapped.length)) }));
+    if (words.length === 0) return;
+    const last = words.at(-1)!.at;
+    keys.push({ start: round(tl.toOutput(t.at) ?? words[0]!.at), end: round(Math.min(last + KEYS_HOLD, duration)), words });
+  });
 
   const ripples: Ripple[] = [];
   if (sb.theme.clickRipples) {
@@ -276,7 +364,7 @@ export function buildPlan(input: PlanInput): RenderPlan {
   }
   if (sb.outro) {
     // Overlap the last moment of the video so the outro cross-fades in.
-    const fadeIn = round(Math.min(0.5, tl.videoDuration / 4));
+    const fadeIn = outroFadeIn(tl.videoDuration);
     cards.push({
       start: round(tl.videoEnd - fadeIn),
       dur: round(outroDur + fadeIn),
@@ -298,6 +386,9 @@ export function buildPlan(input: PlanInput): RenderPlan {
     camera: firstRect ? planViewCamera(viewSpans(), spans, frame, cam) : planCamera(spans, frame.w, frame.h),
     texts: texts.map((t) => ({ ...t, start: round(t.start), end: round(t.end) })).sort((a, b) => a.start - b.start),
     highlights,
+    annotations,
+    keys,
+    subtitles: subtitles.sort((a, b) => a.start - b.start),
     ripples,
     audio,
     cards,

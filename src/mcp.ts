@@ -24,8 +24,10 @@ import { initStoryboard } from "./init.js";
 import type { ScreenInfo } from "./record/input/types.js";
 import { type ActiveRecording, startRecording } from "./record/index.js";
 import { remapSession } from "./record/remap.js";
+import { parseExtras } from "./render/export.js";
 import { parseFormats } from "./render/formats.js";
 import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
+import { parseSubtitleFormats } from "./render/subtitles.js";
 import { parseWindow } from "./render/window.js";
 import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/load.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
@@ -133,6 +135,7 @@ const INSTRUCTIONS = `${APP_TITLE} makes screen videos. FIRST, for every new vid
 2. You perform it: screenshot to see the monitors, windows to see apps, browser_open for websites (app: true hides the address bar and tabs, so nothing about this machine shows); in take.json, file paths are relative to the take, so it runs on any machine; try the flow live with pointer_move/click/type_text; then write a take.json (take_schema) and call perform (it records, logs clicks/windows and writes a storyboard), add intro/outro/zooms, render.
 Design every video for its purpose; there is no house style. Before rendering, decide who it's for and where it will be shown, then set the storyboard to match: output size (1920x1080 for YouTube/README/slides, 1080x1920 for Reels/TikTok/Shorts, 1080x1080 for feeds), theme (background, padding, radius, accent, font, caption colors), theme.fonts (any Google Fonts), theme.css (your own CSS for captions, cards, highlights; storyboard_schema lists the classes) and text motion (theme.motion.captions / .cards, or motion per caption: in/out presets fade, rise, drop, slide-left, slide-right, pop, zoom, blur, wipe, words, lines, none; duration, any GSAP ease, stagger). Match the product's brand when you can see it (colors and type from its site or app). Pace and wording follow the audience: short punchy captions for social, calm explanatory ones for tutorials, bilingual lines ("English\nعربي") when asked. Defaults are only a fallback.
 Choose the shot the same way: which monitors to record (record_start screens / take "screens": one, several or "all") and what the camera shows: "window" follows the app in use (clean product demos), "screen" the whole monitor (OS-level how-tos, context matters), "all" every monitor side by side (work that spans screens, e.g. code on one and the app on the other). Switch per moment with view steps / storyboard views, and zoom only where detail matters.
+Editing: segments take speedTo (ramp the speed) and transition {type: crossfade|fade-black|fade-white|wipe-left|wipe-right|slide-left|slide-right, dur} (blends in, overlapping the previous segment, so the video gets dur shorter); theme.grade {brightness, contrast, saturation, gamma} grades the recording. Annotations: annotations [{type: arrow|box|blur, at, dur, ...}] draw on the recording (0..1 of the recording, they follow zooms); blur with mode solid hides secrets completely. Sound: sfx [{at, src}] plays a sound at a source time and sounds {clicks, typing, cards, volume} adds them automatically from the recorded clicks (needs events), the typing [{at, dur, text?}] spans (keys are never recorded; a performed take marks its own) and the title cards; src is a file or builtin:click|key|whoosh|pop|ding. music takes fadeIn/fadeOut, loop, offset and from/to; audio {loudness: {}} normalizes the final video to -16 LUFS and audio {denoise: true} cleans the recording's sound.
 To put another recording in the middle of a video without re-recording the rest: write a sequence.json {parts: [{storyboard, from?, to?, transition?}]} (sequence_schema, sequence_validate, sequence_render). Each part is a full storyboard; from/to are source seconds of that storyboard, so the same demo twice ({to: 42}, the feature, {from: 42}) inserts the feature at second 42. Give the storyboards a shared "extends" base so theme, voice and size match. Storyboards also take cards (chapter cards), overlays (logo/image/video), music.duck and segment volume/mute; render takes from/to (output seconds, review one window fast) and formats (e.g. ["16:9","9:16"]).
 Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, {a11y: {role, name}} for a control in a native app (a11y_tree lists them; Linux AT-SPI, Qt apps must be launched with QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1), or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). Free offline voices: voice.provider "local" with name voicetut:Sarah (Egyptian Arabic and English) or namaa (Egyptian Arabic); voices with provider "local" lists what is installed. If none is installed and the user wants one, tell them to run "screenpilot voice-setup voicetut" in a terminal (about 10 GB; do not start it yourself). Command voices (any program) are defined by the user in voices.json; you cannot add them in a storyboard. For a better voice than the built-in ones, the user can make the audio on a web text-to-speech site: script_export writes the script to paste, the user generates ONE audio file (blank line between lines) and gives it back, then audio_import cuts it per line and sets narration[].audio; render as usual. Warn that free plans have limits and may forbid commercial use. The camera frames the window in use by default. You can run the whole loop yourself: drive live, write the take, perform, render, check_output. If a person is present, ask them not to touch the mouse while you drive; moving it stops the action with a message, and resume carries on from where the pointer is. For unattended runs start the server with SCREENPILOT_INTERRUPT=off. Run doctor first on a new machine.`;
 
@@ -436,6 +439,7 @@ server.registerTool(
       'Use quality "draft" while iterating (fast), "looks" for a normal render, "delivery" only for the final file. ' +
       "Pass from/to (OUTPUT seconds) to re-render only that window for a fast review; the file is named <storyboard>.part-<from>-<to>.mp4. " +
       'Pass formats (e.g. ["16:9","9:16","1:1"] or ["1280x720"]) to render one file per format: <storyboard>.<format>.mp4 (16x9, 9x16, 1x1), narration synthesized once. ' +
+      'Pass subtitles (["srt","vtt"]) to also write caption files from the narration next to the video, and also (["gif","webm","poster"]) for an animated GIF, a WebM or a poster PNG made from the finished video (poster_at sets its time). The result lists them under files. ' +
       "Slow (minutes). Follow with check_output to review the result.",
     inputSchema: {
       storyboard: z.string().describe("Path to storyboard.json"),
@@ -444,17 +448,21 @@ server.registerTool(
       from: z.number().min(0).optional().describe("Partial render: start, in OUTPUT seconds"),
       to: z.number().min(0).optional().describe("Partial render: end, in OUTPUT seconds"),
       formats: z.array(z.string()).optional().describe('Output formats, each "16:9", "9:16", "1:1" or "WxH". One file per format; output becomes the base name.'),
+      subtitles: z.array(z.enum(["srt", "vtt"])).optional().describe("Also write subtitle files from the narration lines, next to the video"),
+      also: z.array(z.enum(["gif", "webm", "poster"])).optional().describe("Also make these from the finished video: an animated GIF, a WebM, a poster PNG"),
+      poster_at: z.number().min(0).optional().describe("Poster frame time in OUTPUT seconds (default: a quarter of the way in)"),
     },
   },
-  safe(async ({ storyboard, output, quality, from, to, formats }) => {
+  safe(async ({ storyboard, output, quality, from, to, formats, subtitles, also, poster_at }) => {
     requireBrief("render");
     const window = parseWindow(from, to);
+    const extra = { subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt: poster_at };
     if (formats?.length) {
-      const rs = await renderFormats(storyboard, parseFormats(formats.join(",")), { output, quality, window, log });
-      return text(rs.map((r) => ({ format: r.format, output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings })));
+      const rs = await renderFormats(storyboard, parseFormats(formats.join(",")), { output, quality, window, log, ...extra });
+      return text(rs.map((r) => ({ format: r.format, output: r.output, files: r.files, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings })));
     }
-    const r = await renderStoryboard(storyboard, { output, quality, window, log });
-    return text({ output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
+    const r = await renderStoryboard(storyboard, { output, quality, window, log, ...extra });
+    return text({ output: r.output, files: r.files, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
   }),
 );
 

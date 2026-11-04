@@ -68,6 +68,8 @@ summary: The tools ScreenPilot gives an AI app, grouped by job: recording, foota
 
 <p>The <code>formats</code> input is a list of strings, each <code>"16:9"</code>, <code>"9:16"</code>, <code>"1:1"</code> or <code>"WxH"</code> such as <code>"1280x720"</code>. It writes <code>&lt;storyboard&gt;.&lt;format&gt;.mp4</code> (labels <code>16x9</code>, <code>9x16</code>, <code>1x1</code>, <code>WxH</code>), and then <code>output</code> becomes the base name. The result is one entry per format. A portrait export crops landscape views that frame a window. See <a href="@guide/cli.html#formats">Several formats</a>.</p>
 
+<p><code>subtitles</code> (a list of <code>"srt"</code> and <code>"vtt"</code>) writes caption files from the narration next to the video. <code>also</code> (a list of <code>"gif"</code>, <code>"webm"</code> and <code>"poster"</code>) makes an animated GIF, a WebM or a poster PNG from the finished video, and <code>poster_at</code> sets the poster's time in output seconds. Every file written is listed under <code>files</code> in the result.</p>
+
 <h2 id="sequence">Combine recordings</h2>
 <p>These tools join several storyboards, each with its own recording, into one video, for example to insert a feature clip into an existing demo without re-recording it. The file format is in <a href="@guide/sequence.html">Combine recordings</a>.</p>
 <table>

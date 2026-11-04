@@ -34,7 +34,7 @@
 <ul>
 <li><strong>الأزمنة بثواني المصدر.</strong> تُحسب من بداية التسجيل الخام، لا من الفيديو المصيَّر. القص وتغيير السرعة لا يحرّكانها. الأمر <code>screenpilot check</code> والأداة <code>check_output</code> وحدهما يستخدمان ثواني الخرج.</li>
 <li><strong>المواضع مُطبَّعة بين 0 و1.</strong> تُقاس <code>x</code> من الحافة اليسرى للتسجيل و<code>y</code> من حافته العليا. اقرأها من لقطة باستخدام <code>frames --grid</code>.</li>
-<li><strong>المسارات نسبية إلى ملف الـ storyboard.</strong> ينطبق هذا على <code>source</code> و<code>events</code> و<code>extends</code> و<code>music.src</code> و<code>overlays[].src</code>.</li>
+<li><strong>المسارات نسبية إلى ملف الـ storyboard.</strong> ينطبق هذا على <code>source</code> و<code>events</code> و<code>extends</code> و<code>music.src</code> و<code>sfx[].src</code> و<code>overlays[].src</code>.</li>
 </ul>
 <p>كل الحقول اختيارية عدا <code>source</code>. نفّذ <code>screenpilot validate storyboard.json</code> بعد كل تعديل. يعرض أخطاء الـ schema والتحذيرات: segments متداخلة، أو عناصر بعد نهاية المصدر، أو views تذكر شاشة غير معروفة، أو callout بلا <code>x</code> و<code>y</code>. ويقدّم أيضًا نصائح أسلوب: انظر <a href="../../ar/guide/storyboard.html#lint">تحذيرات الأسلوب</a>.</p>
 
@@ -56,11 +56,14 @@
 <tr><td><code>screens</code>, <code>views</code></td><td><code>[]</code></td><td>تسجيلات الشاشات المتعددة. انظر <a href="../../ar/guide/storyboard.html#views">الشاشات والزوايا</a>.</td></tr>
 <tr><td><code>captions</code></td><td><code>[]</code></td><td>نص على الشاشة.</td></tr>
 <tr><td><code>highlights</code></td><td><code>[]</code></td><td>مربعات حول أجزاء من الشاشة.</td></tr>
+<tr><td><code>annotations</code></td><td><code>[]</code></td><td>أسهم وإطارات وتغطية بالتمويه أو بلون ثابت فوق التسجيل. انظر <a href="../../ar/guide/storyboard.html#annotations">الشروحات</a>.</td></tr>
 <tr><td><code>narration</code></td><td><code>[]</code></td><td>أسطر التعليق الصوتي.</td></tr>
 <tr><td><code>intro</code>, <code>outro</code></td><td>لا شيء</td><td>بطاقات العنوان قبل الفيديو وبعده.</td></tr>
 <tr><td><code>cards</code></td><td><code>[]</code></td><td>بطاقات فصول في منتصف الفيديو. انظر <a href="../../ar/guide/storyboard.html#chapter-cards">بطاقات الفصول</a>.</td></tr>
 <tr><td><code>overlays</code></td><td><code>[]</code></td><td>صور وفيديو وشعارات فوق الإطار. انظر <a href="../../ar/guide/storyboard.html#overlays">الـ overlays</a>.</td></tr>
 <tr><td><code>music</code></td><td>لا شيء</td><td>موسيقى خلفية، ويمكن خفضها تحت الصوت.</td></tr>
+<tr><td><code>audio</code></td><td>لا شيء</td><td>ضبط علو الصوت وتقليل الضجيج. انظر <a href="../../ar/guide/storyboard.html#audio">مزج الصوت</a>.</td></tr>
+<tr><td><code>sfx</code> و<code>sounds</code> و<code>typing</code></td><td><code>[]</code> ولا شيء و<code>[]</code></td><td>مؤثرات صوتية في أوقات تختارها، وأصوات تلقائية للنقرات والكتابة والبطاقات. انظر <a href="../../ar/guide/storyboard.html#sound-effects">المؤثرات الصوتية</a>.</td></tr>
 </tbody>
 </table>
 
@@ -74,9 +77,40 @@
 <tr><td><code>speed</code></td><td><code>1</code></td><td>سرعة التشغيل من 0.25 إلى 16. استخدم 4 إلى 8 لتسريع التحميل والانتظار.</td></tr>
 <tr><td><code>volume</code></td><td><code>1</code></td><td>مستوى صوت المصدر في هذا الـ segment، من 0 إلى 4. يحتاج إلى <code>keepSourceAudio</code>.</td></tr>
 <tr><td><code>mute</code></td><td><code>false</code></td><td>يُسكت صوت المصدر في هذا الـ segment. مثل <code>volume</code> بقيمة 0.</td></tr>
+<tr><td><code>speedTo</code></td><td>لا شيء</td><td>يدرّج السرعة من <code>speed</code> عند بداية الـ segment إلى هذه القيمة عند نهايته، من 0.25 إلى 16. انظر <a href="../../ar/guide/storyboard.html#speed-ramps">تدرّج السرعة</a>.</td></tr>
+<tr><td><code>transition</code></td><td>لا شيء</td><td>يمزج الدخول إلى هذا الـ segment بدل القطع الحاد. انظر <a href="../../ar/guide/storyboard.html#transitions">الانتقالات</a>.</td></tr>
 </tbody>
 </table>
 <p>إذا وقع سطر تعليق صوتي داخل منطقة مقصوصة، يُحذف مع تحذير. و<code>volume</code> و<code>mute</code> لهما أثر فقط عندما يبقى صوت المصدر: بدون <code>keepSourceAudio: true</code> وتسجيل فيه صوت، ينبّهك التصيير إلى أنهما بلا أثر.</p>
+
+<h3 id="speed-ramps">تدرّج السرعة (speed ramps)<a class="a" href="#speed-ramps" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>التسريع الثابت 8x يبدأ وينتهي بهزة. اضبط <code>speedTo</code> فتتغير السرعة بسلاسة على امتداد الـ segment: <code>"speed": 1, "speedTo": 8</code> تنساب من السرعة العادية إلى تسريع، و<code>"speed": 8, "speedTo": 1</code> تعود منه. التغير متساوٍ للعين (يُضرب في العامل نفسه كل خطوة)، ويعمل بالطريقة نفسها مع توقفات التعليق الصوتي والقص. استخدم segment بطول ثانية فأكثر؛ يقصر الفيديو بمقدار ما يوفره التسريع، ويتبع التعليق الصوتي والعناوين التوقيت الجديد.</p>
+<pre><code class="language-json">"segments": [
+  { "in": 0, "out": 6 },
+  { "in": 6, "out": 20, "speed": 1, "speedTo": 8 },
+  { "in": 20, "out": 40, "speed": 8, "speedTo": 1 }
+]</code></pre>
+
+<h3 id="transitions">الانتقالات (transitions)<a class="a" href="#transitions" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>بين segmentين يوجد قطع حاد افتراضيًّا. أعطِ الثاني <code>transition</code> ليمتزج على نهاية الذي قبله:</p>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>type</code></td><td>مطلوب</td><td>أحد: <code>crossfade</code> أو <code>fade-black</code> أو <code>fade-white</code> أو <code>wipe-left</code> أو <code>wipe-right</code> أو <code>slide-left</code> أو <code>slide-right</code>.</td></tr>
+<tr><td><code>dur</code></td><td><code>0.5</code></td><td>ثواني تداخل القطعتين، من 0.1 إلى 3. بحد أقصى نصف أي من القطعتين.</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>التداخل يقصّر الفيديو</strong> بمقدار <code>dur</code>: تعمل الصورتان في الوقت نفسه. يوضع التعليق الصوتي والعناوين والتكبيرات على التوقيت الجديد، فلا تتغير أوقات المصدر التي تكتبها.</li>
+<li>الصوت يمتزج أيضًا (تلاشٍ متقاطع).</li>
+<li>يُتجاهل على أول segment لأنه لا شيء قبله. وإن بدأ الـ segment بتوقف (hold) فالانتقال يدخل إلى الصورة المجمّدة.</li>
+<li>لمزج <em>تسجيلين مختلفين</em> استخدم <a href="../../ar/guide/sequence.html">دمج التسجيلات</a>، وفيه الانتقالات نفسها بين الأجزاء.</li>
+</ul>
+<pre><code class="language-json">"segments": [
+  { "in": 0, "out": 12 },
+  { "in": 30, "out": 45, "transition": { "type": "crossfade", "dur": 0.6 } },
+  { "in": 60, "out": 80, "transition": { "type": "fade-black", "dur": 0.8 } }
+]</code></pre>
 
 <h2 id="holds">Holds<a class="a" href="#holds" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>الـ <code>holds</code> تجمّد الفيديو عند إطار واحد، لتعطي caption أو سطرًا صوتيًا وقتًا كافيًا.</p>
@@ -133,6 +167,27 @@
 <tr><td><code>label</code></td><td>لا شيء</td><td>نص اختياري على المربع.</td></tr>
 </tbody>
 </table>
+
+<h2 id="annotations">الشروحات (annotations)<a class="a" href="#annotations" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>تُرسم <code>annotations</code> على التسجيل نفسه: سهم للإشارة إلى شيء، أو إطار حوله، أو تمويه أو كتلة ملونة لإخفائه. المواضع من 0 إلى 1 من التسجيل، كما في الـ highlights، فتبقى في مكانها الصحيح عندما تكبّر الكاميرا أو تنتقل. لكل عنصر <code>type</code> و<code>at</code> (وقت المصدر) و<code>dur</code> (الافتراضي 3).</p>
+<table>
+<thead><tr><th>النوع</th><th>الحقول</th><th>ماذا يفعل</th></tr></thead>
+<tbody>
+<tr><td><code>arrow</code></td><td><code>from</code> و<code>to</code> و<code>label</code> و<code>color</code> و<code>width</code> (من 2 إلى 24، الافتراضي 8)</td><td>سهم من <code>from</code> (الذيل) إلى <code>to</code> (الرأس) يرسم نفسه تدريجيًّا. الـ <code>label</code> عند الذيل.</td></tr>
+<tr><td><code>box</code></td><td><code>x</code> و<code>y</code> و<code>w</code> و<code>h</code> و<code>shape</code> (<code>box</code> أو <code>ellipse</code>) و<code>label</code> و<code>color</code> و<code>motion</code></td><td>إطار حول منطقة. خلافًا للـ highlight لا يعتّم باقي الشاشة. يظهر بحركة pop ويختفي بتلاشٍ ما لم تضبط <code>motion</code>.</td></tr>
+<tr><td><code>blur</code></td><td><code>x</code> و<code>y</code> و<code>w</code> و<code>h</code> و<code>mode</code> (<code>blur</code> أو <code>solid</code>) و<code>strength</code> (من 2 إلى 80، الافتراضي 18) و<code>color</code></td><td>يخفي منطقة. الوضع <code>blur</code> يموّه ما خلفه؛ والوضع <code>solid</code> يغطيه بالقيمة <code>color</code> (الافتراضي أسود يكاد).</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>استخدم <code>solid</code> لأي شيء سري.</strong> التمويه الخفيف للنص الصغير قد يبقى مقروءًا. افحص الإطارات المرندرة بـ <code>check</code> قبل مشاركة الفيديو.</li>
+<li><strong>تظهر التغطيات وتختفي في الإطار المحدد تمامًا</strong>، دون تلاشٍ، فلا يظهر ما تخفيه ولو للحظة.</li>
+<li>الحقل <code>color</code> أي لون CSS؛ والأسهم والإطارات تأخذ <code>theme.accent</code> افتراضيًّا.</li>
+</ul>
+<pre><code class="language-json">"annotations": [
+  { "type": "arrow", "at": 4, "dur": 3, "from": { "x": 0.2, "y": 0.2 }, "to": { "x": 0.45, "y": 0.4 }, "label": "Start here" },
+  { "type": "box", "at": 8, "dur": 2.5, "x": 0.55, "y": 0.15, "w": 0.3, "h": 0.12, "label": "Total" },
+  { "type": "blur", "at": 12, "dur": 4, "mode": "solid", "x": 0.1, "y": 0.1, "w": 0.35, "h": 0.06 }
+]</code></pre>
 
 <h2 id="narration">Narration<a class="a" href="#narration" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>يقرأ كل سطر صوتُ الـ storyboard ويُمزج في الفيديو. الافتراضي صوت Edge؛ انظر <a href="../../ar/guide/voices.html">الأصوات</a> للنماذج المحلية ولبرامجك الخاصة. التعليق الصوتي لا يتداخل أبدًا: إذا تجاوز سطر مكانه، يتجمد الفيديو ليفسح له.</p>
@@ -202,6 +257,11 @@
 <tr><td><code>src</code></td><td>مطلوب</td><td>مسار ملف صوتي نسبي إلى الـ storyboard.</td></tr>
 <tr><td><code>volume</code></td><td><code>0.12</code></td><td>من 0 إلى 1. اجعله منخفضًا كي لا يغطي الصوت.</td></tr>
 <tr><td><code>duck</code></td><td>لا شيء</td><td>يخفض الموسيقى أثناء الكلام. انظر أدناه.</td></tr>
+<tr><td><code>fadeIn</code></td><td><code>1</code></td><td>ثواني التلاشي عند الدخول، من 0 إلى 30.</td></tr>
+<tr><td><code>fadeOut</code></td><td><code>2</code></td><td>ثواني التلاشي عند النهاية، من 0 إلى 30.</td></tr>
+<tr><td><code>loop</code></td><td>متوقف</td><td>يكرر المقطع إن كان أقصر من مدى الموسيقى. من دونه تنتهي الموسيقى ببساطة.</td></tr>
+<tr><td><code>offset</code></td><td><code>0</code></td><td>يبدأ من هذه الثانية داخل الملف.</td></tr>
+<tr><td><code>from</code> و<code>to</code></td><td>الفيديو كله</td><td>وقتا المصدر اللذان تبدأ عندهما الموسيقى وتنتهي. افتراضيًّا تعمل من أول إطار، بما فيه المقدمة، إلى آخر إطار، بما فيه الخاتمة. الوقت داخل منطقة محذوفة يُتجاهل مع تحذير.</td></tr>
 </tbody>
 </table>
 <p>الـ ducking يجعل الموسيقى أهدأ تحت كل سطر تعليق ثم يعيدها بعده. أعطِ <code>duck</code> أيًّا من الحقول التالية، أو كائنًا فارغًا <code>{}</code> للقيم الافتراضية:</p>
@@ -211,16 +271,78 @@
 <tr><td><code>amount</code></td><td><code>0.6</code></td><td>مقدار انخفاض الموسيقى، من 0 إلى 1. القيمة 0.6 تعني انخفاضًا بنسبة 60%.</td></tr>
 <tr><td><code>attack</code></td><td><code>0.2</code></td><td>الثواني التي تستغرقها الموسيقى لتنخفض، وتنتهي حين يبدأ السطر. من 0 إلى 5.</td></tr>
 <tr><td><code>release</code></td><td><code>0.5</code></td><td>الثواني التي تستغرقها الموسيقى لتعود بعد السطر. من 0 إلى 5.</td></tr>
+<tr><td><code>under</code></td><td><code>["narration"]</code></td><td>ما الذي يخفض الموسيقى: <code>"narration"</code> أو <code>"overlays"</code> (طبقات الفيديو التي تشغّل صوتها) أو الاثنان معًا.</td></tr>
 </tbody>
 </table>
+<p>مع <code>loop</code> أو <code>offset</code> أو <code>from</code> أو <code>to</code> يُجهَّز المقطع مرة واحدة بـ ffmpeg (مع التلاشي) ويُخزَّن مؤقتًا، فلا يعاد تجهيزه عند تعديل أمور أخرى في الـ storyboard.</p>
+
+<h2 id="audio">مزج الصوت<a class="a" href="#audio" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>الحقل <code>audio</code> يضبط صوت الفيديو كله:</p>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>loudness</code></td><td>متوقف</td><td>يضبط الفيديو النهائي على مستوى علو صوت مستهدف، فتبدو كل فيديوهاتك بالعلو نفسه. القيمة <code>{}</code> تعني -16 LUFS، وهو مستوى مناسب للويب والتواصل الاجتماعي. حقوله: <code>target</code> (وحدة LUFS، من -70 إلى -5؛ القيمة -14 للبث، و-23 للإذاعة) و<code>truePeak</code> (وحدة dBTP، من -9 إلى 0، والافتراضي -1.5). يقيس المزيج ثم يطبّق كسبًا بسيطًا واحدًا، فلا يمس الديناميكيات. الرندر الجزئي (<code>--from</code> و<code>--to</code>) يُضبط وحده، فيختلف مستواه عن الفيديو الكامل.</td></tr>
+<tr><td><code>denoise</code></td><td>متوقف</td><td>يقلل الضجيج الثابت (مروحة، فحيح) في صوت التسجيل نفسه بنحو 18 ديسيبل. يحتاج <code>keepSourceAudio</code>.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-json">"audio": { "loudness": { "target": -16 }, "denoise": true }</code></pre>
+
+<h2 id="sound-effects">المؤثرات الصوتية<a class="a" href="#sound-effects" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>حقلان يضيفان أصواتًا قصيرة: <code>sfx</code> يشغّل صوتًا في وقت تختاره، و<code>sounds</code> يضيفها تلقائيًّا: عند كل نقرة مسجَّلة، وعلى الكتابة التي تحددها بـ <code>typing</code>، وعند دخول بطاقات العناوين. تُدمج كل الأصوات في مسار واحد، فلا تبطئ القائمة الطويلة الرندر، وينفّذ الرندر الجزئي (<code>--from</code> و<code>--to</code>) الأصوات الصحيحة.</p>
+<p>الصوت إما اسم من الأصوات المضمَّنة وإما ملف نسبي إلى الـ storyboard. يولّد ffmpeg الأصوات المضمَّنة أثناء الرندر، فلا شيء يُنزَّل ولا يُثبَّت:</p>
+<table>
+<thead><tr><th>الاسم</th><th>الصوت</th></tr></thead>
+<tbody>
+<tr><td><code>builtin:click</code></td><td>نقرة قصيرة ساطعة.</td></tr>
+<tr><td><code>builtin:key</code></td><td>نقرة أنعم وأخفض للكتابة.</td></tr>
+<tr><td><code>builtin:pop</code></td><td>فرقعة سريعة صاعدة.</td></tr>
+<tr><td><code>builtin:ding</code></td><td>جرس للنتيجة أو النجاح.</td></tr>
+<tr><td><code>builtin:whoosh</code></td><td>صوت انسياب ناعم للبطاقة أو تغيير المشهد.</td></tr>
+</tbody>
+</table>
+<p>الحقل <code>sfx</code> قائمة أصوات في أوقات المصدر:</p>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>at</code></td><td>مطلوب</td><td>وقت المصدر الذي يُشغَّل فيه الصوت. وقت داخل منطقة محذوفة يُسقط الصوت مع تحذير.</td></tr>
+<tr><td><code>src</code></td><td>مطلوب</td><td><code>builtin:&lt;name&gt;</code> أو ملف صوتي نسبي إلى الـ storyboard.</td></tr>
+<tr><td><code>volume</code></td><td><code>1</code></td><td>من 0 إلى 4.</td></tr>
+</tbody>
+</table>
+<p>الحقل <code>sounds</code> يشغّل الأصوات التلقائية. أعطِ أي حقل القيمة <code>true</code> للصوت المضمَّن، أو اسمًا أو ملفًا لاستخدام صوتك:</p>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>clicks</code></td><td>متوقف</td><td>صوت عند كل نقرة مسجَّلة. يحتاج <code>events</code>. القيمة <code>true</code> تعني <code>builtin:click</code>.</td></tr>
+<tr><td><code>typing</code></td><td>متوقف</td><td>صوت كتابة عند كل ضغطة في كل مجال <code>typing</code> (أدناه). القيمة <code>true</code> تعني <code>builtin:key</code>.</td></tr>
+<tr><td><code>cards</code></td><td>متوقف</td><td>صوت عند ظهور المقدمة وكل بطاقة فصل والخاتمة. القيمة <code>true</code> تعني <code>builtin:whoosh</code>.</td></tr>
+<tr><td><code>volume</code></td><td><code>0.5</code></td><td>مستوى هذه الأصوات التلقائية، من 0 إلى 2. عناصر <code>sfx</code> لها <code>volume</code> خاص.</td></tr>
+</tbody>
+</table>
+<p>لا يسجّل ScreenPilot لوحة المفاتيح أبدًا، فلا يعرف متى كتب أحدهم. الحقل <code>typing</code> قائمة بالفترات من التسجيل التي جرت فيها كتابة. الـ take الذي ينفّذه الوكيل يعلّمها لك، واحدة لكل خطوة <code>type</code> (السر المأخوذ من متغير بيئة يُحتسب وقته ولا يُنسخ نصه أبدًا). أما تسجيلك أنت فأضفها يدويًّا:</p>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>at</code></td><td>مطلوب</td><td>وقت المصدر الذي تبدأ فيه الكتابة.</td></tr>
+<tr><td><code>dur</code></td><td><code>3</code></td><td>مدتها بالثواني.</td></tr>
+<tr><td><code>text</code></td><td>لا شيء</td><td>ما يُكتب. يعطي ضغطة لكل حرف؛ وبدونه تحصل على نحو 7 ضغطات في الثانية. الإيقاع غير منتظم قليلًا، ويتكرر نفسه في كل رندر.</td></tr>
+<tr><td><code>keycaps</code></td><td>متوقف</td><td>يعرض النص المكتوب على الشاشة في شريط مفاتيح صغير، كلمة بكلمة، وتظهر كل كلمة عند الضغطة التي تكملها (الضغطات نفسها التي تصدر صوت الكتابة). يحتاج <code>text</code>.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-json">"sounds": { "clicks": true, "typing": true, "cards": true, "volume": 0.5 },
+"typing": [{ "at": 12, "dur": 2.5, "text": "hello@example.com" }],
+"sfx": [
+  { "at": 21.5, "src": "builtin:ding" },
+  { "at": 30, "src": "assets/applause.wav", "volume": 0.7 }
+]</code></pre>
 
 <h2 id="extends">مشاركة المظهر بـ extends<a class="a" href="#extends" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>الحقل <code>extends</code> يشير إلى storyboard أساسي، نسبيًا إلى هذا الملف. استخدمه حين تريد أن تتشابه عدة فيديوهات في المظهر والصوت: يمتد كل منها من الأساس نفسه ويضيف تسجيله الخاص. وبه يأخذ مقطع الميزة مظهر العرض الذي ينضم إليه داخل <a href="../../ar/guide/sequence.html">sequence</a>.</p>
 <ul>
-<li><strong>تُورَّث خمسة حقول:</strong> <code>theme</code> و<code>voice</code> و<code>output</code> و<code>music</code> و<code>keepSourceAudio</code>. أما الباقي (<code>source</code> وsegments وzooms وcaptions وnarration وintro وoutro وغيرها) فلا يُورَّث أبدًا.</li>
+<li><strong>تُورَّث سبعة حقول:</strong> <code>theme</code> و<code>voice</code> و<code>output</code> و<code>music</code> و<code>sounds</code> و<code>audio</code> و<code>keepSourceAudio</code>. أما الباقي (<code>source</code> وsegments وzooms وcaptions وnarration وintro وoutro وغيرها) فلا يُورَّث أبدًا.</li>
 <li><strong>الابن يتغلب.</strong> الكائنات تُدمج مفتاحًا مفتاحًا، فالابن الذي يضبط <code>theme.accent</code> فقط يحتفظ بباقي حقول القالب من الأساس. أما المصفوفات فتُستبدل ولا تُدمج، مثل <code>theme.fonts</code>.</li>
 <li><strong>السلاسل تعمل.</strong> يمكن للأساس أن يمتد من storyboard آخر. والدورة (cycle) خطأ يذكر السلسلة.</li>
-<li><strong>المسارات تبقى صحيحة.</strong> يُعاد كتابة <code>music.src</code> القادم من الأساس ليشير إلى الملف نفسه انطلاقًا من مجلد الابن.</li>
+<li><strong>المسارات تبقى صحيحة.</strong> يُعاد كتابة <code>music.src</code> وأي ملف صوت في <code>sounds</code> قادم من الأساس ليشير إلى الملف نفسه انطلاقًا من مجلد الابن.</li>
 </ul>
 <pre><code class="language-json">{
   "extends": "../demo.json",
@@ -270,6 +392,7 @@
 <tr><td><code>font</code></td><td>Inter وCairo وsystem-ui</td><td>عائلة الخط في CSS.</td></tr>
 <tr><td><code>captionColor</code></td><td><code>#ffffff</code></td><td>لون نص الـ caption.</td></tr>
 <tr><td><code>captionBackground</code></td><td>داكن شبه شفاف</td><td>لون مربع الـ caption.</td></tr>
+<tr><td><code>grade</code></td><td>لا شيء</td><td>تدرّج لوني للتسجيل فقط (لا البطاقات ولا العناوين ولا الخلفية): <code>brightness</code> (من -1 إلى 1) و<code>contrast</code> (من 0 إلى 2) و<code>saturation</code> (من 0 إلى 3، والصفر أبيض وأسود) و<code>gamma</code> (من 0.1 إلى 4). تتغير القيم التي تضبطها فقط، مثل <code>{ "contrast": 1.1, "saturation": 1.2 }</code>.</td></tr>
 <tr><td><code>clickRipples</code></td><td><code>true</code></td><td>يرسم تموّجًا عند كل نقرة مسجَّلة. يحتاج إلى <code>events</code>.</td></tr>
 <tr><td><code>fonts</code></td><td><code>[]</code></td><td>خطوط Google إضافية للتحميل، بصيغة css2 مثل <code>"Tajawal:wght@400;700"</code> أو <code>"Space Grotesk:wght@500;700"</code>. ثم استخدمها في <code>font</code> أو <code>css</code>.</td></tr>
 <tr><td><code>css</code></td><td>فارغ</td><td>CSS خاص بك، يُطبَّق بعد الأنماط المدمجة.</td></tr>
@@ -288,6 +411,8 @@
 <li><code>.hl</code> و<code>.hl span</code>: الـ highlights.</li>
 <li><code>.callout span</code>: فقاعات callout.</li>
 <li><code>.ripple</code>: تموّجات النقر.</li>
+<li><code>.ann-arrow</code> و<code>.ann-box</code> و<code>.ann-blur</code> و<code>.ann-label</code>: الشروحات.</li>
+<li><code>.keys</code>: النص المكتوب (شريط المفاتيح).</li>
 </ul>
 
 <h3 id="motion">الحركة (motion)<a class="a" href="#motion" aria-label="رابط إلى هذا القسم">#</a></h3>
@@ -383,7 +508,7 @@
 </ul>
 <div class="note">اعمل على مراحل. اكتب segments والتعليق الصوتي أولًا، وصيّر مسودة بـ <code>-q draft</code>، وراجعها بـ <code>check</code>، ثم أضف zooms وcaptions. غيّر نوعًا واحدًا من الأشياء في كل مرة.</div>
 <nav class="pager" aria-label="Pager"><a href="tools.html" rel="prev"><small>السابق</small>أدوات MCP</a><a href="voices.html" rel="next"><small>التالي</small>الأصوات</a></nav></article>
-  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#basics">القواعد الثلاث</a><a href="#top-level">حقول المستوى الأعلى</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#narration">Narration</a><a href="#cards">Intro وoutro</a><a href="#chapter-cards">بطاقات الفصول</a><a href="#overlays">Overlays</a><a href="#music">Music</a><a href="#extends">مشاركة المظهر بـ extends</a><a href="#views">الشاشات والزوايا</a><a href="#output">الخرج والصوت</a><a href="#theme">القالب (theme)</a><a href="#example">مثال كامل</a><a href="#lint">تحذيرات الأسلوب</a><a href="#style">إرشادات الأسلوب</a></aside>
+  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#basics">القواعد الثلاث</a><a href="#top-level">حقول المستوى الأعلى</a><a href="#segments">Segments</a><a href="#holds">Holds</a><a href="#zooms">Zooms</a><a href="#captions">Captions</a><a href="#highlights">Highlights</a><a href="#annotations">الشروحات (annotations)</a><a href="#narration">Narration</a><a href="#cards">Intro وoutro</a><a href="#chapter-cards">بطاقات الفصول</a><a href="#overlays">Overlays</a><a href="#music">Music</a><a href="#audio">مزج الصوت</a><a href="#sound-effects">المؤثرات الصوتية</a><a href="#extends">مشاركة المظهر بـ extends</a><a href="#views">الشاشات والزوايا</a><a href="#output">الخرج والصوت</a><a href="#theme">القالب (theme)</a><a href="#example">مثال كامل</a><a href="#lint">تحذيرات الأسلوب</a><a href="#style">إرشادات الأسلوب</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../../ar/index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot مفتوح المصدر برخصة MIT.</small><small>أسماء المنتجات ملك لأصحابها. ScreenPilot مشروع مستقل.</small></div>

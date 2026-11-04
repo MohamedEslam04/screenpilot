@@ -94,6 +94,8 @@
 
 <p>المدخل <code>formats</code> قائمة نصوص، كل نص هو <code>"16:9"</code> أو <code>"9:16"</code> أو <code>"1:1"</code> أو <code>"WxH"</code> مثل <code>"1280x720"</code>. يكتب <code>&lt;storyboard&gt;.&lt;format&gt;.mp4</code> (الوسوم <code>16x9</code> و<code>9x16</code> و<code>1x1</code> و<code>WxH</code>)، ويصبح <code>output</code> عندها الاسم الأساسي. والنتيجة عنصر لكل صيغة. التصدير الطولي يقصّ الـ views العرضية التي تؤطر نافذة. انظر <a href="../../ar/guide/cli.html#formats">عدة صيغ</a>.</p>
 
+<p>الحقل <code>subtitles</code> (قائمة من <code>"srt"</code> و<code>"vtt"</code>) يكتب ملفات ترجمة من التعليق الصوتي بجوار الفيديو. والحقل <code>also</code> (قائمة من <code>"gif"</code> و<code>"webm"</code> و<code>"poster"</code>) يصنع GIF متحركًا أو WebM أو صورة poster بصيغة PNG من الفيديو النهائي، ويضبط <code>poster_at</code> وقتها بثواني الخرج. تُسرد كل الملفات المكتوبة تحت <code>files</code> في النتيجة.</p>
+
 <h2 id="sequence">دمج التسجيلات<a class="a" href="#sequence" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>تجمع هذه الأدوات عدة storyboards، لكل منها تسجيله، في فيديو واحد، مثلًا لإدخال مقطع ميزة في عرض موجود دون إعادة تسجيله. صيغة الملف في صفحة <a href="../../ar/guide/sequence.html">دمج التسجيلات</a>.</p>
 <table>

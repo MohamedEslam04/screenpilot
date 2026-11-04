@@ -1,5 +1,13 @@
 import type { Hold, Segment } from "./schema.js";
 
+type TransitionType = NonNullable<Segment["transition"]>["type"];
+
+/** A piece that blends into the one before it: they overlap by `dur`. */
+export interface PieceTransition {
+  type: TransitionType;
+  dur: number;
+}
+
 // The edited video is a sequence of pieces cut from the source: "play" pieces
 // (a source range at some speed) and "hold" pieces (one source frame frozen).
 // Output times below are relative to the start of the edited video; Timeline
@@ -14,6 +22,8 @@ export interface PlayPiece {
   volume: number;
   outStart: number;
   outEnd: number;
+  /** How this piece enters over the end of the previous one (its `outStart` is already moved back by `dur`). */
+  transition?: PieceTransition;
 }
 
 export interface HoldPiece {
@@ -24,6 +34,8 @@ export interface HoldPiece {
   outEnd: number;
   /** Index into storyboard.cards when this freeze is a chapter card. */
   card?: number;
+  /** How this freeze enters over the end of the previous piece. */
+  transition?: PieceTransition;
 }
 
 export type Piece = PlayPiece | HoldPiece;
@@ -39,6 +51,31 @@ export interface TimelineInput {
 }
 
 const EPS = 1e-6;
+/** A transition shorter than this (s) is not worth a blend. */
+const MIN_TRANSITION = 0.05;
+
+/** A speed ramp is played as steps of one speed each: about one per half second of source, at most this many. */
+const RAMP_STEP = 0.5;
+const RAMP_MAX_STEPS = 12;
+
+/** Speed at source time `t` of a segment, ramping geometrically (so the change feels even) from `speed` to `speedTo`. */
+export function speedAt(seg: Segment, t: number): number {
+  if (seg.speedTo === undefined) return seg.speed;
+  const k = Math.min(1, Math.max(0, (t - seg.in) / (seg.out - seg.in)));
+  return seg.speed * (seg.speedTo / seg.speed) ** k;
+}
+
+/** The constant-speed steps a ramped segment is cut into; undefined for a segment at one speed. */
+function rampSteps(seg: Segment): { in: number; out: number; speed: number }[] | undefined {
+  if (seg.speedTo === undefined || Math.abs(seg.speedTo - seg.speed) < 1e-9) return undefined;
+  const len = seg.out - seg.in;
+  const n = Math.min(RAMP_MAX_STEPS, Math.max(2, Math.ceil(len / RAMP_STEP)));
+  return Array.from({ length: n }, (_, i) => ({
+    in: seg.in + (len * i) / n,
+    out: i === n - 1 ? seg.out : seg.in + (len * (i + 1)) / n,
+    speed: speedAt(seg, seg.in + (len * (i + 0.5)) / n),
+  }));
+}
 
 export class Timeline {
   constructor(
@@ -111,23 +148,45 @@ export function buildTimeline({ segments, holds, sourceDuration, offset = 0 }: T
   const used = new Set<number>();
   const pieces: Piece[] = [];
   let cursorOut = 0;
+  let pendingTransition: Segment["transition"];
+
+  /** The segment's transition, once, for the first piece it adds: clamped to half of either piece. */
+  const enter = (len: number): { overlap: number; transition?: PieceTransition } => {
+    const want = pendingTransition;
+    pendingTransition = undefined;
+    const prev = pieces.at(-1);
+    if (!want || !prev) return { overlap: 0 };
+    const dur = Math.round(Math.min(want.dur, (prev.outEnd - prev.outStart) / 2, len / 2) * 1000) / 1000;
+    return dur >= MIN_TRANSITION ? { overlap: dur, transition: { type: want.type, dur } } : { overlap: 0 };
+  };
 
   const pushPlay = (from: number, to: number, seg: Segment) => {
+    const steps = rampSteps(seg);
+    if (!steps) return pushStep(from, to, seg.speed, seg);
+    // The steps belong to the whole segment, so a hold in the middle does not restart the ramp.
+    for (const step of steps) pushStep(Math.max(from, step.in), Math.min(to, step.out), step.speed, seg);
+  };
+
+  const pushStep = (from: number, to: number, speed: number, seg: Segment) => {
     if (to - from < EPS) return;
-    const len = (to - from) / seg.speed;
+    const len = (to - from) / speed;
+    const { overlap, transition } = enter(len);
+    cursorOut -= overlap;
     pieces.push({
       kind: "play",
       in: from,
       out: to,
-      speed: seg.speed,
+      speed,
       volume: seg.mute ? 0 : (seg.volume ?? 1),
       outStart: cursorOut,
       outEnd: cursorOut + len,
+      ...(transition ? { transition } : {}),
     });
     cursorOut += len;
   };
 
   for (const seg of segs) {
+    pendingTransition = seg.transition;
     const inside = pending
       .filter((h) => !used.has(h.i) && h.at >= seg.in - EPS && h.at <= seg.out + EPS)
       .sort((a, b) => a.at - b.at);
@@ -135,6 +194,8 @@ export function buildTimeline({ segments, holds, sourceDuration, offset = 0 }: T
     for (const h of inside) {
       used.add(h.i);
       pushPlay(cursor, h.at, seg);
+      const { overlap, transition } = enter(h.dur);
+      cursorOut -= overlap;
       pieces.push({
         kind: "hold",
         at: h.at,
@@ -142,6 +203,7 @@ export function buildTimeline({ segments, holds, sourceDuration, offset = 0 }: T
         outStart: cursorOut,
         outEnd: cursorOut + h.dur,
         ...(h.card !== undefined ? { card: h.card } : {}),
+        ...(transition ? { transition } : {}),
       });
       cursorOut += h.dur;
       cursor = Math.max(cursor, h.at);

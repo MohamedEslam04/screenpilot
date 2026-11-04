@@ -11,8 +11,12 @@ const MAX_CAPTION_WORDS = 6;
 const MAX_WORDS_PER_SECOND = 3;
 const ZOOM_SCALE = { min: 1.4, max: 2.5 };
 const MAX_SPEED = 8;
+const MAX_TRANSITION = 2; // s
+const MIN_RAMP = 1; // s of source a speed ramp needs to read as one
 const STACK_WINDOW = 1; // s
 const STACK_RADIUS = 0.15; // normalized distance counted as "the same point"
+const MIN_BLUR_AREA = 0.0005; // fraction of the recording
+const MIN_ARROW = 0.01; // normalized length
 const DURATION = { min: 15, max: 90 }; // s, output
 
 const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
@@ -88,8 +92,31 @@ export function lintStyle(sb: Storyboard): string[] {
     });
   });
 
+  // Annotations and key-caps.
+  sb.annotations.forEach((a, i) => {
+    if (a.type === "blur" && a.w * a.h < MIN_BLUR_AREA) {
+      out.push(`annotations[${i}] blur covers a very small area (${(a.w * 100).toFixed(1)}% x ${(a.h * 100).toFixed(1)}% of the recording); check it covers all of what you want hidden`);
+    }
+    if (a.type === "arrow" && Math.hypot(a.to.x - a.from.x, a.to.y - a.from.y) < MIN_ARROW) {
+      out.push(`annotations[${i}] arrow has no length (from and to are the same point) and will not be drawn`);
+    }
+  });
+  if (sb.sounds?.typing && sb.typing.length === 0) out.push("sounds.typing is on but there are no typing spans; add typing: [{ at, dur, text }] where the recording shows typing");
+  sb.typing.forEach((t, i) => {
+    if (!t.keycaps && !sb.sounds?.typing) out.push(`typing[${i}] does nothing: turn on sounds.typing for a typing sound or keycaps (with text) to show the typed words`);
+    if (t.keycaps && !t.text?.trim()) out.push(`typing[${i}] has keycaps but no text; set text to the words that are typed`);
+  });
+
   sb.segments.forEach((s, i) => {
-    if (s.speed > MAX_SPEED) out.push(`segments[${i}] runs at ${s.speed}x (over ${MAX_SPEED}x); it will look like a glitch, cut it instead`);
+    const top = Math.max(s.speed, s.speedTo ?? 0);
+    if (top > MAX_SPEED) out.push(`segments[${i}] runs at ${+top.toFixed(2)}x (over ${MAX_SPEED}x); it will look like a glitch, cut it instead`);
+    if (s.transition && i === 0) out.push(`segments[0] has a transition but is the first segment, so there is nothing before it to blend with`);
+    if (s.transition && s.transition.dur > MAX_TRANSITION) {
+      out.push(`segments[${i}] transition is long (${fix(s.transition.dur)}s, over ${MAX_TRANSITION}s); it also makes the video that much shorter, use 0.3-1s`);
+    }
+    if (s.speedTo !== undefined && s.speedTo !== s.speed && s.out - s.in < MIN_RAMP) {
+      out.push(`segments[${i}] has a speed ramp but is only ${fix(s.out - s.in)}s long (too short to see it); use a segment of ${MIN_RAMP}s or more`);
+    }
   });
 
   return out;

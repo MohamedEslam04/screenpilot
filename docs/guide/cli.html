@@ -189,6 +189,9 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <tr><td><code>--timings</code></td><td>Log how long each stage takes (probe, voice, cut, render, join) and show HyperFrames phase timings.</td></tr>
 <tr><td><code>--from &lt;s&gt;</code>, <code>--to &lt;s&gt;</code></td><td>Render only this window, in <strong>output</strong> seconds. See <a href="../guide/cli.html#partial">Partial renders</a>.</td></tr>
 <tr><td><code>--formats &lt;list&gt;</code></td><td>Render once per format, for example <code>16:9,9:16,1:1</code>. See <a href="../guide/cli.html#formats">Several formats</a>.</td></tr>
+<tr><td><code>--subtitles &lt;list&gt;</code></td><td>Also write subtitle files from the narration: <code>srt</code>, <code>vtt</code> or <code>srt,vtt</code>. See <a href="../guide/cli.html#extras">Subtitle files and extra outputs</a>.</td></tr>
+<tr><td><code>--also &lt;list&gt;</code></td><td>Also make a <code>gif</code>, a <code>webm</code> or a <code>poster</code> PNG from the finished video (a comma list).</td></tr>
+<tr><td><code>--poster-at &lt;s&gt;</code></td><td>Time of the poster frame, in output seconds. Default: a quarter of the way in.</td></tr>
 <tr><td><code>--build-dir &lt;dir&gt;</code></td><td>Where the HyperFrames project is written. Not allowed with <code>--formats</code>.</td></tr>
 </tbody>
 </table>
@@ -217,6 +220,21 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <li><code>--from</code> and <code>--to</code> work together with <code>--formats</code>: the files become <code>&lt;name&gt;.9x16.part-12-20.mp4</code>.</li>
 </ul>
 <div class="warn">A portrait or square export of a landscape recording crops the picture. Views that frame a window fill the frame, so the long side of the window is trimmed. Monitor views still show the whole monitor. Look at a 9:16 draft before you deliver it.</div>
+
+<h3 id="extras">Subtitle files and extra outputs<a class="a" href="#extras" aria-label="Link to this section">#</a></h3>
+<p>Platforms that take a caption file (YouTube, LinkedIn, Vimeo) want the words as a file, not burned into the picture. <code>--subtitles</code> writes them from the narration, in the video's own timing, next to the MP4. Every narration line is included, even one you hid from the picture with <code>"caption": false</code>.</p>
+<pre><code class="language-sh">screenpilot render storyboard.json -q delivery -o demo.mp4 --subtitles srt,vtt --also gif,poster</code></pre>
+<table>
+<thead><tr><th>Option</th><th>File</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td><code>--subtitles srt</code></td><td><code>demo.srt</code></td><td>SubRip, the most widely accepted.</td></tr>
+<tr><td><code>--subtitles vtt</code></td><td><code>demo.vtt</code></td><td>WebVTT, for the web.</td></tr>
+<tr><td><code>--also gif</code></td><td><code>demo.gif</code></td><td>Animated GIF, 800 px wide at 12 frames a second, no sound. It gets big fast: use it for a short clip, a README or a chat.</td></tr>
+<tr><td><code>--also webm</code></td><td><code>demo.webm</code></td><td>VP9 video with Opus sound. Smaller than the MP4 for the web.</td></tr>
+<tr><td><code>--also poster</code></td><td><code>demo.poster.png</code></td><td>One frame at full size, for a thumbnail or the <code>poster</code> of a video tag. Set the time with <code>--poster-at</code>.</td></tr>
+</tbody>
+</table>
+<p>The files are listed under <code>files</code> in the result. They follow <code>--from</code>/<code>--to</code> (a partial render writes the subtitles of that window) and <code>--formats</code> (one set per format).</p>
 
 <h3 id="quality">Quality levels<a class="a" href="#quality" aria-label="Link to this section">#</a></h3>
 <table>

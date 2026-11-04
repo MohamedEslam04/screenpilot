@@ -17,7 +17,12 @@ import { buildCutArgs, buildCutFilter } from "./cut.js";
 import { draftFps } from "./draft.js";
 import { renderHtml } from "./html.js";
 import { formatPaths, type OutputFormat } from "./formats.js";
+import { checkPosterAt, type ExtraFormat, exportExtras } from "./export.js";
 import { overlayKind } from "./overlay.js";
+import { type LoudnessTarget, normalizeLoudness } from "./loudness.js";
+import { planMusicRange, prepareMusic } from "./music.js";
+import { mixSfx, planSfx } from "./sfx.js";
+import { type SubtitleFormat, writeSubtitles } from "./subtitles.js";
 import { buildPlan, type OverlayAsset, type RenderPlan } from "./plan.js";
 import { partSuffix, type Window, windowPlan } from "./window.js";
 import { autoWorkers } from "./workers.js";
@@ -48,6 +53,8 @@ export interface Prepared {
   source: VideoInfo;
   warnings: string[];
   autoHolds: { at: number; dur: number }[];
+  /** Normalize the finished video to this loudness (storyboard audio.loudness). */
+  loudness?: LoudnessTarget;
 }
 
 export async function prepareBuild(storyboardPath: string, opts: PrepareOptions = {}): Promise<Prepared> {
@@ -114,23 +121,46 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   if (!keepAudio && sb.segments.some((s) => s.mute || (s.volume !== undefined && s.volume !== 1))) {
     warnings.push("segment volume/mute has no effect: the source audio is not kept (set keepSourceAudio: true and use a recording with sound)");
   }
+  if (sb.audio?.denoise && !keepAudio) warnings.push("audio.denoise has no effect: the source audio is not kept (set keepSourceAudio: true and use a recording with sound)");
   await time("cut", () => cutVideo(sourcePath, buildDir, timeline, sb, source, keepAudio, !!opts.draft, log));
 
   // 4. Events → click ripples.
   let clicks: { t: number; x: number; y: number }[] = [];
   if (sb.events) {
     const eventsPath = resolve(baseDir, sb.events);
-    if (existsSync(eventsPath)) clicks = clicksOf(await readEvents(eventsPath));
-    else warnings.push(`events file not found: ${eventsPath}`);
+    if (existsSync(eventsPath)) {
+      clicks = clicksOf(await readEvents(eventsPath));
+    } else warnings.push(`events file not found: ${eventsPath}`);
+  } else if (sb.sounds?.clicks) {
+    warnings.push("sounds.clicks needs `events` (the events.jsonl from the recording); no click sounds were added");
   }
 
-  // 5. Music.
+  // 4b. Sound effects: all of them mixed into one track.
+  const total = round3(timeline.videoEnd + (sb.outro?.dur ?? 0));
+  const sfxPlan = planSfx({ sb, timeline, clicks, duration: total });
+  warnings.push(...sfxPlan.warnings);
+  const sfxMix = await time("sfx", () => mixSfx(sfxPlan.hits, { baseDir, buildDir, duration: total, log }));
+  warnings.push(...sfxMix.warnings);
+
+  // 5. Music: straight into the composition, or prepared first for a loop, offset or from/to range.
   let musicSrc: string | undefined;
+  let musicClip: { start: number; duration: number } | undefined;
   if (sb.music) {
     const m = resolve(baseDir, sb.music.src);
     if (existsSync(m)) {
-      musicSrc = `music${extname(m)}`;
-      await copyFile(m, join(buildDir, musicSrc));
+      const range = planMusicRange(sb.music, timeline, total);
+      warnings.push(...range.warnings);
+      if (range.custom) {
+        const prepared = await time("music", () => prepareMusic(sb.music!, m, range, { buildDir, log }));
+        warnings.push(...prepared.warnings);
+        if (prepared.file) {
+          musicSrc = prepared.file;
+          musicClip = { start: range.start, duration: prepared.length };
+        }
+      } else {
+        musicSrc = `music${extname(m)}`;
+        await copyFile(m, join(buildDir, musicSrc));
+      }
     } else warnings.push(`music file not found: ${m}`);
   }
 
@@ -165,7 +195,9 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     narration,
     clicks,
     musicSrc,
+    musicClip,
     overlays,
+    sfxSrc: sfxMix.file,
   });
   const plan = opts.window ? windowPlan(fullPlan, opts.window) : fullPlan;
   await copyFile(require.resolve("gsap/dist/gsap.min.js"), join(buildDir, "gsap.min.js"));
@@ -177,8 +209,10 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   await writeFile(join(buildDir, "plan.json"), JSON.stringify({ plan, autoHolds, warnings }, null, 2));
   log(`composition: ${buildDir}/index.html (${plan.duration.toFixed(2)}s)`);
 
-  return { buildDir, plan, timeline, source, warnings, autoHolds };
+  return { buildDir, plan, timeline, source, warnings, autoHolds, loudness: sb.audio?.loudness };
 }
+
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
 async function cutVideo(
   sourcePath: string,
@@ -195,6 +229,8 @@ async function cutVideo(
     fps: sb.output.fps,
     sourceDuration: source.duration,
     keepAudio,
+    denoise: !!sb.audio?.denoise,
+    grade: sb.theme.grade,
   });
   const st = await stat(sourcePath);
   const key = createHash("sha1").update(`${sourcePath}|${st.size}|${st.mtimeMs}|${filter}|${draft ? "draft" : "full"}`).digest("hex");
@@ -225,10 +261,18 @@ export interface RenderOptions extends PrepareOptions {
   pngFrames?: boolean;
   /** Parallel headless Chrome renderers (default: from CPU cores and free memory, see autoWorkers). */
   workers?: number;
+  /** Write subtitle files (from the narration) next to the video. */
+  subtitles?: SubtitleFormat[];
+  /** Also make a GIF, a WebM or a poster frame from the finished video. */
+  also?: ExtraFormat[];
+  /** Poster frame time, in OUTPUT seconds (default: a quarter of the way in). */
+  posterAt?: number;
 }
 
 export interface RenderResult extends Prepared {
   output: string;
+  /** Subtitle and extra files that were written next to the video. */
+  files: string[];
 }
 
 export function hyperframesBin(): string {
@@ -243,6 +287,7 @@ export function hyperframesEnv(): NodeJS.ProcessEnv {
 export async function renderStoryboard(storyboardPath: string, opts: RenderOptions = {}): Promise<RenderResult> {
   const log = opts.log ?? (() => {});
   const draft = opts.quality === "draft";
+  checkPosterAt(opts.posterAt);
   const prepared = await prepareBuild(storyboardPath, { ...opts, draft });
   const output = resolve(
     opts.output ??
@@ -276,7 +321,19 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
     { env: hyperframesEnv(), inherit: opts.timings },
   ),
   );
-  return { ...prepared, output };
+  if (prepared.loudness) {
+    const target = prepared.loudness;
+    await time("loudness", async () => {
+      const r = await normalizeLoudness(output, target);
+      if (r.applied) log(`loudness: ${r.measured!.input_i} LUFS -> ${target.target} LUFS`);
+      else prepared.warnings.push(`audio.loudness was not applied: ${r.reason}`);
+    });
+  }
+  const files: string[] = [];
+  if (opts.subtitles?.length) files.push(...(await writeSubtitles(prepared.plan.subtitles, output, opts.subtitles)));
+  if (opts.also?.length) files.push(...(await time("extras", () => exportExtras(output, opts.also!, { posterAt: opts.posterAt }))));
+  for (const f of files) log(`wrote ${f}`);
+  return { ...prepared, output, files };
 }
 
 export interface FormatRenderResult extends RenderResult {

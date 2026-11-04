@@ -19,8 +19,10 @@ import { a11yFindAll, a11yTree } from "./a11y/index.js";
 import { parseA11yTarget } from "./a11y/parse.js";
 import { performTake, resolveTarget, TakeError } from "./take/perform.js";
 import { takeJsonSchema } from "./take/schema.js";
+import { parseExtras } from "./render/export.js";
 import { parseFormats } from "./render/formats.js";
 import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
+import { parseSubtitleFormats } from "./render/subtitles.js";
 import { parseWindow } from "./render/window.js";
 import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/load.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
@@ -453,17 +455,21 @@ program
   .option("--from <s>", "Render only from this OUTPUT second (fast review; writes <storyboard>.part-<from>-<to>.mp4)", Number)
   .option("--to <s>", "Render only up to this OUTPUT second", Number)
   .option("--formats <list>", "Render once per format, e.g. 16:9,9:16,1:1 or 1280x720 (writes <storyboard>.<format>.mp4)")
+  .option("--subtitles <list>", "Also write subtitle files from the narration: srt, vtt or srt,vtt (next to the video)")
+  .option("--also <list>", "Also make files from the finished video: gif, webm, poster (a PNG frame), or a comma list")
+  .option("--poster-at <s>", "Time of the poster frame, in OUTPUT seconds (default: a quarter of the way in)", Number)
   .option("--build-dir <dir>")
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string }) => {
-    const opts = { ...o, workers: o.workers ? Number(o.workers) : undefined, window: parseWindow(o.from, o.to), log };
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; subtitles?: string; also?: string; posterAt?: number }) => {
+    const { subtitles, also, posterAt, ...rest } = o;
+    const opts = { ...rest, workers: o.workers ? Number(o.workers) : undefined, window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt, log };
     if (o.formats) {
       if (o.buildDir) throw new Error("--build-dir cannot be combined with --formats (each format gets its own <name>.<format>.build)");
       const rs = await renderFormats(path, parseFormats(o.formats), opts);
-      print(rs.map((r) => ({ format: r.format, output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings })));
+      print(rs.map((r) => ({ format: r.format, output: r.output, files: r.files, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings })));
       return;
     }
     const r = await renderStoryboard(path, opts);
-    print({ output: r.output, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
+    print({ output: r.output, files: r.files, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
   });
 
 program
