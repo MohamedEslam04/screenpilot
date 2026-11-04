@@ -287,9 +287,19 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <thead><tr><th>Command</th><th>What it does</th></tr></thead>
 <tbody>
 <tr><td><code>drive move &lt;screen,x,y&gt;</code></td><td>Move the pointer.</td></tr>
-<tr><td><code>drive click &lt;target&gt;</code></td><td>Click. The target is <code>screen,x,y</code> or <code>web:&lt;selector&gt;</code> for an element in the demo browser. Flags: <code>--button left|right|middle</code> (default left), <code>--count &lt;n&gt;</code> (2 for a double click).</td></tr>
+<tr><td><code>drive click &lt;target&gt;</code></td><td>Click. The target is <code>screen,x,y</code>, <code>web:&lt;selector&gt;</code> for an element in the demo browser, or <code>a11y:&lt;role&gt;:&lt;name&gt;</code> for a control in a native app (for example <code>a11y:button:Save</code>; <code>a11y::Save</code> means any role). Flags: <code>--button left|right|middle</code> (default left), <code>--count &lt;n&gt;</code> (2 for a double click).</td></tr>
 <tr><td><code>drive type &lt;text&gt;</code></td><td>Type text into the focused field.</td></tr>
 <tr><td><code>drive key &lt;combo&gt;</code></td><td>Press a key combination such as <code>"ctrl+l"</code>. On macOS use <code>cmd</code>.</td></tr>
+</tbody>
+</table>
+
+<h3 id="a11y">a11y</h3>
+<p><code>screenpilot a11y</code> reads a native app's UI through the accessibility tree, so you can write <code>{a11y}</code> targets without guessing pixels. See <a href="@guide/agent-drive.html#a11y">Native apps</a>.</p>
+<table>
+<thead><tr><th>Command</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>a11y tree</code></td><td>Prints the controls of an app with role, name and rectangle in screen pixels. Flags: <code>--app &lt;app&gt;</code> (window class or title contains; default the focused window's app), <code>--all</code> (include non-interactive elements), <code>--max-depth &lt;n&gt;</code> (default 20).</td></tr>
+<tr><td><code>a11y find &lt;spec&gt;</code></td><td>Prints the controls that match <code>&lt;role&gt;:&lt;name&gt;</code> (for example <code>button:Save</code>) or just a name. Flags: <code>--app &lt;app&gt;</code>, <code>--exact</code> (match the whole name).</td></tr>
 </tbody>
 </table>
 
@@ -325,5 +335,5 @@ screenpilot voices --provider edge --lang ar</code></pre>
 </table>
 
 <h3 id="doctor">doctor</h3>
-<p><code>screenpilot doctor</code> checks this machine: ffmpeg, desktop, monitors, OBS, the demo browser and voices, including a "local voice" check that is skipped when you have not set up a local voice (it is optional). It prints a JSON report and a one-line summary. The exit code is always 0, so read the report. Add <code>--input</code> to also test input injection; this moves the real pointer for a moment.</p>
+<p><code>screenpilot doctor</code> checks this machine: ffmpeg, desktop, monitors, OBS, the demo browser and voices, including an "accessibility tree" check and a "local voice" check that is skipped when you have not set up a local voice (it is optional). It prints a JSON report and a one-line summary. The exit code is always 0, so read the report. Add <code>--input</code> to also test input injection; this moves the real pointer for a moment.</p>
 <div class="note">Run <code>screenpilot doctor</code> first on a new machine, and again whenever recording or driving fails.</div>

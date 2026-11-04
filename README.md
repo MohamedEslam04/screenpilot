@@ -145,4 +145,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 96fd938 ("feat(editing): speed ramps, segment transitions, color grade, subtitle files, gif/webm/poster", 2026-11-04).
+Docs synced to commit 76f353b ("Merge origin/main into feat/a11y-locator", 2026-11-04).

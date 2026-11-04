@@ -49,6 +49,7 @@
 screenpilot windows                                # open windows and their geometry
 screenpilot browser --screen HDMI-A-1 --url https://example.com
 screenpilot drive move eDP-1,0.5,0.5               # also: drive click, type, key, scroll
+screenpilot a11y tree --app gedit                  # controls of a native app (role, name, rect)
 screenpilot take-schema                            # print the take.json schema
 screenpilot perform take.json --dry-run            # rehearse: same actions, no recording
 screenpilot perform take.json                      # record and drive; writes the session folder
@@ -72,16 +73,61 @@ screenpilot perform take.json                      # record and drive; writes th
 <p>المسارات داخل الـ take (رابط <code>browser</code> أو <code>goto</code> إذا كان ملفاً) نسبية إلى ملف الـ take نفسه. اكتب <code>site/index.html</code> ولا تكتب مساراً مطلقاً من جهازك.</p>
 
 <h2 id="targets">الأهداف<a class="a" href="#targets" aria-label="رابط إلى هذا القسم">#</a></h2>
-<p>الخطوات التي تشير إلى شيء على الشاشة (<code>click</code> و<code>move</code> و<code>drag</code> و<code>scroll</code>) تأخذ هدفاً. للهدف ثلاث صيغ.</p>
+<p>الخطوات التي تشير إلى شيء على الشاشة (<code>click</code> و<code>move</code> و<code>drag</code> و<code>scroll</code>) تأخذ هدفاً. للهدف أربع صيغ.</p>
 <table>
   <thead><tr><th>الصيغة</th><th>معناها</th><th>متى تستخدمها</th></tr></thead>
   <tbody>
     <tr><td><code>{ "web": "selector" }</code></td><td>عنصر في المتصفح التجريبي، يُعثر عليه بمحدد Playwright: CSS أو <code>text=Submit</code> أو <code>role=button</code>.</td><td>عندما يكون العرض تطبيق ويب. هذه الصيغة الدقيقة والمفضّلة: تجد العنصر أينما كان على الشاشة.</td></tr>
+    <tr><td><code>{ "a11y": { "role": "button", "name": "Save" } }</code></td><td>عنصر تحكم في تطبيق أصلي، يُعثر عليه عبر شجرة إمكانية الوصول، ويُحلّ إلى مركز هذا العنصر. راجع <a href="#a11y">التطبيقات الأصلية</a>.</td><td>تطبيق أصلي فيه عناصر تحكم مسمّاة (أزرار وقوائم وحقول). تجد العنصر حتى لو تغيّر التخطيط أو موضع النافذة.</td></tr>
     <tr><td><code>{ "window": "match", "x": 0.5, "y": 0.5 }</code></td><td>نقطة داخل أول نافذة يحتوي صنفها أو عنوانها على <code>match</code>. القيمتان x وy بين 0 و1 داخل تلك النافذة.</td><td>تطبيق أصلي على سطح مكتب يستطيع سرد النوافذ. تبقى النقطة صحيحة حتى لو تحرّكت النافذة.</td></tr>
     <tr><td><code>{ "screen": "eDP-1", "x": 0.5, "y": 0.5 }</code></td><td>نقطة على شاشة واحدة بين 0 و1 (x من اليسار وy من الأعلى). بدون <code>screen</code> تكون الشاشة التي عليها المؤشر.</td><td>تعمل في كل مكان. وهي الصيغة الوحيدة التي تعمل على أسطح المكتب التي لا تتيح التحكم بالنوافذ (GNOME على Wayland).</td></tr>
   </tbody>
 </table>
-<div class="note">لقراءة إحداثيات الشاشة، التقط <code>screenshot</code> مع تفعيل <code>grid</code> واقرأ x وy من الشبكة. وللتأكد من وجود هدف <code>{web}</code> قبل النقر، استدعِ <code>web_locate</code>.</div>
+<div class="note">لقراءة إحداثيات الشاشة، التقط <code>screenshot</code> مع تفعيل <code>grid</code> واقرأ x وy من الشبكة. وللتأكد من وجود هدف <code>{web}</code> قبل النقر، استدعِ <code>web_locate</code>. وللتأكد من هدف <code>{a11y}</code> استدعِ <code>a11y_find</code>.</div>
+
+<h2 id="a11y">التطبيقات الأصلية: أهداف {a11y}<a class="a" href="#a11y" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>هدف <code>{a11y}</code> يجد عنصر تحكم بحسب role وname عبر شجرة إمكانية الوصول في نظام التشغيل، ثم يُحلّ إلى مركز ذلك العنصر. هو يحدّد الموضع فقط. المؤشر الحقيقي هو الذي ينتقل إلى هناك وينقر، فيظهر في التسجيل مؤشر عادي. يعمل في كل مكان يقبل هدفاً: <code>click</code> و<code>move</code> و<code>drag</code> و<code>scroll</code> (<code>at</code>) و<code>waitFor</code>.</p>
+<table>
+  <thead><tr><th>المفتاح</th><th>وظيفته</th></tr></thead>
+  <tbody>
+    <tr><td><code>role</code></td><td>نوع العنصر: <code>button</code> و<code>checkbox</code> و<code>radio</code> و<code>tab</code> و<code>textbox</code> و<code>menuitem</code> و<code>combobox</code> و<code>listitem</code> وما شابهها، أو اسم AT-SPI مثل <code>push button</code> و<code>menu item</code> و<code>entry</code>.</td></tr>
+    <tr><td><code>name</code></td><td>تسمية العنصر. يتطابق إذا احتوى الاسم هذا النص، دون اعتبار لحالة الأحرف.</td></tr>
+    <tr><td><code>app</code></td><td>التطبيق الذي يُبحث فيه: يحتوي صنف نافذته أو عنوانها على هذا النص. بدونه يبحث ScreenPilot في تطبيق النافذة المركّز عليها إن استطاع سطح المكتب أن يحدّدها، وإلا في كل التطبيقات.</td></tr>
+    <tr><td><code>exact</code></td><td>القيمة <code>true</code> تطابق الاسم كله لا جزءاً منه.</td></tr>
+    <tr><td><code>nth</code></td><td>اختيار يبدأ من 1 عند تطابق عدة عناصر.</td></tr>
+  </tbody>
+</table>
+<p>مرّر <code>role</code> أو <code>name</code> أو الاثنين. إذا تطابقت عدة عناصر تفشل الخطوة مع قائمة بالمرشّحين. ScreenPilot لا يخمّن أبداً: أضف <code>nth</code> أو اسماً أدق.</p>
+<pre><code class="language-json">{ "click": { "a11y": { "role": "button", "name": "Save", "app": "gedit" } } },
+{ "waitFor": { "a11y": { "role": "menuitem", "name": "Open" }, "timeout": 10 } }
+</code></pre>
+<p>اقرأ التطبيق أولاً. <code>a11y_tree</code> تسرد العناصر مع role وname وstates ومستطيل، و<code>a11y_find</code> تتأكد أن الهدف يطابق عنصراً واحداً بالضبط. من سطر الأوامر: <code>screenpilot a11y tree [--app X] [--all]</code> و<code>screenpilot a11y find &lt;role&gt;:&lt;name&gt; [--app X] [--exact]</code> و<code>screenpilot drive click a11y:&lt;role&gt;:&lt;name&gt;</code>.</p>
+
+<h3 id="a11y-support">أين يعمل<a class="a" href="#a11y-support" aria-label="رابط إلى هذا القسم">#</a></h3>
+<ul>
+  <li><strong>Linux مع KDE Wayland:</strong> يعمل عبر AT-SPI (مُختبر على KDE Plasma).</li>
+  <li><strong>Linux مع X11:</strong> يعمل بالطريقة نفسها (مُختبر على خادم X متداخل بلا مدير نوافذ، ولم يُختبر بعد على سطح مكتب X11 كامل).</li>
+  <li><strong>GNOME وأسطح Wayland الأخرى:</strong> لا يخبر سطح المكتب بموضع النافذة. يمكن قراءة الشجرة (<code>a11y_tree</code>) لكن النقر يفشل مع <code>POSITION_UNKNOWN</code>. استخدم أهداف <code>{screen, x, y}</code> هناك.</li>
+  <li><strong>macOS:</strong> مبني على Accessibility API ومُختبر على جهاز macOS حقيقي في CI. يحتاج تطبيق الذكاء الاصطناعي إلى إذن Accessibility.</li>
+  <li><strong>Windows:</strong> مبني على UI Automation عبر سكربت PowerShell قصير (لا شيء يلزم تثبيته) ومُختبر على جهاز Windows حقيقي في CI. والتطبيقات التي تُظهر عناصرها لـ UI Automation كألواح عادية فقط (مثل حقل النص في Notepad الكلاسيكي) لا يظهر فيها عنصر: استخدم أهداف <code>{window, x, y}</code> أو <code>{screen, x, y}</code> معها. ولا يمكن قراءة تطبيق يعمل بصلاحيات المسؤول إلا إذا كان تطبيق الذكاء الاصطناعي يعمل بها أيضاً.</li>
+</ul>
+<div class="warn">تطبيقات Qt لا تظهر في شجرة إمكانية الوصول إلا إذا بدأت بالمتغير <code>QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1</code>. التطبيقات التي يشغّلها الـ take بالخطوتين <code>run</code> و<code>open</code> تحصل عليه تلقائياً. أما تطبيق Qt يعمل بالفعل فيجب إعادة تشغيله. والتطبيقات التي ترسم واجهتها بنفسها (بعض تطبيقات Electron وما يُرسم بالـ GPU) تُظهر القليل أو لا شيء. ويحتاج Chromium إلى <code>--force-renderer-accessibility</code>؛ وفي متصفح العرض استخدم أهداف <code>{web}</code> بدلاً من ذلك.</div>
+
+<h3 id="a11y-errors">أخطاء الأهداف<a class="a" href="#a11y-errors" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>عندما يتعذّر حل هدف لا يكون أي إدخال قد أُرسل، فالمحاولة مرة أخرى آمنة. يحمل الخطأ رمزاً ويذكر ذلك: <code>delivery: "not_delivered"</code> و<code>retry: "safe"</code>.</p>
+<table>
+  <thead><tr><th>الرمز</th><th>المعنى</th></tr></thead>
+  <tbody>
+    <tr><td><code>ELEMENT_NOT_FOUND</code></td><td>لا يوجد عنصر مطابق. اقرأ التطبيق بـ <code>a11y_tree</code>.</td></tr>
+    <tr><td><code>AMBIGUOUS_TARGET</code></td><td>تطابقت عدة عناصر. يسردها الخطأ. أضف <code>nth</code> أو اسماً أدق.</td></tr>
+    <tr><td><code>APP_NOT_FOUND</code></td><td>لا يوجد تطبيق يمكن الوصول إليه يطابق. هل هو يعمل؟ وبالنسبة لتطبيقات Qt راجع التحذير أعلاه.</td></tr>
+    <tr><td><code>WINDOW_NOT_FOUND</code></td><td>لا توجد نافذة تطابق هدف <code>{window}</code> أو خطوة <code>focus</code>. يسرد الخطأ النوافذ الموجودة.</td></tr>
+    <tr><td><code>A11Y_UNAVAILABLE</code></td><td>تعذّرت قراءة مصدر إمكانية الوصول في هذا النظام (مثلاً لا يوجد accessibility bus على Linux، أو PowerShell غير موجود على Windows).</td></tr>
+    <tr><td><code>POSITION_UNKNOWN</code></td><td>وُجد العنصر لكن سطح المكتب لا يخبر بموضع النافذة.</td></tr>
+    <tr><td><code>TIMEOUT</code></td><td>لم تر <code>waitFor</code> العنصر في الوقت المحدد.</td></tr>
+  </tbody>
+</table>
+<p>تنتهي أخطاء أدوات MCP بسطر JSON هو <code>{code, delivery, retry}</code>. وتعيد <code>perform</code> الفاشلة الحقول نفسها، مع <code>candidates</code> إن وُجدت، بجانب <code>failedStep</code>. وعندما تطابق عدة نوافذ هدف <code>{window}</code> أو <code>focus</code> تُفضَّل النافذة المركّز عليها.</p>
 
 <h2 id="steps">كل الخطوات<a class="a" href="#steps" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>كل خطوة كائن له مفتاح رئيسي واحد. المفاتيح غير المعروفة تُرفض، فيظهر الخطأ المطبعي عند التحقق بدل أن يُتجاهل.</p>
@@ -100,11 +146,11 @@ screenpilot perform take.json                      # record and drive; writes th
     <tr><td><code>key</code></td><td></td><td>يضغط اختصاراً مثل <code>ctrl+l</code> أو <code>enter</code> أو <code>alt+tab</code>. على macOS استخدم <code>cmd+l</code> بدل <code>ctrl+l</code>.</td></tr>
     <tr><td><code>scroll</code></td><td><code>at</code>, <code>horizontal</code></td><td>يمرّر بعدد صحيح من الخطوات. الرقم الموجب لأسفل (أو لليمين مع <code>horizontal</code>) والسالب لأعلى. <code>at</code> هدف ينتقل إليه المؤشر أولاً.</td></tr>
     <tr><td><code>wait</code></td><td></td><td>ينتظر عدداً من الثواني.</td></tr>
-    <tr><td><code>waitFor</code></td><td><code>web</code>, <code>timeout</code> (30)</td><td>ينتظر ظهور عنصر في المتصفح التجريبي. يفشل إن لم يظهر في الوقت المحدد.</td></tr>
+    <tr><td><code>waitFor</code></td><td><code>web</code> أو <code>a11y</code>, <code>timeout</code> (30)</td><td>ينتظر ظهور عنصر في المتصفح التجريبي (<code>web</code>) أو عنصر تحكم في تطبيق أصلي (<code>a11y</code>). يفشل إن لم يظهر في الوقت المحدد.</td></tr>
     <tr><td><code>waitForWindow</code></td><td><code>match</code>, <code>timeout</code> (15)</td><td>ينتظر وجود نافذة يحتوي صنفها أو عنوانها على <code>match</code>.</td></tr>
     <tr><td><code>focus</code></td><td><code>match</code>, <code>screen</code></td><td>يُبرز نافذة، ويمكنه نقلها إلى شاشة محددة.</td></tr>
     <tr><td><code>open</code></td><td></td><td>يفتح ملفاً أو رابطاً بالتطبيق الافتراضي في النظام.</td></tr>
-    <tr><td><code>run</code></td><td></td><td>يشغّل برنامجاً من قائمة: <code>["xdg-open", "~/Downloads/x.pdf"]</code>. لا يوجد shell، فلا أنابيب ولا علامات اقتباس. فضّل <code>open</code>.</td></tr>
+    <tr><td><code>run</code></td><td></td><td>يشغّل برنامجاً من قائمة: <code>["xdg-open", "~/Downloads/x.pdf"]</code>. لا يوجد shell، فلا أنابيب ولا علامات اقتباس. فضّل <code>open</code>. التطبيقات التي تبدأ بـ <code>run</code> و<code>open</code> تحصل على <code>QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1</code>، فتظهر تطبيقات Qt لأهداف <code>{a11y}</code>.</td></tr>
   </tbody>
 </table>
 <p>الخطوات <code>say</code> و<code>caption</code> و<code>view</code> لا تلمس سطح المكتب. تُكتب في الـ storyboard المبدئي كتعليق صوتي وعناوين وتبديل للكاميرا، في لحظة حدوثها. وداخل <code>setup</code> لا تفعل شيئاً.</p>
@@ -147,7 +193,7 @@ screenpilot perform take.json                      # record and drive; writes th
 <h2 id="output">ما الذي يعطيك إياه perform<a class="a" href="#output" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>ينتج الـ take المنفَّذ مجلد جلسة فيه الفيديو و<code>events.jsonl</code> (النقرات فيه مأخوذة مما فعله المشغّل نفسه فهي دقيقة) و<code>storyboard.json</code>. في هذا الـ storyboard تأتي التكبيرات موضوعة على النقرات، والتعليق الصوتي والعناوين في أوقاتها، وتبديلات الكاميرا. وكل خطوة <code>type</code> تُعلَّم أيضًا كمجال <code>typing</code> (السر القادم من متغير بيئة يُحتسب وقته ولا يُنسخ)، فيستطيع <code>sounds.typing</code> العمل عليها. عدّله كأي storyboard آخر.</p>
 <p>من سطر الأوامر يكون المجلد <code>sessions/&lt;timestamp&gt;</code> ما لم تمرّر <code>--dir</code>. ومن تطبيق ذكاء اصطناعي يكون مجلداً جديداً داخل مجلد <strong>ScreenPilot</strong> في مجلد Videos (وفي ماك Movies).</p>
-<p>إذا فشلت خطوة يتوقف الـ take، ويحتفظ بما سُجّل حتى تلك اللحظة، ويذكر الخطوة التي فشلت. في تطبيق الذكاء الاصطناعي تحتوي النتيجة على <code>failedStep</code> و<code>error</code> و<code>partial</code>. شاهد التسجيل الجزئي لتعرف أين حدث الخطأ.</p>
+<p>إذا فشلت خطوة يتوقف الـ take، ويحتفظ بما سُجّل حتى تلك اللحظة، ويذكر الخطوة التي فشلت. في تطبيق الذكاء الاصطناعي تحتوي النتيجة على <code>failedStep</code> و<code>error</code> و<code>partial</code>، مع <code>code</code> و<code>delivery</code> و<code>retry</code> و<code>candidates</code> إذا فشلت الخطوة عند هدف (راجع <a href="#a11y-errors">أخطاء الأهداف</a>). شاهد التسجيل الجزئي لتعرف أين حدث الخطأ.</p>
 
 <h2 id="tips">نصائح<a class="a" href="#tips" aria-label="رابط إلى هذا القسم">#</a></h2>
 <ul>
@@ -155,7 +201,7 @@ screenpilot perform take.json                      # record and drive; writes th
   <li><strong>انتظر الشيء نفسه لا الوقت.</strong> بعد نقرة تحمّل شيئاً، استخدم <code>waitFor</code> أو <code>waitForWindow</code> بدل <code>wait</code> طويلة. اجعل الانتظار العادي بين 0.3 وثانية واحدة بعد تغيّر الصفحة.</li>
   <li><strong>اجعل الـ take قصيراً.</strong> ابقَ تحت 90 ثانية تقريباً. الـ take الأقصر أسرع في التجربة وأسهل في التحرير.</li>
   <li><strong>اجعل الأسطر قصيرة.</strong> جملة واحدة وأقل من 12 كلمة تقريباً. التصدير يجمّد الفيديو إذا كان السطر أطول من مكانه، فتزيد الأسطر الطويلة وقتاً ميتاً.</li>
-  <li><strong>فضّل أهداف <code>{web}</code></strong> داخل المتصفح التجريبي. تجد العنصر نفسه، فلا تنكسر إذا تغيّر التخطيط.</li>
+  <li><strong>فضّل أهداف <code>{web}</code></strong> داخل المتصفح التجريبي. تجد العنصر نفسه، فلا تنكسر إذا تغيّر التخطيط. وفي تطبيق أصلي فضّل <code>{a11y}</code> على إحداثيات الشاشة، وتحقق منه أولاً بـ <code>a11y_find</code>.</li>
   <li><strong>الأسرار في البيئة.</strong> استخدم <code>{ "type": { "env": "NAME" } }</code>. تُقرأ القيمة من متغيرات البيئة عند تنفيذ الخطوة ولا تُسجَّل ولا تُطبع. لا تكتب كلمة مرور داخل <code>take.json</code> أبداً.</li>
   <li><strong>جرّب دائماً بـ dry run.</strong> التجربة تكلّف ثوانٍ، أما take حقيقي فاشل فيكلّف تسجيلاً.</li>
   <li><strong>لا تُظهر شيئاً خاصاً.</strong> افتح الصفحات مع <code>"app": true</code> حتى لا يظهر شريط العنوان ولا التبويبات ولا مسارات الملفات المحلية.</li>
@@ -164,13 +210,13 @@ screenpilot perform take.json                      # record and drive; writes th
 <h2 id="platforms">ما الذي يدعمه كل سطح مكتب<a class="a" href="#platforms" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>يعمل التحكم على KDE Plasma وأي سطح مكتب X11 وGNOME على Wayland وWindows وmacOS. ولا يعمل على sway وHyprland، مع أن التسجيل يعمل عليهما.</p>
 <ul>
-  <li><strong>KDE Plasma وأسطح مكتب X11 وWindows وmacOS:</strong> كل ما في هذه الصفحة يعمل، بما فيه أهداف <code>{web}</code> و<code>{window}</code> والخطوتان <code>focus</code> و<code>waitForWindow</code>.</li>
-  <li><strong>GNOME على Wayland:</strong> لا يوجد تحكم بالنوافذ. استخدم أهداف <code>{ "screen", "x", "y" }</code> فقط. الخطوتان <code>focus</code> و<code>waitForWindow</code> وأهداف <code>{window}</code> و<code>{web}</code> تفشل مع رسالة خطأ.</li>
+  <li><strong>KDE Plasma وأسطح مكتب X11 وWindows وmacOS:</strong> كل ما في هذه الصفحة يعمل، بما فيه أهداف <code>{web}</code> و<code>{window}</code> والخطوتان <code>focus</code> و<code>waitForWindow</code>. وأهداف <code>{a11y}</code> مُختبرة على KDE Plasma وعلى X11 (خادم X متداخل)، وعلى macOS وWindows (مُختبرة على جهاز حقيقي في CI؛ انظر أعلاه لحد Windows).</li>
+  <li><strong>GNOME على Wayland:</strong> لا يوجد تحكم بالنوافذ. استخدم أهداف <code>{ "screen", "x", "y" }</code> فقط. الخطوتان <code>focus</code> و<code>waitForWindow</code> وأهداف <code>{window}</code> و<code>{web}</code> تفشل مع رسالة خطأ. يمكن قراءة عناصر <code>{a11y}</code> لكن لا يمكن النقر عليها.</li>
   <li><strong>sway وHyprland:</strong> التحكم غير ممكن.</li>
 </ul>
 <p>على Wayland يطلب منك النظام الموافقة على نافذة التحكم عن بعد مرة واحدة عند أول استخدام. على macOS يحتاج تطبيق الذكاء الاصطناعي إلى إذن Accessibility. وعلى Windows لا يمكن التحكم بتطبيقات تعمل بصلاحيات المسؤول إلا إذا كان تطبيق الذكاء الاصطناعي يعمل بها أيضاً. الجدول الكامل في صفحة <a href="../../ar/guide/platforms.html">المنصات</a>.</p>
 <nav class="pager" aria-label="Pager"><a href="sequence.html" rel="prev"><small>السابق</small>دمج التسجيلات</a><a href="safety.html" rel="next"><small>التالي</small>الأمان والخصوصية</a></nav></article>
-  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#loop">الدورة</a><a href="#cli">الأوامر</a><a href="#structure">شكل الـ take</a><a href="#targets">الأهداف</a><a href="#steps">كل الخطوات</a><a href="#example">take كامل</a><a href="#output">ما الذي يعطيك إياه perform</a><a href="#tips">نصائح</a><a href="#platforms">ما الذي يدعمه كل سطح مكتب</a></aside>
+  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#loop">الدورة</a><a href="#cli">الأوامر</a><a href="#structure">شكل الـ take</a><a href="#targets">الأهداف</a><a href="#a11y">التطبيقات الأصلية: أهداف {a11y}</a><a href="#steps">كل الخطوات</a><a href="#example">take كامل</a><a href="#output">ما الذي يعطيك إياه perform</a><a href="#tips">نصائح</a><a href="#platforms">ما الذي يدعمه كل سطح مكتب</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../../ar/index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot مفتوح المصدر برخصة MIT.</small><small>أسماء المنتجات ملك لأصحابها. ScreenPilot مشروع مستقل.</small></div>

@@ -9,7 +9,7 @@ export function openCommand(target: string, platform: NodeJS.Platform = process.
 }
 
 /** Fire and forget: the app outlives us. */
-export function openWithDefaultApp(target: string): void {
+export function openWithDefaultApp(target: string, env?: NodeJS.ProcessEnv): void {
   const { cmd, args } = openCommand(target);
-  spawn(cmd, args, { detached: true, stdio: "ignore", windowsHide: true }).unref();
+  spawn(cmd, args, { detached: true, stdio: "ignore", windowsHide: true, ...(env ? { env } : {}) }).unref();
 }

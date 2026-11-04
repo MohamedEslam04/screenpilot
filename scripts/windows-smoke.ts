@@ -7,11 +7,12 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { a11yCheck } from "./a11y-check.js";
 import { Driver } from "../src/drive/index.js";
 import { screenshot } from "../src/drive/see.js";
 import { locate, openBrowser, withPage } from "../src/drive/web.js";
 import { startRecording } from "../src/record/index.js";
-import { performTake } from "../src/take/perform.js";
+import { performTake, resolveTarget } from "../src/take/perform.js";
 import { getDesktop, type WindowInfo } from "../src/platform/index.js";
 import type { ScreenInfo } from "../src/record/input/types.js";
 import { run } from "../src/util/exec.js";
@@ -151,6 +152,38 @@ async function main(): Promise<void> {
     if (!driver) throw new Error("needs driver");
     notepad = await waitWindow(driver, "notepad.exe");
     return `window ${notepad.id} pid ${notepad.pid} "${notepad.caption}"`;
+  });
+
+  // Paint, not Notepad: the classic Notepad's edit area is a plain Pane for UI Automation, so it has no control role to find.
+  await check("paint: accessibility tree (UI Automation)", async () => {
+    if (!driver) throw new Error("needs driver");
+    const child = spawn("mspaint.exe", [], { detached: true, stdio: "ignore" });
+    child.unref();
+    const w = await waitWindow(driver, "mspaint.exe", 15_000);
+    try {
+      await sleep(2000);
+      const tree = await a11yCheck(driver.desktop, "mspaint", w, 24, { role: "button", name: "Close", exact: true });
+
+      // The real pointer, aimed by an {a11y} target: the title bar's Maximize (or Restore) button must change the window.
+      const before = await refresh(driver, w.id);
+      let label = "Maximize";
+      let p: { x: number; y: number };
+      try {
+        p = await resolveTarget({ a11y: { app: "mspaint", role: "button", name: "Maximize", exact: true } }, driver);
+      } catch {
+        label = "Restore";
+        p = await resolveTarget({ a11y: { app: "mspaint", role: "button", name: "Restore", exact: true } }, driver);
+      }
+      await driver.moveToGlobal(p, { dur: 0.3 });
+      await driver.click();
+      await sleep(1200);
+      const after = await refresh(driver, w.id);
+      const changed = Math.abs(after.w - before.w) > 20 || Math.abs(after.h - before.h) > 20 || Math.abs(after.x - before.x) > 20 || Math.abs(after.y - before.y) > 20;
+      if (!changed) throw new Error(`clicked ${label} at (${Math.round(p.x)},${Math.round(p.y)}) but the window stayed ${rectText(before)}`);
+      return `${tree}; clicked ${label} at (${Math.round(p.x)},${Math.round(p.y)}): window ${rectText(before)} -> ${rectText(after)}`;
+    } finally {
+      await run("taskkill", ["/PID", String(w.pid), "/F"]).catch(() => undefined);
+    }
   });
 
   await check("notepad: focus on monitor at 16:9", async () => {

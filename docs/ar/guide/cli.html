@@ -313,9 +313,19 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <thead><tr><th>الأمر</th><th>وظيفته</th></tr></thead>
 <tbody>
 <tr><td><code>drive move &lt;screen,x,y&gt;</code></td><td>يحرّك المؤشر.</td></tr>
-<tr><td><code>drive click &lt;target&gt;</code></td><td>ينقر. الهدف <code>screen,x,y</code> أو <code>web:&lt;selector&gt;</code> لعنصر داخل متصفح العرض. الخيارات: <code>--button left|right|middle</code> (الافتراضي left) و<code>--count &lt;n&gt;</code> (2 لنقرة مزدوجة).</td></tr>
+<tr><td><code>drive click &lt;target&gt;</code></td><td>ينقر. الهدف <code>screen,x,y</code> أو <code>web:&lt;selector&gt;</code> لعنصر داخل متصفح العرض أو <code>a11y:&lt;role&gt;:&lt;name&gt;</code> لعنصر تحكم في تطبيق أصلي (مثل <code>a11y:button:Save</code>؛ و<code>a11y::Save</code> تعني أي role). الخيارات: <code>--button left|right|middle</code> (الافتراضي left) و<code>--count &lt;n&gt;</code> (2 لنقرة مزدوجة).</td></tr>
 <tr><td><code>drive type &lt;text&gt;</code></td><td>يكتب نصًا في الحقل الذي عليه التركيز.</td></tr>
 <tr><td><code>drive key &lt;combo&gt;</code></td><td>يضغط تركيبة مفاتيح مثل <code>"ctrl+l"</code>. على macOS استخدم <code>cmd</code>.</td></tr>
+</tbody>
+</table>
+
+<h3 id="a11y">a11y<a class="a" href="#a11y" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>الأمر <code>screenpilot a11y</code> يقرأ واجهة تطبيق أصلي عبر شجرة إمكانية الوصول، لتكتب أهداف <code>{a11y}</code> دون تخمين البكسلات. راجع <a href="../../ar/guide/agent-drive.html#a11y">التطبيقات الأصلية</a>.</p>
+<table>
+<thead><tr><th>الأمر</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>a11y tree</code></td><td>يطبع عناصر التحكم في تطبيق مع role وname ومستطيل بإحداثيات الشاشة. الخيارات: <code>--app &lt;app&gt;</code> (يحتوي صنف النافذة أو عنوانها على النص؛ الافتراضي تطبيق النافذة المركّز عليها) و<code>--all</code> (يشمل العناصر غير التفاعلية) و<code>--max-depth &lt;n&gt;</code> (الافتراضي 20).</td></tr>
+<tr><td><code>a11y find &lt;spec&gt;</code></td><td>يطبع عناصر التحكم المطابقة لـ <code>&lt;role&gt;:&lt;name&gt;</code> (مثل <code>button:Save</code>) أو لاسم فقط. الخيارات: <code>--app &lt;app&gt;</code> و<code>--exact</code> (يطابق الاسم كله).</td></tr>
 </tbody>
 </table>
 
@@ -351,7 +361,7 @@ screenpilot voices --provider edge --lang ar</code></pre>
 </table>
 
 <h3 id="doctor">doctor<a class="a" href="#doctor" aria-label="رابط إلى هذا القسم">#</a></h3>
-<p>الأمر <code>screenpilot doctor</code> يفحص هذا الجهاز: ffmpeg وسطح المكتب والشاشات وOBS ومتصفح العرض والأصوات، ومنها فحص "local voice" الذي يُتخطّى إذا لم تُعدّ صوتًا محليًا (فهو اختياري). يطبع تقريرًا بصيغة JSON وسطر ملخص. رمز الخروج دائمًا 0، فاقرأ التقرير. أضف <code>--input</code> لاختبار حقن الإدخال أيضًا، وهو يحرّك المؤشر الفعلي لحظة.</p>
+<p>الأمر <code>screenpilot doctor</code> يفحص هذا الجهاز: ffmpeg وسطح المكتب والشاشات وOBS ومتصفح العرض والأصوات، ومنها فحص "accessibility tree" وفحص "local voice" الذي يُتخطّى إذا لم تُعدّ صوتًا محليًا (فهو اختياري). يطبع تقريرًا بصيغة JSON وسطر ملخص. رمز الخروج دائمًا 0، فاقرأ التقرير. أضف <code>--input</code> لاختبار حقن الإدخال أيضًا، وهو يحرّك المؤشر الفعلي لحظة.</p>
 <div class="note">نفّذ <code>screenpilot doctor</code> أولًا على أي جهاز جديد، وأعد تنفيذه كلما فشل التسجيل أو التحكم.</div>
 <nav class="pager" aria-label="Pager"><a href="install.html" rel="prev"><small>السابق</small>تثبيت ScreenPilot</a><a href="tools.html" rel="next"><small>التالي</small>أدوات MCP</a></nav></article>
   <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#workflow">سير العمل كاملًا</a><a href="#update-app">التحديث</a><a href="#decisions">القرارات أولًا</a><a href="#record-and-look">التسجيل والمعاينة</a><a href="#edit">التحرير</a><a href="#render-and-check">التصيير والفحص</a><a href="#combine">دمج التسجيلات</a><a href="#drive">رؤية سطح المكتب والتحكم فيه</a><a href="#setup-and-checks">إعداد الجهاز وفحصه</a></aside>

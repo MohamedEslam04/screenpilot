@@ -49,6 +49,7 @@
 screenpilot windows                                # open windows and their geometry
 screenpilot browser --screen HDMI-A-1 --url https://example.com
 screenpilot drive move eDP-1,0.5,0.5               # also: drive click, type, key, scroll
+screenpilot a11y tree --app gedit                  # controls of a native app (role, name, rect)
 screenpilot take-schema                            # print the take.json schema
 screenpilot perform take.json --dry-run            # rehearse: same actions, no recording
 screenpilot perform take.json                      # record and drive; writes the session folder
@@ -72,16 +73,61 @@ screenpilot perform take.json                      # record and drive; writes th
 <p>Paths in a take (a <code>browser</code> URL or <code>goto</code> given as a file) are relative to the take file. Write <code>site/index.html</code>, not an absolute path from your machine.</p>
 
 <h2 id="targets">Targets<a class="a" href="#targets" aria-label="Link to this section">#</a></h2>
-<p>Steps that point at something (<code>click</code>, <code>move</code>, <code>drag</code>, <code>scroll</code>) take a target. There are three forms.</p>
+<p>Steps that point at something (<code>click</code>, <code>move</code>, <code>drag</code>, <code>scroll</code>) take a target. There are four forms.</p>
 <table>
   <thead><tr><th>Form</th><th>Means</th><th>Use it when</th></tr></thead>
   <tbody>
     <tr><td><code>{ "web": "selector" }</code></td><td>An element in the demo browser, found by a Playwright selector: CSS, <code>text=Submit</code>, <code>role=button</code>.</td><td>The demo is a web app. This is the exact, preferred form: it finds the element wherever it is on screen.</td></tr>
+    <tr><td><code>{ "a11y": { "role": "button", "name": "Save" } }</code></td><td>A control in a native app, found through the accessibility tree. It resolves to the control's centre. See <a href="#a11y">Native apps</a>.</td><td>A native app with named controls (buttons, menus, fields). It finds the control even when the layout or window position changes.</td></tr>
     <tr><td><code>{ "window": "match", "x": 0.5, "y": 0.5 }</code></td><td>A point inside the first window whose class or title contains <code>match</code>. x and y are 0..1 inside that window.</td><td>A native app, when the desktop can list windows. The point stays right even if the window moves.</td></tr>
     <tr><td><code>{ "screen": "eDP-1", "x": 0.5, "y": 0.5 }</code></td><td>A point on one monitor, 0..1 (x from the left, y from the top). Without <code>screen</code> it is the monitor under the pointer.</td><td>Everywhere. It is the only form that works on desktops with no window control (GNOME on Wayland).</td></tr>
   </tbody>
 </table>
-<div class="note">To read screen coordinates, take a <code>screenshot</code> with <code>grid</code> on and read x and y off the grid. To check that a <code>{web}</code> target exists before you click, call <code>web_locate</code>.</div>
+<div class="note">To read screen coordinates, take a <code>screenshot</code> with <code>grid</code> on and read x and y off the grid. To check that a <code>{web}</code> target exists before you click, call <code>web_locate</code>. For an <code>{a11y}</code> target, call <code>a11y_find</code>.</div>
+
+<h2 id="a11y">Native apps: {a11y} targets<a class="a" href="#a11y" aria-label="Link to this section">#</a></h2>
+<p>An <code>{a11y}</code> target finds a control by its role and name through the operating system's accessibility tree, then resolves to the centre of that control. It only locates. The real pointer still moves there and clicks, so the recording shows a normal cursor. It works wherever a target is accepted: <code>click</code>, <code>move</code>, <code>drag</code>, <code>scroll</code> (<code>at</code>) and <code>waitFor</code>.</p>
+<table>
+  <thead><tr><th>Key</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>role</code></td><td>The control type: <code>button</code>, <code>checkbox</code>, <code>radio</code>, <code>tab</code>, <code>textbox</code>, <code>menuitem</code>, <code>combobox</code>, <code>listitem</code> and similar, or an AT-SPI name such as <code>push button</code>, <code>menu item</code>, <code>entry</code>.</td></tr>
+    <tr><td><code>name</code></td><td>The control's label. It matches when the name contains this text, ignoring case.</td></tr>
+    <tr><td><code>app</code></td><td>The app to look in: its window class or title contains this text. Without it, ScreenPilot looks in the app of the focused window when the desktop can tell, and in every app otherwise.</td></tr>
+    <tr><td><code>exact</code></td><td><code>true</code> matches the whole name, not a part of it.</td></tr>
+    <tr><td><code>nth</code></td><td>1-based pick when several controls match.</td></tr>
+  </tbody>
+</table>
+<p>Give a <code>role</code> or a <code>name</code>, or both. If several controls match, the step fails with a list of candidates. ScreenPilot never guesses: add <code>nth</code> or a more specific name.</p>
+<pre><code class="language-json">{ "click": { "a11y": { "role": "button", "name": "Save", "app": "gedit" } } },
+{ "waitFor": { "a11y": { "role": "menuitem", "name": "Open" }, "timeout": 10 } }
+</code></pre>
+<p>Read the app first. <code>a11y_tree</code> lists the controls with role, name, states and a rectangle, and <code>a11y_find</code> checks that a target matches exactly one control. From the command line: <code>screenpilot a11y tree [--app X] [--all]</code>, <code>screenpilot a11y find &lt;role&gt;:&lt;name&gt; [--app X] [--exact]</code> and <code>screenpilot drive click a11y:&lt;role&gt;:&lt;name&gt;</code>.</p>
+
+<h3 id="a11y-support">Where it works<a class="a" href="#a11y-support" aria-label="Link to this section">#</a></h3>
+<ul>
+  <li><strong>Linux, KDE Wayland:</strong> works, through AT-SPI (tested on KDE Plasma).</li>
+  <li><strong>Linux, X11:</strong> works the same way (tested on a nested X server without a window manager; not yet on a full X11 desktop).</li>
+  <li><strong>GNOME and other Wayland desktops:</strong> the desktop does not tell where a window is. The tree can be read (<code>a11y_tree</code>), but a click fails with <code>POSITION_UNKNOWN</code>. Use <code>{screen, x, y}</code> targets there.</li>
+  <li><strong>macOS:</strong> built on the Accessibility API and tested on a real macOS runner in CI. The AI app needs the Accessibility permission.</li>
+  <li><strong>Windows:</strong> built on UI Automation, read by a short PowerShell script (nothing to install) and tested on a real Windows runner in CI. Apps that expose their controls to UI Automation only as plain panes (the text area of the classic Notepad, for example) show no control there: use <code>{window, x, y}</code> or <code>{screen, x, y}</code> targets for those. An app running as administrator cannot be read unless the AI app runs as administrator too.</li>
+</ul>
+<div class="warn">Qt apps only appear in the accessibility tree if they were started with <code>QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1</code>. Apps that a take starts with <code>run</code> or <code>open</code> get it automatically. A Qt app that is already running must be restarted. Apps that draw their own interface (some Electron and GPU-drawn apps) show little or nothing. Chromium needs <code>--force-renderer-accessibility</code>; in the demo browser use <code>{web}</code> targets instead.</div>
+
+<h3 id="a11y-errors">Target errors<a class="a" href="#a11y-errors" aria-label="Link to this section">#</a></h3>
+<p>When a target cannot be resolved, no input was sent, so trying again is safe. The error carries a code and says so: <code>delivery: "not_delivered"</code> and <code>retry: "safe"</code>.</p>
+<table>
+  <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>ELEMENT_NOT_FOUND</code></td><td>No control matches. Read the app with <code>a11y_tree</code>.</td></tr>
+    <tr><td><code>AMBIGUOUS_TARGET</code></td><td>Several controls match. The error lists them. Add <code>nth</code> or a more specific name.</td></tr>
+    <tr><td><code>APP_NOT_FOUND</code></td><td>No accessible app matches. Is it running? For Qt apps, see the warning above.</td></tr>
+    <tr><td><code>WINDOW_NOT_FOUND</code></td><td>No window matches a <code>{window}</code> target or a <code>focus</code> step. The error lists the windows that exist.</td></tr>
+    <tr><td><code>A11Y_UNAVAILABLE</code></td><td>The accessibility source of this desktop could not be read (for example no accessibility bus on Linux, or PowerShell missing on Windows).</td></tr>
+    <tr><td><code>POSITION_UNKNOWN</code></td><td>The control was found but the desktop does not say where the window is.</td></tr>
+    <tr><td><code>TIMEOUT</code></td><td>A <code>waitFor</code> did not see the control in time.</td></tr>
+  </tbody>
+</table>
+<p>MCP tool errors end with a JSON line <code>{code, delivery, retry}</code>. A failed <code>perform</code> returns the same fields, plus <code>candidates</code> when there are any, next to <code>failedStep</code>. When several windows match a <code>{window}</code> target or <code>focus</code>, the focused one is preferred.</p>
 
 <h2 id="steps">Every step<a class="a" href="#steps" aria-label="Link to this section">#</a></h2>
 <p>Each step is an object with one main key. Unknown keys are rejected, so a typo fails validation instead of being ignored.</p>
@@ -100,11 +146,11 @@ screenpilot perform take.json                      # record and drive; writes th
     <tr><td><code>key</code></td><td></td><td>Press a combo such as <code>ctrl+l</code>, <code>enter</code> or <code>alt+tab</code>. On macOS use <code>cmd+l</code>, not <code>ctrl+l</code>.</td></tr>
     <tr><td><code>scroll</code></td><td><code>at</code>, <code>horizontal</code></td><td>Scroll by whole steps. Positive goes down (or right with <code>horizontal</code>), negative goes up. <code>at</code> is a target to move to first.</td></tr>
     <tr><td><code>wait</code></td><td></td><td>Pause for a number of seconds.</td></tr>
-    <tr><td><code>waitFor</code></td><td><code>web</code>, <code>timeout</code> (30)</td><td>Wait until an element shows up in the demo browser. Fails if it does not appear in time.</td></tr>
+    <tr><td><code>waitFor</code></td><td><code>web</code> or <code>a11y</code>, <code>timeout</code> (30)</td><td>Wait until an element shows up in the demo browser (<code>web</code>) or a control shows up in a native app (<code>a11y</code>). Fails if it does not appear in time.</td></tr>
     <tr><td><code>waitForWindow</code></td><td><code>match</code>, <code>timeout</code> (15)</td><td>Wait until a window whose class or title contains <code>match</code> exists.</td></tr>
     <tr><td><code>focus</code></td><td><code>match</code>, <code>screen</code></td><td>Raise a window, and optionally move it onto a monitor.</td></tr>
     <tr><td><code>open</code></td><td></td><td>Open a file or URL with the system default app.</td></tr>
-    <tr><td><code>run</code></td><td></td><td>Start a program from a list: <code>["xdg-open", "~/Downloads/x.pdf"]</code>. There is no shell, so no pipes or quotes. Prefer <code>open</code>.</td></tr>
+    <tr><td><code>run</code></td><td></td><td>Start a program from a list: <code>["xdg-open", "~/Downloads/x.pdf"]</code>. There is no shell, so no pipes or quotes. Prefer <code>open</code>. Apps started by <code>run</code> and <code>open</code> get <code>QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1</code>, so Qt apps show up for <code>{a11y}</code> targets.</td></tr>
   </tbody>
 </table>
 <p><code>say</code>, <code>caption</code> and <code>view</code> do not touch the desktop. They are written into the starter storyboard as narration, captions and camera switches, at the moment they happen. Inside <code>setup</code> they do nothing.</p>
@@ -147,7 +193,7 @@ screenpilot perform take.json                      # record and drive; writes th
 <h2 id="output">What perform gives you<a class="a" href="#output" aria-label="Link to this section">#</a></h2>
 <p>A performed take produces a session folder with the video, <code>events.jsonl</code> (the clicks come from what the driver did, so they are exact) and a <code>storyboard.json</code>. The storyboard already has zooms placed on the clicks, your narration and captions at the right times, and the camera views. Each <code>type</code> step is also marked as a <code>typing</code> span (a secret from an environment variable is timed, never copied), so <code>sounds.typing</code> can play on it. Edit it like any storyboard.</p>
 <p>From the CLI the folder is <code>sessions/&lt;timestamp&gt;</code> unless you pass <code>--dir</code>. From an AI app it is a new folder in the <strong>ScreenPilot</strong> folder inside your Videos folder (Movies on a Mac).</p>
-<p>When a step fails, the take stops, keeps whatever was recorded so far, and reports which step failed. In an AI app the result has <code>failedStep</code>, <code>error</code> and <code>partial</code>. Look at the partial recording to see where it went wrong.</p>
+<p>When a step fails, the take stops, keeps whatever was recorded so far, and reports which step failed. In an AI app the result has <code>failedStep</code>, <code>error</code> and <code>partial</code>, plus <code>code</code>, <code>delivery</code>, <code>retry</code> and <code>candidates</code> when the step failed on a target (see <a href="#a11y-errors">Target errors</a>). Look at the partial recording to see where it went wrong.</p>
 
 <h2 id="tips">Tips<a class="a" href="#tips" aria-label="Link to this section">#</a></h2>
 <ul>
@@ -155,7 +201,7 @@ screenpilot perform take.json                      # record and drive; writes th
   <li><strong>Wait for things, not for time.</strong> After a click that loads something, use <code>waitFor</code> or <code>waitForWindow</code> instead of a long <code>wait</code>. Keep plain waits to 0.3 to 1 second after a page change.</li>
   <li><strong>Keep takes short.</strong> Stay under about 90 seconds. A shorter take is faster to rehearse and easier to edit.</li>
   <li><strong>Keep lines short.</strong> One sentence, under about 12 words. The render freezes the video when a line is longer than its slot, so long lines add dead time.</li>
-  <li><strong>Prefer <code>{web}</code> targets</strong> inside the demo browser. They find the element, so they do not break when the layout changes.</li>
+  <li><strong>Prefer <code>{web}</code> targets</strong> inside the demo browser. They find the element, so they do not break when the layout changes. In a native app, prefer <code>{a11y}</code> over screen coordinates, and check it with <code>a11y_find</code> first.</li>
   <li><strong>Secrets go in the environment.</strong> Use <code>{ "type": { "env": "NAME" } }</code>. The value is read from the environment when the step runs and is never logged or printed. Never write a password into <code>take.json</code>.</li>
   <li><strong>Always rehearse.</strong> A dry run costs seconds. A failed real take costs a recording.</li>
   <li><strong>Show nothing private.</strong> Open pages with <code>"app": true</code> so no address bar, tabs or local paths appear.</li>
@@ -164,13 +210,13 @@ screenpilot perform take.json                      # record and drive; writes th
 <h2 id="platforms">What each desktop supports<a class="a" href="#platforms" aria-label="Link to this section">#</a></h2>
 <p>Driving works on KDE Plasma, any X11 desktop, GNOME on Wayland, Windows and macOS. It does not work on sway or Hyprland, where recording still works.</p>
 <ul>
-  <li><strong>KDE Plasma, X11 desktops, Windows, macOS:</strong> everything in this page works, including <code>{web}</code> and <code>{window}</code> targets, <code>focus</code> and <code>waitForWindow</code>.</li>
-  <li><strong>GNOME on Wayland:</strong> no window control. Use only <code>{ "screen", "x", "y" }</code> targets. The <code>focus</code> and <code>waitForWindow</code> steps and the <code>{window}</code> and <code>{web}</code> targets fail with an error.</li>
+  <li><strong>KDE Plasma, X11 desktops, Windows, macOS:</strong> everything in this page works, including <code>{web}</code> and <code>{window}</code> targets, <code>focus</code> and <code>waitForWindow</code>. <code>{a11y}</code> targets are tested on KDE Plasma and on X11 (nested X server), on macOS and on Windows (both tested on a real runner in CI; see above for the Windows limit).</li>
+  <li><strong>GNOME on Wayland:</strong> no window control. Use only <code>{ "screen", "x", "y" }</code> targets. The <code>focus</code> and <code>waitForWindow</code> steps and the <code>{window}</code> and <code>{web}</code> targets fail with an error. <code>{a11y}</code> controls can be read but not clicked.</li>
   <li><strong>sway, Hyprland:</strong> driving is not possible.</li>
 </ul>
 <p>On Wayland, the first drive asks you to approve a remote control dialog once. On macOS the AI app needs Accessibility permission. On Windows, apps that run as administrator cannot be driven unless the AI app runs as administrator too. See <a href="../guide/platforms.html">Platforms</a> for the full table.</p>
 <nav class="pager" aria-label="Pager"><a href="sequence.html" rel="prev"><small>Previous</small>Combine recordings</a><a href="safety.html" rel="next"><small>Next</small>Safety and privacy</a></nav></article>
-  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#loop">The loop</a><a href="#cli">Commands</a><a href="#structure">What a take looks like</a><a href="#targets">Targets</a><a href="#steps">Every step</a><a href="#example">A complete take</a><a href="#output">What perform gives you</a><a href="#tips">Tips</a><a href="#platforms">What each desktop supports</a></aside>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#loop">The loop</a><a href="#cli">Commands</a><a href="#structure">What a take looks like</a><a href="#targets">Targets</a><a href="#a11y">Native apps: {a11y} targets</a><a href="#steps">Every step</a><a href="#example">A complete take</a><a href="#output">What perform gives you</a><a href="#tips">Tips</a><a href="#platforms">What each desktop supports</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>

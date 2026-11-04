@@ -76,6 +76,7 @@
 <ul>
   <li>Node 22 or newer, <code>ffmpeg</code> and <code>ffprobe</code>.</li>
   <li>Your desktop type and monitors, and whether it can record, drive the mouse and keyboard, control windows, and log the pointer.</li>
+  <li>The accessibility tree, which lets the agent find controls in native apps by name (Linux, Windows and macOS).</li>
   <li>The demo browser (Chrome, Edge or Brave), the voices (the default Edge voices need internet; local voices get their own "local voice" check once you have set them up), and the video renderer.</li>
   <li>OBS, only if you use <code>--recorder obs</code>. GStreamer on Linux.</li>
   <li>On a Mac: Accessibility, Screen Recording, Input Monitoring and avfoundation.</li>
@@ -130,6 +131,17 @@
 
 <h3 id="renderer">The doctor says the video renderer is not ready<a class="a" href="#renderer" aria-label="Link to this section">#</a></h3>
 <p>The renderer downloads once, about 100 MB, and needs internet. Your first render downloads it, so there is nothing to do except wait. If it fails, check the connection and render again.</p>
+
+<h3 id="a11y-missing">The agent cannot find a button in my app<a class="a" href="#a11y-missing" aria-label="Link to this section">#</a></h3>
+<p>The agent finds controls in native apps through the accessibility tree. If it reports <code>APP_NOT_FOUND</code> or <code>ELEMENT_NOT_FOUND</code>, check these:</p>
+<ul>
+  <li><strong>Qt apps</strong> (KDE apps, for example) only appear if they were started with <code>QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1</code>. Apps that a take starts get it automatically. Quit a Qt app that is already running and let the agent start it again.</li>
+  <li><strong>Apps that draw their own interface</strong> (some Electron and GPU-drawn apps) show little or nothing. Ask the agent to use <code>{screen, x, y}</code> targets for them.</li>
+  <li><strong>Windows</strong> reads controls through UI Automation. Some apps expose their controls to it only as plain panes, so no button or text area shows up (the text area of the classic Notepad, for example). Ask the agent to use <code>{window, x, y}</code> or <code>{screen, x, y}</code> targets for those apps.</li>
+  <li><strong>GNOME and other Wayland desktops</strong> let the agent read the controls but not click them, because the desktop does not say where a window is. The error is <code>POSITION_UNKNOWN</code>.</li>
+  <li><strong>Several controls match.</strong> The agent never guesses. It gets a list of candidates and adds <code>nth</code> or a more specific name.</li>
+</ul>
+<p>None of these errors sent any input, so it is safe to try again. See <a href="../guide/agent-drive.html#a11y">Native apps</a>.</p>
 
 <h3 id="stops">The agent stopped when I touched the mouse<a class="a" href="#stops" aria-label="Link to this section">#</a></h3>
 <p>That is on purpose. Moving the pointer stops the agent so you can take over. Ask it to call <code>resume</code> to carry on from where the pointer is now, or <code>abort</code> to stop. To stop it from reacting to the mouse on an unattended machine, see <a href="../guide/safety.html#unattended">Unattended runs</a>.</p>

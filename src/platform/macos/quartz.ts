@@ -1,3 +1,4 @@
+import type { AxElement } from "../../a11y/ax.js";
 import type { Rect } from "../../record/input/types.js";
 import type { MacEvent } from "./events.js";
 import type { CgDisplay, CgWindow } from "./geometry.js";
@@ -257,6 +258,45 @@ function bind(koffi: Koffi) {
     },
   });
 
+  /** An AX element read-only, for the accessibility tree (release() frees it). */
+  const axElement = (el: Ptr): AxElement => {
+    const win = axWindow(el);
+    return {
+      str(attr) {
+        const v = copyAttr(el, attr);
+        try {
+          return toString(v);
+        } finally {
+          release(v);
+        }
+      },
+      bool(attr) {
+        const v = copyAttr(el, attr);
+        try {
+          const n = toNumber(v);
+          return n === undefined ? undefined : n !== 0;
+        } finally {
+          release(v);
+        }
+      },
+      frame: () => win.frame(),
+      children() {
+        const arr = copyAttr(el, "AXChildren");
+        if (!arr) return [];
+        try {
+          const n = Number(fn.CFArrayGetCount(arr));
+          const out: AxElement[] = [];
+          // Retained: the array (and with it its elements) is released below.
+          for (let i = 0; i < n; i++) out.push(axElement(fn.CFRetain(fn.CFArrayGetValueAtIndex(arr, i)) as Ptr));
+          return out;
+        } finally {
+          release(arr);
+        }
+      },
+      release: () => win.release(),
+    };
+  };
+
   const source = fn.CGEventSourceCreate(kCGEventSourceStateHIDSystemState) as Ptr;
 
   return {
@@ -421,6 +461,40 @@ function bind(koffi: Koffi) {
           return out;
         } finally {
           release(arr);
+        }
+      } finally {
+        release(app);
+      }
+    },
+
+    /** Top-level AX windows of an app as readable elements. Release each. */
+    axTreeWindows(pid: number): AxElement[] {
+      const app = fn.AXUIElementCreateApplication(pid) as Ptr;
+      try {
+        const arr = copyAttr(app, "AXWindows");
+        if (!arr) return [];
+        try {
+          const n = Number(fn.CFArrayGetCount(arr));
+          const out: AxElement[] = [];
+          for (let i = 0; i < n; i++) out.push(axElement(fn.CFRetain(fn.CFArrayGetValueAtIndex(arr, i)) as Ptr));
+          return out;
+        } finally {
+          release(arr);
+        }
+      } finally {
+        release(app);
+      }
+    },
+
+    /** The app's name as AX reports it. */
+    axAppTitle(pid: number): string | undefined {
+      const app = fn.AXUIElementCreateApplication(pid) as Ptr;
+      try {
+        const v = copyAttr(app, "AXTitle");
+        try {
+          return toString(v);
+        } finally {
+          release(v);
         }
       } finally {
         release(app);

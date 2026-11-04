@@ -5,12 +5,14 @@
 // Checks that need a privacy permission this process does not have
 // (Accessibility, Screen Recording: TCC) are reported as "blocked", not
 // failed: a CI runner cannot click those switches.
+import { a11yCheck } from "./a11y-check.js";
 import { spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Driver } from "../src/drive/index.js";
+import { resolveTarget } from "../src/take/perform.js";
 import { screenshot } from "../src/drive/see.js";
 import { locate, openBrowser, withPage } from "../src/drive/web.js";
 import { displays } from "../src/platform/macos/desktop.js";
@@ -210,6 +212,12 @@ async function main(): Promise<void> {
     return `window ${textEdit.id} pid ${textEdit.pid} "${textEdit.caption}" ${rectText(textEdit)}`;
   });
 
+  await check("textedit: accessibility tree (AX API)", async () => {
+    needAx();
+    if (!textEdit) throw new Error("needs a TextEdit window");
+    return a11yCheck(await getDesktop(), "TextEdit", textEdit, 8);
+  });
+
   await check("textedit: focus on display at 16:9", async () => {
     needAx();
     const s = ds[0]?.screen;
@@ -279,6 +287,32 @@ async function main(): Promise<void> {
     }
     delete process.env.SCREENPILOT_MAC_TAP;
     throw new Error(`typed ${JSON.stringify(TYPED)} never arrived: ${notes.join("; ")}`);
+  });
+
+  // The real pointer, aimed by an {a11y} target: click the text area, type, read it back through the clipboard.
+  await check("textedit: click through an {a11y} target", async () => {
+    needAx();
+    if (!driver || !textEdit) throw new Error("needs driver + TextEdit window");
+    const SENTENCE = "A11y click ok"; // starts with a capital: TextEdit capitalizes a lowercase first letter
+    const w = await refresh(textEdit.id);
+    await driver.desktop.focusWindow(w.id);
+    await sleep(300);
+    const p = await resolveTarget({ a11y: { app: "TextEdit", role: "textbox" } }, driver);
+    await driver.moveToGlobal(p, { dur: 0.3 });
+    await driver.click();
+    await sleep(300);
+    await driver.key("cmd+a");
+    await driver.key("backspace");
+    await driver.type(SENTENCE, { cps: 30 });
+    await sleep(300);
+    await pbcopy("smoke-sentinel"); // so a failed copy cannot pass
+    await driver.key("cmd+a");
+    await sleep(150);
+    await driver.key("cmd+c");
+    await sleep(500);
+    const got = (await pbpaste()).replace(/\n$/, "");
+    if (got !== SENTENCE) throw new Error(`clicked the text area at (${Math.round(p.x)},${Math.round(p.y)}) but the clipboard has ${JSON.stringify(got)}`);
+    return `clicked text area at (${Math.round(p.x)},${Math.round(p.y)}); typed text read back: ${JSON.stringify(got)}`;
   });
 
   await check("textedit: close", async () => {
