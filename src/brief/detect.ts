@@ -1,10 +1,11 @@
 import { getDesktop } from "../platform/index.js";
 import { loadVoiceConfig } from "../voice/config.js";
 import { LOCAL_PYTHON_ENV } from "../voice/local.js";
+import { detectProject, loadUsual, mergeSuggested } from "./context.js";
 import type { BriefEnv } from "./questions.js";
 
 /** What this machine has, for the questions. Offline and cheap: nothing is started. */
-export async function detectBriefEnv(): Promise<BriefEnv> {
+export async function detectBriefEnv(project: string = process.cwd()): Promise<BriefEnv> {
   let localVoice = false;
   let commandVoices: string[] = [];
   try {
@@ -21,5 +22,6 @@ export async function detectBriefEnv(): Promise<BriefEnv> {
   } catch {
     // no drivable desktop here
   }
-  return { localVoice, commandVoices, desktop };
+  const suggested = mergeSuggested(await detectProject(project), loadUsual());
+  return { localVoice, commandVoices, desktop, suggested };
 }

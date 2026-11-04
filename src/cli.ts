@@ -33,7 +33,7 @@ import { getProvider, voiceMatchesLang } from "./voice/index.js";
 import { exportScript, importAudio } from "./voice/import.js";
 import { detectBriefEnv } from "./brief/detect.js";
 import { applyUpdate, checkForUpdate, sourceFrom, updateCommand } from "./update/index.js";
-import { buildBrief } from "./brief/questions.js";
+import { buildBrief, recommendedAnswers, summaryLines } from "./brief/questions.js";
 import { APP, APP_TITLE, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { getDesktop } from "./platform/index.js";
@@ -398,10 +398,18 @@ program
 program
   .command("brief")
   .description("The decisions to ask the user before recording or building a video (for AI tools that use the CLI instead of MCP)")
-  .action(async () => {
-    const brief = buildBrief(await detectBriefEnv());
+  .option("--project <path>", "Folder or storyboard.json of the existing video the recommendations follow (default: this folder)")
+  .action(async (o: { project?: string }) => {
+    const env = await detectBriefEnv(o.project);
+    const brief = buildBrief(env);
+    const recommended = recommendedAnswers(brief, {});
     print({
+      recommendedSetup: {
+        ...(env.suggested?.project ? { basedOn: `${env.suggested.project.file} (${env.suggested.project.summary})` } : {}),
+        lines: summaryLines(brief, recommended),
+      },
       rules: [
+        "Offer the recommended setup first as one question (use it, or choose each item). The recommendation follows the existing video in the folder, then the user's usual choices. The content question is optional.",
         "Ask the user every question below before you record, drive the desktop, build or render. Do not answer for them and do not install anything for them.",
         "Show each choice question as an option picker with your question tool (2 to 4 options, the recommended one first). Ask kind=text questions in chat.",
         "Ask at most 4 questions at once. A question with askWhen is asked only after its parent has one of the listed answers.",

@@ -69,7 +69,7 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 
 <h2 id="decisions">Decisions first<a class="a" href="#decisions" aria-label="Link to this section">#</a></h2>
 <h3 id="brief">brief<a class="a" href="#brief" aria-label="Link to this section">#</a></h3>
-<p><code>screenpilot brief</code> prints the decisions an AI app must ask you before it records or builds anything, with the options available on this computer. It is for AI apps that use the CLI; with MCP the <code>brief</code> tool asks you directly. See <a href="../guide/tools.html#decisions">Tools</a>.</p>
+<p><code>screenpilot brief</code> prints the decisions an AI app must ask you before it records or builds anything, with the options available on this computer. It also prints <code>recommendedSetup</code>: what the recommendations are based on (the existing video in the folder, then your usual choices) and one line per decision, so the app can offer it as a single question. <code>--project &lt;path&gt;</code> points it at another folder or <code>storyboard.json</code>; the content question is optional. It is for AI apps that use the CLI; with MCP the <code>brief</code> tool asks you directly. See <a href="../guide/tools.html#decisions">Tools</a>.</p>
 
 <h2 id="record-and-look">Record and look<a class="a" href="#record-and-look" aria-label="Link to this section">#</a></h2>
 

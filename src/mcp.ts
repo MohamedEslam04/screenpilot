@@ -17,7 +17,8 @@ import { detectBriefEnv } from "./brief/detect.js";
 import { checkForUpdate, updateCommand } from "./update/index.js";
 import { elicitBrief } from "./brief/elicit.js";
 import { briefAnswers, rememberBrief, requireBrief, resetBrief } from "./brief/gate.js";
-import { type Answers, applyAnswers, askView, buildBrief, guidance, nextBatch } from "./brief/questions.js";
+import { saveUsual } from "./brief/context.js";
+import { type Answers, applyAnswers, askView, buildBrief, guidance, nextBatch, pending, recommendedAnswers, summaryLines } from "./brief/questions.js";
 import { doctor } from "./doctor.js";
 import { evenTimes, grabFrames } from "./frames.js";
 import { initStoryboard } from "./init.js";
@@ -151,17 +152,25 @@ server.registerTool(
       "CALL THIS FIRST, before record_start, perform, render or any other work on a new video. It asks the user the decisions only they can make " +
       "(goal, source, language, which voice: built-in, a website like Google AI Studio, their own, or none; look, camera, review, permissions) as option pickers. " +
       "record_start, perform, render and sequence_render refuse until it is done. If the client can show forms, the user answers right there. " +
-      "Otherwise this returns status \"ask\" with pickers (2 to 4 options each): show them to the user with your own question tool, exactly as given, recommended first; " +
+      "The recommended option is not fixed: it follows the existing video in the working folder (its voice files, language, size) and then the user's usual choices, so re-making a video keeps what it was made with. " +
+      "The content question is optional. " +
+      "Otherwise this returns status \"ask\" with `shortcut` (the whole recommended setup) and pickers (2 to 4 options each). Ask the user ONE question first: use the recommended setup shown in `shortcut`, or choose each item? " +
+      "If they take it, call brief again with use_recommended: true (only after they said yes; never on your own). If they want to choose, show the pickers with your own question tool, exactly as given, recommended first; " +
       "ask the free-text ones in chat; then call brief again with answers {id: chosen option value, label or the user's own words}. Repeat until status is \"confirmed\". " +
       "Never answer for the user. Skip a question only when the user already answered it in their request (pass that answer). " +
-      "When confirmed it returns the answers and what to do next.",
+      "When confirmed it returns the answers and what to do next; the choices (not the content) are remembered as the user's usual ones.",
     inputSchema: {
       answers: z.record(z.string(), z.string()).optional().describe("The user's answers so far, by question id. An option value or label, \"default\" for the recommended one, or free text."),
       via_agent: z.boolean().optional().describe("Return the pickers for you to ask instead of letting the client show its form."),
       reset: z.boolean().optional().describe("Ask again for a new video even though the decisions were already made in this session."),
+      use_recommended: z
+        .boolean()
+        .optional()
+        .describe("Fill every unanswered question with its recommended option and confirm. ONLY after the user said yes to the recommended setup shown in `shortcut`."),
+      project: z.string().optional().describe("Folder or storyboard.json of the existing video the recommendations should follow. Default: the server's working folder."),
     },
   },
-  safe(async ({ answers, via_agent, reset }) => {
+  safe(async ({ answers, via_agent, reset, use_recommended, project }) => {
     if (reset) {
       resetBrief();
       briefDraft = {};
@@ -170,14 +179,17 @@ server.registerTool(
     if (decided && !answers) {
       return text({ status: "confirmed", answers: decided, note: "Already decided in this session. Pass reset: true to ask again for a new video.", next: guidance(decided) });
     }
-    const brief = buildBrief(await detectBriefEnv());
+    const env = await detectBriefEnv(project ? resolve(project) : undefined);
+    const brief = buildBrief(env);
     const merged = applyAnswers(brief, briefDraft, answers ?? {});
     briefDraft = merged.answers;
     const confirm = () => {
       rememberBrief(briefDraft);
+      saveUsual(briefDraft);
       return text({ status: "confirmed", answers: briefDraft, next: guidance(briefDraft) });
     };
-    if (nextBatch(brief, briefDraft).length === 0) return confirm();
+    if (use_recommended) briefDraft = recommendedAnswers(brief, briefDraft);
+    if (pending(brief, briefDraft).length === 0) return confirm();
 
     if (!via_agent && server.server.getClientCapabilities()?.elicitation) {
       try {
@@ -185,6 +197,7 @@ server.registerTool(
           brief,
           (req) => server.server.elicitInput(req as Parameters<typeof server.server.elicitInput>[0], { timeout: ELICIT_TIMEOUT_MS }) as ReturnType<Parameters<typeof elicitBrief>[1]>,
           briefDraft,
+          { quick: Object.keys(briefDraft).length === 0 },
         );
         briefDraft = r.answers;
         if (r.status === "confirmed") return confirm();
@@ -193,10 +206,16 @@ server.registerTool(
         log(`brief: the client could not show the form (${err instanceof Error ? err.message : err}); asking through the agent`);
       }
     }
+    const recommended = recommendedAnswers(brief, briefDraft);
     return text({
       status: "ask",
       answers: briefDraft,
       ...(merged.rejected.length ? { blank: merged.rejected } : {}),
+      shortcut: {
+        setup: summaryLines(brief, recommended),
+        ...(env.suggested?.project ? { basedOn: `${env.suggested.project.file} (${env.suggested.project.summary})` } : {}),
+        how: "Ask the user one question first: use this recommended setup, or choose each item? If yes, call brief again with use_recommended: true.",
+      },
       ...askView(nextBatch(brief, briefDraft)),
       how: "Show the choices as option pickers with your question tool, exactly as given (labels and descriptions); ask the chat ones in plain chat. Then call brief again with answers {id: the chosen label or value, or the user's own words}.",
     });
