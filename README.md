@@ -145,4 +145,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit ef8fbb0 ("feat(a11y): macOS AX tree source and tests for window-target errors", 2026-11-04).
+Docs synced to commit 1fe42a8 ("feat(a11y): Windows UI Automation source (PowerShell script + pure parser)", 2026-11-04).

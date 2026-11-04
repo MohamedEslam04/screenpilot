@@ -83,7 +83,7 @@ screenpilot perform take.json                      # record and drive; writes th
   <li><strong>Linux مع X11:</strong> مبني بالطريقة نفسها لكنه لم يُختبر بعد على سطح مكتب X11 حقيقي.</li>
   <li><strong>GNOME وأسطح Wayland الأخرى:</strong> لا يخبر سطح المكتب بموضع النافذة. يمكن قراءة الشجرة (<code>a11y_tree</code>) لكن النقر يفشل مع <code>POSITION_UNKNOWN</code>. استخدم أهداف <code>{screen, x, y}</code> هناك.</li>
   <li><strong>macOS:</strong> مبني على Accessibility API لكنه لم يُختبر بعد على جهاز Mac حقيقي. يحتاج تطبيق الذكاء الاصطناعي إلى إذن Accessibility.</li>
-  <li><strong>Windows:</strong> غير متاح بعد. الخطأ هو <code>A11Y_UNAVAILABLE</code>.</li>
+  <li><strong>Windows:</strong> مبني على UI Automation عبر سكربت PowerShell قصير (لا شيء يلزم تثبيته) لكنه لم يُختبر بعد على جهاز Windows حقيقي. ولا يمكن قراءة تطبيق يعمل بصلاحيات المسؤول إلا إذا كان تطبيق الذكاء الاصطناعي يعمل بها أيضاً.</li>
 </ul>
 <div class="warn">تطبيقات Qt لا تظهر في شجرة إمكانية الوصول إلا إذا بدأت بالمتغير <code>QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1</code>. التطبيقات التي يشغّلها الـ take بالخطوتين <code>run</code> و<code>open</code> تحصل عليه تلقائياً. أما تطبيق Qt يعمل بالفعل فيجب إعادة تشغيله. والتطبيقات التي ترسم واجهتها بنفسها (بعض تطبيقات Electron وما يُرسم بالـ GPU) تُظهر القليل أو لا شيء. ويحتاج Chromium إلى <code>--force-renderer-accessibility</code>؛ وفي متصفح العرض استخدم أهداف <code>{web}</code> بدلاً من ذلك.</div>
 
@@ -96,7 +96,7 @@ screenpilot perform take.json                      # record and drive; writes th
     <tr><td><code>AMBIGUOUS_TARGET</code></td><td>تطابقت عدة عناصر. يسردها الخطأ. أضف <code>nth</code> أو اسماً أدق.</td></tr>
     <tr><td><code>APP_NOT_FOUND</code></td><td>لا يوجد تطبيق يمكن الوصول إليه يطابق. هل هو يعمل؟ وبالنسبة لتطبيقات Qt راجع التحذير أعلاه.</td></tr>
     <tr><td><code>WINDOW_NOT_FOUND</code></td><td>لا توجد نافذة تطابق هدف <code>{window}</code> أو خطوة <code>focus</code>. يسرد الخطأ النوافذ الموجودة.</td></tr>
-    <tr><td><code>A11Y_UNAVAILABLE</code></td><td>لا يوجد لهذا سطح المكتب مصدر لإمكانية الوصول بعد، أو تعذّرت قراءته.</td></tr>
+    <tr><td><code>A11Y_UNAVAILABLE</code></td><td>تعذّرت قراءة مصدر إمكانية الوصول في هذا النظام (مثلاً لا يوجد accessibility bus على Linux، أو PowerShell غير موجود على Windows).</td></tr>
     <tr><td><code>POSITION_UNKNOWN</code></td><td>وُجد العنصر لكن سطح المكتب لا يخبر بموضع النافذة.</td></tr>
     <tr><td><code>TIMEOUT</code></td><td>لم تر <code>waitFor</code> العنصر في الوقت المحدد.</td></tr>
   </tbody>
@@ -184,7 +184,7 @@ screenpilot perform take.json                      # record and drive; writes th
 <h2 id="platforms">ما الذي يدعمه كل سطح مكتب</h2>
 <p>يعمل التحكم على KDE Plasma وأي سطح مكتب X11 وGNOME على Wayland وWindows وmacOS. ولا يعمل على sway وHyprland، مع أن التسجيل يعمل عليهما.</p>
 <ul>
-  <li><strong>KDE Plasma وأسطح مكتب X11 وWindows وmacOS:</strong> كل ما في هذه الصفحة يعمل، بما فيه أهداف <code>{web}</code> و<code>{window}</code> والخطوتان <code>focus</code> و<code>waitForWindow</code>. وأهداف <code>{a11y}</code> مُختبرة على KDE Plasma ومبنية لـ X11 وmacOS (لم تُختبر عليهما بعد)؛ أما Windows فليست فيه بعد.</li>
+  <li><strong>KDE Plasma وأسطح مكتب X11 وWindows وmacOS:</strong> كل ما في هذه الصفحة يعمل، بما فيه أهداف <code>{web}</code> و<code>{window}</code> والخطوتان <code>focus</code> و<code>waitForWindow</code>. وأهداف <code>{a11y}</code> مُختبرة على KDE Plasma ومبنية لـ X11 وWindows وmacOS (لم تُختبر عليها بعد).</li>
   <li><strong>GNOME على Wayland:</strong> لا يوجد تحكم بالنوافذ. استخدم أهداف <code>{ "screen", "x", "y" }</code> فقط. الخطوتان <code>focus</code> و<code>waitForWindow</code> وأهداف <code>{window}</code> و<code>{web}</code> تفشل مع رسالة خطأ. يمكن قراءة عناصر <code>{a11y}</code> لكن لا يمكن النقر عليها.</li>
   <li><strong>sway وHyprland:</strong> التحكم غير ممكن.</li>
 </ul>
