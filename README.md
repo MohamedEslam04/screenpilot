@@ -145,4 +145,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 478aeb2 ("test: Windows a11y smoke uses Paint's Close button (Notepad's edit area is a plain Pane in UIA)", 2026-11-04).
+Docs synced to commit 7e40009 ("docs: Windows a11y verified on a real runner by diagnostic; Notepad limit documented", 2026-11-04).
