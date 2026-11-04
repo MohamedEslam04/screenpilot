@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
-import type { Storyboard } from "../storyboard/schema.js";
+import { isBuiltinSfx, SFX_BUILTINS, type Storyboard } from "../storyboard/schema.js";
 import type { Timeline } from "../storyboard/timeline.js";
 import { run } from "../util/exec.js";
 import { ffmpegFilterScriptFlag } from "../util/media.js";
@@ -12,7 +12,7 @@ import { outroFadeIn } from "./plan.js";
 // is mixed into ONE wav, so the composition carries a single <audio> element however
 // many sounds there are, and a partial render trims it like any other audio item.
 
-export const BUILTIN_SFX = ["click", "key", "whoosh", "pop", "ding"] as const;
+export const BUILTIN_SFX = SFX_BUILTINS;
 export type BuiltinSfx = (typeof BUILTIN_SFX)[number];
 
 const SAMPLE_RATE = 48000;
@@ -30,10 +30,6 @@ const DEFS: Record<BuiltinSfx, { expr: string; dur: number; post?: string }> = {
   ding: { expr: "0.5*(sin(2*PI*1319*t)+0.5*sin(2*PI*1976*t)+0.25*sin(2*PI*2637*t))*exp(-t*5.5)*(1-exp(-t*800))", dur: 0.9 },
   whoosh: { expr: "0.9*(2*random(0)-1)*sin(PI*t/0.6)*sin(PI*t/0.6)", dur: 0.6, post: ",highpass=f=250,lowpass=f=3500" },
 };
-
-export function isBuiltinSfx(name: string): name is BuiltinSfx {
-  return (BUILTIN_SFX as readonly string[]).includes(name);
-}
 
 /** ffmpeg input arguments that generate a built-in sound. */
 export function builtinSfxInput(name: BuiltinSfx): string[] {

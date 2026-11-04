@@ -34,7 +34,7 @@
 <ul>
 <li><strong>الأزمنة بثواني المصدر.</strong> تُحسب من بداية التسجيل الخام، لا من الفيديو المصيَّر. القص وتغيير السرعة لا يحرّكانها. الأمر <code>screenpilot check</code> والأداة <code>check_output</code> وحدهما يستخدمان ثواني الخرج.</li>
 <li><strong>المواضع مُطبَّعة بين 0 و1.</strong> تُقاس <code>x</code> من الحافة اليسرى للتسجيل و<code>y</code> من حافته العليا. اقرأها من لقطة باستخدام <code>frames --grid</code>.</li>
-<li><strong>المسارات نسبية إلى ملف الـ storyboard.</strong> ينطبق هذا على <code>source</code> و<code>events</code> و<code>extends</code> و<code>music.src</code> و<code>overlays[].src</code>.</li>
+<li><strong>المسارات نسبية إلى ملف الـ storyboard.</strong> ينطبق هذا على <code>source</code> و<code>events</code> و<code>extends</code> و<code>music.src</code> و<code>sfx[].src</code> و<code>overlays[].src</code>.</li>
 </ul>
 <p>كل الحقول اختيارية عدا <code>source</code>. نفّذ <code>screenpilot validate storyboard.json</code> بعد كل تعديل. يعرض أخطاء الـ schema والتحذيرات: segments متداخلة، أو عناصر بعد نهاية المصدر، أو views تذكر شاشة غير معروفة، أو callout بلا <code>x</code> و<code>y</code>. ويقدّم أيضًا نصائح أسلوب: انظر <a href="../../ar/guide/storyboard.html#lint">تحذيرات الأسلوب</a>.</p>
 
@@ -259,7 +259,7 @@
 <li><strong>تُورَّث ستة حقول:</strong> <code>theme</code> و<code>voice</code> و<code>output</code> و<code>music</code> و<code>sounds</code> و<code>keepSourceAudio</code>. أما الباقي (<code>source</code> وsegments وzooms وcaptions وnarration وintro وoutro وغيرها) فلا يُورَّث أبدًا.</li>
 <li><strong>الابن يتغلب.</strong> الكائنات تُدمج مفتاحًا مفتاحًا، فالابن الذي يضبط <code>theme.accent</code> فقط يحتفظ بباقي حقول القالب من الأساس. أما المصفوفات فتُستبدل ولا تُدمج، مثل <code>theme.fonts</code>.</li>
 <li><strong>السلاسل تعمل.</strong> يمكن للأساس أن يمتد من storyboard آخر. والدورة (cycle) خطأ يذكر السلسلة.</li>
-<li><strong>المسارات تبقى صحيحة.</strong> يُعاد كتابة <code>music.src</code> القادم من الأساس ليشير إلى الملف نفسه انطلاقًا من مجلد الابن.</li>
+<li><strong>المسارات تبقى صحيحة.</strong> يُعاد كتابة <code>music.src</code> وأي ملف صوت في <code>sounds</code> قادم من الأساس ليشير إلى الملف نفسه انطلاقًا من مجلد الابن.</li>
 </ul>
 <pre><code class="language-json">{
   "extends": "../demo.json",

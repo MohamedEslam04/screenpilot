@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { lintStyle } from "./lint.js";
-import { INHERITED_KEYS, type Storyboard, StoryboardSchema } from "./schema.js";
+import { INHERITED_KEYS, isBuiltinSfx, type Storyboard, StoryboardSchema } from "./schema.js";
 import { normalizeSegments, Timeline } from "./timeline.js";
 
 export interface LoadedStoryboard {
@@ -95,6 +95,17 @@ async function resolveExtends(raw: unknown, abs: string, chain: string[] = []): 
     if (isObject(inherited.music) && typeof inherited.music.src === "string" && !isAbsolute(inherited.music.src)) {
       const src = relative(dirname(abs), resolve(dirname(basePath), inherited.music.src));
       inherited.music = { ...inherited.music, src: src.split(sep).join("/") };
+    }
+    if (isObject(inherited.sounds)) {
+      // A custom sound file is relative to the base; a built-in name or `true` stays as it is.
+      const sounds: Json = { ...inherited.sounds };
+      for (const k of ["clicks", "keys", "cards"]) {
+        const v = sounds[k];
+        if (typeof v === "string" && !v.startsWith("builtin:") && !isBuiltinSfx(v) && !isAbsolute(v)) {
+          sounds[k] = relative(dirname(abs), resolve(dirname(basePath), v)).split(sep).join("/");
+        }
+      }
+      inherited.sounds = sounds;
     }
   }
   const { extends: _extends, ...own } = raw;

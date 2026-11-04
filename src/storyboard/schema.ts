@@ -184,6 +184,10 @@ export const MusicSchema = z.object({
   duck: DuckSchema.optional().describe("Lower the music under narration"),
 });
 
+/** Sounds ffmpeg synthesizes while rendering (see render/sfx.ts). */
+export const SFX_BUILTINS = ["click", "key", "whoosh", "pop", "ding"] as const;
+export const isBuiltinSfx = (name: string): name is (typeof SFX_BUILTINS)[number] => (SFX_BUILTINS as readonly string[]).includes(name);
+
 export const SfxSchema = z.object({
   at: time.describe("Source time the sound plays"),
   src: z

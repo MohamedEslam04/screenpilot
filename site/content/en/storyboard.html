@@ -8,7 +8,7 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 <ul>
 <li><strong>Times are source seconds.</strong> They count from the start of the raw recording, never from the rendered video. Cuts and speed changes do not move them. Only <code>screenpilot check</code> and the <code>check_output</code> tool use output seconds.</li>
 <li><strong>Positions are normalized 0..1.</strong> <code>x</code> runs from the left edge and <code>y</code> from the top edge of the recording. Read them from a frame with <code>frames --grid</code>.</li>
-<li><strong>Paths are relative to the storyboard file.</strong> This applies to <code>source</code>, <code>events</code>, <code>extends</code>, <code>music.src</code> and <code>overlays[].src</code>.</li>
+<li><strong>Paths are relative to the storyboard file.</strong> This applies to <code>source</code>, <code>events</code>, <code>extends</code>, <code>music.src</code>, <code>sfx[].src</code> and <code>overlays[].src</code>.</li>
 </ul>
 <p>Every field except <code>source</code> is optional. Run <code>screenpilot validate storyboard.json</code> after each edit. It reports schema errors and warnings: overlapping segments, items past the end of the source, views that name an unknown screen, and callouts without <code>x</code> and <code>y</code>. It also gives style advice: see <a href="@guide/storyboard.html#lint">Style warnings</a>.</p>
 
@@ -233,7 +233,7 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 <li><strong>Six fields are inherited:</strong> <code>theme</code>, <code>voice</code>, <code>output</code>, <code>music</code>, <code>sounds</code> and <code>keepSourceAudio</code>. Everything else (<code>source</code>, segments, zooms, captions, narration, intro, outro and the rest) is never inherited.</li>
 <li><strong>The child wins.</strong> Objects merge key by key, so a child that sets only <code>theme.accent</code> keeps the base's other theme fields. Arrays replace instead of merging, for example <code>theme.fonts</code>.</li>
 <li><strong>Chains work.</strong> The base can extend another storyboard. A cycle is an error that lists the chain.</li>
-<li><strong>Paths stay valid.</strong> <code>music.src</code> from the base is rewritten to point at the same file from the child's folder.</li>
+<li><strong>Paths stay valid.</strong> <code>music.src</code> and any sound file in <code>sounds</code> from the base are rewritten to point at the same file from the child's folder.</li>
 </ul>
 <pre><code class="language-json">{
   "extends": "../demo.json",
