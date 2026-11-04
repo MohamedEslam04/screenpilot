@@ -119,7 +119,7 @@ screenpilot perform take.json                      # record and drive; writes th
 }</code></pre>
 
 <h2 id="output">ما الذي يعطيك إياه perform</h2>
-<p>ينتج الـ take المنفَّذ مجلد جلسة فيه الفيديو و<code>events.jsonl</code> (النقرات فيه مأخوذة مما فعله المشغّل نفسه فهي دقيقة) و<code>storyboard.json</code>. في هذا الـ storyboard تأتي التكبيرات موضوعة على النقرات، والتعليق الصوتي والعناوين في أوقاتها، وتبديلات الكاميرا. عدّله كأي storyboard آخر.</p>
+<p>ينتج الـ take المنفَّذ مجلد جلسة فيه الفيديو و<code>events.jsonl</code> (النقرات فيه مأخوذة مما فعله المشغّل نفسه فهي دقيقة) و<code>storyboard.json</code>. في هذا الـ storyboard تأتي التكبيرات موضوعة على النقرات، والتعليق الصوتي والعناوين في أوقاتها، وتبديلات الكاميرا. وكل خطوة <code>type</code> تُعلَّم أيضًا كمجال <code>typing</code> (السر القادم من متغير بيئة يُحتسب وقته ولا يُنسخ)، فيستطيع <code>sounds.typing</code> العمل عليها. عدّله كأي storyboard آخر.</p>
 <p>من سطر الأوامر يكون المجلد <code>sessions/&lt;timestamp&gt;</code> ما لم تمرّر <code>--dir</code>. ومن تطبيق ذكاء اصطناعي يكون مجلداً جديداً داخل مجلد <strong>ScreenPilot</strong> في مجلد Videos (وفي ماك Movies).</p>
 <p>إذا فشلت خطوة يتوقف الـ take، ويحتفظ بما سُجّل حتى تلك اللحظة، ويذكر الخطوة التي فشلت. في تطبيق الذكاء الاصطناعي تحتوي النتيجة على <code>failedStep</code> و<code>error</code> و<code>partial</code>. شاهد التسجيل الجزئي لتعرف أين حدث الخطأ.</p>
 

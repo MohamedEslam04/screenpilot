@@ -145,4 +145,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 44d78da ("feat(sfx): sound effects (sfx[] and automatic click, key and card sounds)", 2026-11-04).
+Docs synced to commit 1104f1e ("fix(sfx): typing spans replace recorded key events", 2026-11-04).

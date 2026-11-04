@@ -35,7 +35,7 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 <tr><td><code>cards</code></td><td><code>[]</code></td><td>Chapter cards in the middle of the video. See <a href="@guide/storyboard.html#chapter-cards">Chapter cards</a>.</td></tr>
 <tr><td><code>overlays</code></td><td><code>[]</code></td><td>Images, video and logos on top of the frame. See <a href="@guide/storyboard.html#overlays">Overlays</a>.</td></tr>
 <tr><td><code>music</code></td><td>none</td><td>Background music, optionally ducked under the voice.</td></tr>
-<tr><td><code>sfx</code>, <code>sounds</code></td><td><code>[]</code>, none</td><td>Sound effects at chosen times, and automatic click, key and card sounds. See <a href="@guide/storyboard.html#sound-effects">Sound effects</a>.</td></tr>
+<tr><td><code>sfx</code>, <code>sounds</code>, <code>typing</code></td><td><code>[]</code>, none, <code>[]</code></td><td>Sound effects at chosen times, and automatic click, typing and card sounds. See <a href="@guide/storyboard.html#sound-effects">Sound effects</a>.</td></tr>
 </tbody>
 </table>
 
@@ -190,7 +190,7 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 </table>
 
 <h2 id="sound-effects">Sound effects</h2>
-<p>Two fields add short sounds: <code>sfx</code> plays a sound at a time you choose, and <code>sounds</code> adds them automatically from the recorded clicks and key presses and from the title cards. Every sound is mixed into one track, so a long list does not slow the render, and a partial render (<code>--from</code>, <code>--to</code>) plays the right ones.</p>
+<p>Two fields add short sounds: <code>sfx</code> plays a sound at a time you choose, and <code>sounds</code> adds them automatically: on every recorded click, on typing you mark with <code>typing</code>, and as the title cards come in. Every sound is mixed into one track, so a long list does not slow the render, and a partial render (<code>--from</code>, <code>--to</code>) plays the right ones.</p>
 <p>A sound is either one of the built-in names or a file relative to the storyboard. The built-in sounds are made by ffmpeg while rendering, so there is nothing to download or install:</p>
 <table>
 <thead><tr><th>Name</th><th>Sound</th></tr></thead>
@@ -216,12 +216,22 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 <thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
 <tbody>
 <tr><td><code>clicks</code></td><td>off</td><td>A sound on every recorded click. Needs <code>events</code>. <code>true</code> means <code>builtin:click</code>.</td></tr>
-<tr><td><code>keys</code></td><td>off</td><td>A sound on every recorded key press, at most 12 a second. Needs <code>events</code>. <code>true</code> means <code>builtin:key</code>.</td></tr>
+<tr><td><code>typing</code></td><td>off</td><td>A typing sound for every press of every <code>typing</code> span (below). <code>true</code> means <code>builtin:key</code>.</td></tr>
 <tr><td><code>cards</code></td><td>off</td><td>A sound as the intro, each chapter card and the outro come in. <code>true</code> means <code>builtin:whoosh</code>.</td></tr>
 <tr><td><code>volume</code></td><td><code>0.5</code></td><td>Level of these automatic sounds, 0 to 2. <code>sfx</code> items have their own <code>volume</code>.</td></tr>
 </tbody>
 </table>
-<pre><code class="language-json">"sounds": { "clicks": true, "keys": true, "cards": true, "volume": 0.5 },
+<p>ScreenPilot never records the keyboard, so it cannot know when someone typed. <code>typing</code> is the list of stretches of the recording where they did. A take performed by the agent marks them for you, one for each <code>type</code> step (a secret taken from an environment variable is timed but its text is never copied). For your own recording, add them by hand:</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>at</code></td><td>required</td><td>Source time the typing starts.</td></tr>
+<tr><td><code>dur</code></td><td><code>3</code></td><td>How long it lasts, in seconds.</td></tr>
+<tr><td><code>text</code></td><td>none</td><td>What is typed. Gives one press per character; without it you get about 7 presses a second. The rhythm is a little uneven, and the same on every render.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-json">"sounds": { "clicks": true, "typing": true, "cards": true, "volume": 0.5 },
+"typing": [{ "at": 12, "dur": 2.5, "text": "hello@example.com" }],
 "sfx": [
   { "at": 21.5, "src": "builtin:ding" },
   { "at": 30, "src": "assets/applause.wav", "volume": 0.7 }

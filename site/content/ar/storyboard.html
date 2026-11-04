@@ -35,7 +35,7 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <tr><td><code>cards</code></td><td><code>[]</code></td><td>بطاقات فصول في منتصف الفيديو. انظر <a href="@guide/storyboard.html#chapter-cards">بطاقات الفصول</a>.</td></tr>
 <tr><td><code>overlays</code></td><td><code>[]</code></td><td>صور وفيديو وشعارات فوق الإطار. انظر <a href="@guide/storyboard.html#overlays">الـ overlays</a>.</td></tr>
 <tr><td><code>music</code></td><td>لا شيء</td><td>موسيقى خلفية، ويمكن خفضها تحت الصوت.</td></tr>
-<tr><td><code>sfx</code> و<code>sounds</code></td><td><code>[]</code> ولا شيء</td><td>مؤثرات صوتية في أوقات تختارها، وأصوات تلقائية للنقرات والمفاتيح والبطاقات. انظر <a href="@guide/storyboard.html#sound-effects">المؤثرات الصوتية</a>.</td></tr>
+<tr><td><code>sfx</code> و<code>sounds</code> و<code>typing</code></td><td><code>[]</code> ولا شيء و<code>[]</code></td><td>مؤثرات صوتية في أوقات تختارها، وأصوات تلقائية للنقرات والكتابة والبطاقات. انظر <a href="@guide/storyboard.html#sound-effects">المؤثرات الصوتية</a>.</td></tr>
 </tbody>
 </table>
 
@@ -190,7 +190,7 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 </table>
 
 <h2 id="sound-effects">المؤثرات الصوتية</h2>
-<p>حقلان يضيفان أصواتًا قصيرة: <code>sfx</code> يشغّل صوتًا في وقت تختاره، و<code>sounds</code> يضيفها تلقائيًّا من النقرات وضغطات المفاتيح المسجَّلة ومن بطاقات العناوين. تُدمج كل الأصوات في مسار واحد، فلا تبطئ القائمة الطويلة الرندر، وينفّذ الرندر الجزئي (<code>--from</code> و<code>--to</code>) الأصوات الصحيحة.</p>
+<p>حقلان يضيفان أصواتًا قصيرة: <code>sfx</code> يشغّل صوتًا في وقت تختاره، و<code>sounds</code> يضيفها تلقائيًّا: عند كل نقرة مسجَّلة، وعلى الكتابة التي تحددها بـ <code>typing</code>، وعند دخول بطاقات العناوين. تُدمج كل الأصوات في مسار واحد، فلا تبطئ القائمة الطويلة الرندر، وينفّذ الرندر الجزئي (<code>--from</code> و<code>--to</code>) الأصوات الصحيحة.</p>
 <p>الصوت إما اسم من الأصوات المضمَّنة وإما ملف نسبي إلى الـ storyboard. يولّد ffmpeg الأصوات المضمَّنة أثناء الرندر، فلا شيء يُنزَّل ولا يُثبَّت:</p>
 <table>
 <thead><tr><th>الاسم</th><th>الصوت</th></tr></thead>
@@ -216,12 +216,22 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
 <tbody>
 <tr><td><code>clicks</code></td><td>متوقف</td><td>صوت عند كل نقرة مسجَّلة. يحتاج <code>events</code>. القيمة <code>true</code> تعني <code>builtin:click</code>.</td></tr>
-<tr><td><code>keys</code></td><td>متوقف</td><td>صوت عند كل ضغطة مفتاح مسجَّلة، بحد أقصى 12 في الثانية. يحتاج <code>events</code>. القيمة <code>true</code> تعني <code>builtin:key</code>.</td></tr>
+<tr><td><code>typing</code></td><td>متوقف</td><td>صوت كتابة عند كل ضغطة في كل مجال <code>typing</code> (أدناه). القيمة <code>true</code> تعني <code>builtin:key</code>.</td></tr>
 <tr><td><code>cards</code></td><td>متوقف</td><td>صوت عند ظهور المقدمة وكل بطاقة فصل والخاتمة. القيمة <code>true</code> تعني <code>builtin:whoosh</code>.</td></tr>
 <tr><td><code>volume</code></td><td><code>0.5</code></td><td>مستوى هذه الأصوات التلقائية، من 0 إلى 2. عناصر <code>sfx</code> لها <code>volume</code> خاص.</td></tr>
 </tbody>
 </table>
-<pre><code class="language-json">"sounds": { "clicks": true, "keys": true, "cards": true, "volume": 0.5 },
+<p>لا يسجّل ScreenPilot لوحة المفاتيح أبدًا، فلا يعرف متى كتب أحدهم. الحقل <code>typing</code> قائمة بالفترات من التسجيل التي جرت فيها كتابة. الـ take الذي ينفّذه الوكيل يعلّمها لك، واحدة لكل خطوة <code>type</code> (السر المأخوذ من متغير بيئة يُحتسب وقته ولا يُنسخ نصه أبدًا). أما تسجيلك أنت فأضفها يدويًّا:</p>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>at</code></td><td>مطلوب</td><td>وقت المصدر الذي تبدأ فيه الكتابة.</td></tr>
+<tr><td><code>dur</code></td><td><code>3</code></td><td>مدتها بالثواني.</td></tr>
+<tr><td><code>text</code></td><td>لا شيء</td><td>ما يُكتب. يعطي ضغطة لكل حرف؛ وبدونه تحصل على نحو 7 ضغطات في الثانية. الإيقاع غير منتظم قليلًا، ويتكرر نفسه في كل رندر.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-json">"sounds": { "clicks": true, "typing": true, "cards": true, "volume": 0.5 },
+"typing": [{ "at": 12, "dur": 2.5, "text": "hello@example.com" }],
 "sfx": [
   { "at": 21.5, "src": "builtin:ding" },
   { "at": 30, "src": "assets/applause.wav", "volume": 0.7 }
