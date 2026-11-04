@@ -8,6 +8,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { a11yCheck } from "./a11y-check.js";
+import { uiaDiagnose } from "./uia-diagnose.js";
+import { a11yTree } from "../src/a11y/index.js";
 import { Driver } from "../src/drive/index.js";
 import { screenshot } from "../src/drive/see.js";
 import { locate, openBrowser, withPage } from "../src/drive/web.js";
@@ -152,6 +154,41 @@ async function main(): Promise<void> {
     if (!driver) throw new Error("needs driver");
     notepad = await waitWindow(driver, "notepad.exe");
     return `window ${notepad.id} pid ${notepad.pid} "${notepad.caption}"`;
+  });
+
+  // Informational: never fails. Shows what each UI Automation view sees, for Notepad and a second app.
+  await check("diagnostic: UI Automation views (informational)", async () => {
+    const parts: string[] = [];
+    try {
+      if (notepad) parts.push(`--- notepad (pid ${notepad.pid})\n${await uiaDiagnose(notepad.pid)}`);
+    } catch (e) {
+      parts.push(`notepad diagnose failed: ${(e as Error).message}`);
+    }
+    try {
+      const child = spawn("mspaint.exe", [], { detached: true, stdio: "ignore" });
+      child.unref();
+      if (driver) {
+        const w = await waitWindow(driver, "mspaint.exe", 12_000);
+        await sleep(3000);
+        parts.push(`--- mspaint (pid ${w.pid})\n${await uiaDiagnose(w.pid)}`);
+        try {
+          const t = await a11yTree(driver.desktop, { app: "mspaint", interactiveOnly: false, maxDepth: 12 });
+          const roles = new Map<string, number>();
+          const count = (n: { role: string; children: unknown[] }) => {
+            roles.set(n.role, (roles.get(n.role) ?? 0) + 1);
+            (n.children as { role: string; children: unknown[] }[]).forEach(count);
+          };
+          t.windows.forEach((x) => count(x.root));
+          parts.push(`our a11yTree(mspaint) roles: ${[...roles].map(([r, n]) => `${r}x${n}`).join(", ") || "none"}`);
+        } catch (e) {
+          parts.push(`a11yTree(mspaint) failed: ${(e as Error).message.split("\n")[0]}`);
+        }
+        await run("taskkill", ["/PID", String(w.pid), "/F"]).catch(() => undefined);
+      }
+    } catch (e) {
+      parts.push(`mspaint part failed: ${(e as Error).message}`);
+    }
+    return parts.join("\n").slice(0, 9000);
   });
 
   await check("notepad: accessibility tree (UI Automation)", async () => {
