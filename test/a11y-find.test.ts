@@ -131,3 +131,32 @@ describe("take schema", () => {
     expect(StepSchema.safeParse({ waitFor: { web: "text=Done" } }).success).toBe(true);
   });
 });
+
+describe("window targets", () => {
+  const w = (o: Partial<WindowInfo>): WindowInfo => ({ id: "1", caption: "t", resourceClass: "konsole", pid: 1, active: false, minimized: false, x: 0, y: 0, w: 100, h: 100, output: "eDP-1", ...o });
+
+  it("prefers the focused window when several match", async () => {
+    const { pickWindow } = await import("../src/take/perform.js");
+    const wins = [w({ id: "a" }), w({ id: "b", active: true }), w({ id: "c", resourceClass: "dolphin" })];
+    expect(pickWindow(wins, "konsole")?.id).toBe("b");
+    expect(pickWindow(wins, "dolphin")?.id).toBe("c");
+    expect(pickWindow(wins, "nothing")).toBeUndefined();
+  });
+
+  it("lists the open windows when none matches", async () => {
+    const { windowNotFound } = await import("../src/take/perform.js");
+    const e = windowNotFound([w({ caption: "Terminal" })], "gimp");
+    expect(e.code).toBe("WINDOW_NOT_FOUND");
+    expect(e.message).toContain('konsole "Terminal"');
+    expect(e.candidates).toHaveLength(1);
+  });
+});
+
+describe("TakeError disposition", () => {
+  it("carries code, delivery and retry from a target error", async () => {
+    const { TakeError } = await import("../src/take/perform.js");
+    const err = new TakeError(2, { wait: 1 }, new TargetError("AMBIGUOUS_TARGET", "two match", ["a", "b"]));
+    expect(err.info).toEqual({ code: "AMBIGUOUS_TARGET", delivery: "not_delivered", retry: "safe", candidates: ["a", "b"] });
+    expect(new TakeError(0, { wait: 1 }, new Error("boom")).info).toBeUndefined();
+  });
+});
