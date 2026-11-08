@@ -12,6 +12,11 @@ export function intersect(a: Rect, b: Rect): Rect | undefined {
   return x1 > x0 && y1 > y0 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : undefined;
 }
 
+/** The work area of the monitor called `name` in a platform's monitor list (undefined for an unknown monitor). */
+export function workAreaOf(monitors: { screen: { name: string }; work: Rect }[], name: string): Rect | undefined {
+  return monitors.find((m) => m.screen.name === name)?.work;
+}
+
 /** Whether a reported work area can be trusted: not empty and inside its monitor (1 px of rounding allowed). */
 export function sane(area: Rect, monitor: Rect): boolean {
   const nums = [area.x, area.y, area.w, area.h];

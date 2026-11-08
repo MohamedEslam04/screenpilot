@@ -1,5 +1,41 @@
 import { describe, expect, it } from "vitest";
-import { intersect, sane } from "../src/platform/work-area.js";
+import { kdeWorkAreaScript, parseKdeWorkArea } from "../src/platform/kde.js";
+import { intersect, sane, workAreaOf } from "../src/platform/work-area.js";
+
+describe("KDE work area", () => {
+  it("reads KWin's clientArea reply (global logical px, panel on top of eDP-1 at x=1920)", () => {
+    expect(parseKdeWorkArea("[1920,50,1920,1030]")).toEqual({ x: 1920, y: 50, w: 1920, h: 1030 });
+  });
+
+  it("is undefined for an unknown monitor or an unexpected reply", () => {
+    expect(parseKdeWorkArea("")).toBeUndefined();
+    expect(parseKdeWorkArea("[1,2,3]")).toBeUndefined();
+    expect(parseKdeWorkArea("not json")).toBeUndefined();
+    expect(parseKdeWorkArea('["a",0,1,1]')).toBeUndefined();
+  });
+
+  it("asks KWin for the maximize area of the named output on the current desktop", () => {
+    const js = kdeWorkAreaScript("eDP-1");
+    expect(js).toContain('o.name === "eDP-1"');
+    expect(js).toContain("KWin.MaximizeArea");
+    expect(js).toContain("workspace.currentDesktop");
+  });
+});
+
+describe("workAreaOf", () => {
+  const monitors = [
+    { screen: { name: "HDMI-A-5" }, work: { x: 0, y: 50, w: 1920, h: 1030 } },
+    { screen: { name: "eDP-1" }, work: { x: 1920, y: 0, w: 1920, h: 1032 } },
+  ];
+
+  it("finds a monitor's work area by name, in global coordinates", () => {
+    expect(workAreaOf(monitors, "eDP-1")).toEqual({ x: 1920, y: 0, w: 1920, h: 1032 });
+  });
+
+  it("is undefined for an unknown monitor", () => {
+    expect(workAreaOf(monitors, "DP-9")).toBeUndefined();
+  });
+});
 
 describe("intersect", () => {
   it("is the overlap of two rects", () => {
