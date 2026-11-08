@@ -392,6 +392,34 @@ export async function locate(
   });
 }
 
+/**
+ * Where an element's box is right now (global logical px, top-left + size), with the same math as
+ * `locate` but without waiting, scrolling or failing: null when it is missing, hidden or has no box.
+ * `covered` is the `findCover` check at its centre. Uses the window's cached calibration; without
+ * one it calibrates only when given a `pointer` (that moves the real pointer), else it uses the
+ * uncalibrated estimate, so background tracking never moves the pointer.
+ */
+export async function measure(selector: string, pointer?: PointerMover): Promise<{ x: number; y: number; w: number; h: number; covered: boolean } | null> {
+  const win = await browserWindow();
+  return withPage(async (page) => {
+    const el = page.locator(selector).first();
+    if (!(await el.isVisible())) return null;
+    const box = await el.boundingBox();
+    if (!box || box.width <= 0 || box.height <= 0) return null;
+    const { covered } = await findCover(el, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    const m = await metrics(page);
+    const key = `${win.id}:${win.x},${win.y},${win.w},${win.h}:${m.iw}x${m.ih}`;
+    let c = calibration.get(key);
+    if (!c && pointer) {
+      c = await calibrate(page, m, win, pointer);
+      calibration.set(key, c);
+    }
+    const p = contentToScreen(box, m, win);
+    // contentToScreen gives the centre.
+    return { x: p.x + (c?.dx ?? 0) - p.w / 2, y: p.y + (c?.dy ?? 0) - p.h / 2, w: p.w, h: p.h, covered };
+  });
+}
+
 export interface PointerMover {
   moveToGlobal(to: { x: number; y: number }, opts?: { dur?: number }): Promise<void>;
 }

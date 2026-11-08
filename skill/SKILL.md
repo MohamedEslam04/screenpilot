@@ -131,6 +131,8 @@ Typing: `type` takes `method: "keys" | "paste" | "auto"` (default `auto`). Key-b
 
 Take tips: `say` with `wait: true` before an important click; 0.3-1 s `wait`s after navigation; `waitFor` instead of long waits; keep takes under ~90 s; `say` lines use `voice.name` unless overridden per line; `view` switches which monitor the camera shows (`"all"` for the full wall). Two windows with one title (two browsers)? `focus: {match}` takes the active one, else the first, and logs the count: use `{"focus": {"browser": true}}` for the demo browser (found by process id). A `{web}` target, and the `type`/`key` after it, bring the demo browser to the front first. `run` starts a program and carries on, `{"run": [...], "wait": true, "timeout": 10}` waits for it to exit and fails the step on a non-zero exit code or timeout (e.g. `wl-copy` before `ctrl+v`).
 
+Highlight a page element (a toast, a new row) without writing coordinates: `{"highlight": {"web": "[data-sonner-toast]", "label": "Saved", "until": "gone", "dur": 8}}` right after the click that shows it. Non-blocking: it is tracked in the background while later steps run and lands in `storyboard.highlights[]` in recording coordinates (on any monitor). `until: "gone"` (default) ends when the element is missing, hidden or covered for 0.8 s, `"next"` at the next `say`/`highlight`; `dur` caps it. Spans under 0.6 s and elements that never showed are dropped with a warning naming the selector; a dry run only checks the selector.
+
 ## Storyboard example
 
 Egyptian Arabic voice by default, one English line overriding it. Note the paths are relative to the storyboard file.

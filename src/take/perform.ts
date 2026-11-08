@@ -9,7 +9,7 @@ import { resolveTypeMethod } from "../drive/clipboard.js";
 import { Driver, type DriverAction } from "../drive/index.js";
 import { describeError, type Disposition, TargetError } from "../drive/errors.js";
 import { findWindow } from "../platform/index.js";
-import { browserWindow, locate, openBrowser, waitForWeb, withPage } from "../drive/web.js";
+import { browserWindow, locate, measure, openBrowser, waitForWeb, withPage } from "../drive/web.js";
 import { initStoryboard } from "../init.js";
 import type { InputEvent } from "../record/events.js";
 import { type ActiveRecording, type RecordResult, startRecording } from "../record/index.js";
@@ -22,6 +22,7 @@ import { type Step, type Take, TakeSchema, type Target } from "./schema.js";
 import { runCommand } from "./run.js";
 import type { Typing } from "../storyboard/schema.js";
 import { prepareSessionDir } from "./session-dir.js";
+import { type Tracked, trackedHighlights, trackElement } from "./track.js";
 import { typingSpan } from "./typing.js";
 import { windowMatches } from "./windows.js";
 import { CACHE_DIR } from "../brand.js";
@@ -100,8 +101,23 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
   let t0 = performance.now();
   const now = () => (performance.now() - t0) / 1000;
   let speechFreeAt = 0;
+  let tracked: Tracked[] = [];
 
-  const ctx: StepContext = { driver, log, baseDir, lastTargetWasWeb: false };
+  const ctx: StepContext = {
+    driver,
+    log,
+    baseDir,
+    lastTargetWasWeb: false,
+    now,
+    recording: false,
+    tracks: [],
+    untilNext: [],
+    stopTracks: new AbortController(),
+    warn: (m) => {
+      log(m);
+      warnings.push(m);
+    },
+  };
   // Before recording: a layout switch later would flash KDE's OSD in the video.
   const restoreLayout = await driver.desktop.useLatinLayout();
   try {
@@ -117,6 +133,7 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
       if (dir && dir !== resolve(opts.dir!)) log(`${opts.dir} is in use, recording to ${dir}`);
       rec = await startRecording({ dir, screens: take.screens, input: "auto", log });
       t0 = rec.startedAt;
+      ctx.recording = true;
     } else {
       t0 = performance.now();
     }
@@ -130,6 +147,7 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
           const free = speechFreeAt + (speechFreeAt ? take.voice.gap : 0);
           if (now() < free) await sleep((free - now()) * 1000);
           const at = now();
+          stopUntilNext(ctx);
           narration.push({ at: round(at), text: step.say, ...(step.voice ? { voice: step.voice } : {}) });
           speechFreeAt = at + lineLength.get(step)!;
           if (step.wait) await sleep((speechFreeAt - now()) * 1000);
@@ -149,7 +167,11 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
     }
     const end = Math.max(now(), speechFreeAt) + take.tail;
     await sleep(Math.max(0, end - now()) * 1000);
+    ctx.stopTracks.abort();
+    tracked = await Promise.all(ctx.tracks);
   } catch (err) {
+    ctx.stopTracks.abort();
+    await Promise.allSettled(ctx.tracks);
     // Keep whatever was recorded so far: it helps to see where it went wrong.
     const partial = rec ? await rec.stop().catch(() => undefined) : undefined;
     await driver.close();
@@ -185,6 +207,12 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
   sb.captions = captions;
   // Where the take typed (a secret is timed, never copied): mark them so sounds.typing can play on them.
   if (typings.length) sb.typing = typings;
+  if (tracked.length) {
+    const meta = JSON.parse(await readFile(recResult.meta, "utf8")) as { screen: Rect; capture: { contentRect: Rect } };
+    const hl = trackedHighlights(tracked, meta.screen, meta.capture.contentRect);
+    warnings.push(...hl.warnings);
+    if (hl.highlights.length) sb.highlights = [...(Array.isArray(sb.highlights) ? sb.highlights : []), ...hl.highlights];
+  }
   sb.voice = { name: take.voice.name, rate: take.voice.rate, gap: take.voice.gap };
   await writeFile(storyboard, `${JSON.stringify(sb, null, 2)}\n`);
   return { dir: recResult.dir, storyboard, recording: recResult, steps: timeline, warnings };
@@ -217,6 +245,44 @@ interface StepContext {
   baseDir: string;
   /** The last pointer target was in the demo browser: typed text and keys must reach it too. */
   lastTargetWasWeb: boolean;
+  /** Seconds since the recording started (the storyboard's source time). */
+  now: () => number;
+  /** False for setup steps and dry runs: highlight steps then only check their selector. */
+  recording: boolean;
+  /** Background highlight tracks, awaited before the storyboard is written. */
+  tracks: Promise<Tracked>[];
+  /** Tracks with until: "next", stopped by the next say or highlight step. */
+  untilNext: AbortController[];
+  /** Stops every track at the end of the take. */
+  stopTracks: AbortController;
+  /** A warning for the take's result. */
+  warn: (m: string) => void;
+}
+
+function stopUntilNext(ctx: StepContext): void {
+  for (const c of ctx.untilNext.splice(0)) c.abort();
+}
+
+/**
+ * A highlight step: checks the selector now (fails the step on a bad selector), then follows the
+ * element in the background while later steps run. Outside a recording it only checks.
+ */
+async function startHighlight(h: Extract<Step, { highlight: unknown }>["highlight"], ctx: StepContext): Promise<void> {
+  stopUntilNext(ctx);
+  // With the pointer: calibrates the window once if no web target did yet, so background samples never move it.
+  const first = await measure(h.web, ctx.driver);
+  if (!ctx.recording) {
+    if (!first) ctx.warn(`highlight "${h.web}": not visible at this point of the dry run (it may appear later)`);
+    return;
+  }
+  let signal = ctx.stopTracks.signal;
+  if (h.until === "next") {
+    const next = new AbortController();
+    ctx.untilNext.push(next);
+    signal = AbortSignal.any([next.signal, signal]);
+  }
+  const span = trackElement(h.web, { startedAt: ctx.now(), max: h.dur ?? 8, signal, now: ctx.now });
+  ctx.tracks.push(span.then((s) => ({ selector: h.web, ...(h.label ? { label: h.label } : {}), span: s })));
 }
 
 /** Where a take/MCP target is on the desktop (global logical px). */
@@ -338,6 +404,8 @@ async function runStep(step: Step, ctx: StepContext): Promise<void> {
     const target = /^[a-z][a-z0-9+.-]+:\/\//i.test(step.open) ? step.open : resolve(baseDir, expandHome(step.open));
     log(`open: ${target}`);
     openWithDefaultApp(target, launchEnv());
+  } else if ("highlight" in step) {
+    await startHighlight(step.highlight, ctx);
   } else if ("run" in step) {
     const [cmd, ...args] = step.run.map(expandHome);
     log(`run: ${cmd}${step.wait ? " (waiting for exit)" : ""}`);
