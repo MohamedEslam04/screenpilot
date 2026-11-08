@@ -7,6 +7,12 @@ import { z } from "zod";
 
 const norm = z.number().min(0).max(1);
 
+/** Which demo browser (default "main"); it names its profile folder, so plain names only (same rule as drive/web.ts). */
+const BrowserIdSchema = z
+  .string()
+  .regex(/^[A-Za-z0-9_-]+$/, "a browser id is letters, digits, - and _")
+  .describe('Demo browser id (default "main"); open it first with a browser step with this id');
+
 export const A11yQuerySchema = z
   .object({
     role: z.string().optional().describe('Control type: "button", "checkbox", "textbox", "menuitem", "tab", or an AT-SPI role like "push button"'),
@@ -20,7 +26,7 @@ export const A11yQuerySchema = z
 
 export const TargetSchema = z.union([
   z.object({ a11y: A11yQuerySchema }).strict(),
-  z.object({ web: z.string().describe("Playwright selector in the demo browser: CSS, text=…, role=…") }).strict(),
+  z.object({ web: z.string().describe("Playwright selector in the demo browser: CSS, text=…, role=…"), browser: BrowserIdSchema.optional() }).strict(),
   z.object({ window: z.string().describe("Window class or title contains"), x: norm, y: norm }).strict(),
   z.object({ screen: z.string().optional(), x: norm, y: norm }).strict(),
 ]);
@@ -35,6 +41,9 @@ export const StepSchema = z.union([
     .object({
       browser: z
         .object({
+          id: BrowserIdSchema.optional().describe(
+            'Demo browser id (default "main"). Another id opens a second demo browser with its own profile and debugging port (admin and user side by side); steps name it with browser: "<id>"',
+          ),
           screen: z.string().optional(),
           url: z.string().optional().describe("URL, or a file path relative to this take.json (e.g. site/index.html)"),
           app: z.boolean().optional().describe("App window: no address bar or tabs, so the recording shows only the page"),
@@ -42,7 +51,7 @@ export const StepSchema = z.union([
         .strict(),
     })
     .strict(),
-  z.object({ goto: z.string().describe("Navigate the demo browser: URL, or a file path relative to this take.json") }).strict(),
+  z.object({ goto: z.string().describe("Navigate the demo browser: URL, or a file path relative to this take.json"), browser: BrowserIdSchema.optional() }).strict(),
   z.object({ move: TargetSchema, dur: z.number().positive().optional() }).strict(),
   z
     .object({
@@ -71,7 +80,7 @@ export const StepSchema = z.union([
   z
     .object({
       waitFor: z.union([
-        z.object({ web: z.string(), timeout: z.number().positive().optional() }).strict(),
+        z.object({ web: z.string(), browser: BrowserIdSchema.optional(), timeout: z.number().positive().optional() }).strict(),
         z.object({ a11y: A11yQuerySchema, timeout: z.number().positive().optional() }).strict(),
       ]),
     })
@@ -82,6 +91,7 @@ export const StepSchema = z.union([
       highlight: z
         .object({
           web: z.string().describe("Playwright selector in the demo browser (e.g. [data-sonner-toast]); the highlight follows this element"),
+          browser: BrowserIdSchema.optional(),
           dur: z.number().positive().optional().describe("Longest the highlight lasts, in seconds (default 8)"),
           label: z.string().optional(),
           until: z
@@ -100,11 +110,27 @@ export const StepSchema = z.union([
       focus: z
         .object({
           match: z.string().optional().describe("Window class or title contains. With several windows of one title it picks the active one, else the first: use browser: true for the demo browser"),
-          browser: z.literal(true).optional().describe("Focus the demo browser (found by its process id, never by title)"),
+          browser: z
+            .union([z.literal(true), BrowserIdSchema])
+            .optional()
+            .describe('Focus a demo browser (found by its process id, never by title): true for "main", or its id'),
           screen: z.string().optional(),
         })
         .strict()
-        .refine((f) => (f.match !== undefined) !== (f.browser !== undefined), "give either match or browser: true, not both"),
+        .refine((f) => (f.match !== undefined) !== (f.browser !== undefined), "give either match or browser, not both"),
+    })
+    .strict(),
+  z
+    .object({
+      tile: z
+        .object({
+          screen: z.string().optional().describe("Monitor to tile on (default: the one the first browser is on)"),
+          browsers: z.array(BrowserIdSchema).min(1).describe('Browser ids, placed left to right in this order (also for RTL apps), e.g. ["main", "user"]'),
+        })
+        .strict()
+        .describe(
+          "Place these demo browser windows side by side: equal widths, the monitor's full height. With 2+ browsers in a take the generated storyboard gets one view of the tiled area instead of following windows",
+        ),
     })
     .strict(),
   z.object({ open: z.string().describe("File path (~ ok) or URL; opens with the OS default app (xdg-open / start / open)") }).strict(),

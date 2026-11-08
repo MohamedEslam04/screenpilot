@@ -133,6 +133,8 @@ Take tips: `say` with `wait: true` before an important click; 0.3-1 s `wait`s af
 
 Highlight a page element (a toast, a new row) without writing coordinates: `{"highlight": {"web": "[data-sonner-toast]", "label": "Saved", "until": "gone", "dur": 8}}` right after the click that shows it. Non-blocking: it is tracked in the background while later steps run and lands in `storyboard.highlights[]` in recording coordinates (on any monitor). `until: "gone"` (default) ends when the element is missing, hidden or covered for 0.8 s, `"next"` at the next `say`/`highlight`; `dur` caps it. Spans under 0.6 s and elements that never showed are dropped with a warning naming the selector; a dry run only checks the selector.
 
+Two demo browsers in one take (an admin and a user, live effects): `{"browser": {"id": "user", "url": "..."}}` opens a second one with its own profile (`browser-user` in the config folder) and debugging port (main is 9333, others 9334, 9335, ... by first use). Every `{web}` target, `waitFor.web`, `goto` and `highlight` take `"browser": "user"` (default `"main"`); `{"focus": {"browser": "user"}}` brings it up, and a `{web}` target brings its own browser to the front. `{"tile": {"browsers": ["main", "user"], "screen": "eDP-1"}}` places them side by side, equal widths, the monitor's full height, left to right in list order (also for RTL apps). With 2+ browsers the generated storyboard gets one view of the tiled area (around their windows when nothing was tiled) instead of following windows, unless the take has `view` steps or `camera: "all"`; highlights map from the browser they were measured in.
+
 ## Storyboard example
 
 Egyptian Arabic voice by default, one English line overriding it. Note the paths are relative to the storyboard file.

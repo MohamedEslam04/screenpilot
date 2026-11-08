@@ -5,17 +5,37 @@ import { homedir } from "node:os";
 import { dirname, join, posix, win32 } from "node:path";
 import { type Browser, chromium, type Locator, type Page } from "playwright-core";
 import type { ScreenInfo } from "../record/input/types.js";
-import { getDesktop, type WindowInfo } from "../platform/index.js";
+import { type Desktop, getDesktop, type WindowInfo } from "../platform/index.js";
 import { APP, configDir } from "../brand.js";
 import { TargetError } from "./errors.js";
 
-// A clean demo browser (own profile: no personal tabs, bookmarks or logins)
+// Clean demo browsers (own profile: no personal tabs, bookmarks or logins)
 // that we can inspect over CDP to find where page elements are on screen.
+// "main" is the one every caller uses; a take may open more (an admin and a user side by side).
 
 export const CDP_PORT = 9333;
-const CDP_URL = `http://127.0.0.1:${CDP_PORT}`;
+/** The demo browser every take and tool uses unless a step names another one. */
+export const MAIN_BROWSER = "main";
+/** A browser id becomes part of a folder name (`browser-<id>`); the take schema checks the same rule. */
+const BROWSER_ID = /^[A-Za-z0-9_-]+$/;
+const ports = new Map<string, number>([[MAIN_BROWSER, CDP_PORT]]);
 const CANDIDATES = ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "brave-browser", "microsoft-edge"];
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Debugging port of a demo browser: 9333 for main, then 9334, 9335, ... in order of first use in this process (stable per id). */
+export function cdpPortFor(id: string): number {
+  let port = ports.get(id);
+  if (port === undefined) {
+    port = CDP_PORT + ports.size;
+    ports.set(id, port);
+  }
+  return port;
+}
+
+/** Profile folder of a demo browser: `browser` for main (as always), `browser-<id>` for any other. */
+export function browserProfileDir(id: string): string {
+  return join(configDir(), id === MAIN_BROWSER ? "browser" : `browser-${id}`);
+}
 
 /** Ask `check` every `intervalMs` until it passes or `timeoutMs` is used up (one last ask at the end). */
 export async function waitUntil(
@@ -68,128 +88,329 @@ export function findBrowser(): string {
   throw new Error(`No Chromium-based browser found (Chrome, Edge, Brave, Chromium); set ${envName}.`);
 }
 
-/** Close the demo browser through CDP (Browser.close) and wait until its port is gone. */
-async function closeCdpBrowser(): Promise<void> {
-  try {
-    const { webSocketDebuggerUrl } = (await (await fetch(`${CDP_URL}/json/version`)).json()) as { webSocketDebuggerUrl: string };
-    await new Promise<void>((res) => {
-      const ws = new WebSocket(webSocketDebuggerUrl);
-      ws.onopen = () => ws.send(JSON.stringify({ id: 1, method: "Browser.close" }));
-      ws.onclose = () => res();
-      ws.onerror = () => res();
-      setTimeout(res, 3000);
-    });
-  } catch {
-    // already gone
-  }
-  await disconnectBrowser();
-  for (let i = 0; i < 40 && (await cdpUp()); i++) await sleep(250);
-}
-
-async function cdpUp(): Promise<boolean> {
-  try {
-    return (await fetch(`${CDP_URL}/json/version`)).ok;
-  } catch {
-    return false;
-  }
-}
-
 export interface BrowserWindow {
   window: WindowInfo;
 }
 
-/** Start (or reuse) the demo browser and place its window on `screen`. */
-export async function openBrowser(
-  opts: { screen?: ScreenInfo; url?: string; app?: boolean; log?: (m: string) => void } = {},
-): Promise<WindowInfo | { note: string }> {
-  const profile = join(configDir(), "browser");
-  // The window kind is fixed at launch: switching between app window and normal window means a restart.
-  const appMarker = join(profile, `.${APP}-app-window`);
-  if ((await cdpUp()) && existsSync(appMarker) !== !!opts.app) {
-    opts.log?.(`restarting the demo browser ${opts.app ? "as an app window" : "with its toolbar"}`);
-    await closeCdpBrowser();
-  }
-  if (!(await cdpUp())) {
-    await mkdir(join(profile, "Default"), { recursive: true });
-    await quietDownloads(join(profile, "Default", "Preferences"));
-    const bin = findBrowser();
-    opts.log?.(`starting ${bin} (demo profile)`);
-    const args = [
-      `--user-data-dir=${profile}`,
-      `--remote-debugging-port=${CDP_PORT}`,
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--disable-session-crashed-bubble",
-      "--hide-crash-restore-bubble",
-      // --app: a window without address bar or tabs (nothing about this machine shows in the video).
-      ...(opts.app ? [`--app=${opts.url ?? "about:blank"}`] : ["--new-window", opts.url ?? "about:blank"]),
-    ];
-    if (opts.app) await writeFile(appMarker, "");
-    else await rm(appMarker, { force: true });
-    // macOS only lets an app come to the front if LaunchServices started it: a child
-    // process of ours never can. `open -n` starts a separate instance (the user's own
-    // browser is untouched) and passes our flags through.
-    const app = process.platform === "darwin" ? bin.match(/^(.*?\.app)\//)?.[1] : undefined;
-    if (app) {
-      // `open` returns as soon as LaunchServices has the request; report why if it refuses.
-      const o = spawn("open", ["-n", "-a", app, "--args", ...args], { stdio: ["ignore", "ignore", "pipe"] });
-      let err = "";
-      o.stderr?.on("data", (d: Buffer) => (err += d));
-      o.on("close", (code) => code && opts.log?.(`open -a ${app} failed (${code}): ${err.trim()}`));
-    }
-    let exited: number | null | undefined;
-    if (!app) {
-      const child = spawn(bin, args, { detached: true, stdio: "ignore" });
-      child.on("exit", (code) => (exited = code));
-      child.unref();
-    }
-    const timeoutMs = browserStartTimeout(process.platform, !!app);
-    const started = Date.now();
-    if (!(await waitUntil(cdpUp, { timeoutMs, intervalMs: 250 }))) {
-      // Chrome may also hand the window to an instance that already runs and exit, so an exit code is only a hint.
-      const why = exited === undefined ? "it was still starting" : `the browser process exited (code ${exited})`;
-      throw new Error(`The demo browser did not open its debugging port within ${Math.round((Date.now() - started) / 1000)} s (${why}).`);
-    }
-  }
-  await singleTab(opts.url);
-  await allowDownloads();
-  const desktop = await getDesktop();
-  if (!desktop.windowControl) {
-    // No window positions here (e.g. GNOME Wayland): the browser stays where the compositor put it.
-    return { note: `The demo browser is open; ${desktop.id} gives no window control, so it was not placed and web targets ({web: selector}) can't be located. Use screen targets.` };
-  }
-  const win = await browserWindow();
-  if (opts.screen) {
-    const s = opts.screen;
-    await (await getDesktop()).focusWindow(win.id, { screen: s.name });
-    await sleep(400);
-  } else {
-    await (await getDesktop()).focusWindow(win.id);
-  }
-  return (await (await getDesktop()).listWindows()).find((w) => w.id === win.id) ?? win;
+/** Command-line flags for a demo browser on `port` with its own `profile`. */
+export function launchArgs(o: { profile: string; port: number; url?: string; app?: boolean }): string[] {
+  return [
+    `--user-data-dir=${o.profile}`,
+    `--remote-debugging-port=${o.port}`,
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-session-crashed-bubble",
+    "--hide-crash-restore-bubble",
+    // --app: a window without address bar or tabs (nothing about this machine shows in the video).
+    ...(o.app ? [`--app=${o.url ?? "about:blank"}`] : ["--new-window", o.url ?? "about:blank"]),
+  ];
+}
+
+/** What a DemoBrowser talks to; tests pass fakes. */
+export interface DemoBrowserDeps {
+  connect: (cdpUrl: string) => Promise<Browser>;
+  desktop: () => Promise<Desktop>;
 }
 
 /**
- * The demo browser's window, matched by the browser process id (from CDP),
+ * One demo browser: its own profile, CDP port, connection and calibration, so a take can drive
+ * several side by side. `main` is the one every caller used before browser ids existed.
+ */
+export class DemoBrowser {
+  readonly port: number;
+  readonly cdpUrl: string;
+  private readonly deps: DemoBrowserDeps;
+  private browser: Browser | undefined;
+  /** The browser process id (from CDP), kept while connected: it never changes for a running browser. */
+  private pid: number | undefined;
+  /** The last window found, for callers that accept a slightly old one (background tracking). */
+  private recent: { at: number; win: WindowInfo } | undefined;
+  /** Per window geometry + viewport size: how far our estimate is from where the page really is. */
+  private readonly calibration = new Map<string, { dx: number; dy: number }>();
+
+  constructor(
+    readonly id = MAIN_BROWSER,
+    deps: Partial<DemoBrowserDeps> = {},
+  ) {
+    if (!BROWSER_ID.test(id)) throw new Error(`Bad browser id "${id}": use letters, digits, - and _ only`);
+    this.port = cdpPortFor(id);
+    this.cdpUrl = `http://127.0.0.1:${this.port}`;
+    this.deps = { connect: (url) => chromium.connectOverCDP(url), desktop: getDesktop, ...deps };
+  }
+
+  get profile(): string {
+    return browserProfileDir(this.id);
+  }
+
+  /** "the demo browser" for main (messages as before), `the demo browser "user"` otherwise. */
+  private get name(): string {
+    return this.id === MAIN_BROWSER ? "the demo browser" : `the demo browser "${this.id}"`;
+  }
+
+  private async cdpUp(): Promise<boolean> {
+    try {
+      return (await fetch(`${this.cdpUrl}/json/version`)).ok;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Close the browser through CDP (Browser.close) and wait until its port is gone. */
+  private async closeCdpBrowser(): Promise<void> {
+    try {
+      const { webSocketDebuggerUrl } = (await (await fetch(`${this.cdpUrl}/json/version`)).json()) as { webSocketDebuggerUrl: string };
+      await new Promise<void>((res) => {
+        const ws = new WebSocket(webSocketDebuggerUrl);
+        ws.onopen = () => ws.send(JSON.stringify({ id: 1, method: "Browser.close" }));
+        ws.onclose = () => res();
+        ws.onerror = () => res();
+        setTimeout(res, 3000);
+      });
+    } catch {
+      // already gone
+    }
+    this.disconnect();
+    for (let i = 0; i < 40 && (await this.cdpUp()); i++) await sleep(250);
+  }
+
+  /** Start (or reuse) this browser and place its window on `screen`. */
+  async open(opts: { screen?: ScreenInfo; url?: string; app?: boolean; log?: (m: string) => void } = {}): Promise<WindowInfo | { note: string }> {
+    const profile = this.profile;
+    // The window kind is fixed at launch: switching between app window and normal window means a restart.
+    const appMarker = join(profile, `.${APP}-app-window`);
+    if ((await this.cdpUp()) && existsSync(appMarker) !== !!opts.app) {
+      opts.log?.(`restarting ${this.name} ${opts.app ? "as an app window" : "with its toolbar"}`);
+      await this.closeCdpBrowser();
+    }
+    if (!(await this.cdpUp())) {
+      await mkdir(join(profile, "Default"), { recursive: true });
+      await quietDownloads(join(profile, "Default", "Preferences"));
+      const bin = findBrowser();
+      opts.log?.(`starting ${bin} (demo profile${this.id === MAIN_BROWSER ? "" : ` "${this.id}"`})`);
+      const args = launchArgs({ profile, port: this.port, url: opts.url, app: opts.app });
+      if (opts.app) await writeFile(appMarker, "");
+      else await rm(appMarker, { force: true });
+      // macOS only lets an app come to the front if LaunchServices started it: a child
+      // process of ours never can. `open -n` starts a separate instance (the user's own
+      // browser is untouched) and passes our flags through.
+      const app = process.platform === "darwin" ? bin.match(/^(.*?\.app)\//)?.[1] : undefined;
+      if (app) {
+        // `open` returns as soon as LaunchServices has the request; report why if it refuses.
+        const o = spawn("open", ["-n", "-a", app, "--args", ...args], { stdio: ["ignore", "ignore", "pipe"] });
+        let err = "";
+        o.stderr?.on("data", (d: Buffer) => (err += d));
+        o.on("close", (code) => code && opts.log?.(`open -a ${app} failed (${code}): ${err.trim()}`));
+      }
+      let exited: number | null | undefined;
+      if (!app) {
+        const child = spawn(bin, args, { detached: true, stdio: "ignore" });
+        child.on("exit", (code) => (exited = code));
+        child.unref();
+      }
+      const timeoutMs = browserStartTimeout(process.platform, !!app);
+      const started = Date.now();
+      if (!(await waitUntil(() => this.cdpUp(), { timeoutMs, intervalMs: 250 }))) {
+        // Chrome may also hand the window to an instance that already runs and exit, so an exit code is only a hint.
+        const why = exited === undefined ? "it was still starting" : `the browser process exited (code ${exited})`;
+        throw new Error(`${capitalize(this.name)} did not open its debugging port within ${Math.round((Date.now() - started) / 1000)} s (${why}).`);
+      }
+    }
+    await this.singleTab(opts.url);
+    await this.allowDownloads();
+    const desktop = await this.deps.desktop();
+    if (!desktop.windowControl) {
+      // No window positions here (e.g. GNOME Wayland): the browser stays where the compositor put it.
+      return { note: `${capitalize(this.name)} is open; ${desktop.id} gives no window control, so it was not placed and web targets ({web: selector}) can't be located. Use screen targets.` };
+    }
+    const win = await this.window();
+    if (opts.screen) {
+      await desktop.focusWindow(win.id, { screen: opts.screen.name });
+      await sleep(400);
+    } else {
+      await desktop.focusWindow(win.id);
+    }
+    this.forgetWindow();
+    return (await desktop.listWindows()).find((w) => w.id === win.id) ?? win;
+  }
+
+  /**
+   * This browser's window, matched by the browser process id (from CDP), never by title: other
+   * browser windows (the user's, or another demo browser) must not be touched. Fresh by default;
+   * `maxAgeMs` accepts one found that recently (background tracking samples 4 times a second).
+   */
+  async window(opts: { maxAgeMs?: number } = {}): Promise<WindowInfo> {
+    const maxAge = opts.maxAgeMs ?? 0;
+    if (this.recent && maxAge > 0 && Date.now() - this.recent.at <= maxAge) return this.recent.win;
+    const b = await this.connect();
+    if (this.pid === undefined) {
+      const cdp = await b.newBrowserCDPSession();
+      const info = (await cdp.send("SystemInfo.getProcessInfo")) as { processInfo: { type: string; id: number }[] };
+      await cdp.detach();
+      const pid = info.processInfo.find((p) => p.type === "browser")?.id;
+      if (!pid) throw new Error("CDP did not report the browser process id.");
+      this.pid = pid;
+    }
+    const desktop = await this.deps.desktop();
+    if (!desktop.windowControl) {
+      throw new Error(`Web targets need the browser window's position, which ${desktop.id} does not give apps (Wayland). Use screen targets ({screen, x, y}).`);
+    }
+    for (let i = 0; i < 20; i++) {
+      const hit = (await desktop.listWindows()).find((w) => w.pid === this.pid);
+      if (hit) {
+        this.recent = { at: Date.now(), win: hit };
+        return hit;
+      }
+      await sleep(250);
+    }
+    throw new Error(`No window found for ${this.name} (pid ${this.pid}).`);
+  }
+
+  /** Drop the remembered window (after moving or resizing it). */
+  forgetWindow(): void {
+    this.recent = undefined;
+  }
+
+  /** Downloads land in ~/Downloads without a "Save as" dialog, so takes can open them. */
+  private async allowDownloads(): Promise<void> {
+    const b = await this.connect();
+    const cdp = await b.newBrowserCDPSession();
+    await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: downloadsDir(), eventsEnabled: true });
+    await cdp.detach();
+  }
+
+  /**
+   * Keep exactly one tab: browsers restore old tabs on restart, and CDP cannot
+   * tell which tab is on screen (all report "visible"), so extra tabs would make
+   * us aim at a hidden page.
+   */
+  private async singleTab(url?: string): Promise<void> {
+    const b = await this.connect();
+    const pages = b.contexts().flatMap((c) => c.pages()).filter((p) => !p.url().startsWith("devtools://"));
+    const keep = pages.at(-1) ?? (await b.contexts()[0]!.newPage());
+    for (const p of pages) if (p !== keep) await p.close().catch(() => {});
+    // Always load fresh: a page left over from an earlier take keeps its typed state.
+    if (url) await keep.goto(url);
+    await keep.bringToFront();
+  }
+
+  private async connect(): Promise<Browser> {
+    if (this.browser?.isConnected()) return this.browser;
+    this.disconnect();
+    this.browser = await this.deps.connect(this.cdpUrl);
+    return this.browser;
+  }
+
+  /** Only drops our CDP connection; the browser keeps running. */
+  disconnect(): void {
+    this.browser = undefined;
+    this.pid = undefined;
+    this.recent = undefined;
+  }
+
+  /** Run with the tab the viewer actually sees (CDP lists background tabs too). */
+  async withPage<T>(fn: (page: Page) => Promise<T>): Promise<T> {
+    const b = await this.connect();
+    const pages = b.contexts().flatMap((c) => c.pages()).filter((p) => !p.url().startsWith("devtools://"));
+    if (pages.length === 0) throw new Error(`${capitalize(this.name)} has no open tab.`);
+    let page = pages.at(-1)!;
+    for (const p of pages) {
+      const visible = await p.evaluate(() => document.visibilityState === "visible").catch(() => false);
+      if (visible) {
+        page = p;
+        break;
+      }
+    }
+    return fn(page);
+  }
+
+  /** The window's calibration (cached per geometry and viewport); measured with `pointer` when given and not cached yet. */
+  private async offset(page: Page, m: Metrics, win: WindowInfo, pointer?: PointerMover): Promise<{ dx: number; dy: number } | undefined> {
+    const key = `${win.id}:${win.x},${win.y},${win.w},${win.h}:${m.iw}x${m.ih}`;
+    let c = this.calibration.get(key);
+    if (!c && pointer) {
+      c = await calibrate(page, m, win, pointer);
+      this.calibration.set(key, c);
+    }
+    return c;
+  }
+
+  /** `locate` in this browser. */
+  async locate(selector: string, pointer: PointerMover, timeoutMs = 10_000, opts: { force?: boolean } = {}): Promise<{ x: number; y: number; w: number; h: number }> {
+    const win = await this.window();
+    return this.withPage(async (page) => {
+      const el = page.locator(selector).first();
+      await el.waitFor({ state: "visible", timeout: timeoutMs });
+      await el.scrollIntoViewIfNeeded();
+      let box = await el.boundingBox();
+      if (!box) throw new Error(`"${selector}" has no box on screen`);
+      if (!opts.force) {
+        const centre = (b: { x: number; y: number; width: number; height: number }) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
+        let cover = await findCover(el, centre(box));
+        if (cover.covered) {
+          // Sticky headers and clipping scroll boxes often let go once the element is in the middle.
+          await el.evaluate((e) => e.scrollIntoView({ block: "center", behavior: "instant" }));
+          box = (await el.boundingBox()) ?? box;
+          cover = await findCover(el, centre(box));
+        }
+        if (cover.covered) {
+          throw new TargetError("TARGET_COVERED", `"${selector}" is covered by ${describeCover(cover.hit)}. Scroll it clear or close what covers it, then try again.`);
+        }
+      }
+      const m = await metrics(page);
+      const c = (await this.offset(page, m, win, pointer))!;
+      const p = contentToScreen(box, m, win);
+      return { ...p, x: p.x + c.dx, y: p.y + c.dy };
+    });
+  }
+
+  /** `measure` in this browser. Reuses a window found within the last second (it runs 4 times a second while tracking). */
+  async measure(selector: string, pointer?: PointerMover): Promise<{ x: number; y: number; w: number; h: number; covered: boolean } | null> {
+    const win = await this.window({ maxAgeMs: 1000 });
+    return this.withPage(async (page) => {
+      const el = page.locator(selector).first();
+      if (!(await el.isVisible())) return null;
+      const box = await el.boundingBox();
+      if (!box || box.width <= 0 || box.height <= 0) return null;
+      const { covered } = await findCover(el, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+      const m = await metrics(page);
+      const c = await this.offset(page, m, win, pointer);
+      const p = contentToScreen(box, m, win);
+      // contentToScreen gives the centre.
+      return { x: p.x + (c?.dx ?? 0) - p.w / 2, y: p.y + (c?.dy ?? 0) - p.h / 2, w: p.w, h: p.h, covered };
+    });
+  }
+
+  /** `waitForWeb` in this browser. */
+  async waitFor(selector: string, timeoutMs = 30_000): Promise<void> {
+    await this.withPage((p) => p.locator(selector).first().waitFor({ state: "visible", timeout: timeoutMs }));
+  }
+}
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const instances = new Map<string, DemoBrowser>();
+
+/** The demo browser with this id (one instance per id in this process; default main). */
+export function demoBrowser(id = MAIN_BROWSER): DemoBrowser {
+  let b = instances.get(id);
+  if (!b) {
+    b = new DemoBrowser(id);
+    instances.set(id, b);
+  }
+  return b;
+}
+
+/** Start (or reuse) the main demo browser and place its window on `screen`. */
+export function openBrowser(opts: { screen?: ScreenInfo; url?: string; app?: boolean; log?: (m: string) => void } = {}): Promise<WindowInfo | { note: string }> {
+  return demoBrowser().open(opts);
+}
+
+/**
+ * The main demo browser's window, matched by the browser process id (from CDP),
  * never by title: other browser windows of the user must not be touched.
  */
-export async function browserWindow(): Promise<WindowInfo> {
-  const b = await connect();
-  const cdp = await b.newBrowserCDPSession();
-  const info = (await cdp.send("SystemInfo.getProcessInfo")) as { processInfo: { type: string; id: number }[] };
-  await cdp.detach();
-  const pid = info.processInfo.find((p) => p.type === "browser")?.id;
-  if (!pid) throw new Error("CDP did not report the browser process id.");
-  const desktop = await getDesktop();
-  if (!desktop.windowControl) {
-    throw new Error(`Web targets need the browser window's position, which ${desktop.id} does not give apps (Wayland). Use screen targets ({screen, x, y}).`);
-  }
-  for (let i = 0; i < 20; i++) {
-    const hit = (await (await getDesktop()).listWindows()).find((w) => w.pid === pid);
-    if (hit) return hit;
-    await sleep(250);
-  }
-  throw new Error(`No window found for the demo browser (pid ${pid}).`);
+export function browserWindow(): Promise<WindowInfo> {
+  return demoBrowser().window();
 }
 
 /**
@@ -229,56 +450,14 @@ export function downloadsDir(): string {
   return process.env.XDG_DOWNLOAD_DIR ?? join(homedir(), "Downloads");
 }
 
-/** Downloads land in ~/Downloads without a "Save as" dialog, so takes can open them. */
-async function allowDownloads(): Promise<void> {
-  const b = await connect();
-  const cdp = await b.newBrowserCDPSession();
-  await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: downloadsDir(), eventsEnabled: true });
-  await cdp.detach();
-}
-
-/**
- * Keep exactly one tab: browsers restore old tabs on restart, and CDP cannot
- * tell which tab is on screen (all report "visible"), so extra tabs would make
- * us aim at a hidden page.
- */
-async function singleTab(url?: string): Promise<void> {
-  const b = await connect();
-  const pages = b.contexts().flatMap((c) => c.pages()).filter((p) => !p.url().startsWith("devtools://"));
-  const keep = pages.at(-1) ?? (await b.contexts()[0]!.newPage());
-  for (const p of pages) if (p !== keep) await p.close().catch(() => {});
-  // Always load fresh: a page left over from an earlier take keeps its typed state.
-  if (url) await keep.goto(url);
-  await keep.bringToFront();
-}
-
-let browser: Browser | undefined;
-
-async function connect(): Promise<Browser> {
-  if (browser?.isConnected()) return browser;
-  browser = await chromium.connectOverCDP(CDP_URL);
-  return browser;
-}
-
-/** Run with the tab the viewer actually sees (CDP lists background tabs too). */
-export async function withPage<T>(fn: (page: Page) => Promise<T>): Promise<T> {
-  const b = await connect();
-  const pages = b.contexts().flatMap((c) => c.pages()).filter((p) => !p.url().startsWith("devtools://"));
-  if (pages.length === 0) throw new Error("The demo browser has no open tab.");
-  let page = pages.at(-1)!;
-  for (const p of pages) {
-    const visible = await p.evaluate(() => document.visibilityState === "visible").catch(() => false);
-    if (visible) {
-      page = p;
-      break;
-    }
-  }
-  return fn(page);
+/** Run with the tab of the main demo browser the viewer actually sees (CDP lists background tabs too). */
+export function withPage<T>(fn: (page: Page) => Promise<T>): Promise<T> {
+  return demoBrowser().withPage(fn);
 }
 
 export async function disconnectBrowser(): Promise<void> {
   // Only drops our CDP connection; the browser keeps running.
-  browser = undefined;
+  demoBrowser().disconnect();
 }
 
 interface Metrics {
@@ -287,9 +466,6 @@ interface Metrics {
   ow: number;
   oh: number;
 }
-
-/** Per window geometry + viewport size: how far our estimate is from where the page really is. */
-const calibration = new Map<string, { dx: number; dy: number }>();
 
 /** What `document.elementFromPoint` found on top of a target. */
 export interface CoverHit {
@@ -345,8 +521,8 @@ export async function findCover(el: Locator, at: { x: number; y: number }): Prom
 }
 
 /**
- * Screen position (global logical px) of an element's centre. The page knows
- * where the element is in CSS px and KWin knows where the window is; the
+ * Screen position (global logical px) of an element's centre in the main demo browser. The page
+ * knows where the element is in CSS px and KWin knows where the window is; the
  * browser's own chrome (toolbar, infobars, client-side decorations) is
  * measured once by moving the real pointer and asking the page where it
  * landed, so clicks hit exactly.
@@ -354,42 +530,13 @@ export async function findCover(el: Locator, at: { x: number; y: number }): Prom
  * Unless `force`, a covered element is not located: it is scrolled to the middle of the viewport
  * once, and if something still covers its centre this throws TARGET_COVERED (nothing was sent).
  */
-export async function locate(
+export function locate(
   selector: string,
   pointer: PointerMover,
   timeoutMs = 10_000,
   opts: { force?: boolean } = {},
 ): Promise<{ x: number; y: number; w: number; h: number }> {
-  const win = await browserWindow();
-  return withPage(async (page) => {
-    const el = page.locator(selector).first();
-    await el.waitFor({ state: "visible", timeout: timeoutMs });
-    await el.scrollIntoViewIfNeeded();
-    let box = await el.boundingBox();
-    if (!box) throw new Error(`"${selector}" has no box on screen`);
-    if (!opts.force) {
-      const centre = (b: { x: number; y: number; width: number; height: number }) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
-      let cover = await findCover(el, centre(box));
-      if (cover.covered) {
-        // Sticky headers and clipping scroll boxes often let go once the element is in the middle.
-        await el.evaluate((e) => e.scrollIntoView({ block: "center", behavior: "instant" }));
-        box = (await el.boundingBox()) ?? box;
-        cover = await findCover(el, centre(box));
-      }
-      if (cover.covered) {
-        throw new TargetError("TARGET_COVERED", `"${selector}" is covered by ${describeCover(cover.hit)}. Scroll it clear or close what covers it, then try again.`);
-      }
-    }
-    const m = await metrics(page);
-    const key = `${win.id}:${win.x},${win.y},${win.w},${win.h}:${m.iw}x${m.ih}`;
-    let c = calibration.get(key);
-    if (!c) {
-      c = await calibrate(page, m, win, pointer);
-      calibration.set(key, c);
-    }
-    const p = contentToScreen(box, m, win);
-    return { ...p, x: p.x + c.dx, y: p.y + c.dy };
-  });
+  return demoBrowser().locate(selector, pointer, timeoutMs, opts);
 }
 
 /**
@@ -397,27 +544,15 @@ export async function locate(
  * `locate` but without waiting, scrolling or failing: null when it is missing, hidden or has no box.
  * `covered` is the `findCover` check at its centre. Uses the window's cached calibration; without
  * one it calibrates only when given a `pointer` (that moves the real pointer), else it uses the
- * uncalibrated estimate, so background tracking never moves the pointer.
+ * uncalibrated estimate, so background tracking never moves the pointer. `browser` is the demo
+ * browser's id (default main).
  */
-export async function measure(selector: string, pointer?: PointerMover): Promise<{ x: number; y: number; w: number; h: number; covered: boolean } | null> {
-  const win = await browserWindow();
-  return withPage(async (page) => {
-    const el = page.locator(selector).first();
-    if (!(await el.isVisible())) return null;
-    const box = await el.boundingBox();
-    if (!box || box.width <= 0 || box.height <= 0) return null;
-    const { covered } = await findCover(el, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
-    const m = await metrics(page);
-    const key = `${win.id}:${win.x},${win.y},${win.w},${win.h}:${m.iw}x${m.ih}`;
-    let c = calibration.get(key);
-    if (!c && pointer) {
-      c = await calibrate(page, m, win, pointer);
-      calibration.set(key, c);
-    }
-    const p = contentToScreen(box, m, win);
-    // contentToScreen gives the centre.
-    return { x: p.x + (c?.dx ?? 0) - p.w / 2, y: p.y + (c?.dy ?? 0) - p.h / 2, w: p.w, h: p.h, covered };
-  });
+export function measure(
+  selector: string,
+  pointer?: PointerMover,
+  browser = MAIN_BROWSER,
+): Promise<{ x: number; y: number; w: number; h: number; covered: boolean } | null> {
+  return demoBrowser(browser).measure(selector, pointer);
 }
 
 export interface PointerMover {
@@ -460,6 +595,6 @@ export function contentToScreen(
   };
 }
 
-export async function waitForWeb(selector: string, timeoutMs = 30_000): Promise<void> {
-  await withPage((p) => p.locator(selector).first().waitFor({ state: "visible", timeout: timeoutMs }));
+export function waitForWeb(selector: string, timeoutMs = 30_000): Promise<void> {
+  return demoBrowser().waitFor(selector, timeoutMs);
 }
