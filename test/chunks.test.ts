@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { busySpans, planChunks, timelineBusy } from "../src/render/chunks.js";
+import { busySpans, type ChunkSources, chunkKey, planChunks, timelineBusy } from "../src/render/chunks.js";
 import type { RenderPlan } from "../src/render/plan.js";
-import type { Theme } from "../src/storyboard/schema.js";
-import { buildTimeline } from "../src/storyboard/timeline.js";
+import { type Theme, ThemeSchema } from "../src/storyboard/schema.js";
+import { buildTimeline, type Piece } from "../src/storyboard/timeline.js";
 
 function plan(duration: number, extra: Partial<RenderPlan> = {}): RenderPlan {
   return {
@@ -207,5 +207,107 @@ describe("planChunks", () => {
     const after = planChunks(plan(952, { texts: texts.map((t) => ({ ...t, start: shift(t.start), end: shift(t.end) })) }));
     expect(before.length).toBeGreaterThan(3);
     expect(after.slice(1).map((c) => c.start)).toEqual(before.slice(1).map((c) => c.start + 2));
+  });
+
+  it("moves the next boundary too when the edit sits in the same quiet gap", () => {
+    const texts = (shift: number) => [20, 150, 250, 350].map((t) => ({ start: t > 50 ? t + shift : t, end: (t > 50 ? t + shift : t) + 3, text: "x", position: "bottom" as const, style: "pill" as const }));
+    expect(starts(planChunks(plan(400, { texts: texts(0) }), { target: 100 }))).toEqual([0, 100, 200, 300]);
+    // A 2 s hold at 50 s (busy) pushes everything after it.
+    const after = planChunks(plan(402, { texts: texts(2) }), { target: 100, busy: [{ start: 50, end: 52 }] });
+    expect(starts(after)).toEqual([0, 102, 202, 302]);
+  });
+});
+
+describe("chunkKey", () => {
+  const theme = ThemeSchema.parse({});
+  const caption = (start: number, text = "x") => ({ start, end: start + 3, text, position: "bottom" as const, style: "pill" as const });
+  /** A 400 s plan cut from one source range; `shift` seconds of hold inserted at 50 s push everything after it. */
+  function scene(shift = 0, captionText = "Second") {
+    const pieces: Piece[] = shift
+      ? [
+          { kind: "play", in: 0, out: 50, speed: 1, volume: 1, outStart: 0, outEnd: 50 },
+          { kind: "hold", at: 50, dur: shift, outStart: 50, outEnd: 50 + shift },
+          { kind: "play", in: 50, out: 400, speed: 1, volume: 1, outStart: 50 + shift, outEnd: 400 + shift },
+        ]
+      : [{ kind: "play", in: 0, out: 400, speed: 1, volume: 1, outStart: 0, outEnd: 400 }];
+    const s = (t: number) => (t >= 50 ? t + shift : t);
+    const full = plan(400 + shift, {
+      theme,
+      texts: [caption(20, "First"), caption(s(150), captionText), caption(s(250), "Third")],
+    });
+    const sources: ChunkSources = { files: {}, video: { src: "edited.mp4", cut: "rec.mp4|1|2|30", pieces } };
+    return { full, sources };
+  }
+  const key = (sc: ReturnType<typeof scene>, start: number, end: number, render = "draft") => chunkKey(sc.full, { start, end }, sc.sources, render);
+
+  it("is the same for an unchanged chunk and differs with the render settings", () => {
+    expect(key(scene(), 100, 200)).toBe(key(scene(), 100, 200));
+    expect(key(scene(), 100, 200, "delivery")).not.toBe(key(scene(), 100, 200));
+  });
+
+  // Review Focus 3: keys depend only on the chunk's own slice, never on its index or on other chunks.
+  it("changes only for the chunk whose caption changed", () => {
+    const a = scene();
+    const b = scene(0, "Second, edited");
+    expect(key(b, 0, 100)).toBe(key(a, 0, 100));
+    expect(key(b, 100, 200)).not.toBe(key(a, 100, 200));
+    expect(key(b, 200, 300)).toBe(key(a, 200, 300));
+  });
+
+  // Review Focus 4: chunk-relative times, and the cut described by what the chunk shows,
+  // so a chunk whose slice is identical after a shift keeps its key.
+  it("survives a whole-second shift of everything after an earlier edit", () => {
+    const a = scene();
+    const b = scene(2);
+    expect(key(b, 0, 100)).not.toBe(key(a, 0, 100));
+    expect(key(b, 102, 202)).toBe(key(a, 100, 200));
+    expect(key(b, 202, 402)).toBe(key(a, 200, 400));
+  });
+
+  it("changes when the shifted chunk does not show the same source frames", () => {
+    expect(key(scene(2), 100, 200)).not.toBe(key(scene(), 100, 200));
+  });
+
+  it("changes when the source or the cut settings change", () => {
+    const b = scene();
+    b.sources.video.cut = "rec.mp4|1|3|30";
+    expect(key(b, 100, 200)).not.toBe(key(scene(), 100, 200));
+  });
+
+  // Review Focus 2: music keeps its absolute offset, so a chunk that now hears another part of the song re-renders.
+  it("changes when the music under a shifted chunk is another part of the song", () => {
+    const music = (sc: ReturnType<typeof scene>) => {
+      sc.full.audio = [{ src: "music.mp3", start: 0, duration: sc.full.duration, volume: 0.3 }];
+      sc.sources.files["music.mp3"] = "song:1:2";
+      return sc;
+    };
+    const a = music(scene());
+    expect(key(music(scene(2)), 102, 202)).not.toBe(key(a, 100, 200));
+    expect(key(music(scene()), 100, 200)).toBe(key(a, 100, 200));
+  });
+
+  it("keys a file by its content identity, not by its build-dir name", () => {
+    const a = scene();
+    a.full.audio = [{ src: "voice/ext-3.wav", start: 120, duration: 2, volume: 1 }];
+    a.sources.files["voice/ext-3.wav"] = "line.wav:10:20";
+    const b = scene();
+    b.full.audio = [{ src: "voice/ext-4.wav", start: 120, duration: 2, volume: 1 }];
+    b.sources.files["voice/ext-4.wav"] = "line.wav:10:20";
+    expect(key(b, 100, 200)).toBe(key(a, 100, 200));
+    b.sources.files["voice/ext-4.wav"] = "line.wav:11:20";
+    expect(key(b, 100, 200)).not.toBe(key(a, 100, 200));
+  });
+
+  it("keys the sound effects track by the hits the chunk hears, chunk-relative", () => {
+    const withSfx = (sc: ReturnType<typeof scene>, hits: number[]) => {
+      sc.full.audio = [{ src: "sfx.wav", start: 0, duration: sc.full.duration, volume: 1 }];
+      sc.sources.sfx = { src: "sfx.wav", hits: hits.map((at) => ({ at, volume: 0.5, sound: "builtin:click" })) };
+      return sc;
+    };
+    const a = withSfx(scene(), [30, 130, 230]);
+    const b = withSfx(scene(2), [31, 132, 232]);
+    expect(key(b, 0, 100)).not.toBe(key(a, 0, 100));
+    expect(key(b, 102, 202)).toBe(key(a, 100, 200));
+    expect(key(b, 202, 402)).toBe(key(a, 200, 400));
   });
 });
