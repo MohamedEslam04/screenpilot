@@ -49,6 +49,7 @@ A storyboard has one `source`. To put another recording in the middle, write `se
 ```
 
 - `from`/`to` are SOURCE seconds of that part's storyboard, half-open `[from, to)`: the same storyboard twice with `to: 42` and `from: 42` keeps every item once. Narration that started before `from` is dropped.
+- A part is exactly one of `{storyboard}`, `{sequence: "group.json"}` (another sequence, rendered on its own to a cached mp4 and re-rendered only when one of its parts changed; no `from`/`to`; a sequence that includes itself, directly or not, fails `sequence-validate` with the chain `a.json → b.json → a.json`) or `{video: "clip.mp4"}` (a finished video used as is, scaled to the output size and fps if it differs; `from`/`to` are seconds of that video). Every transition works between any two kinds, so long videos can be rendered in groups and joined with one top-level sequence.
 - Intro only on the first part, outro only on the last; every part is forced to one output size. Give every storyboard the same `extends` base so the look matches.
 - Transitions (how a part enters from the previous): cut, crossfade, fade-black, wipe-left, wipe-right, slide-left, slide-right; `dur` is clamped to half of either neighbour.
 - Review fast: `render ... --from 12 --to 20` (OUTPUT seconds) renders only that window. Other sizes: `render ... --formats 16:9,9:16,1:1`.
