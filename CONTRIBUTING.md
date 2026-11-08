@@ -36,6 +36,28 @@ In a git worktree, do not symlink `node_modules` from the main checkout: `pnpm <
 
 Tests run on every pull request. The platform smoke tests (Windows, macOS, X11, Wayland) also run in CI and drive a real desktop; don't run them on a desktop you are using. `AGENTS.md` has the architecture notes and conventions.
 
+## Render benchmark
+
+`pnpm bench:render` makes a synthetic 40 s 1080p30 recording (3 captions, 2 zooms, 1 highlight), renders it at a few settings (`delivery` with 4 workers, `delivery` with `--workers max`, `draft`) and prints a table: workers, wall time, video seconds per wall second, frames per second and our stage timings (HyperFrames' own phase timings stream to stderr). It uses only the CPU (ffmpeg and HyperFrames), never the desktop, and deletes its temp folder at the end. Run it before and after a speed change, on an otherwise idle machine; the `max` row follows the memory that is free when it starts.
+
+Reference, 12 cores, 15 GB RAM (a quiet machine, 2026-11-08 measurement):
+
+| Render | Wall time |
+|---|---|
+| `-q delivery`, 4 workers (auto) | 47 s |
+| `-q delivery`, 8 workers | 34 s |
+| `-q draft` (15 fps), 4 workers | 25 s |
+
+A second run on the same machine while other jobs were using it (load average about 15, so treat these numbers as rough, not exact):
+
+| Render | Workers | Wall time | Video s per wall s |
+|---|---|---|---|
+| delivery | 4 | 89 s | 0.45 |
+| delivery, `max` | 5 | 52 s | 0.76 |
+| draft | 4 | 24 s | 1.64 |
+
+A render takes about as long as the video (more at `delivery`). Going from 4 to 8 workers gave about 1.4x, not 2x, because the encoder is part of the limit. Each finished render also records its speed in `render-speed.json` (cache folder) and the next long render prints an estimate from it.
+
 ## Style
 
 - TypeScript, ESM, `.js` import suffixes, 2-space indent, double quotes.

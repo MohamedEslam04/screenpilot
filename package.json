@@ -43,6 +43,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p scripts/tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "bench:render": "tsx scripts/bench-render.ts",
     "smoke:windows": "tsx scripts/windows-smoke.ts",
     "smoke:windows-multimon": "tsx scripts/windows-multimon-smoke.ts",
     "smoke:macos": "tsx scripts/macos-smoke.ts",
