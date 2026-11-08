@@ -155,6 +155,16 @@ export class DemoBrowser {
     }
   }
 
+  /**
+   * For tools that read a browser someone must have opened first: a browser other than main that
+   * is not running fails with what to do, instead of a bare connection error. (Main keeps its
+   * old behavior: the caller's own error.)
+   */
+  async requireOpen(): Promise<void> {
+    if (this.id === MAIN_BROWSER || (await this.cdpUp())) return;
+    throw new TargetError("WINDOW_NOT_FOUND", `${capitalize(this.name)} is not open. Call browser_open with id "${this.id}" first.`);
+  }
+
   /** Close the browser through CDP (Browser.close) and wait until its port is gone. */
   private async closeCdpBrowser(): Promise<void> {
     try {

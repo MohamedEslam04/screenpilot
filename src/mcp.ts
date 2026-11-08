@@ -12,7 +12,7 @@ import { describeError } from "./drive/errors.js";
 import { audit, checkAppAllowed, checkEnvAllowed } from "./drive/guard.js";
 import { Driver } from "./drive/index.js";
 import { screenshot } from "./drive/see.js";
-import { locate, openBrowser, waitForWeb, withPage } from "./drive/web.js";
+import { type DemoBrowser, demoBrowser } from "./drive/web.js";
 import { detectBriefEnv } from "./brief/detect.js";
 import { checkForUpdate, updateCommand } from "./update/index.js";
 import { elicitBrief } from "./brief/elicit.js";
@@ -129,12 +129,23 @@ const DRIVE_NOTE =
   "On macOS shortcuts use cmd (e.g. cmd+c), not ctrl. " +
   "Run doctor to see what this desktop supports: on GNOME/other Wayland there is no window control (use {screen, x, y} targets only).";
 const norm = z.number().min(0).max(1);
+const browserParam = z
+  .string()
+  .optional()
+  .describe("Id of the demo browser (default main). For a second one, open it with browser_open id, then pass the same id here. Same ids as a take's browser steps");
+
+/** The demo browser with this id, which must be running unless it is main. */
+async function runningBrowser(id?: string): Promise<DemoBrowser> {
+  const b = demoBrowser(id);
+  await b.requireOpen();
+  return b;
+}
 
 // Sent to every MCP client on connect (Claude, Codex, OpenCode, Cursor…), so
 // any agent knows the workflow without a client-specific skill.
 const INSTRUCTIONS = `${APP_TITLE} makes screen videos. FIRST, for every new video, call brief: it asks the user the decisions only they can make (goal, source, language, which voice: built-in, a website like Google AI Studio, their own or none, look, camera, review, permissions) as option pickers, and record_start, perform, render and sequence_render refuse until it is done. Never answer for the user, never install anything for them, and do not start recording or building before the answers are in. Typical loops:
 1. User records: record_start (screens "all" or one), user works, record_stop → analyze (look at the contact sheet) → storyboard_init with suggest → edit the storyboard (narration lines, captions, highlights, zooms) → render quality "draft" → check_output frames → fix → render "delivery".
-2. You perform it: screenshot to see the monitors, windows to see apps, browser_open for websites (app: true hides the address bar and tabs, so nothing about this machine shows); in take.json, file paths are relative to the take, so it runs on any machine; try the flow live with pointer_move/click/type_text; then write a take.json (take_schema) and call perform (it records, logs clicks/windows and writes a storyboard), add intro/outro/zooms, render.
+2. You perform it: screenshot to see the monitors, windows to see apps, browser_open for websites (app: true hides the address bar and tabs, so nothing about this machine shows; a second demo browser: browser_open with \`id\`, then pass the same \`browser\` to web_locate, wait_for, page_text); in take.json, file paths are relative to the take, so it runs on any machine; try the flow live with pointer_move/click/type_text; then write a take.json (take_schema) and call perform (it records, logs clicks/windows and writes a storyboard), add intro/outro/zooms, render.
 Design every video for its purpose; there is no house style. Before rendering, decide who it's for and where it will be shown, then set the storyboard to match: output size (1920x1080 for YouTube/README/slides, 1080x1920 for Reels/TikTok/Shorts, 1080x1080 for feeds), theme (background, padding, radius, accent, font, caption colors), theme.fonts (any Google Fonts), theme.css (your own CSS for captions, cards, highlights; storyboard_schema lists the classes) and text motion (theme.motion.captions / .cards, or motion per caption: in/out presets fade, rise, drop, slide-left, slide-right, pop, zoom, blur, wipe, words, lines, none; duration, any GSAP ease, stagger). Match the product's brand when you can see it (colors and type from its site or app). Pace and wording follow the audience: short punchy captions for social, calm explanatory ones for tutorials, bilingual lines ("English\nعربي") when asked. Defaults are only a fallback.
 Choose the shot the same way: which monitors to record (record_start screens / take "screens": one, several or "all") and what the camera shows: "window" follows the app in use (clean product demos), "screen" the whole monitor (OS-level how-tos, context matters), "all" every monitor side by side (work that spans screens, e.g. code on one and the app on the other). Switch per moment with view steps / storyboard views, and zoom only where detail matters.
 Editing: segments take speedTo (ramp the speed) and transition {type: crossfade|fade-black|fade-white|wipe-left|wipe-right|slide-left|slide-right, dur} (blends in, overlapping the previous segment, so the video gets dur shorter); theme.grade {brightness, contrast, saturation, gamma} grades the recording. Annotations: annotations [{type: arrow|box|blur, at, dur, ...}] draw on the recording (0..1 of the recording, they follow zooms); blur with mode solid hides secrets completely. Sound: sfx [{at, src}] plays a sound at a source time and sounds {clicks, typing, cards, volume} adds them automatically from the recorded clicks (needs events), the typing [{at, dur, text?}] spans (keys are never recorded; a performed take marks its own) and the title cards; src is a file or builtin:click|key|whoosh|pop|ding. music takes fadeIn/fadeOut, loop, offset and from/to; audio {loudness: {}} normalizes the final video to -16 LUFS and audio {denoise: true} cleans the recording's sound.
@@ -740,18 +751,20 @@ server.registerTool(
   {
     description:
       "Open (or reuse) the clean demo browser (its own profile; downloads go to ~/Downloads without prompts) and place it on a monitor. " +
-      "Then use {web: selector} targets and web_locate. Read-only for the desktop except for launching/moving the browser window.",
+      "Then use {web: selector} targets and web_locate. Read-only for the desktop except for launching/moving the browser window. " +
+      "For a second browser (an admin and a user side by side) pass an `id`: it has its own profile and window, and an id that is already open is reused, not started twice. web_locate, wait_for and page_text take the same id as `browser`.",
     inputSchema: {
+      id: z.string().optional().describe("Which demo browser (default main); letters, digits, - and _ only. Same ids as a take's {browser: {id}} step"),
       screen: z.string().optional().describe("Monitor to put it on"),
       url: z.string().optional().describe("Page to open"),
       app: z.boolean().optional().describe("App window without address bar and tabs, so recordings show only the page (restarts the demo browser when switching)"),
     },
   },
-  safe(async ({ screen, url, app }) => {
+  safe(async ({ id, screen, url, app }) => {
     const screens = await getScreens();
     const scr = screen ? screens.find((s) => s.name === screen) : undefined;
     if (screen && !scr) throw new Error(`Unknown monitor "${screen}" (have: ${screens.map((s) => s.name).join(", ")})`);
-    return text(await openBrowser({ screen: scr, url, app, log }));
+    return text(await demoBrowser(id).open({ screen: scr, url, app, log }));
   }),
 );
 
@@ -761,9 +774,9 @@ server.registerTool(
     description:
       "Find an element in the demo browser by Playwright selector (CSS, text=..., role=...) and return its rectangle in global screen pixels (x, y, w, h). " +
       "Use it to check a {web} target exists before clicking. Read-only.",
-    inputSchema: { selector: z.string() },
+    inputSchema: { selector: z.string(), browser: browserParam },
   },
-  safe(async ({ selector }) => text(await locate(selector, await getDriver()))),
+  safe(async ({ selector, browser }) => text(await (await runningBrowser(browser)).locate(selector, await getDriver()))),
 );
 
 server.registerTool(
@@ -817,11 +830,12 @@ server.registerTool(
     inputSchema: {
       window: z.string().optional().describe("Window class or title substring"),
       web: z.string().optional().describe("Playwright selector in the demo browser"),
+      browser: browserParam.describe("Which demo browser the `web` selector is in (default main); ignored for window and a11y"),
       a11y: A11yQuerySchema.optional().describe("Control in a native app: {role, name, app?}"),
       timeout: z.number().positive().max(120).optional().describe("Seconds, default 15"),
     },
   },
-  safe(async ({ window, web, a11y, timeout }) => {
+  safe(async ({ window, web, a11y, timeout, browser }) => {
     if (Number(!!window) + Number(!!web) + Number(!!a11y) !== 1) throw new Error("Give exactly one of window, web or a11y.");
     const ms = (timeout ?? 15) * 1000;
     if (a11y) {
@@ -829,7 +843,7 @@ server.registerTool(
       return text({ found: { a11y: { role: m.role, name: m.name, app: m.app }, x: m.cx, y: m.cy } });
     }
     if (web) {
-      await waitForWeb(web, ms);
+      await (await runningBrowser(browser)).waitFor(web, ms);
       return text({ found: { web } });
     }
     const desktop = await getDesktop();
@@ -848,11 +862,11 @@ server.registerTool(
   {
     description:
       "Read the demo browser's current tab as data: URL, title and visible text (truncated to maxChars). Use it to check what a page says instead of reading a screenshot. Read-only.",
-    inputSchema: { maxChars: z.number().int().positive().max(50000).optional().describe("Default 4000") },
+    inputSchema: { maxChars: z.number().int().positive().max(50000).optional().describe("Default 4000"), browser: browserParam },
   },
-  safe(async ({ maxChars }) =>
+  safe(async ({ maxChars, browser }) =>
     text(
-      await withPage(async (page) => {
+      await (await runningBrowser(browser)).withPage(async (page) => {
         const body = await page.evaluate(() => document.body?.innerText ?? "");
         const limit = maxChars ?? 4000;
         return { url: page.url(), title: await page.title(), text: body.slice(0, limit), truncated: body.length > limit };
