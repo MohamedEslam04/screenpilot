@@ -180,3 +180,29 @@ export async function concatParts(
   ]);
   return { output, mode: "encode" };
 }
+
+/** Cut a finished video to [from, to) (seconds of that video), re-encoded so the cut is frame-accurate. */
+export async function trimVideo(input: string, output: string, range: { from?: number; to?: number }, quality: Quality = "looks"): Promise<void> {
+  const { from = 0, to } = range;
+  await run("ffmpeg", [
+    "-y",
+    "-loglevel",
+    "error",
+    ...(from > 0 ? ["-ss", f(from)] : []),
+    "-i",
+    input,
+    ...(to !== undefined ? ["-t", f(to - from)] : []),
+    "-c:v",
+    "libx264",
+    ...ENCODE[quality],
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "192k",
+    "-movflags",
+    "+faststart",
+    output,
+  ]);
+}

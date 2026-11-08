@@ -1,9 +1,10 @@
+import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildConcatFilter, concatParts, probePart } from "../src/sequence/concat.js";
-import { prepareSequence, validateSequence } from "../src/sequence/index.js";
+import { prepareSequence, renderSequence, validateSequence } from "../src/sequence/index.js";
 import { sequenceJsonSchema, SequenceSchema } from "../src/sequence/schema.js";
 import { prepareBuild } from "../src/render/index.js";
 import { StoryboardError } from "../src/storyboard/load.js";
@@ -362,4 +363,98 @@ describe("concatParts (real ffmpeg)", () => {
     expect(info).toMatchObject({ width: 320, height: 180, hasAudio: true });
     expect(info.duration).toBeCloseTo(2.5, 1);
   });
+});
+
+describe("parts that are sequences or finished videos", () => {
+  const hasFfmpeg = spawnSync("ffmpeg", ["-version"]).status === 0;
+  const ffmpegIt = hasFfmpeg ? it : it.skip;
+
+  it("accepts {sequence} and {video}, rejects mixing kinds or from/to on a sequence", () => {
+    expect(SequenceSchema.safeParse({ parts: [{ sequence: "inner.json" }, { video: "a.mp4", from: 1, to: 2 }] }).success).toBe(true);
+    expect(SequenceSchema.safeParse({ parts: [{ sequence: "inner.json", from: 1 }] }).success).toBe(false);
+    expect(SequenceSchema.safeParse({ parts: [{ sequence: "inner.json", to: 4 }] }).success).toBe(false);
+    expect(SequenceSchema.safeParse({ parts: [{ storyboard: "a.json", video: "a.mp4" }] }).success).toBe(false);
+    expect(SequenceSchema.safeParse({ parts: [{ transition: { type: "crossfade" } }] }).success).toBe(false);
+    expect(SequenceSchema.safeParse({ parts: [{ video: "a.mp4", from: 3, to: 2 }] }).success).toBe(false);
+  });
+
+  it("describes the three kinds in the JSON schema", () => {
+    const parts = (sequenceJsonSchema() as { properties: { parts: { items: { properties: Record<string, unknown> } } } }).properties.parts;
+    expect(Object.keys(parts.items.properties)).toEqual(expect.arrayContaining(["storyboard", "sequence", "video"]));
+  });
+
+  it("fails validation on a cycle a -> b -> a and prints the chain", async () => {
+    const dir = await tempDir();
+    await writeJson(join(dir, "a.json"), { parts: [{ sequence: "b.json" }] });
+    await writeJson(join(dir, "b.json"), { parts: [{ sequence: "a.json" }] });
+    const err = await validateSequence(join(dir, "a.json")).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(StoryboardError);
+    expect((err as StoryboardError).issues.join("\n")).toContain("a.json → b.json → a.json");
+    const self = join(dir, "self.json");
+    await writeJson(self, { parts: [{ sequence: "self.json" }] });
+    const err2 = await validateSequence(self).catch((e: unknown) => e);
+    expect((err2 as StoryboardError).issues.join("\n")).toContain("self.json → self.json");
+    await expect(prepareSequence(join(dir, "a.json"))).rejects.toThrow(StoryboardError);
+  });
+
+  it("reports a missing nested sequence and a missing video", async () => {
+    const dir = await tempDir();
+    await writeJson(join(dir, "seq.json"), { parts: [{ sequence: "nope.json" }] });
+    const err = await validateSequence(join(dir, "seq.json")).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(StoryboardError);
+    expect((err as StoryboardError).issues.join("\n")).toMatch(/parts\[0\].*nope\.json/);
+    await writeJson(join(dir, "v.json"), { parts: [{ video: "nope.mp4" }] });
+    const r = await validateSequence(join(dir, "v.json"));
+    expect(r.warnings.join("\n")).toMatch(/parts\[0\].*video not found/);
+  });
+
+  ffmpegIt("joins two finished videos with fade-black: duration = d1 + d2 - dur", async () => {
+    const dir = await tempDir();
+    makeVideo(join(dir, "a.mp4"), 2, { audio: true });
+    makeVideo(join(dir, "b.mp4"), 1.5, { audio: true });
+    await writeJson(join(dir, "seq.json"), {
+      parts: [{ video: "a.mp4" }, { video: "b.mp4", transition: { type: "fade-black", dur: 0.5 } }],
+    });
+    const r = await renderSequence(join(dir, "seq.json"), { quality: "draft" });
+    expect(r.join).toBe("encode");
+    expect(r.duration).toBeGreaterThan(3.0 - 0.05);
+    expect(r.duration).toBeLessThan(3.0 + 0.05);
+  });
+
+  ffmpegIt("trims a video part with from/to in its own seconds", async () => {
+    const dir = await tempDir();
+    makeVideo(join(dir, "a.mp4"), 4);
+    makeVideo(join(dir, "b.mp4"), 1);
+    await writeJson(join(dir, "seq.json"), { parts: [{ video: "a.mp4", from: 1, to: 3 }, { video: "b.mp4" }] });
+    const r = await renderSequence(join(dir, "seq.json"), { quality: "draft" });
+    expect(r.duration).toBeGreaterThan(3 - 0.1);
+    expect(r.duration).toBeLessThan(3 + 0.1);
+  });
+
+  ffmpegIt("renders a nested sequence once, reuses it until one of its parts changes, and joins it with transitions", async () => {
+    const dir = await tempDir();
+    makeVideo(join(dir, "a.mp4"), 2);
+    makeVideo(join(dir, "b.mp4"), 2);
+    makeVideo(join(dir, "c.mp4"), 2);
+    await writeJson(join(dir, "inner.json"), { parts: [{ video: "a.mp4" }, { video: "b.mp4", transition: { type: "crossfade", dur: 0.5 } }] });
+    await writeJson(join(dir, "outer.json"), {
+      parts: [{ sequence: "inner.json" }, { video: "c.mp4", transition: { type: "fade-black", dur: 0.5 } }],
+    });
+    const first = await renderSequence(join(dir, "outer.json"), { quality: "draft" });
+    // inner = 2 + 2 - 0.5 = 3.5; outer = 3.5 + 2 - 0.5 = 5
+    expect(first.duration).toBeGreaterThan(5 - 0.05);
+    expect(first.duration).toBeLessThan(5 + 0.05);
+    expect(first.parts.map((p) => [p.kind, p.cached])).toEqual([["sequence", false], ["video", true]]);
+
+    const second = await renderSequence(join(dir, "outer.json"), { quality: "draft" });
+    expect(second.parts.map((p) => p.cached)).toEqual([true, true]);
+    expect(second.duration).toBeCloseTo(first.duration, 1);
+
+    // Change a file inside the nested sequence: the nested part is rebuilt.
+    makeVideo(join(dir, "b.mp4"), 2.5);
+    const third = await renderSequence(join(dir, "outer.json"), { quality: "draft" });
+    expect(third.parts.map((p) => p.cached)).toEqual([false, true]);
+    expect(third.duration).toBeGreaterThan(5.5 - 0.05);
+    expect(third.duration).toBeLessThan(5.5 + 0.05);
+  }, 60_000);
 });
