@@ -98,16 +98,24 @@ screenpilot sequence sequence.json -q delivery -o demo-with-feature.mp4</code></
 <thead><tr><th>Command</th><th>What it does</th></tr></thead>
 <tbody>
 <tr><td><code>screenpilot sequence-validate &lt;sequence&gt;</code></td><td>Checks the sequence and every storyboard it uses. It fails with the schema issues, or prints <code>valid: true</code> with the warnings of each part.</td></tr>
-<tr><td><code>screenpilot sequence &lt;sequence&gt;</code></td><td>Renders every part and joins them. Flags: <code>-o, --output</code> (default <code>&lt;sequence&gt;.mp4</code>), <code>-q, --quality</code> (<code>draft</code>, <code>looks</code>, <code>delivery</code>), <code>--png-frames</code>, <code>--workers</code>, <code>--build-dir</code>.</td></tr>
+<tr><td><code>screenpilot sequence &lt;sequence&gt;</code></td><td>Renders every part and joins them. Flags: <code>-o, --output</code> (default <code>&lt;sequence&gt;.mp4</code>), <code>-q, --quality</code> (<code>draft</code>, <code>looks</code>, <code>delivery</code>), <code>--png-frames</code>, <code>--workers</code> (<code>auto</code>, <code>max</code> or a number), <code>--style</code>, <code>--build-dir</code>.</td></tr>
 <tr><td><code>screenpilot sequence-schema</code></td><td>Prints the JSON Schema of <code>sequence.json</code>.</td></tr>
 </tbody>
 </table>
-<p>The same steps are the tools <code>sequence_validate</code>, <code>sequence_render</code> (inputs <code>sequence</code>, <code>output</code>, <code>quality</code>) and <code>sequence_schema</code>. See <a href="@guide/tools.html#sequence">MCP tools</a>.</p>
+<p>The same steps are the tools <code>sequence_validate</code>, <code>sequence_render</code> (inputs <code>sequence</code>, <code>output</code>, <code>quality</code>, <code>style</code>, <code>workers</code>) and <code>sequence_schema</code>. See <a href="@guide/tools.html#sequence">MCP tools</a>.</p>
 <ul>
 <li><strong>Unchanged parts are reused.</strong> Each part is rendered like a storyboard into <code>&lt;sequence&gt;.build/part-N/</code>. On the next run, a part whose storyboard, recording, events, music, overlays and quality are the same is not rendered again. Editing the feature clip does not re-render the demo.</li>
 <li><strong>The join.</strong> When every part is cut to the next and they are encoded the same way, the parts are joined by stream copy, with no quality loss. With a transition, or when the encodings differ, the video is re-encoded. The result tells you which one happened in <code>join</code> (<code>copy</code> or <code>encode</code>).</li>
 <li><strong>The result.</strong> The command prints the output path, the duration, <code>join</code> and each part with its duration, whether it was reused and its warnings.</li>
 </ul>
+<h3 id="styles">Render with another look</h3>
+<p><code>screenpilot sequence sequence.json --style dark.json -q draft</code> renders the whole sequence with another look and edits nothing. The style file holds only a <code>theme</code>; it is merged over the theme of every storyboard part. See <a href="@guide/storyboard.html#variants">Variants</a> for the rules.</p>
+<ul>
+<li>The output is <code>&lt;sequence&gt;.&lt;style&gt;.mp4</code> and the build folder is <code>&lt;sequence&gt;.&lt;style&gt;.build</code>, so styles never overwrite each other, and returning to a style reuses its cache.</li>
+<li>A <code>{video}</code> part is a finished file. It is used as it is, not styled, and a warning says so.</li>
+</ul>
+<h3 id="long-parts">Long parts</h3>
+<p>Each part is rendered like a storyboard, so a part of 5 minutes or more is split into cached chunks like any other render (see <a href="@guide/cli.html#long-renders">Long renders</a>). <code>sequence</code> has no <code>--no-chunks</code> or <code>--chunk-seconds</code>. To keep a long video fast to edit, split it into parts: only the parts you changed render again.</p>
 <div class="note">Review with <code>-q draft</code> first, then look at frames with <code>screenpilot check</code> around each join. Use <code>-q delivery</code> only for the final file.</div>
 
 <h2 id="limits">Limits</h2>
