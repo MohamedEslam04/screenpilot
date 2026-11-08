@@ -32,6 +32,8 @@ pnpm test
 pnpm build
 ```
 
+In a git worktree, do not symlink `node_modules` from the main checkout: `pnpm <script>` then aborts with `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` (pnpm wants to rebuild it and has no terminal to ask). Run `pnpm install --frozen-lockfile --offline` once inside the worktree instead (about 7 s, uses the local store); after that `pnpm typecheck` and `pnpm test` work as usual.
+
 Tests run on every pull request. The platform smoke tests (Windows, macOS, X11, Wayland) also run in CI and drive a real desktop; don't run them on a desktop you are using. `AGENTS.md` has the architecture notes and conventions.
 
 ## Style
