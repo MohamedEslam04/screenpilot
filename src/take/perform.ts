@@ -22,7 +22,7 @@ import { type Step, type Take, TakeSchema, type Target } from "./schema.js";
 import { runCommand } from "./run.js";
 import type { Typing } from "../storyboard/schema.js";
 import { prepareSessionDir } from "./session-dir.js";
-import { boundingRect, tiledView, tileRects } from "./tile.js";
+import { boundingRect, tiledView, tileRects, tileTarget } from "./tile.js";
 import { type Tracked, trackedHighlights, trackElement } from "./track.js";
 import { typingSpan } from "./typing.js";
 import { windowMatches } from "./windows.js";
@@ -390,7 +390,7 @@ async function tileBrowsers(t: Extract<Step, { tile: unknown }>["tile"], ctx: St
   const name = t.screen ?? wins[0]!.output;
   const screen = d.screens().find((s) => s.name === name);
   if (!screen) throw new Error(`tile: unknown monitor "${name}" (have: ${d.screens().map((s) => s.name).join(", ")})`);
-  const area = { x: screen.x, y: screen.y, w: screen.w, h: screen.h };
+  const area = await tileTarget(d.desktop, screen, ctx.warn);
   const rects = tileRects(area, wins.length);
   for (const [i, w] of wins.entries()) {
     await d.desktop.focusWindow(w.id, rects[i]);

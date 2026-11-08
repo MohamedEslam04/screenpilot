@@ -2,6 +2,7 @@ import type { Rect } from "../../record/input/types.js";
 import { quietNotifications } from "../../record/quiet.js";
 import { findWindow, type Desktop, type Placement, type WindowInfo } from "../types.js";
 import { placeInArea } from "../windows/geometry.js";
+import { workAreaOf } from "../work-area.js";
 import { activateData, moveResizeData, parseExtents, wmStateData } from "./ewmh.js";
 import { X11Injector } from "./injector.js";
 import { X11Watcher } from "./watcher.js";
@@ -119,6 +120,12 @@ export const x11Desktop: Desktop = {
 
   async screens() {
     return monitors(await api()).map((m) => m.screen);
+  },
+
+  // _NET_WORKAREA (current desktop) ∩ the monitor. Best effort: the property is one rect for all
+  // monitors, so a panel on only one of several monitors of different sizes can be missed.
+  async workArea(screen) {
+    return workAreaOf(monitors(await api()), screen);
   },
 
   async listWindows() {

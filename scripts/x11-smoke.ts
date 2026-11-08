@@ -12,6 +12,7 @@ import { Driver } from "../src/drive/index.js";
 import { screenshot } from "../src/drive/see.js";
 import { findBrowser, locate, openBrowser, withPage } from "../src/drive/web.js";
 import { getDesktop, type WindowInfo } from "../src/platform/index.js";
+import { sane } from "../src/platform/work-area.js";
 import type { ScreenInfo } from "../src/record/input/types.js";
 import { startRecording } from "../src/record/index.js";
 import { performTake } from "../src/take/perform.js";
@@ -143,6 +144,18 @@ async function main(): Promise<void> {
     return screens.map((s) => `${s.name} ${rectText(s)}`).join("; ");
   });
   await shot("01-desktop");
+
+  await check("work area is inside each monitor and not larger", async () => {
+    const desktop = await getDesktop();
+    const out: string[] = [];
+    for (const s of await desktop.screens()) {
+      const area = await desktop.workArea?.(s.name);
+      if (!area) throw new Error(`no work area for ${s.name}`);
+      if (!sane(area, s)) throw new Error(`work area ${rectText(area)} is not inside ${s.name} ${rectText(s)}`);
+      out.push(`${s.name} ${rectText(area)}`);
+    }
+    return out.join("; ");
+  });
 
   await check("driver open", async () => {
     driver = await Driver.open({ log });

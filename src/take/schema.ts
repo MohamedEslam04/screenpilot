@@ -129,7 +129,7 @@ export const StepSchema = z.union([
         })
         .strict()
         .describe(
-          "Place these demo browser windows side by side: equal widths, the monitor's full height. With 2+ browsers in a take the generated storyboard gets one view of the tiled area instead of following windows",
+          "Place these demo browser windows side by side: equal widths, the full height of the monitor's usable area (not under panels, taskbars or docks; the whole monitor where the desktop cannot report it). With 2+ browsers in a take the generated storyboard gets one view of the tiled area instead of following windows",
         ),
     })
     .strict(),

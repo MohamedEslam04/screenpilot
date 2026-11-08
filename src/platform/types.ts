@@ -1,6 +1,6 @@
 import type { FocusEvent } from "../record/input/kwin.js";
 import type { DesktopId } from "./detect.js";
-import type { InputAdapter, ScreenInfo } from "../record/input/types.js";
+import type { InputAdapter, Rect, ScreenInfo } from "../record/input/types.js";
 
 // What the tool needs from a desktop: monitors, windows, input injection and
 // a watcher for the pointer and the active window. One implementation per OS
@@ -55,6 +55,11 @@ export interface Desktop {
   focusWindow(id: string, place?: Placement): Promise<void>;
   /** Resize a window to `aspect` inside its monitor's work area; `restore` puts it back as it was. */
   fitWindow(match: string, aspect?: number): Promise<{ window: WindowInfo; restore: () => Promise<void> }>;
+  /**
+   * The usable area of monitor `screen` (without panels, taskbars or the dock) in global desktop
+   * pixels, same space as ScreenInfo. Undefined (or absent) where the desktop cannot tell: callers use the whole monitor.
+   */
+  workArea?(screen: string): Promise<Rect | undefined>;
   /** Close notification popups on screen; returns how many (0 where the OS gives no way). */
   closeNotificationPopups(): Promise<number>;
   /** Hold new notification popups; returns the release function (no-op where unsupported). */
