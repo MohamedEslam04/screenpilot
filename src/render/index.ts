@@ -26,7 +26,8 @@ import { type SubtitleFormat, writeSubtitles } from "./subtitles.js";
 import { buildPlan, type OverlayAsset, type RenderPlan } from "./plan.js";
 import { partSuffix, type Window, windowPlan } from "./window.js";
 import { autoWorkers } from "./workers.js";
-import { CACHE_DIR } from "../brand.js";
+import { CACHE_DIR, cacheHome } from "../brand.js";
+import { pruneCache, renderCacheLimit } from "./cache.js";
 
 const require = createRequire(import.meta.url);
 
@@ -280,8 +281,18 @@ export function hyperframesBin(): string {
   return join(dirname(pkg), "bin", "hyperframes.mjs");
 }
 
+/** Where HyperFrames keeps extracted frames: our own folder under the user cache dir (not tmpfs) unless the user chose one. */
+export function extractCacheDir(): string {
+  return process.env.HYPERFRAMES_EXTRACT_CACHE_DIR || join(cacheHome(), "extract");
+}
+
 export function hyperframesEnv(): NodeJS.ProcessEnv {
-  return { HYPERFRAMES_NO_TELEMETRY: "1", DO_NOT_TRACK: "1", HYPERFRAMES_SKIP_SKILLS: "1" };
+  return {
+    HYPERFRAMES_NO_TELEMETRY: "1",
+    DO_NOT_TRACK: "1",
+    HYPERFRAMES_SKIP_SKILLS: "1",
+    HYPERFRAMES_EXTRACT_CACHE_DIR: extractCacheDir(),
+  };
 }
 
 export async function renderStoryboard(storyboardPath: string, opts: RenderOptions = {}): Promise<RenderResult> {
@@ -295,6 +306,11 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
   );
   await mkdir(dirname(output), { recursive: true });
   const workers = opts.workers ?? autoWorkers();
+  // Keep our own extract cache under its cap (a cache the user pointed elsewhere is theirs to manage).
+  if (!process.env.HYPERFRAMES_EXTRACT_CACHE_DIR) {
+    const pruned = await pruneCache(extractCacheDir(), renderCacheLimit()).catch(() => undefined);
+    if (pruned?.removed) log(`render cache: removed ${pruned.removed} old entr${pruned.removed === 1 ? "y" : "ies"} (${(pruned.freed / 2 ** 20).toFixed(0)} MB)`);
+  }
   log(`render: ${output} (${opts.quality ?? "looks"}, ${workers} worker(s))`);
   const time = makeTimer(opts.timings, log);
   await time("render", () =>

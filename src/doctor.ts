@@ -9,6 +9,8 @@ import { findBrowser } from "./drive/web.js";
 import { DESKTOP_IDS, desktopName, isWlrootsEnv } from "./platform/detect.js";
 import { type DesktopChoice, type DesktopId, detectDesktop, getDesktop } from "./platform/index.js";
 import { pickEncoder } from "./record/backends/pipewire.js";
+import { cacheSize, renderCacheLimit } from "./render/cache.js";
+import { extractCacheDir } from "./render/index.js";
 import { hasX11grab } from "./record/backends/x11-ffmpeg.js";
 import { mouseAccess } from "./record/input/evdev.js";
 import { ObsRecorder, resolveObsConfig } from "./record/obs.js";
@@ -293,6 +295,10 @@ export async function doctor(opts: { input?: boolean } = {}): Promise<DoctorRepo
     } finally {
       await worker.close();
     }
+  });
+  await add("render cache", async () => {
+    const dir = extractCacheDir();
+    return { ok: true, detail: `${dir} (${((await cacheSize(dir)) / 2 ** 20).toFixed(0)} MB; kept under ${(renderCacheLimit() / 2 ** 30).toFixed(0)} GB, set SCREENPILOT_RENDER_CACHE_GB to change)` };
   });
   await add("render browser", async () => {
     // Don't call `hyperframes browser path`: it downloads Chrome when missing.
