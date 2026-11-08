@@ -86,8 +86,8 @@ beforeEach(() => {
   fake.audio = false;
 });
 
-// Several renders of a 400 s recording per test, with real ffmpeg cuts and joins.
-describe.skipIf(!hasFfmpeg)("chunked render", { timeout: 120_000 }, () => {
+// Several renders of a 400 s recording per test, with real ffmpeg cuts and joins: 28 to 55 s here, over 120 s on the macOS Intel runner.
+describe.skipIf(!hasFfmpeg)("chunked render", { timeout: 600_000 }, () => {
   it("renders a long storyboard in chunks and joins them into one video as long as the plan", async () => {
     fake.audio = true;
     const sb = await project();
