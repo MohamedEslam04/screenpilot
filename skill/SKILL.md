@@ -23,6 +23,7 @@ Do not record, drive the desktop, build or render before the user has made the d
 - All positions are **normalized 0..1** of the source frame: x from the left, y from the top.
 - Narration never overlaps: if a voice line is longer than its slot, render freezes the video (`autoHolds` in the result). Do not hand-tune for that; just keep lines short.
 - Iterate with quality `draft`; use `delivery` only for the final render.
+- The render cache (extracted frames) lives in the user cache folder (`~/.cache/screenpilot/extract`, not /tmp) and is pruned to 4 GB before each render, oldest first, never entries from the last 10 minutes; `SCREENPILOT_RENDER_CACHE_GB` changes the cap, and `doctor` ("render cache") shows its size.
 
 - Updates: `update_check` (MCP) or `screenpilot update --check` says whether a newer release exists and returns the command to run. Tell the user the command and let THEM run it in a terminal (never run `screenpilot update` yourself: it replaces installed code from the internet), then restart their AI apps. A small update only replaces the app files; if the dependencies or Node changed, or the install predates 0.6, it says to download the full package.
 

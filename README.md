@@ -125,6 +125,7 @@ JetBrains AI Assistant has no settings file: after installing, use its **Import 
 - **"No AI tool found":** install your AI app, open it once, then run the ScreenPilot installer again.
 - **The installer says to close your AI apps:** an open AI app is using the old ScreenPilot. Quit it and click Retry.
 - **"Video renderer: not ready":** the one-time download needs internet. Your first video downloads it.
+- **Renders refuse to start or the disk fills up:** the renderer's frame cache lives in your user cache folder (`~/.cache/screenpilot` on Linux) and is trimmed to 4 GB before each render (old entries first). Change the limit with `SCREENPILOT_RENDER_CACHE_GB`; `screenpilot doctor` shows where it is and how big.
 - **Recording or mouse control fails on a Mac:** allow your AI app under Screen & System Audio Recording and Accessibility (see [macOS](#macos) step 6), then quit and reopen the AI app.
 
 ### Add it to another app

@@ -40,6 +40,13 @@ export function configDir(app = APP, previous = PREVIOUS_NAMES): string {
   return dir;
 }
 
+/** Per-user cache folder (render cache): $XDG_CACHE_HOME/screenpilot, %LOCALAPPDATA%\screenpilot\cache, ~/Library/Caches/screenpilot, else ~/.cache/screenpilot. */
+export function cacheHome(): string {
+  if (process.platform === "win32" && process.env.LOCALAPPDATA) return join(process.env.LOCALAPPDATA, APP, "cache");
+  if (process.platform === "darwin") return join(homedir(), "Library", "Caches", APP);
+  return join(process.env.XDG_CACHE_HOME || join(homedir(), ".cache"), APP);
+}
+
 /** GitHub repository that publishes the releases (the updater reads latest.json from it). */
 export const REPO = "MohamedEslam04/screenpilot";
 
