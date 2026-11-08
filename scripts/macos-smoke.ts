@@ -21,6 +21,7 @@ import { MacInjector } from "../src/platform/macos/injector.js";
 import { hostApp } from "../src/platform/macos/permissions.js";
 import { quartz, type Quartz } from "../src/platform/macos/quartz.js";
 import { getDesktop, type WindowInfo } from "../src/platform/index.js";
+import { sane } from "../src/platform/work-area.js";
 import { captureScale, layout, listAvfoundationScreens } from "../src/record/backends/macos-avfoundation.js";
 import { startRecording } from "../src/record/index.js";
 import { run } from "../src/util/exec.js";
@@ -151,6 +152,18 @@ async function main(): Promise<void> {
       if (!(d.scale >= 1 && d.scale <= 4)) throw new Error(`odd scale ${d.scale} for ${s.name}`);
     }
     return ds.map((d) => `[${d.index}] ${d.screen.name} ${rectText(d.screen)} pt, ${d.pixelW}x${d.pixelH} px (x${d.scale}), work ${rectText(d.work)}`).join("; ");
+  });
+
+  await check("work area (NSScreen.visibleFrame, points) is inside each display and not larger", async () => {
+    const desktop = await getDesktop();
+    const out: string[] = [];
+    for (const d of ds) {
+      const area = await desktop.workArea?.(d.screen.name);
+      if (!area) throw new Error(`no work area for ${d.screen.name}`);
+      if (!sane(area, d.screen)) throw new Error(`work area ${rectText(area)} is not inside ${d.screen.name} ${rectText(d.screen)}`);
+      out.push(`${d.screen.name} ${rectText(area)}`);
+    }
+    return out.join("; ");
   });
 
   await check("permissions", async () => {

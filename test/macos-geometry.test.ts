@@ -11,6 +11,7 @@ import {
   type NsScreen,
 } from "../src/platform/macos/geometry.js";
 import { parseNsScreens } from "../src/platform/macos/nsscreen.js";
+import { sane } from "../src/platform/work-area.js";
 
 // A 14" MacBook Pro (1512x982 points, 3024x1964 pixels) with a 4K monitor set
 // to "looks like 1920x1080" (3840x2160 pixels, 2x) to its left, 200 pt higher.
@@ -42,6 +43,13 @@ describe("macOS display geometry", () => {
     expect(b!.work).toEqual({ x: -1920, y: -175, w: 1920, h: 1055 });
     expect(b!.scale).toBe(2);
     expect(b!.index).toBe(1);
+  });
+
+  it("work area in points with the Dock on the left: origin moves right, menu bar still on top, inside the display", () => {
+    const left: NsScreen = { ...nsBuiltin, visible: { x: 70, y: 0, w: 1442, h: 945 } };
+    const [a] = mergeDisplays([builtin], [left]);
+    expect(a!.work).toEqual({ x: 70, y: 37, w: 1442, h: 945 });
+    expect(sane(a!.work, a!.screen)).toBe(true);
   });
 
   it("falls back to Quartz-only names and full bounds without NSScreen", () => {

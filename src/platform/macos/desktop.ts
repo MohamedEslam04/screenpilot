@@ -1,6 +1,7 @@
 import type { Rect } from "../../record/input/types.js";
 import { findWindow, type Desktop, type Placement, type WindowInfo } from "../types.js";
 import { placeInArea } from "../windows/geometry.js";
+import { workAreaOf } from "../work-area.js";
 import { activeWindow, clipRect, displayOf, isListable, matchAxWindow, mergeDisplays, type Display } from "./geometry.js";
 import { MacInjector } from "./injector.js";
 import { nsScreens } from "./nsscreen.js";
@@ -137,6 +138,11 @@ export const macosDesktop: Desktop = {
 
   async screens() {
     return (await displays()).map((d) => d.screen);
+  },
+
+  // NSScreen.visibleFrame (no menu bar, no Dock), already converted to Quartz global points.
+  async workArea(screen) {
+    return workAreaOf(await displays(), screen);
   },
 
   listWindows,
