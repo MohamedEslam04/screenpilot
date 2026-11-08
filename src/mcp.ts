@@ -30,6 +30,7 @@ import { parseFormats } from "./render/formats.js";
 import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
 import { parseSubtitleFormats } from "./render/subtitles.js";
 import { parseWindow } from "./render/window.js";
+import { parseWorkers } from "./render/workers.js";
 import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/load.js";
 import { qaStoryboard } from "./storyboard/qa.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
@@ -466,6 +467,11 @@ server.registerTool(
   }),
 );
 
+const workersField = z
+  .union([z.enum(["auto", "max"]), z.number().int().min(1)])
+  .optional()
+  .describe('Parallel renderers: "auto" (default, half the cores), "max" (all cores but two: faster, but the desktop gets sluggish, so use it when the user is away) or a number. SCREENPILOT_WORKERS sets the default.');
+
 server.registerTool(
   "render",
   {
@@ -486,12 +492,13 @@ server.registerTool(
       subtitles: z.array(z.enum(["srt", "vtt"])).optional().describe("Also write subtitle files from the narration lines, next to the video"),
       also: z.array(z.enum(["gif", "webm", "poster"])).optional().describe("Also make these from the finished video: an animated GIF, a WebM, a poster PNG"),
       poster_at: z.number().min(0).optional().describe("Poster frame time in OUTPUT seconds (default: a quarter of the way in)"),
+      workers: workersField,
     },
   },
-  safe(async ({ storyboard, output, quality, from, to, formats, subtitles, also, poster_at }) => {
+  safe(async ({ storyboard, output, quality, from, to, formats, subtitles, also, poster_at, workers }) => {
     requireBrief("render");
     const window = parseWindow(from, to);
-    const extra = { subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt: poster_at };
+    const extra = { subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt: poster_at, workers: parseWorkers(workers) };
     if (formats?.length) {
       const rs = await renderFormats(storyboard, parseFormats(formats.join(",")), { output, quality, window, log, ...extra });
       return text(rs.map((r) => ({ format: r.format, output: r.output, files: r.files, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings })));
@@ -536,11 +543,12 @@ server.registerTool(
       sequence: z.string().describe("Path to sequence.json"),
       output: z.string().optional().describe("Output mp4. Default: <sequence>.mp4"),
       quality: z.enum(["draft", "looks", "delivery"]).optional().describe("Default looks"),
+      workers: workersField,
     },
   },
-  safe(async ({ sequence, output, quality }) => {
+  safe(async ({ sequence, output, quality, workers }) => {
     requireBrief("sequence_render");
-    return text(await renderSequence(sequence, { output, quality, log }));
+    return text(await renderSequence(sequence, { output, quality, workers: parseWorkers(workers), log }));
   }),
 );
 
