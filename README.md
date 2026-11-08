@@ -149,4 +149,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 3b23e3c ("docs: smarter brief (recommendations, optional content, one-question shortcut)", 2026-11-04).
+Docs synced to commit f00548d ("Merge branch 'feat/second-browser'", 2026-11-08).
