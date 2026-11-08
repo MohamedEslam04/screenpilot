@@ -79,6 +79,24 @@ export const StepSchema = z.union([
   z.object({ waitForWindow: z.object({ match: z.string(), timeout: z.number().positive().optional() }).strict() }).strict(),
   z
     .object({
+      highlight: z
+        .object({
+          web: z.string().describe("Playwright selector in the demo browser (e.g. [data-sonner-toast]); the highlight follows this element"),
+          dur: z.number().positive().optional().describe("Longest the highlight lasts, in seconds (default 8)"),
+          label: z.string().optional(),
+          until: z
+            .enum(["gone", "next"])
+            .optional()
+            .describe('"gone" (default): ends when the element is missing, hidden or covered for 0.8 s; "next": ends at the next say or highlight step. Both stop at dur'),
+        })
+        .strict()
+        .describe(
+          "Highlight a page element in the generated storyboard. Non-blocking: the element is tracked in the background (4 times a second) while later steps run; the box is where it first showed. A span under 0.6 s is dropped with a warning. A dry run only checks the selector once",
+        ),
+    })
+    .strict(),
+  z
+    .object({
       focus: z
         .object({
           match: z.string().optional().describe("Window class or title contains. With several windows of one title it picks the active one, else the first: use browser: true for the demo browser"),
