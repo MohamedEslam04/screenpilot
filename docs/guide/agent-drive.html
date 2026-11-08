@@ -120,6 +120,7 @@ screenpilot perform take.json                      # record and drive; writes th
   <tbody>
     <tr><td><code>ELEMENT_NOT_FOUND</code></td><td>No control matches. Read the app with <code>a11y_tree</code>.</td></tr>
     <tr><td><code>AMBIGUOUS_TARGET</code></td><td>Several controls match. The error lists them. Add <code>nth</code> or a more specific name.</td></tr>
+    <tr><td><code>TARGET_COVERED</code></td><td>A <code>{web}</code> element is on the page but something (a sticky header, a clipping box) covers its centre, so a click would hit the wrong thing. Scroll it clear or close what covers it. A <code>click</code> step with <code>force: true</code> skips the check. Other windows are not detected.</td></tr>
     <tr><td><code>APP_NOT_FOUND</code></td><td>No accessible app matches. Is it running? For Qt apps, see the warning above.</td></tr>
     <tr><td><code>WINDOW_NOT_FOUND</code></td><td>No window matches a <code>{window}</code> target or a <code>focus</code> step. The error lists the windows that exist.</td></tr>
     <tr><td><code>A11Y_UNAVAILABLE</code></td><td>The accessibility source of this desktop could not be read (for example no accessibility bus on Linux, or PowerShell missing on Windows).</td></tr>

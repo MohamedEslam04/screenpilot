@@ -94,6 +94,7 @@ screenpilot perform take.json                      # record and drive; writes th
   <tbody>
     <tr><td><code>ELEMENT_NOT_FOUND</code></td><td>لا يوجد عنصر مطابق. اقرأ التطبيق بـ <code>a11y_tree</code>.</td></tr>
     <tr><td><code>AMBIGUOUS_TARGET</code></td><td>تطابقت عدة عناصر. يسردها الخطأ. أضف <code>nth</code> أو اسماً أدق.</td></tr>
+    <tr><td><code>TARGET_COVERED</code></td><td>عنصر <code>{web}</code> موجود في الصفحة لكن شيئاً (ترويسة ثابتة أو صندوق يقصّه) يغطي مركزه، فالنقر سيصيب شيئاً آخر. مرّر الصفحة أو أغلق ما يغطيه. خطوة <code>click</code> مع <code>force: true</code> تتخطى الفحص. النوافذ الأخرى لا تُكتشف.</td></tr>
     <tr><td><code>APP_NOT_FOUND</code></td><td>لا يوجد تطبيق يمكن الوصول إليه يطابق. هل هو يعمل؟ وبالنسبة لتطبيقات Qt راجع التحذير أعلاه.</td></tr>
     <tr><td><code>WINDOW_NOT_FOUND</code></td><td>لا توجد نافذة تطابق هدف <code>{window}</code> أو خطوة <code>focus</code>. يسرد الخطأ النوافذ الموجودة.</td></tr>
     <tr><td><code>A11Y_UNAVAILABLE</code></td><td>تعذّرت قراءة مصدر إمكانية الوصول في هذا النظام (مثلاً لا يوجد accessibility bus على Linux، أو PowerShell غير موجود على Windows).</td></tr>
