@@ -3,10 +3,11 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, posix, win32 } from "node:path";
-import { type Browser, chromium, type Page } from "playwright-core";
+import { type Browser, chromium, type Locator, type Page } from "playwright-core";
 import type { ScreenInfo } from "../record/input/types.js";
 import { getDesktop, type WindowInfo } from "../platform/index.js";
 import { APP, configDir } from "../brand.js";
+import { TargetError } from "./errors.js";
 
 // A clean demo browser (own profile: no personal tabs, bookmarks or logins)
 // that we can inspect over CDP to find where page elements are on screen.
@@ -290,25 +291,95 @@ interface Metrics {
 /** Per window geometry + viewport size: how far our estimate is from where the page really is. */
 const calibration = new Map<string, { dx: number; dy: number }>();
 
+/** What `document.elementFromPoint` found on top of a target. */
+export interface CoverHit {
+  tag: string;
+  id: string;
+  cls: string;
+  text: string;
+}
+
+/** `div#toolbar.sticky "Filters"`: enough for an agent to find what sits on top. No hit means the point is outside the page. */
+export function describeCover(hit: CoverHit | null): string {
+  if (!hit) return "nothing (outside the page)";
+  const cls = hit.cls
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((c) => `.${c}`)
+    .join("");
+  const text = hit.text.replace(/\s+/g, " ").trim().slice(0, 40);
+  return `${hit.tag}${hit.id ? `#${hit.id}` : ""}${cls}${text ? ` "${text}"` : ""}`;
+}
+
+/**
+ * Whether something other than the element (or one of its children) is on top at `at` (CSS px of
+ * the viewport, e.g. the centre of its box). A real pointer click lands on whatever is on top, so
+ * a sticky header, a scroll box that clips the element or a modal makes the click go elsewhere.
+ * `hit` is what is on top; null when the point is outside the page.
+ */
+export async function findCover(el: Locator, at: { x: number; y: number }): Promise<{ covered: boolean; hit: CoverHit | null }> {
+  return el.evaluate(
+    (node, p) => {
+      // Inside an iframe the page-level point means nothing: ask with the element's own centre there.
+      let { x, y } = p;
+      if (window !== window.top) {
+        const r = node.getBoundingClientRect();
+        x = r.left + r.width / 2;
+        y = r.top + r.height / 2;
+      }
+      const root = node.getRootNode() as Document | ShadowRoot;
+      const hit = root.elementFromPoint(x, y);
+      if (hit && (hit === node || node.contains(hit))) return { covered: false, hit: null };
+      return {
+        covered: true,
+        hit: hit && {
+          tag: hit.tagName.toLowerCase(),
+          id: hit.id,
+          cls: typeof hit.className === "string" ? hit.className : "",
+          text: (hit.textContent ?? "").slice(0, 80),
+        },
+      };
+    },
+    at,
+  );
+}
+
 /**
  * Screen position (global logical px) of an element's centre. The page knows
  * where the element is in CSS px and KWin knows where the window is; the
  * browser's own chrome (toolbar, infobars, client-side decorations) is
  * measured once by moving the real pointer and asking the page where it
  * landed, so clicks hit exactly.
+ *
+ * Unless `force`, a covered element is not located: it is scrolled to the middle of the viewport
+ * once, and if something still covers its centre this throws TARGET_COVERED (nothing was sent).
  */
 export async function locate(
   selector: string,
   pointer: PointerMover,
   timeoutMs = 10_000,
+  opts: { force?: boolean } = {},
 ): Promise<{ x: number; y: number; w: number; h: number }> {
   const win = await browserWindow();
   return withPage(async (page) => {
     const el = page.locator(selector).first();
     await el.waitFor({ state: "visible", timeout: timeoutMs });
     await el.scrollIntoViewIfNeeded();
-    const box = await el.boundingBox();
+    let box = await el.boundingBox();
     if (!box) throw new Error(`"${selector}" has no box on screen`);
+    if (!opts.force) {
+      const centre = (b: { x: number; y: number; width: number; height: number }) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
+      let cover = await findCover(el, centre(box));
+      if (cover.covered) {
+        // Sticky headers and clipping scroll boxes often let go once the element is in the middle.
+        await el.evaluate((e) => e.scrollIntoView({ block: "center", behavior: "instant" }));
+        box = (await el.boundingBox()) ?? box;
+        cover = await findCover(el, centre(box));
+      }
+      if (cover.covered) {
+        throw new TargetError("TARGET_COVERED", `"${selector}" is covered by ${describeCover(cover.hit)}. Scroll it clear or close what covers it, then try again.`);
+      }
+    }
     const m = await metrics(page);
     const key = `${win.id}:${win.x},${win.y},${win.w},${win.h}:${m.iw}x${m.ih}`;
     let c = calibration.get(key);

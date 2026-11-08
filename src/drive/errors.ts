@@ -9,6 +9,7 @@ export type TargetCode =
   | "WINDOW_NOT_FOUND"
   | "A11Y_UNAVAILABLE"
   | "POSITION_UNKNOWN"
+  | "TARGET_COVERED"
   | "TIMEOUT";
 
 export interface Disposition {

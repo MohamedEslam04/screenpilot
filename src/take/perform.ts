@@ -209,12 +209,12 @@ interface StepContext {
 }
 
 /** Where a take/MCP target is on the desktop (global logical px). */
-export async function resolveTarget(t: Target, d: Driver): Promise<{ x: number; y: number }> {
+export async function resolveTarget(t: Target, d: Driver, opts: { force?: boolean } = {}): Promise<{ x: number; y: number }> {
   if ("a11y" in t) {
     const m = await a11yFind(d.desktop, t.a11y);
     return { x: m.cx, y: m.cy };
   }
-  if ("web" in t) return locate(t.web, d);
+  if ("web" in t) return locate(t.web, d, undefined, opts);
   if ("window" in t) {
     const windows = await d.desktop.listWindows();
     const w = pickWindow(windows, t.window);
@@ -255,7 +255,7 @@ async function runStep(step: Step, { driver: d, log, baseDir }: StepContext): Pr
   } else if ("move" in step) {
     await d.moveToGlobal(await resolveTarget(step.move, d), { dur: step.dur });
   } else if ("click" in step) {
-    await d.moveToGlobal(await resolveTarget(step.click, d));
+    await d.moveToGlobal(await resolveTarget(step.click, d, { force: step.force }));
     await sleep(120);
     await d.click(undefined, { button: step.button, count: step.count });
   } else if ("drag" in step) {
