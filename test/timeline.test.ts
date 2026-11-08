@@ -53,6 +53,21 @@ describe("buildTimeline", () => {
   });
 });
 
+describe("toOutputOrNext", () => {
+  it("maps a cut-out time to the next kept moment", () => {
+    const tl = buildTimeline({ segments: [{ in: 3.31, out: 12, speed: 1 }], holds: [], sourceDuration: 12 });
+    expect(tl.toOutputOrNext(0.66)).toBe(0);
+    expect(tl.toOutputOrNext(5)).toBeCloseTo(1.69, 5);
+    expect(tl.toOutputOrNext(12.5)).toBeNull();
+  });
+
+  it("maps a time inside a middle cut to the start of the next segment", () => {
+    const tl = buildTimeline({ segments: [seg(0, 4), seg(6, 12)], holds: [], sourceDuration: 12 });
+    expect(tl.toOutputOrNext(5)).toBe(4);
+    expect(tl.toOutputOrNext(2)).toBe(2);
+  });
+});
+
 describe("planNarrationHolds", () => {
   it("adds nothing when lines fit", () => {
     const holds = planNarrationHolds({
