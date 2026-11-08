@@ -185,9 +185,10 @@ program
   .command("perform")
   .description("The agent performs a take.json on the real desktop while recording; writes a ready storyboard")
   .argument("<take>", "take.json")
-  .option("-d, --dir <dir>", "Session directory (default: sessions/<timestamp>)")
+  .option("-d, --dir <dir>", "Session directory (default: sessions/<timestamp>). One already in use is kept: the take goes to <dir>-2, <dir>-3, ...; <dir>-latest points at the one used")
+  .option("--overwrite", "With --dir: move the earlier take to <dir>.prev and reuse <dir>")
   .option("--dry-run", "Drive the desktop without recording (rehearsal)")
-  .action(async (takePath: string, o: { dir?: string; dryRun?: boolean }) => {
+  .action(async (takePath: string, o: { dir?: string; overwrite?: boolean; dryRun?: boolean }) => {
     let driver: Driver | undefined;
     process.once("SIGINT", () => {
       log("stopping…");
