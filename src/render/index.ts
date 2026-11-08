@@ -25,11 +25,17 @@ import { mixSfx, planSfx } from "./sfx.js";
 import { type SubtitleFormat, writeSubtitles } from "./subtitles.js";
 import { buildPlan, type OverlayAsset, type RenderPlan } from "./plan.js";
 import { partSuffix, type Window, windowPlan } from "./window.js";
+import { estimateSeconds, formatDuration, recordSpeed, speedFile } from "./speed.js";
 import { autoWorkers } from "./workers.js";
 import { CACHE_DIR, cacheHome } from "../brand.js";
 import { pruneCache, renderCacheLimit } from "./cache.js";
 
 const require = createRequire(import.meta.url);
+
+/** Print a render-time estimate only when the render is expected to take at least this long. */
+const LONG_RENDER_SECONDS = 120;
+/** Renders of shorter videos are not remembered: start-up time dominates and says little about long renders. */
+const MIN_RECORDED_SECONDS = 5;
 
 export interface PrepareOptions {
   /** Where the HyperFrames project goes. Default: <storyboard dir>/<name>.build */
@@ -313,6 +319,13 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
   }
   log(`render: ${output} (${opts.quality ?? "looks"}, ${workers} worker(s))`);
   const time = makeTimer(opts.timings, log);
+  const quality = opts.quality ?? "looks";
+  // Only from measured renders of this quality; never a guess.
+  const estimate = await estimateSeconds(speedFile(), quality, prepared.plan.duration).catch(() => undefined);
+  if (estimate !== undefined && estimate >= LONG_RENDER_SECONDS) {
+    log(`estimated ~${formatDuration(estimate)} (from your last ${quality} renders). Faster: -q draft, --workers max, --from/--to for a window`);
+  }
+  const renderStart = performance.now();
   await time("render", () =>
     run(
       process.execPath,
@@ -344,6 +357,11 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
       if (r.applied) log(`loudness: ${r.measured!.input_i} LUFS -> ${target.target} LUFS`);
       else prepared.warnings.push(`audio.loudness was not applied: ${r.reason}`);
     });
+  }
+  // Only a render that finished: a failed or aborted one threw above and never gets here.
+  // Very short clips (the setup warm-up, tiny windows) are dominated by browser start-up and would skew the estimate.
+  if (prepared.plan.duration >= MIN_RECORDED_SECONDS) {
+    await recordSpeed(speedFile(), { quality, workers, outSeconds: prepared.plan.duration, wallSeconds: (performance.now() - renderStart) / 1000 }).catch(() => {});
   }
   const files: string[] = [];
   if (opts.subtitles?.length) files.push(...(await writeSubtitles(prepared.plan.subtitles, output, opts.subtitles)));
