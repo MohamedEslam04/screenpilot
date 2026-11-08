@@ -4,7 +4,7 @@ import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
-import { clipDuration } from "../src/voice/index.js";
+import { clipDuration, estimateLineSeconds } from "../src/voice/index.js";
 
 let dir: string;
 beforeEach(async () => {
@@ -35,5 +35,18 @@ describe("clipDuration", () => {
     await writeFile(`${file}.dur`, "garbage");
     const d = await clipDuration(file);
     expect(d).toBeGreaterThan(0.4);
+  });
+});
+
+describe("estimateLineSeconds", () => {
+  it("counts non-space letters at 13 per second", () => {
+    const s = estimateLineSeconds("نفتح صلاحيات دور موظف تسجيل");
+    expect(s).toBeGreaterThan(1.7);
+    expect(s).toBeLessThan(1.8);
+  });
+
+  it("never goes under 1.2 seconds", () => {
+    expect(estimateLineSeconds("Hi")).toBe(1.2);
+    expect(estimateLineSeconds("")).toBe(1.2);
   });
 });

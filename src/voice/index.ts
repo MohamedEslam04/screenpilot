@@ -89,3 +89,17 @@ export async function synthesizeLines(providerId: string, lines: VoiceLine[], di
     await provider.close?.();
   }
 }
+
+/** Rough spoken length of a line (Arabic or English), for dry runs that must not synthesize. */
+export function estimateLineSeconds(text: string): number {
+  return Math.max(1.2, text.replace(/\s/g, "").length / 13);
+}
+
+/**
+ * Length of every line in seconds. A dry run estimates them: synthesizing would
+ * write clips under the same cache key that the real take then reuses.
+ */
+export async function lineDurations(providerId: string, lines: VoiceLine[], dir: string, dryRun = false): Promise<number[]> {
+  if (dryRun) return lines.map((l) => estimateLineSeconds(l.text));
+  return (await synthesizeLines(providerId, lines, dir)).map((c) => c.duration);
+}

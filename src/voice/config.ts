@@ -16,6 +16,10 @@ const CommandVoiceSchema = z
     ext: z.string().regex(/^[a-z0-9]{2,5}$/).default("wav").describe("Extension of the file the program writes to {out}"),
     timeout: z.number().positive().default(120).describe("Seconds before one line is given up"),
     env: z.record(z.string(), z.string()).optional(),
+    cacheFiles: z
+      .array(z.string())
+      .optional()
+      .describe("Files the program reads (pre-made clips, a model). When one changes (size or modified time) cached lines are made again. ~ is the home folder"),
   })
   .strict();
 

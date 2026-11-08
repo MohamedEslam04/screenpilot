@@ -106,7 +106,7 @@ For free voices that run on your own computer, with no internet after setup, ope
 - **VoiceTut:** Egyptian Arabic and English, 19 voices. Arabic is less accurate than English.
 - **NAMAA:** Egyptian Arabic only (`screenpilot voice-setup namaa`, about 5.5 GB more).
 
-Local voices were tested on Linux with an NVIDIA graphics card only. Windows, macOS and CPU-only machines were not tested. Any other speech model can be plugged in too. See [Voices](https://mohamedeslam04.github.io/screenpilot/guide/voices.html) on the website.
+Local voices were tested on Linux with an NVIDIA graphics card only. Windows, macOS and CPU-only machines were not tested. Any other speech model can be plugged in too (a `command` voice can list `cacheFiles`, so replaced clips are never served from the cache). See [Voices](https://mohamedeslam04.github.io/screenpilot/guide/voices.html) on the website.
 
 ## Which AI apps work
 
