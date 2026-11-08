@@ -24,6 +24,7 @@ import { parseFormats } from "./render/formats.js";
 import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
 import { parseSubtitleFormats } from "./render/subtitles.js";
 import { parseWindow } from "./render/window.js";
+import { parseWorkers } from "./render/workers.js";
 import { lintStoryboard, loadStoryboard, loadStyle, StoryboardError } from "./storyboard/load.js";
 import { qaStoryboard } from "./storyboard/qa.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
@@ -469,7 +470,7 @@ program
   .option("-o, --output <file>", "Output video (default: <storyboard>.mp4)")
   .option("-q, --quality <q>", "draft | looks | delivery", "looks")
   .option("--png-frames", "Lossless source frames: sharper UI text, slower")
-  .option("--workers <n>", "Parallel renderers, each a headless Chrome (default: from CPU cores and free memory)")
+  .option("--workers <n>", "Parallel renderers, each a headless Chrome: auto (default: half the cores, from free memory), max (idle desktop: all cores but two) or a number. SCREENPILOT_WORKERS sets the default")
   .option("--timings", "Log how long each stage takes and show HyperFrames phase timings")
   .option("--from <s>", "Render only from this OUTPUT second (fast review; writes <storyboard>.part-<from>-<to>.mp4)", Number)
   .option("--to <s>", "Render only up to this OUTPUT second", Number)
@@ -481,7 +482,7 @@ program
   .option("--build-dir <dir>")
   .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; subtitles?: string; also?: string; posterAt?: number }) => {
     const { subtitles, also, posterAt, style, ...rest } = o;
-    const opts = { ...rest, style: style ? await loadStyle(style) : undefined, workers: o.workers ? Number(o.workers) : undefined, window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt, log };
+    const opts = { ...rest, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt, log };
     if (o.formats) {
       if (o.buildDir) throw new Error("--build-dir cannot be combined with --formats (each format gets its own <name>.<format>.build)");
       const rs = await renderFormats(path, parseFormats(o.formats), opts);
@@ -499,13 +500,13 @@ program
   .option("-o, --output <file>", "Output video (default: <sequence>.mp4)")
   .option("-q, --quality <q>", "draft | looks | delivery", "looks")
   .option("--png-frames", "Lossless source frames: sharper UI text, slower")
-  .option("--workers <n>", "Parallel renderers, each a headless Chrome (default: from CPU cores and free memory)")
+  .option("--workers <n>", "Parallel renderers, each a headless Chrome: auto (default: half the cores, from free memory), max (idle desktop: all cores but two) or a number. SCREENPILOT_WORKERS sets the default")
   .option("--timings", "Log how long each stage takes and show HyperFrames phase timings")
   .option("--style <file>", "Style file ({ \"theme\": {...} }) merged over the theme of every part; writes <sequence>.<style>.mp4 and keeps its own build folder")
   .option("--build-dir <dir>")
   .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string }) => {
     const { style, ...rest } = o;
-    print(await renderSequence(path, { ...rest, style: style ? await loadStyle(style) : undefined, workers: o.workers ? Number(o.workers) : undefined, log }));
+    print(await renderSequence(path, { ...rest, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), log }));
   });
 
 program

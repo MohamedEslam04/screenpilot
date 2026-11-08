@@ -15,7 +15,7 @@ Do not record, drive the desktop, build or render before the user has made the d
 - Storyboard times are SOURCE seconds (the raw recording). Positions are normalized 0..1 (x from left, y from top). Only `check` uses output seconds.
 - Paths inside a storyboard are relative to the storyboard file.
 - Narration never overlaps: render auto-freezes the video when a line overruns. Keep lines short.
-- Iterate with `-q draft`; use `-q delivery` only for the final render.
+- Iterate with `-q draft`; use `-q delivery` only for the final render. When the desktop is idle, `--workers max` (MCP `workers: "max"`, or `SCREENPILOT_WORKERS=max`) renders faster by using all cores but two; the default is half the cores so the desktop stays responsive. Each finished render of 5 s or more is timed (`render-speed.json` in the cache folder), and when the next render is expected to take 2 minutes or more, the log starts with `estimated ~<time>` from your last renders at that quality (never printed without history).
 - Voice providers: `"voice": {"provider": "local", "name": "voicetut:Sarah", "rate": "+0%"}` (default provider is `edge`). `local` names are `voicetut`, `voicetut:<Voice>` (Egyptian Arabic and English) and `namaa` (Egyptian Arabic only); a line's own `voice` overrides the name, and each line's language is detected. Run `screenpilot voices --provider local` and `screenpilot doctor` ("local voice") to see what is installed. If the user wants free offline voices and none is installed, tell them to run `screenpilot voice-setup voicetut` in a terminal (about 10 GB download); never start it yourself. `command` voices (`"provider": "command"`, `name` = a key in the user's `voices.json`) are defined by the user; you cannot add commands from a storyboard; a command entry may list `cacheFiles` (clips or models it reads) so cached lines are remade when those files change. A dry run (`perform --dry-run`) does not synthesize: line lengths are estimated. Details: https://mohamedeslam04.github.io/screenpilot/guide/voices.html
 - Better voice from a website (free web TTS): `screenpilot script storyboard.json` (MCP `script_export`) writes the text to paste (one paragraph per line, no numbers); the user generates ONE audio file and gives it back; `screenpilot split-audio voice.mp3 --storyboard storyboard.json` (MCP `audio_import`) cuts it at the pauses and sets `narration[].audio` (path relative to the storyboard; the line then plays that file, `text` stays the subtitle). Too few pauses: ask for a longer pause between lines or pass `--min-silence`. Free plans have limits and may forbid commercial use; say so.
 
@@ -34,6 +34,8 @@ Do not record, drive the desktop, build or render before the user has made the d
 7. Draft: `screenpilot render storyboard.json -q draft`.
 8. Review: `screenpilot check storyboard.mp4 --at 2,8,15` (output seconds) and view the frames. Fix and repeat 5-8.
 9. Final: `screenpilot render storyboard.json -q delivery -o demo.mp4` (add `--subtitles srt,vtt` for caption files from the narration, `--also gif,webm,poster` for a GIF, WebM or poster PNG).
+
+Long renders: a full render takes about as long as the video (more at delivery). For a long video iterate with `-q draft` and `--from/--to`, use `--workers max` when the user is away from the desktop, and split it into a `sequence` of parts so only the changed parts are rendered again.
 
 `screenpilot build` prepares everything without rendering; `screenpilot preview` opens HyperFrames Studio.
 
