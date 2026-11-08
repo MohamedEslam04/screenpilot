@@ -24,7 +24,7 @@ import { parseFormats } from "./render/formats.js";
 import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
 import { parseSubtitleFormats } from "./render/subtitles.js";
 import { parseWindow } from "./render/window.js";
-import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/load.js";
+import { lintStoryboard, loadStoryboard, loadStyle, StoryboardError } from "./storyboard/load.js";
 import { qaStoryboard } from "./storyboard/qa.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { renderSequence, validateSequence } from "./sequence/index.js";
@@ -474,13 +474,14 @@ program
   .option("--from <s>", "Render only from this OUTPUT second (fast review; writes <storyboard>.part-<from>-<to>.mp4)", Number)
   .option("--to <s>", "Render only up to this OUTPUT second", Number)
   .option("--formats <list>", "Render once per format, e.g. 16:9,9:16,1:1 or 1280x720 (writes <storyboard>.<format>.mp4)")
+  .option("--style <file>", "Style file ({ \"theme\": {...} }) merged over the storyboard's theme; writes <storyboard>.<style>.mp4 and keeps its own build folder")
   .option("--subtitles <list>", "Also write subtitle files from the narration: srt, vtt or srt,vtt (next to the video)")
   .option("--also <list>", "Also make files from the finished video: gif, webm, poster (a PNG frame), or a comma list")
   .option("--poster-at <s>", "Time of the poster frame, in OUTPUT seconds (default: a quarter of the way in)", Number)
   .option("--build-dir <dir>")
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; subtitles?: string; also?: string; posterAt?: number }) => {
-    const { subtitles, also, posterAt, ...rest } = o;
-    const opts = { ...rest, workers: o.workers ? Number(o.workers) : undefined, window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt, log };
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; subtitles?: string; also?: string; posterAt?: number }) => {
+    const { subtitles, also, posterAt, style, ...rest } = o;
+    const opts = { ...rest, style: style ? await loadStyle(style) : undefined, workers: o.workers ? Number(o.workers) : undefined, window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt, log };
     if (o.formats) {
       if (o.buildDir) throw new Error("--build-dir cannot be combined with --formats (each format gets its own <name>.<format>.build)");
       const rs = await renderFormats(path, parseFormats(o.formats), opts);
@@ -500,9 +501,11 @@ program
   .option("--png-frames", "Lossless source frames: sharper UI text, slower")
   .option("--workers <n>", "Parallel renderers, each a headless Chrome (default: from CPU cores and free memory)")
   .option("--timings", "Log how long each stage takes and show HyperFrames phase timings")
+  .option("--style <file>", "Style file ({ \"theme\": {...} }) merged over the theme of every part; writes <sequence>.<style>.mp4 and keeps its own build folder")
   .option("--build-dir <dir>")
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean }) => {
-    print(await renderSequence(path, { ...o, workers: o.workers ? Number(o.workers) : undefined, log }));
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string }) => {
+    const { style, ...rest } = o;
+    print(await renderSequence(path, { ...rest, style: style ? await loadStyle(style) : undefined, workers: o.workers ? Number(o.workers) : undefined, log }));
   });
 
 program

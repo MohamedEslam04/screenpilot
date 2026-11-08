@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
-import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { basename, dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { lintStyle } from "./lint.js";
-import { INHERITED_KEYS, isBuiltinSfx, type Storyboard, StoryboardSchema } from "./schema.js";
+import { INHERITED_KEYS, isBuiltinSfx, type Storyboard, StoryboardSchema, StyleSchema } from "./schema.js";
 import { normalizeSegments, Timeline } from "./timeline.js";
 
 export interface LoadedStoryboard {
@@ -112,9 +112,33 @@ async function resolveExtends(raw: unknown, abs: string, chain: string[] = []): 
   return deepMerge(inherited, own);
 }
 
-export async function loadStoryboard(path: string): Promise<LoadedStoryboard> {
+export interface LoadedStyle {
+  path: string;
+  /** File name without extension, reduced to [a-z0-9-]; used in output and build folder names. */
+  name: string;
+  /** The theme exactly as the file sets it (no schema defaults), ready to merge. */
+  theme: Record<string, unknown>;
+}
+
+/** Read and check a style file (`{ "theme": {...} }`, nothing else). */
+export async function loadStyle(path: string): Promise<LoadedStyle> {
   const abs = resolve(path);
-  const raw = await resolveExtends(await readJson(abs), abs);
+  const raw = await readJson(abs);
+  const r = StyleSchema.safeParse(raw);
+  if (!r.success) {
+    throw new StoryboardError(
+      `Invalid style ${abs}`,
+      r.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`),
+    );
+  }
+  const name = basename(abs, extname(abs)).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "style";
+  return { path: abs, name, theme: (raw as { theme: Record<string, unknown> }).theme };
+}
+
+export async function loadStoryboard(path: string, opts: { style?: LoadedStyle } = {}): Promise<LoadedStoryboard> {
+  const abs = resolve(path);
+  let raw = await resolveExtends(await readJson(abs), abs);
+  if (opts.style && isObject(raw)) raw = deepMerge(raw, { theme: opts.style.theme });
   const r = parseStoryboard(raw);
   if (!r.ok) throw new StoryboardError(`Invalid storyboard ${abs}`, r.issues);
   return { sb: r.sb, path: abs, baseDir: dirname(abs) };

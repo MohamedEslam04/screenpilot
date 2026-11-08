@@ -4,7 +4,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { CACHE_DIR } from "../brand.js";
 import { renderStoryboard } from "../render/index.js";
-import { lintStoryboard, loadStoryboard, StoryboardError } from "../storyboard/load.js";
+import { lintStoryboard, type LoadedStyle, loadStoryboard, StoryboardError } from "../storyboard/load.js";
 import { clipStoryboard } from "../storyboard/clip.js";
 import { isBuiltinSfx, type Storyboard } from "../storyboard/schema.js";
 import { probeVideo } from "../util/media.js";
@@ -56,7 +56,7 @@ const partIssues = (i: number, part: Part, err: StoryboardError) =>
  * leads back to one being loaded fails with the chain printed. `chain` is the
  * sequences being loaded, outermost first, this one included.
  */
-async function loadParts(loaded: LoadedSequence, chain: string[]): Promise<LoadedPart[]> {
+async function loadParts(loaded: LoadedSequence, chain: string[], style?: LoadedStyle): Promise<LoadedPart[]> {
   const issues: string[] = [];
   const parts: LoadedPart[] = [];
   for (const [i, part] of loaded.seq.parts.entries()) {
@@ -71,7 +71,7 @@ async function loadParts(loaded: LoadedSequence, chain: string[]): Promise<Loade
       parts.push({ kind: "video", file: abs(loaded.baseDir, part.video) });
     } else {
       try {
-        const { sb, baseDir } = await loadStoryboard(resolve(loaded.baseDir, part.storyboard!));
+        const { sb, baseDir } = await loadStoryboard(resolve(loaded.baseDir, part.storyboard!), { style });
         parts.push({ kind: "storyboard", sb, baseDir });
       } catch (err) {
         if (!(err instanceof StoryboardError)) throw err;
@@ -116,6 +116,8 @@ export interface PreparedVideoPart extends PreparedBase {
   file: string;
   from?: number;
   to?: number;
+  /** A style cannot change a finished video; this says so when one was asked for. */
+  warnings: string[];
 }
 
 export type PreparedPart = PreparedStoryboardPart | PreparedSequencePart | PreparedVideoPart;
@@ -125,7 +127,9 @@ export interface PreparedSequence {
   buildDir: string;
   output: OutputSize;
   parts: PreparedPart[];
-  /** Changes whenever a part, a transition or the size changes, so a nested sequence is re-rendered only then. */
+  /** Name of the style applied to every storyboard part (see loadStyle); it names the default build folder and output. */
+  style?: string;
+  /** Changes whenever a part, a transition, the size or the style changes, so a nested sequence is re-rendered only then. */
   key: string;
 }
 
@@ -158,15 +162,16 @@ const sha1 = (text: string) => createHash("sha1").update(text).digest("hex");
  * absolute. The user's files are never changed. Nested sequences are prepared
  * recursively (in their own build folder), videos are only probed.
  */
-export async function prepareSequence(path: string, opts: { buildDir?: string } = {}): Promise<PreparedSequence> {
+export async function prepareSequence(path: string, opts: { buildDir?: string; style?: LoadedStyle } = {}): Promise<PreparedSequence> {
   return prepare(path, opts, []);
 }
 
-async function prepare(path: string, opts: { buildDir?: string }, ancestors: string[]): Promise<PreparedSequence> {
+async function prepare(path: string, opts: { buildDir?: string; style?: LoadedStyle }, ancestors: string[]): Promise<PreparedSequence> {
+  const { style } = opts;
   const loaded = await loadSequence(path);
   const chain = [...ancestors, loaded.path];
-  const loadedParts = await loadParts(loaded, chain);
-  const buildDir = resolve(opts.buildDir ?? join(loaded.baseDir, `${basename(loaded.path, extname(loaded.path))}.build`));
+  const loadedParts = await loadParts(loaded, chain, style);
+  const buildDir = resolve(opts.buildDir ?? join(loaded.baseDir, `${basename(loaded.path, extname(loaded.path))}${style ? `.${style.name}` : ""}.build`));
 
   // Nested sequences first: the output size can come from the first part.
   const nested = new Map<number, PreparedSequence>();
@@ -175,7 +180,7 @@ async function prepare(path: string, opts: { buildDir?: string }, ancestors: str
   for (const [i, lp] of loadedParts.entries()) {
     const part = loaded.seq.parts[i]!;
     try {
-      if (lp.kind === "sequence") nested.set(i, await prepare(lp.file, {}, chain));
+      if (lp.kind === "sequence") nested.set(i, await prepare(lp.file, { style }, chain));
       else if (lp.kind === "video") {
         if (!existsSync(lp.file)) throw new StoryboardError("", [`video not found: ${lp.file}`]);
         videoInfo.set(i, await probeVideo(lp.file));
@@ -208,7 +213,8 @@ async function prepare(path: string, opts: { buildDir?: string }, ancestors: str
       const { from, to } = part;
       const trimmed = from !== undefined || to !== undefined;
       const key = sha1(`${lp.file}|${from ?? ""}|${to ?? ""}|${await fileStamp(lp.file)}`);
-      parts.push({ ...base, kind: "video", file: lp.file, from, to, output: trimmed ? join(dir, "part.mp4") : lp.file, key });
+      const warnings = style ? [`style "${style.name}" is not applied to ${part.video} (a finished video)`] : [];
+      parts.push({ ...base, kind: "video", file: lp.file, from, to, output: trimmed ? join(dir, "part.mp4") : lp.file, key, warnings });
       continue;
     }
     const { sb: loadedSb, baseDir } = lp;
@@ -241,13 +247,15 @@ async function prepare(path: string, opts: { buildDir?: string }, ancestors: str
     const key = sha1(`${text}|${stamps.join("|")}`);
     parts.push({ ...base, kind: "storyboard", storyboard, output: join(dir, "part.mp4"), cacheDir: join(baseDir, CACHE_DIR), key, sb });
   }
-  const key = sha1(JSON.stringify([output, parts.map((p) => [p.key, p.transition ?? null])]));
-  return { path: loaded.path, buildDir, output, parts, key };
+  const key = sha1(JSON.stringify([output, parts.map((p) => [p.key, p.transition ?? null]), ...(style ? [style.name] : [])]));
+  return { path: loaded.path, buildDir, output, parts, style: style?.name, key };
 }
 
 const sizeOf = (v: { width: number; height: number; fps: number }): OutputSize => ({ width: v.width, height: v.height, fps: Math.round(v.fps) });
 
 export interface SequenceRenderOptions {
+  /** A style file (see loadStyle) applied to every storyboard part; writes <sequence>.<style>.mp4. */
+  style?: LoadedStyle;
   output?: string;
   quality?: Quality;
   buildDir?: string;
@@ -280,13 +288,13 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
     const ref = part.kind === "storyboard" ? part.storyboard : part.kind === "sequence" ? part.sequence.path : part.file;
     if (part.kind === "video" && part.output === part.file) {
       log(`${label}: finished video, used as is`);
-      results.push({ kind: part.kind, storyboard: ref, output: part.output, duration: 0, cached: true, warnings: [] });
+      results.push({ kind: part.kind, storyboard: ref, output: part.output, duration: 0, cached: true, warnings: part.warnings });
       continue;
     }
     const keyFile = join(part.dir, "part.key");
     const key = `${part.key}|${quality}|${opts.pngFrames ? "png" : "auto"}`;
     const cached = existsSync(part.output) && existsSync(keyFile) && (await readFile(keyFile, "utf8")) === key;
-    let warnings: string[] = [];
+    let warnings: string[] = part.kind === "video" ? part.warnings : [];
     if (cached) log(`${label}: unchanged, reusing ${part.output}`);
     else {
       log(`${label}: rendering`);
@@ -318,7 +326,7 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
   );
   media.forEach((m, i) => (results[i]!.duration = m.duration));
   const base = prepared.path.slice(0, -extname(prepared.path).length);
-  const output = resolve(opts.output ?? `${base}.mp4`);
+  const output = resolve(opts.output ?? `${base}${prepared.style ? `.${prepared.style}` : ""}.mp4`);
   await mkdir(dirname(output), { recursive: true });
   const joined = await makeTimer(opts.timings, log)("join", () =>
     concatParts(media, output, prepared.output, { workDir: prepared.buildDir, quality, log }),
