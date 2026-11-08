@@ -184,6 +184,7 @@ screenpilot doctor</code></pre>
 <tr><td><code>ext</code></td><td>Extension of the file the program writes. Default <code>wav</code>. Any format ffmpeg reads works.</td></tr>
 <tr><td><code>timeout</code></td><td>Seconds allowed for one line. Default 120.</td></tr>
 <tr><td><code>env</code></td><td>Optional. Extra environment variables for the program.</td></tr>
+<tr><td><code>cacheFiles</code></td><td>Optional. Files the program reads, such as pre-made clips. Generated lines are cached by command and text; when one of these files changes (size or modified time), the lines are made again. A missing file counts as a state of its own. A leading <code>~/</code> means your home folder.</td></tr>
 </tbody>
 </table>
 <p>The placeholders you can use in <code>command</code> and <code>stdin</code>:</p>

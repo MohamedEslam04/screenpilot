@@ -16,7 +16,7 @@ import { type ActiveRecording, type RecordResult, startRecording } from "../reco
 import type { Rect } from "../record/input/types.js";
 import type { WindowInfo } from "../platform/types.js";
 import { normalizeEvents } from "../record/normalize.js";
-import { synthesizeLines } from "../voice/index.js";
+import { lineDurations } from "../voice/index.js";
 import { openWithDefaultApp } from "./open.js";
 import { type Step, type Take, TakeSchema, type Target } from "./schema.js";
 import type { Typing } from "../storyboard/schema.js";
@@ -72,14 +72,15 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
   const take = await loadTake(takePath);
   const baseDir = dirname(resolve(takePath));
 
-  log("voice: synthesizing lines");
+  log(opts.dryRun ? "voice: dry run, line lengths estimated" : "voice: synthesizing lines");
   const says = take.steps.filter((s): s is Extract<Step, { say: string }> => "say" in s);
-  const clips = await synthesizeLines(
+  const lengths = await lineDurations(
     take.voice.provider,
     says.map((s) => ({ text: s.say, voice: s.voice ?? take.voice.name, rate: take.voice.rate })),
     join(baseDir, CACHE_DIR, "voice"),
+    opts.dryRun,
   );
-  const lineLength = new Map(says.map((s, i) => [s, clips[i]!.duration]));
+  const lineLength = new Map(says.map((s, i) => [s, lengths[i]!]));
 
   log("opening remote control");
   const driver = await Driver.open({ log });

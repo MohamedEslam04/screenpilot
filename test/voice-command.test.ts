@@ -1,9 +1,10 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VOICES_FILE_ENV } from "../src/voice/config.js";
 import { commandProvider } from "../src/voice/command.js";
+import { lineDurations } from "../src/voice/index.js";
 
 const fake = join(import.meta.dirname, "fixtures", "fake-command-tts.mjs");
 let dir: string;
@@ -18,6 +19,7 @@ beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), "sp-voice-"));
 });
 afterEach(() => {
+  vi.restoreAllMocks();
   delete process.env[VOICES_FILE_ENV];
 });
 
@@ -77,5 +79,46 @@ describe("command voice", () => {
   it("rejects an invalid voices file with the path and the problem", async () => {
     await voices({ bad: { command: [] } });
     await expect(commandProvider.listVoices()).rejects.toThrow(/Invalid .*voices\.json[\s\S]*commands\.bad\.command/);
+  });
+
+  it("changes the cache key when a file in cacheFiles changes", async () => {
+    const clip = join(dir, "clip.mp3");
+    await writeFile(clip, "one");
+    await voices({ clips: { command: [process.execPath, fake, "{out}"], cacheFiles: [clip] } });
+    const before = commandProvider.cacheKey?.("clips");
+    await writeFile(clip, "longer content");
+    await utimes(clip, new Date(), new Date(Date.now() + 5000));
+    expect(commandProvider.cacheKey?.("clips")).not.toBe(before);
+  });
+
+  it("keeps the cache key stable while the files are untouched", async () => {
+    const clip = join(dir, "clip.mp3");
+    await writeFile(clip, "one");
+    await voices({ clips: { command: [process.execPath, fake, "{out}"], cacheFiles: [clip] } });
+    expect(commandProvider.cacheKey?.("clips")).toBe(commandProvider.cacheKey?.("clips"));
+  });
+
+  it("marks a missing cacheFiles file as missing", async () => {
+    const gone = join(dir, "gone.mp3");
+    await voices({ clips: { command: [process.execPath, fake, "{out}"], cacheFiles: [gone] } });
+    expect(commandProvider.cacheKey?.("clips")).toContain(`${gone}:missing`);
+  });
+
+  it("expands ~ in cacheFiles", async () => {
+    await voices({ clips: { command: [process.execPath, fake, "{out}"], cacheFiles: ["~/sp-no-such-clip.mp3"] } });
+    expect(commandProvider.cacheKey?.("clips")).not.toContain("~/");
+  });
+});
+
+describe("lineDurations", () => {
+  const lines = [{ text: "نفتح صلاحيات دور موظف تسجيل", voice: "clips", rate: "+0%" }];
+
+  it("does not synthesize on a dry run and estimates the lengths", async () => {
+    await voices({ clips: { command: [process.execPath, fake, "{out}"] } });
+    const spy = vi.spyOn(commandProvider, "synthesize");
+    const d = await lineDurations("command", lines, join(dir, "voice"), true);
+    expect(spy).not.toHaveBeenCalled();
+    expect(d[0]).toBeGreaterThan(1.7);
+    expect(d[0]).toBeLessThan(1.8);
   });
 });

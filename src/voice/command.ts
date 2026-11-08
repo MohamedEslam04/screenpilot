@@ -1,4 +1,5 @@
 import { homedir } from "node:os";
+import { statSync } from "node:fs";
 import { mkdir, rename, stat } from "node:fs/promises";
 import { dirname } from "node:path";
 import { run } from "../util/exec.js";
@@ -31,7 +32,20 @@ export const commandProvider: VoiceProvider = {
 
   ext: (voice) => profile(voice).ext,
 
-  cacheKey: (voice) => JSON.stringify(profile(voice).command),
+  // The files the program reads count too, so replaced clips are not served from the cache.
+  cacheKey(voice) {
+    const p = profile(voice);
+    const files = (p.cacheFiles ?? []).map((f) => {
+      const path = expandHome(f);
+      try {
+        const s = statSync(path);
+        return `${path}:${s.size}:${s.mtimeMs}`;
+      } catch {
+        return `${path}:missing`;
+      }
+    });
+    return [JSON.stringify(p.command), ...files].join("|");
+  },
 
   async synthesize(text, voice, rate, outFile) {
     const p = profile(voice);
