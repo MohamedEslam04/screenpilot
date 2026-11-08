@@ -25,6 +25,7 @@ import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./r
 import { parseSubtitleFormats } from "./render/subtitles.js";
 import { parseWindow } from "./render/window.js";
 import { lintStoryboard, loadStoryboard, StoryboardError } from "./storyboard/load.js";
+import { qaStoryboard } from "./storyboard/qa.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { renderSequence, validateSequence } from "./sequence/index.js";
 import { sequenceJsonSchema } from "./sequence/schema.js";
@@ -335,6 +336,15 @@ program
       ? lintStoryboard(sb, (await probeVideo(src)).duration)
       : [`source not found: ${src}`];
     print({ valid: true, warnings });
+  });
+
+program
+  .command("qa")
+  .description("Look at the pixels: flag empty highlights and views that show the desktop (needs ffmpeg)")
+  .argument("<storyboard>")
+  .action(async (path: string) => {
+    const warnings = await qaStoryboard(path);
+    print({ ok: warnings.length === 0, warnings });
   });
 
 program
