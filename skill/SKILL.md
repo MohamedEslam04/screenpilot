@@ -48,7 +48,7 @@ Do not record, drive the desktop, build or render before the user has made the d
 9. **Iterate** steps 5-8. Change one kind of thing at a time (timing, then zooms, then wording).
 10. **Final render** with quality `delivery`: `screenpilot render <storyboard> -q delivery -o demo.mp4`. Tell the user the output path, duration and any warnings.
 
-Long renders: a full render takes about as long as the video (more at delivery). For a long video iterate with quality `draft` and `from`/`to`, use `workers: "max"` (`--workers max`) when the user is away from the desktop, and split it into a `sequence` of parts so only the changed parts are rendered again.
+Long renders: a full render takes about as long as the video (more at delivery). For a long video iterate with quality `draft` and `from`/`to`, and use `workers: "max"` (`--workers max`) when the user is away from the desktop. A video (or `from`/`to` window) of 5 minutes or more renders automatically in cached chunks of about 3 minutes, cut only where nothing is in progress (narration, captions, cards, holds, transitions, camera moves, overlay videos and music fades never cross a cut): after an edit only the chunks it touched render again (`chunk 3/12 (...): unchanged, reusing` for the rest), then they are joined and loudness, subtitles and `also` run once on the joined file. An edit that shifts everything after it by whole seconds (a 2 s hold, a card) keeps the later chunks; a fractional shift (most narration-length changes) renders them again. `chunks: false` (`--no-chunks`) renders in one piece and `chunk_seconds` (`--chunk-seconds`) sets the length; a failed chunk names its output range and a retry resumes.
 
 ## Combine recordings (insert a feature clip, no re-recording)
 

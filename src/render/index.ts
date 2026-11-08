@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { clicksOf, readEvents } from "../record/events.js";
@@ -21,7 +21,9 @@ import { checkPosterAt, type ExtraFormat, exportExtras } from "./export.js";
 import { overlayKind } from "./overlay.js";
 import { type LoudnessTarget, normalizeLoudness } from "./loudness.js";
 import { planMusicRange, prepareMusic } from "./music.js";
-import { mixSfx, planSfx } from "./sfx.js";
+import { mixSfx, planSfx, sfxInput } from "./sfx.js";
+import { type ChunkSources, chunkKey, planChunks, type Span, timelineBusy } from "./chunks.js";
+import { joinChunks } from "./join.js";
 import { type SubtitleFormat, writeSubtitles } from "./subtitles.js";
 import { buildPlan, type OverlayAsset, type RenderPlan } from "./plan.js";
 import { partSuffix, type Window, windowPlan } from "./window.js";
@@ -64,6 +66,15 @@ export interface Prepared {
   autoHolds: { at: number; dur: number }[];
   /** Normalize the finished video to this loudness (storyboard audio.loudness). */
   loudness?: LoudnessTarget;
+  /** What the build-dir files of the plan contain, for the chunk cache keys. */
+  sources: ChunkSources;
+}
+
+/** Identity of a file's content for the chunk cache: name, size and modification time (as the sequence part keys). */
+async function fileStamp(file: string): Promise<string> {
+  if (!existsSync(file)) return `${basename(file)}:-`;
+  const st = await stat(file);
+  return `${basename(file)}:${st.size}:${st.mtimeMs}`;
 }
 
 export async function prepareBuild(storyboardPath: string, opts: PrepareOptions = {}): Promise<Prepared> {
@@ -91,12 +102,15 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     for (const [i, l] of sb.narration.entries()) if (l.audio) all[i] = await externalClip(lines[i]!, resolve(baseDir, l.audio), i);
     return all;
   });
+  // Build-dir copies get a new time on every build, so the chunk cache keys them by their originals.
+  const files: Record<string, string> = {};
   const narration = await Promise.all(
     sb.narration.map(async (l, i) => {
       const clip = clips[i]!;
       // Ready-made files keep their extension but get a per-line name, so two "01.mp3" in different folders do not collide.
       const src = l.audio ? `voice/ext-${i}${extname(clip.file).toLowerCase()}` : `voice/${basename(clip.file)}`;
       await copyFile(clip.file, join(buildDir, src));
+      files[src] = await fileStamp(clip.file);
       return { ...clip, at: l.at, caption: l.caption ?? sb.voice.subtitles, src };
     }),
   );
@@ -165,10 +179,13 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
         if (prepared.file) {
           musicSrc = prepared.file;
           musicClip = { start: range.start, duration: prepared.length };
+          // Its cache key names the source file and the filter that made it.
+          files[musicSrc] = await readFile(join(buildDir, "music-track.key"), "utf8").catch(() => fileStamp(m));
         }
       } else {
         musicSrc = `music${extname(m)}`;
         await copyFile(m, join(buildDir, musicSrc));
+        files[musicSrc] = await fileStamp(m);
       }
     } else warnings.push(`music file not found: ${m}`);
   }
@@ -187,6 +204,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     }
     const src = `overlays/${i}${extname(file).toLowerCase()}`;
     await copyFile(file, join(buildDir, src));
+    files[src] = await fileStamp(file);
     if (kind === "image") overlays.push({ src, kind });
     else {
       const info = await probeVideo(file);
@@ -218,7 +236,18 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   await writeFile(join(buildDir, "plan.json"), JSON.stringify({ plan, autoHolds, warnings }, null, 2));
   log(`composition: ${buildDir}/index.html (${plan.duration.toFixed(2)}s)`);
 
-  return { buildDir, plan, timeline, source, warnings, autoHolds, loudness: sb.audio?.loudness };
+  // Everything the cut depends on except the pieces (see cutVideo), so a chunk can key on the pieces it shows.
+  const cut = [await fileStamp(sourcePath), source.duration, sb.output.fps, keepAudio, !!sb.audio?.denoise, JSON.stringify(sb.theme.grade ?? null), !!opts.draft].join("|");
+  const sources: ChunkSources = { files, video: { src: "edited.mp4", cut, pieces: timeline.pieces } };
+  if (sfxMix.file) {
+    const sound = async (src: string) => {
+      const file = sfxInput(src, baseDir)?.file;
+      return file ? fileStamp(file) : src;
+    };
+    sources.sfx = { src: sfxMix.file, hits: await Promise.all(sfxPlan.hits.map(async (h) => ({ at: h.at, volume: h.volume, sound: await sound(h.src) }))) };
+  }
+
+  return { buildDir, plan, timeline, source, warnings, autoHolds, loudness: sb.audio?.loudness, sources };
 }
 
 /** ".<style>" in default build dir and output names, so styles never overwrite each other; nothing without a style. */
@@ -279,7 +308,15 @@ export interface RenderOptions extends PrepareOptions {
   also?: ExtraFormat[];
   /** Poster frame time, in OUTPUT seconds (default: a quarter of the way in). */
   posterAt?: number;
+  /** false: never split into cached chunks (`--no-chunks`). Default: chunks for outputs of CHUNK_MIN_OUTPUT seconds or more. */
+  chunks?: boolean;
+  /** Preferred chunk length in seconds (`--chunk-seconds`, at least MIN_CHUNK_SECONDS). Default 180. */
+  chunkSeconds?: number;
 }
+
+/** Outputs (or --from/--to windows) shorter than this render in one piece, exactly as before chunks existed. */
+export const CHUNK_MIN_OUTPUT = 300;
+const MIN_CHUNK_SECONDS = 10;
 
 export interface RenderResult extends Prepared {
   output: string;
@@ -310,6 +347,9 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
   const log = opts.log ?? (() => {});
   const draft = opts.quality === "draft";
   checkPosterAt(opts.posterAt);
+  if (opts.chunkSeconds !== undefined && !(opts.chunkSeconds >= MIN_CHUNK_SECONDS)) {
+    throw new Error(`--chunk-seconds must be at least ${MIN_CHUNK_SECONDS} (got ${opts.chunkSeconds})`);
+  }
   const prepared = await prepareBuild(storyboardPath, { ...opts, draft });
   const output = resolve(
     opts.output ??
@@ -325,36 +365,43 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
   log(`render: ${output} (${opts.quality ?? "looks"}, ${workers} worker(s))`);
   const time = makeTimer(opts.timings, log);
   const quality = opts.quality ?? "looks";
+  const hyperframes = (out: string) =>
+    run(
+      process.execPath,
+      [
+        hyperframesBin(),
+        "render",
+        prepared.buildDir,
+        "-o",
+        out,
+        "-q",
+        quality,
+        "--video-frame-format",
+        opts.pngFrames ? "png" : "auto",
+        // Each worker is a headless Chrome; autoWorkers leaves cores and memory for a desktop that is also running OBS and browsers.
+        "--workers",
+        String(workers),
+        // Draft: fewer frames to capture. Times are in seconds, so the video length does not change.
+        ...(draft ? ["--fps", String(draftFps(prepared.plan.fps))] : []),
+        // --timings shows HyperFrames' own phase timings, so drop --quiet then.
+        ...(opts.timings ? [] : ["--quiet"]),
+      ],
+      { env: hyperframesEnv(), inherit: opts.timings },
+    );
+  const chunks = planRenderChunks(prepared, opts);
+  // Seconds of video HyperFrames will really render (cached chunks cost nothing): the estimate and the speed record use them.
+  const renderSeconds = chunks ? chunks.filter((c) => !c.cached).reduce((s, c) => s + c.end - c.start, 0) : prepared.plan.duration;
+  if (chunks) log(`chunks: ${chunks.length} of about ${opts.chunkSeconds ?? 180} s, ${chunks.filter((c) => c.cached).length} unchanged`);
   // Only from measured renders of this quality; never a guess.
-  const estimate = await estimateSeconds(speedFile(), quality, prepared.plan.duration).catch(() => undefined);
+  const estimate = renderSeconds > 0 ? await estimateSeconds(speedFile(), quality, renderSeconds).catch(() => undefined) : undefined;
   if (estimate !== undefined && estimate >= LONG_RENDER_SECONDS) {
     log(`estimated ~${formatDuration(estimate)} (from your last ${quality} renders). Faster: -q draft, --workers max, --from/--to for a window`);
   }
   const renderStart = performance.now();
-  await time("render", () =>
-    run(
-      process.execPath,
-      [
-      hyperframesBin(),
-      "render",
-      prepared.buildDir,
-      "-o",
-      output,
-      "-q",
-      opts.quality ?? "looks",
-      "--video-frame-format",
-      opts.pngFrames ? "png" : "auto",
-      // Each worker is a headless Chrome; autoWorkers leaves cores and memory for a desktop that is also running OBS and browsers.
-      "--workers",
-      String(workers),
-      // Draft: fewer frames to capture. Times are in seconds, so the video length does not change.
-      ...(draft ? ["--fps", String(draftFps(prepared.plan.fps))] : []),
-      // --timings shows HyperFrames' own phase timings, so drop --quiet then.
-      ...(opts.timings ? [] : ["--quiet"]),
-    ],
-    { env: hyperframesEnv(), inherit: opts.timings },
-  ),
-  );
+  await time("render", async () => {
+    if (chunks) await renderChunks(prepared, chunks, output, hyperframes, log);
+    else await hyperframes(output);
+  });
   if (prepared.loudness) {
     const target = prepared.loudness;
     await time("loudness", async () => {
@@ -365,14 +412,92 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
   }
   // Only a render that finished: a failed or aborted one threw above and never gets here.
   // Very short clips (the setup warm-up, tiny windows) are dominated by browser start-up and would skew the estimate.
-  if (prepared.plan.duration >= MIN_RECORDED_SECONDS) {
-    await recordSpeed(speedFile(), { quality, workers, outSeconds: prepared.plan.duration, wallSeconds: (performance.now() - renderStart) / 1000 }).catch(() => {});
+  if (renderSeconds >= MIN_RECORDED_SECONDS) {
+    await recordSpeed(speedFile(), { quality, workers, outSeconds: round3(renderSeconds), wallSeconds: (performance.now() - renderStart) / 1000 }).catch(() => {});
   }
   const files: string[] = [];
   if (opts.subtitles?.length) files.push(...(await writeSubtitles(prepared.plan.subtitles, output, opts.subtitles)));
   if (opts.also?.length) files.push(...(await time("extras", () => exportExtras(output, opts.also!, { posterAt: opts.posterAt }))));
   for (const f of files) log(`wrote ${f}`);
   return { ...prepared, output, files };
+}
+
+interface RenderChunk extends Span {
+  file: string;
+  cached: boolean;
+}
+
+/** Where the chunks of one quality live: draft and delivery never evict each other. */
+const chunkDir = (buildDir: string, quality: string, png?: boolean) => join(buildDir, "chunks", `${quality}${png ? "-png" : ""}`);
+
+/**
+ * The chunks of a long render with their cache files, or undefined to render in one
+ * piece (chunks off, output under CHUNK_MIN_OUTPUT, or no quiet point to cut at).
+ * A chunk file is named by its key (chunkKey), so a chunk is reused wherever it
+ * lands in the list, and a missing file is all "changed" means.
+ */
+function planRenderChunks(prepared: Prepared, opts: RenderOptions): RenderChunk[] | undefined {
+  const { plan } = prepared;
+  if (opts.chunks === false || plan.duration < CHUNK_MIN_OUTPUT) return undefined;
+  const from = opts.window?.from ?? 0;
+  const busy = timelineBusy(prepared.timeline).map((s) => ({ start: s.start - from, end: s.end - from }));
+  const spans = planChunks(plan, { target: opts.chunkSeconds, busy });
+  if (spans.length < 2) return undefined;
+  const quality = opts.quality ?? "looks";
+  const dir = chunkDir(prepared.buildDir, quality, opts.pngFrames);
+  const render = [quality, opts.pngFrames ? "png" : "auto", `hyperframes ${require("hyperframes/package.json").version as string}`].join("|");
+  return spans.map((s) => {
+    const file = join(dir, `${chunkKey(plan, s, prepared.sources, render)}.mp4`);
+    return { ...s, file, cached: existsSync(file) };
+  });
+}
+
+/**
+ * Render the changed chunks one after another (each is parallel inside), then join
+ * them all. index.html holds one chunk's composition while it renders and the full
+ * one again afterwards. A chunk is written under a temporary name and renamed when
+ * it is complete, so a failed render keeps every finished chunk for the retry.
+ */
+async function renderChunks(
+  prepared: Prepared,
+  chunks: RenderChunk[],
+  output: string,
+  hyperframes: (out: string) => Promise<unknown>,
+  log: (msg: string) => void,
+): Promise<void> {
+  const index = join(prepared.buildDir, "index.html");
+  const dir = dirname(chunks[0]!.file);
+  await mkdir(dir, { recursive: true });
+  const range = (c: Span) => `${round3(c.start)}-${round3(c.end)} s`;
+  try {
+    for (const [i, c] of chunks.entries()) {
+      const label = `chunk ${i + 1}/${chunks.length}`;
+      if (c.cached) {
+        log(`${label} (${range(c)}): unchanged, reusing`);
+        continue;
+      }
+      log(`${label} (${range(c)}): rendering`);
+      await writeFile(index, renderHtml(windowPlan(prepared.plan, { from: c.start, to: c.end }), { gsapSrc: "gsap.min.js" }));
+      const partial = c.file.replace(/\.mp4$/, ".partial.mp4");
+      try {
+        await hyperframes(partial);
+      } catch (err) {
+        await rm(partial, { force: true });
+        throw new Error(`${label} (output ${range(c)}) failed: ${(err as Error).message}`);
+      }
+      await rename(partial, c.file);
+    }
+  } finally {
+    await writeFile(index, renderHtml(prepared.plan, { gsapSrc: "gsap.min.js" }));
+  }
+  await joinChunks(
+    chunks.map((c) => c.file),
+    output,
+    { workDir: dir, log },
+  );
+  // Chunks this render did not use are stale edits of the same video.
+  const used = new Set(chunks.map((c) => basename(c.file)));
+  for (const f of await readdir(dir)) if (f.endsWith(".mp4") && !used.has(f)) await rm(join(dir, f), { force: true });
 }
 
 export interface FormatRenderResult extends RenderResult {
