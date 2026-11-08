@@ -22,16 +22,16 @@ export interface TrackedSpan {
 
 /**
  * A global px rect → 0..1 of the recorded video: the same mapping as `normalizeEvents` (subtract the
- * recorded screen's origin, scale into the content rect), padded by HIGHLIGHT_PAD px and clipped to 0..1.
+ * recorded screen's origin, scale into the content rect), padded by `pad` px and clipped to 0..1.
  */
-export function globalRectToRecording(r: Rect, screen: Rect, content: Rect): Rect {
+export function globalRectToRecording(r: Rect, screen: Rect, content: Rect, pad = HIGHLIGHT_PAD): Rect {
   const nx = (px: number) => content.x + ((px - screen.x) / screen.w) * content.w;
   const ny = (py: number) => content.y + ((py - screen.y) / screen.h) * content.h;
   const clip = (v: number) => Math.min(1, Math.max(0, v));
-  const x0 = clip(nx(r.x - HIGHLIGHT_PAD));
-  const y0 = clip(ny(r.y - HIGHLIGHT_PAD));
-  const x1 = clip(nx(r.x + r.w + HIGHLIGHT_PAD));
-  const y1 = clip(ny(r.y + r.h + HIGHLIGHT_PAD));
+  const x0 = clip(nx(r.x - pad));
+  const y0 = clip(ny(r.y - pad));
+  const x1 = clip(nx(r.x + r.w + pad));
+  const y1 = clip(ny(r.y + r.h + pad));
   return { x: round(x0), y: round(y0), w: round(x1 - x0), h: round(y1 - y0) };
 }
 
@@ -64,7 +64,9 @@ export interface TrackOptions {
   signal?: AbortSignal;
   /** Clock in seconds; default: startedAt plus the time since this call. */
   now?: () => number;
-  /** Default: `measure` in the demo browser. */
+  /** Demo browser id the element is in (default "main"). */
+  browser?: string;
+  /** Default: `measure` in that demo browser. */
   measure?: (selector: string) => Promise<Measured | null>;
   wait?: (ms: number) => Promise<void>;
 }
@@ -78,7 +80,7 @@ export interface TrackOptions {
 export async function trackElement(selector: string, o: TrackOptions): Promise<TrackedSpan | null> {
   const t0 = performance.now();
   const clock = o.now ?? (() => o.startedAt + (performance.now() - t0) / 1000);
-  const measure = o.measure ?? measureWeb;
+  const measure = o.measure ?? ((s: string) => measureWeb(s, undefined, o.browser));
   const wait = o.wait ?? ((ms: number) => abortableSleep(ms, o.signal));
   const interval = o.intervalMs ?? 250;
   const cap = o.startedAt + o.max;

@@ -9,7 +9,7 @@ import { resolveTypeMethod } from "../drive/clipboard.js";
 import { Driver, type DriverAction } from "../drive/index.js";
 import { describeError, type Disposition, TargetError } from "../drive/errors.js";
 import { findWindow } from "../platform/index.js";
-import { browserWindow, locate, measure, openBrowser, waitForWeb, withPage } from "../drive/web.js";
+import { demoBrowser, MAIN_BROWSER } from "../drive/web.js";
 import { initStoryboard } from "../init.js";
 import type { InputEvent } from "../record/events.js";
 import { type ActiveRecording, type RecordResult, startRecording } from "../record/index.js";
@@ -22,6 +22,7 @@ import { type Step, type Take, TakeSchema, type Target } from "./schema.js";
 import { runCommand } from "./run.js";
 import type { Typing } from "../storyboard/schema.js";
 import { prepareSessionDir } from "./session-dir.js";
+import { boundingRect, tiledView, tileRects } from "./tile.js";
 import { type Tracked, trackedHighlights, trackElement } from "./track.js";
 import { typingSpan } from "./typing.js";
 import { windowMatches } from "./windows.js";
@@ -107,7 +108,8 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
     driver,
     log,
     baseDir,
-    lastTargetWasWeb: false,
+    lastWebBrowser: undefined,
+    browsers: new Set(),
     now,
     recording: false,
     tracks: [],
@@ -169,6 +171,8 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
     await sleep(Math.max(0, end - now()) * 1000);
     ctx.stopTracks.abort();
     tracked = await Promise.all(ctx.tracks);
+    // Several browsers: the camera holds on all of them (the tiled area, else around their windows).
+    if (rec && ctx.browsers.size > 1) ctx.tiledArea ??= await browsersArea([...ctx.browsers], ctx.warn);
   } catch (err) {
     ctx.stopTracks.abort();
     await Promise.allSettled(ctx.tracks);
@@ -199,8 +203,11 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
   const sb = JSON.parse(await readFile(storyboard, "utf8")) as Record<string, unknown>;
   sb.zooms = a.suggestedZooms;
   const hasScreens = Array.isArray(sb.screens) && (sb.screens as unknown[]).length > 0;
+  const meta = JSON.parse(await readFile(recResult.meta, "utf8")) as { screen: Rect; capture: { contentRect: Rect } };
   if (views.length && hasScreens) sb.views = views;
-  else if (take.camera === "window" && a.suggestedWindowViews?.length) sb.views = a.suggestedWindowViews;
+  else if (ctx.browsers.size > 1 && ctx.tiledArea && take.camera !== "all") {
+    sb.views = [tiledView(ctx.tiledArea, meta.screen, meta.capture.contentRect, [...ctx.browsers])];
+  } else if (take.camera === "window" && a.suggestedWindowViews?.length) sb.views = a.suggestedWindowViews;
   else if (take.camera !== "all" && hasScreens) sb.views = a.suggestedViews ?? [];
   else sb.views = [];
   sb.narration = narration;
@@ -208,7 +215,6 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
   // Where the take typed (a secret is timed, never copied): mark them so sounds.typing can play on them.
   if (typings.length) sb.typing = typings;
   if (tracked.length) {
-    const meta = JSON.parse(await readFile(recResult.meta, "utf8")) as { screen: Rect; capture: { contentRect: Rect } };
     const hl = trackedHighlights(tracked, meta.screen, meta.capture.contentRect);
     warnings.push(...hl.warnings);
     if (hl.highlights.length) sb.highlights = [...(Array.isArray(sb.highlights) ? sb.highlights : []), ...hl.highlights];
@@ -243,8 +249,12 @@ interface StepContext {
   driver: Driver;
   log: (m: string) => void;
   baseDir: string;
-  /** The last pointer target was in the demo browser: typed text and keys must reach it too. */
-  lastTargetWasWeb: boolean;
+  /** The demo browser of the last pointer target, if it was a {web} one: typed text and keys must reach it too. */
+  lastWebBrowser: string | undefined;
+  /** Every demo browser id the take used; 2+ make the storyboard hold one view on all of them. */
+  browsers: Set<string>;
+  /** Global px area the last tile step filled. */
+  tiledArea?: Rect;
   /** Seconds since the recording started (the storyboard's source time). */
   now: () => number;
   /** False for setup steps and dry runs: highlight steps then only check their selector. */
@@ -270,7 +280,8 @@ function stopUntilNext(ctx: StepContext): void {
 async function startHighlight(h: Extract<Step, { highlight: unknown }>["highlight"], ctx: StepContext): Promise<void> {
   stopUntilNext(ctx);
   // With the pointer: calibrates the window once if no web target did yet, so background samples never move it.
-  const first = await measure(h.web, ctx.driver);
+  const b = demoBrowser(h.browser ?? MAIN_BROWSER);
+  const first = await b.measure(h.web, ctx.driver);
   if (!ctx.recording) {
     if (!first) ctx.warn(`highlight "${h.web}": not visible at this point of the dry run (it may appear later)`);
     return;
@@ -281,7 +292,7 @@ async function startHighlight(h: Extract<Step, { highlight: unknown }>["highligh
     ctx.untilNext.push(next);
     signal = AbortSignal.any([next.signal, signal]);
   }
-  const span = trackElement(h.web, { startedAt: ctx.now(), max: h.dur ?? 8, signal, now: ctx.now });
+  const span = trackElement(h.web, { startedAt: ctx.now(), max: h.dur ?? 8, signal, now: ctx.now, browser: b.id });
   ctx.tracks.push(span.then((s) => ({ selector: h.web, ...(h.label ? { label: h.label } : {}), span: s })));
 }
 
@@ -291,7 +302,7 @@ export async function resolveTarget(t: Target, d: Driver, opts: { force?: boolea
     const m = await a11yFind(d.desktop, t.a11y);
     return { x: m.cx, y: m.cy };
   }
-  if ("web" in t) return locate(t.web, d, undefined, opts);
+  if ("web" in t) return demoBrowser(t.browser ?? MAIN_BROWSER).locate(t.web, d, undefined, opts);
   if ("window" in t) {
     const windows = await d.desktop.listWindows();
     const w = pickWindow(windows, t.window);
@@ -322,34 +333,90 @@ export function pageUrl(u: string, baseDir: string): string {
 }
 
 /**
- * Playwright drives the demo browser whatever window is in front, but the real
- * pointer and keys go to the front window: bring the demo browser up first.
+ * Playwright drives a demo browser whatever window is in front, but the real
+ * pointer and keys go to the front window: bring that demo browser up first.
  */
-export async function ensureDemoBrowserActive(d: Driver, log: (m: string) => void): Promise<void> {
-  const win = await browserWindow();
+export async function ensureDemoBrowserActive(d: Driver, log: (m: string) => void, id = MAIN_BROWSER): Promise<void> {
+  const win = await demoBrowser(id).window();
   if (win.active) return;
   await d.desktop.focusWindow(win.id);
   await sleep(350);
-  log("web target: brought the demo browser to the front");
+  log(`web target: brought the demo browser${id === MAIN_BROWSER ? "" : ` "${id}"`} to the front`);
 }
 
-const isWeb = (t: Target) => "web" in t;
+/** The demo browser a target is in, or undefined for a non-web target. */
+const webBrowserOf = (t: Target): string | undefined => ("web" in t ? (t.browser ?? MAIN_BROWSER) : undefined);
+
+/** Every demo browser id a step uses (its targets, browser, goto, waitFor, highlight, focus, tile). */
+export function stepBrowsers(step: Step): string[] {
+  const ids: (string | undefined)[] = [];
+  // A goto step may carry `browser: "<id>"` too, so it is told apart first.
+  if ("goto" in step) ids.push(step.browser ?? MAIN_BROWSER);
+  else if ("browser" in step) ids.push(step.browser.id ?? MAIN_BROWSER);
+  if ("move" in step) ids.push(webBrowserOf(step.move));
+  if ("click" in step) ids.push(webBrowserOf(step.click));
+  if ("drag" in step) ids.push(webBrowserOf(step.drag.from), webBrowserOf(step.drag.to));
+  if ("scroll" in step && step.at) ids.push(webBrowserOf(step.at));
+  if ("waitFor" in step && "web" in step.waitFor) ids.push(step.waitFor.browser ?? MAIN_BROWSER);
+  if ("highlight" in step) ids.push(step.highlight.browser ?? MAIN_BROWSER);
+  if ("focus" in step && step.focus.browser !== undefined) ids.push(step.focus.browser === true ? MAIN_BROWSER : step.focus.browser);
+  if ("tile" in step) ids.push(...step.tile.browsers);
+  return [...new Set(ids.filter((id): id is string => id !== undefined))];
+}
+
+/** The area around every listed demo browser's window (global px), or undefined (with a warning) when one cannot be found. */
+async function browsersArea(ids: string[], warn: (m: string) => void): Promise<Rect | undefined> {
+  try {
+    return boundingRect(await Promise.all(ids.map((id) => demoBrowser(id).window())));
+  } catch (e) {
+    warn(`browsers ${ids.join(", ")}: no window area for the camera (${(e as Error).message}); views follow windows instead`);
+    return undefined;
+  }
+}
+
+/** Places the listed demo browsers side by side on a monitor (see the tile step). */
+async function tileBrowsers(t: Extract<Step, { tile: unknown }>["tile"], ctx: StepContext): Promise<void> {
+  const { driver: d } = ctx;
+  const wins: WindowInfo[] = [];
+  for (const id of t.browsers) {
+    wins.push(
+      await demoBrowser(id)
+        .window()
+        .catch((e: Error) => {
+          throw new Error(`tile: the demo browser "${id}" is not open (add a browser step with id "${id}" first): ${e.message}`);
+        }),
+    );
+  }
+  const name = t.screen ?? wins[0]!.output;
+  const screen = d.screens().find((s) => s.name === name);
+  if (!screen) throw new Error(`tile: unknown monitor "${name}" (have: ${d.screens().map((s) => s.name).join(", ")})`);
+  const area = { x: screen.x, y: screen.y, w: screen.w, h: screen.h };
+  const rects = tileRects(area, wins.length);
+  for (const [i, w] of wins.entries()) {
+    await d.desktop.focusWindow(w.id, rects[i]);
+    demoBrowser(t.browsers[i]!).forgetWindow();
+  }
+  await sleep(400);
+  ctx.tiledArea = area;
+}
 
 async function runStep(step: Step, ctx: StepContext): Promise<void> {
   const { driver: d, log, baseDir } = ctx;
-  // Pointer targets: a {web} one needs the demo browser in front; remember it for the keys that follow.
+  for (const id of stepBrowsers(step)) ctx.browsers.add(id);
+  // Pointer targets: a {web} one needs its demo browser in front; remember it for the keys that follow.
   const pointer = "move" in step ? [step.move] : "click" in step ? [step.click] : "drag" in step ? [step.drag.from, step.drag.to] : "scroll" in step && step.at ? [step.at] : [];
   if (pointer.length) {
-    if (pointer.some(isWeb)) await ensureDemoBrowserActive(d, log);
-    ctx.lastTargetWasWeb = pointer.some(isWeb);
-  } else if (("type" in step || "key" in step) && ctx.lastTargetWasWeb) {
-    await ensureDemoBrowserActive(d, log);
+    ctx.lastWebBrowser = pointer.map(webBrowserOf).find((id) => id !== undefined);
+    if (ctx.lastWebBrowser) await ensureDemoBrowserActive(d, log, ctx.lastWebBrowser);
+  } else if (("type" in step || "key" in step) && ctx.lastWebBrowser) {
+    await ensureDemoBrowserActive(d, log, ctx.lastWebBrowser);
   }
-  if ("browser" in step) {
+  // goto first: a goto step may carry `browser: "<id>"` too.
+  if ("goto" in step) {
+    await demoBrowser(step.browser ?? MAIN_BROWSER).withPage((p) => p.goto(pageUrl(step.goto, baseDir)).then(() => undefined));
+  } else if ("browser" in step) {
     const screen = step.browser.screen ? d.screens().find((s) => s.name === step.browser.screen) : undefined;
-    await openBrowser({ screen, url: step.browser.url && pageUrl(step.browser.url, baseDir), app: step.browser.app, log });
-  } else if ("goto" in step) {
-    await withPage((p) => p.goto(pageUrl(step.goto, baseDir)).then(() => undefined));
+    await demoBrowser(step.browser.id ?? MAIN_BROWSER).open({ screen, url: step.browser.url && pageUrl(step.browser.url, baseDir), app: step.browser.app, log });
   } else if ("move" in step) {
     await d.moveToGlobal(await resolveTarget(step.move, d), { dur: step.dur });
   } else if ("click" in step) {
@@ -376,7 +443,7 @@ async function runStep(step: Step, ctx: StepContext): Promise<void> {
     await sleep(step.wait * 1000);
   } else if ("waitFor" in step) {
     if ("a11y" in step.waitFor) await a11yWait(d.desktop, step.waitFor.a11y, (step.waitFor.timeout ?? 30) * 1000);
-    else await waitForWeb(step.waitFor.web, (step.waitFor.timeout ?? 30) * 1000);
+    else await demoBrowser(step.waitFor.browser ?? MAIN_BROWSER).waitFor(step.waitFor.web, (step.waitFor.timeout ?? 30) * 1000);
   } else if ("waitForWindow" in step) {
     const deadline = Date.now() + (step.waitForWindow.timeout ?? 15) * 1000;
     while (!findWindow(await d.desktop.listWindows(), step.waitForWindow.match)) {
@@ -386,9 +453,10 @@ async function runStep(step: Step, ctx: StepContext): Promise<void> {
   } else if ("focus" in step) {
     const windows = await d.desktop.listWindows();
     let w: WindowInfo | undefined;
-    if (step.focus.match === undefined) {
-      w = await browserWindow();
-    } else {
+    const focusBrowser = step.focus.browser === undefined ? undefined : step.focus.browser === true ? MAIN_BROWSER : step.focus.browser;
+    if (focusBrowser !== undefined) {
+      w = await demoBrowser(focusBrowser).window();
+    } else if (step.focus.match !== undefined) {
       const hits = windowMatches(windows, step.focus.match);
       w = pickWindow(windows, step.focus.match);
       if (!w) throw windowNotFound(windows, step.focus.match);
@@ -396,9 +464,11 @@ async function runStep(step: Step, ctx: StepContext): Promise<void> {
         log(`focus: ${hits.length} windows match "${step.focus.match}"; using ${w.resourceClass} "${w.caption}" pid ${w.pid}; use {browser: true} for the demo browser`);
       }
     }
+    if (!w) throw new Error("focus: give match or browser");
     const s = step.focus.screen ? d.screens().find((x) => x.name === step.focus.screen) : undefined;
     await d.desktop.focusWindow(w.id, s ? { screen: s.name } : undefined);
-    ctx.lastTargetWasWeb = step.focus.match === undefined;
+    if (focusBrowser !== undefined && s) demoBrowser(focusBrowser).forgetWindow();
+    ctx.lastWebBrowser = focusBrowser;
     await sleep(350);
   } else if ("open" in step) {
     const target = /^[a-z][a-z0-9+.-]+:\/\//i.test(step.open) ? step.open : resolve(baseDir, expandHome(step.open));
@@ -406,6 +476,8 @@ async function runStep(step: Step, ctx: StepContext): Promise<void> {
     openWithDefaultApp(target, launchEnv());
   } else if ("highlight" in step) {
     await startHighlight(step.highlight, ctx);
+  } else if ("tile" in step) {
+    await tileBrowsers(step.tile, ctx);
   } else if ("run" in step) {
     const [cmd, ...args] = step.run.map(expandHome);
     log(`run: ${cmd}${step.wait ? " (waiting for exit)" : ""}`);

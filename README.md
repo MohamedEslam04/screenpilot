@@ -96,6 +96,7 @@ Then ask, for example:
 - "Record my screen while I show the signup flow, then make a short video with captions."
 - "Make a demo video of our dashboard: open it, show the reports page, and add an Arabic voiceover."
 - "Turn this recording into a tutorial with zooms on every click: `~/Videos/demo.mp4`."
+- "Show the admin turning off a permission and the user's page reacting, in two browsers side by side."
 
 Your recordings and finished videos are saved in the **ScreenPilot** folder inside your Videos folder (on a Mac: Movies). The first video takes a little longer while everything warms up.
 
