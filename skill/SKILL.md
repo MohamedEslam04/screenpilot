@@ -124,7 +124,7 @@ Example take: web form, download, open the file locally, English lines plus one 
 }
 ```
 
-Take tips: `say` with `wait: true` before an important click; 0.3-1 s `wait`s after navigation; `waitFor` instead of long waits; keep takes under ~90 s; `say` lines use `voice.name` unless overridden per line; `view` switches which monitor the camera shows (`"all"` for the full wall).
+Take tips: `say` with `wait: true` before an important click; 0.3-1 s `wait`s after navigation; `waitFor` instead of long waits; keep takes under ~90 s; `say` lines use `voice.name` unless overridden per line; `view` switches which monitor the camera shows (`"all"` for the full wall); `run` starts a program and carries on, `{"run": [...], "wait": true, "timeout": 10}` waits for it to exit and fails the step on a non-zero exit code or timeout (e.g. `wl-copy` before `ctrl+v`).
 
 ## Storyboard example
 

@@ -1,5 +1,4 @@
 import { pathToFileURL } from "node:url";
-import { spawn } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -19,6 +18,7 @@ import { normalizeEvents } from "../record/normalize.js";
 import { synthesizeLines } from "../voice/index.js";
 import { openWithDefaultApp } from "./open.js";
 import { type Step, type Take, TakeSchema, type Target } from "./schema.js";
+import { runCommand } from "./run.js";
 import type { Typing } from "../storyboard/schema.js";
 import { typingSpan } from "./typing.js";
 import { CACHE_DIR } from "../brand.js";
@@ -297,8 +297,13 @@ async function runStep(step: Step, { driver: d, log, baseDir }: StepContext): Pr
     openWithDefaultApp(target, launchEnv());
   } else if ("run" in step) {
     const [cmd, ...args] = step.run.map(expandHome);
-    log(`run: ${cmd}`);
-    spawn(cmd!, args, { cwd: baseDir, detached: true, stdio: "ignore", env: launchEnv() }).unref();
+    log(`run: ${cmd}${step.wait ? " (waiting for exit)" : ""}`);
+    await runCommand([cmd!, ...args], {
+      cwd: baseDir,
+      wait: step.wait === true,
+      timeoutMs: (step.timeout ?? 30) * 1000,
+      env: launchEnv(),
+    });
   }
 }
 

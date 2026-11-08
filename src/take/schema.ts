@@ -67,7 +67,21 @@ export const StepSchema = z.union([
   z.object({ waitForWindow: z.object({ match: z.string(), timeout: z.number().positive().optional() }).strict() }).strict(),
   z.object({ focus: z.object({ match: z.string(), screen: z.string().optional() }).strict() }).strict(),
   z.object({ open: z.string().describe("File path (~ ok) or URL; opens with the OS default app (xdg-open / start / open)") }).strict(),
-  z.object({ run: z.array(z.string()).min(1).describe("Launch a program (no shell), e.g. [\"xdg-open\", \"~/Downloads/x.pdf\"]") }).strict(),
+  z
+    .object({
+      run: z.array(z.string()).min(1).describe("Launch a program (no shell), e.g. [\"xdg-open\", \"~/Downloads/x.pdf\"]"),
+      wait: z
+        .boolean()
+        .optional()
+        .describe("true: wait for the program to exit and fail the step on a non-zero exit code (e.g. wl-copy before ctrl+v). Default false: start it and carry on"),
+      timeout: z
+        .number()
+        .positive()
+        .optional()
+        .describe("Seconds to wait before the program is killed and the step fails (default 30). Only with wait: true"),
+    })
+    .strict()
+    .refine((s) => s.timeout === undefined || s.wait === true, { message: "run: timeout only applies with wait: true", path: ["timeout"] }),
 ]);
 
 export const TakeSchema = z.object({
