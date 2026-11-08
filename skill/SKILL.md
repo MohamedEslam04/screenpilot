@@ -48,6 +48,8 @@ Do not record, drive the desktop, build or render before the user has made the d
 9. **Iterate** steps 5-8. Change one kind of thing at a time (timing, then zooms, then wording).
 10. **Final render** with quality `delivery`: `screenpilot render <storyboard> -q delivery -o demo.mp4`. Tell the user the output path, duration and any warnings.
 
+Long renders: a full render takes about as long as the video (more at delivery). For a long video iterate with quality `draft` and `from`/`to`, use `workers: "max"` (`--workers max`) when the user is away from the desktop, and split it into a `sequence` of parts so only the changed parts are rendered again.
+
 ## Combine recordings (insert a feature clip, no re-recording)
 
 One storyboard has one `source`. To insert another recording into the middle of a demo, record or `perform` only the new part, `init` a storyboard for it, then join storyboards with a `sequence.json`:

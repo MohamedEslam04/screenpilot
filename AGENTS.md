@@ -35,6 +35,8 @@ Do not record, drive the desktop, build or render before the user has made the d
 8. Review: `screenpilot check storyboard.mp4 --at 2,8,15` (output seconds) and view the frames. Fix and repeat 5-8.
 9. Final: `screenpilot render storyboard.json -q delivery -o demo.mp4` (add `--subtitles srt,vtt` for caption files from the narration, `--also gif,webm,poster` for a GIF, WebM or poster PNG).
 
+Long renders: a full render takes about as long as the video (more at delivery). For a long video iterate with `-q draft` and `--from/--to`, use `--workers max` when the user is away from the desktop, and split it into a `sequence` of parts so only the changed parts are rendered again.
+
 `screenpilot build` prepares everything without rendering; `screenpilot preview` opens HyperFrames Studio.
 
 ## Combine recordings (insert a feature clip without re-recording)
