@@ -501,9 +501,11 @@ program
   .option("--png-frames", "Lossless source frames: sharper UI text, slower")
   .option("--workers <n>", "Parallel renderers, each a headless Chrome (default: from CPU cores and free memory)")
   .option("--timings", "Log how long each stage takes and show HyperFrames phase timings")
+  .option("--style <file>", "Style file ({ \"theme\": {...} }) merged over the theme of every part; writes <sequence>.<style>.mp4 and keeps its own build folder")
   .option("--build-dir <dir>")
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean }) => {
-    print(await renderSequence(path, { ...o, workers: o.workers ? Number(o.workers) : undefined, log }));
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string }) => {
+    const { style, ...rest } = o;
+    print(await renderSequence(path, { ...rest, style: style ? await loadStyle(style) : undefined, workers: o.workers ? Number(o.workers) : undefined, log }));
   });
 
 program

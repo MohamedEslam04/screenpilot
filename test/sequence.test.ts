@@ -1,15 +1,28 @@
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildConcatFilter, concatParts, probePart } from "../src/sequence/concat.js";
 import { prepareSequence, renderSequence, validateSequence } from "../src/sequence/index.js";
 import { sequenceJsonSchema, SequenceSchema } from "../src/sequence/schema.js";
 import { prepareBuild } from "../src/render/index.js";
-import { StoryboardError } from "../src/storyboard/load.js";
+import { loadStyle, StoryboardError } from "../src/storyboard/load.js";
 import { probeVideo } from "../src/util/media.js";
 import { makeVideo } from "./fixtures/video.js";
+
+// HyperFrames (a headless Chrome render) is faked: it writes a small real video to the file passed with -o. ffmpeg and ffprobe are real.
+vi.mock("../src/util/exec.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../src/util/exec.js")>();
+  return {
+    ...real,
+    run: async (cmd: string, args: string[], opts?: Parameters<typeof real.run>[2]) => {
+      if (cmd !== process.execPath) return real.run(cmd, args, opts);
+      return real.run("ffmpeg", ["-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=s=320x180:d=1:r=10", "-pix_fmt", "yuv420p", args[args.indexOf("-o") + 1]!]);
+    },
+  };
+});
 
 async function tempDir(): Promise<string> {
   return mkdtemp(join(tmpdir(), "sp-sequence-"));
@@ -456,5 +469,112 @@ describe("parts that are sequences or finished videos", () => {
     expect(third.parts.map((p) => p.cached)).toEqual([false, true]);
     expect(third.duration).toBeGreaterThan(5.5 - 0.05);
     expect(third.duration).toBeLessThan(5.5 + 0.05);
+  }, 60_000);
+});
+
+describe("sequence --style", () => {
+  const hasFfmpeg = spawnSync("ffmpeg", ["-version"]).status === 0;
+  const ffmpegIt = hasFfmpeg ? it : it.skip;
+
+  async function fixture() {
+    const dir = await tempDir();
+    makeVideo(join(dir, "rec.mp4"), 2);
+    makeVideo(join(dir, "clip.mp4"), 1);
+    await writeJson(join(dir, "demo.json"), {
+      source: "rec.mp4",
+      output: { width: 320, height: 180, fps: 10 },
+      theme: { accent: "#111111", background: "#000000" },
+    });
+    await writeJson(join(dir, "red.json"), { theme: { accent: "#ff0000" } });
+    await writeJson(join(dir, "blue.json"), { theme: { accent: "#0000ff" } });
+    await writeJson(join(dir, "seq.json"), { parts: [{ storyboard: "demo.json" }, { video: "clip.mp4" }] });
+    await writeJson(join(dir, "inner.json"), { parts: [{ storyboard: "demo.json" }] });
+    await writeJson(join(dir, "outer.json"), { parts: [{ sequence: "inner.json" }, { storyboard: "demo.json" }] });
+    return dir;
+  }
+  const styleOf = (dir: string, name: string) => loadStyle(join(dir, `${name}.json`));
+  const derivedTheme = async (storyboard: string) => JSON.parse(await readFile(storyboard, "utf8")).theme;
+
+  it("writes the merged theme into the derived storyboard of every part and leaves the user's files alone", async () => {
+    const dir = await fixture();
+    const before = await readFile(join(dir, "demo.json"), "utf8");
+    const p = await prepareSequence(join(dir, "seq.json"), { style: await styleOf(dir, "red") });
+    expect(await derivedTheme((p.parts[0] as { storyboard: string }).storyboard)).toMatchObject({ accent: "#ff0000", background: "#000000" });
+    expect(await readFile(join(dir, "demo.json"), "utf8")).toBe(before);
+  });
+
+  it("names the build folder after the style and keeps the plain one without a style", async () => {
+    const dir = await fixture();
+    expect((await prepareSequence(join(dir, "seq.json"))).buildDir).toBe(join(dir, "seq.build"));
+    const red = await prepareSequence(join(dir, "seq.json"), { style: await styleOf(dir, "red") });
+    expect(red.buildDir).toBe(join(dir, "seq.red.build"));
+    expect(red.parts[0]!.dir).toBe(join(dir, "seq.red.build", "part-0"));
+  });
+
+  it("changes the part key and the sequence key with the style, and keeps them for the same style", async () => {
+    const dir = await fixture();
+    const plain = await prepareSequence(join(dir, "seq.json"));
+    const red = await prepareSequence(join(dir, "seq.json"), { style: await styleOf(dir, "red") });
+    const red2 = await prepareSequence(join(dir, "seq.json"), { style: await styleOf(dir, "red") });
+    const blue = await prepareSequence(join(dir, "seq.json"), { style: await styleOf(dir, "blue") });
+    expect(red.parts[0]!.key).not.toBe(plain.parts[0]!.key);
+    expect(red.parts[0]!.key).not.toBe(blue.parts[0]!.key);
+    expect(red2.parts[0]!.key).toBe(red.parts[0]!.key);
+    expect(red.key).not.toBe(blue.key);
+    expect(red2.key).toBe(red.key);
+  });
+
+  it("gives a nested sequence the same style, its own build folder and its own key", async () => {
+    const dir = await fixture();
+    const plain = await prepareSequence(join(dir, "outer.json"));
+    const red = await prepareSequence(join(dir, "outer.json"), { style: await styleOf(dir, "red") });
+    const nested = red.parts[0]!;
+    if (nested.kind !== "sequence") throw new Error("expected a nested sequence");
+    expect(nested.sequence.buildDir).toBe(join(dir, "inner.red.build"));
+    expect(await derivedTheme((nested.sequence.parts[0] as { storyboard: string }).storyboard)).toMatchObject({ accent: "#ff0000" });
+    expect(nested.key).not.toBe(plain.parts[0]!.key);
+    const blue = await prepareSequence(join(dir, "outer.json"), { style: await styleOf(dir, "blue") });
+    expect(blue.parts[0]!.key).not.toBe(nested.key);
+  });
+
+  it("warns that a finished video part is not styled", async () => {
+    const dir = await fixture();
+    const red = await prepareSequence(join(dir, "seq.json"), { style: await styleOf(dir, "red") });
+    const video = red.parts[1]!;
+    if (video.kind !== "video") throw new Error("expected a video part");
+    expect(video.warnings.join("\n")).toMatch(/style "red" is not applied to clip\.mp4/);
+    const plain = await prepareSequence(join(dir, "seq.json"));
+    expect((plain.parts[1] as { warnings: string[] }).warnings).toEqual([]);
+  });
+
+  ffmpegIt("renders each style into its own folder and output, and reuses an unchanged style", async () => {
+    const dir = await fixture();
+    const red = await styleOf(dir, "red");
+    const blue = await styleOf(dir, "blue");
+    const logs: string[] = [];
+    const log = (m: string) => logs.push(m);
+
+    const a = await renderSequence(join(dir, "seq.json"), { quality: "draft", style: red, log });
+    expect(a.output).toBe(join(dir, "seq.red.mp4"));
+    expect(a.parts[0]!.cached).toBe(false);
+    expect(a.parts[1]!.warnings.join("\n")).toMatch(/not applied/);
+
+    const b = await renderSequence(join(dir, "seq.json"), { quality: "draft", style: blue, log });
+    expect(b.output).toBe(join(dir, "seq.blue.mp4"));
+    expect(b.parts[0]!.cached).toBe(false);
+    expect(a.parts[0]!.output).not.toBe(b.parts[0]!.output);
+    expect(existsSync(a.parts[0]!.output)).toBe(true);
+    expect(existsSync(b.parts[0]!.output)).toBe(true);
+
+    logs.length = 0;
+    const again = await renderSequence(join(dir, "seq.json"), { quality: "draft", style: red, log });
+    expect(again.parts[0]!.cached).toBe(true);
+    expect(logs.join("\n")).toMatch(/unchanged, reusing/);
+  }, 60_000);
+
+  ffmpegIt("without a style the output stays <sequence>.mp4", async () => {
+    const dir = await fixture();
+    const r = await renderSequence(join(dir, "seq.json"), { quality: "draft" });
+    expect(r.output).toBe(join(dir, "seq.mp4"));
   }, 60_000);
 });

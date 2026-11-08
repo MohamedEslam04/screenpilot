@@ -533,16 +533,19 @@ server.registerTool(
   {
     description:
       "Render a sequence.json: each part is rendered like a storyboard (unchanged parts are reused), all at one output size, " +
-      "with the intro of the first part and the outro of the last, then joined into one MP4. Slow (minutes). Follow with check_output.",
+      "with the intro of the first part and the outro of the last, then joined into one MP4. " +
+      "Pass style (a style file, JSON with only a theme) to render the same sequence with another look: its theme is merged over every storyboard part (not over finished video parts), the file is named <sequence>.<style>.mp4 and each style keeps its own build folder and cache. " +
+      "Slow (minutes). Follow with check_output.",
     inputSchema: {
       sequence: z.string().describe("Path to sequence.json"),
       output: z.string().optional().describe("Output mp4. Default: <sequence>.mp4"),
       quality: z.enum(["draft", "looks", "delivery"]).optional().describe("Default looks"),
+      style: z.string().optional().describe('Path to a style file: { "theme": {...} } only; merged over the theme of every storyboard part'),
     },
   },
-  safe(async ({ sequence, output, quality }) => {
+  safe(async ({ sequence, output, quality, style }) => {
     requireBrief("sequence_render");
-    return text(await renderSequence(sequence, { output, quality, log }));
+    return text(await renderSequence(sequence, { output, quality, style: style ? await loadStyle(style) : undefined, log }));
   }),
 );
 
