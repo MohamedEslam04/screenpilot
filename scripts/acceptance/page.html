@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ScreenPilot acceptance page</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100vh; overflow: hidden; font: 18px/1.4 system-ui, sans-serif; background: #f4f6fb; color: #1b2230; }
+  /* Sticky header: covers #covered-btn. The page cannot scroll, so scrolling the button to the middle cannot free it. */
+  #site-header { position: sticky; top: 0; z-index: 10; height: 80px; padding: 0 24px; display: flex; align-items: center; background: #1f3a8a; color: #fff; font-weight: 600; }
+  main { padding: 24px; display: grid; gap: 20px; max-width: 640px; }
+  /* Pulls the button up under the header (its box lies inside the header's box). */
+  #covered-zone { margin-top: -72px; }
+  button { font: inherit; padding: 10px 18px; border-radius: 8px; border: 2px solid #1f3a8a; background: #fff; color: #1f3a8a; cursor: pointer; }
+  input { font: inherit; width: 100%; padding: 10px; border: 2px solid #9aa5bd; border-radius: 8px; }
+  label { display: block; font-weight: 600; margin-bottom: 6px; }
+  #status { min-height: 1.4em; color: #2b6a3d; font-weight: 600; }
+  #toast { display: none; position: fixed; right: 24px; bottom: 24px; padding: 16px 24px; border-radius: 10px; background: #14532d; color: #fff; font-weight: 600; box-shadow: 0 6px 20px rgba(0, 0, 0, .3); }
+  #toast.show { display: block; }
+</style>
+</head>
+<body>
+<header id="site-header">ScreenPilot acceptance page</header>
+<main>
+  <div id="covered-zone">
+    <button id="covered-btn" type="button">Covered button</button>
+  </div>
+  <div>
+    <button id="show-toast" type="button">Show toast</button>
+    <button id="visible-btn" type="button">Visible button</button>
+  </div>
+  <div>
+    <label for="name">Name (Arabic paste test)</label>
+    <input id="name" type="text" autocomplete="off" dir="auto">
+  </div>
+  <div id="status" role="status"></div>
+</main>
+<div id="toast" role="alert">Saved</div>
+<script>
+  const status = document.getElementById("status");
+  const toast = document.getElementById("toast");
+  let timer;
+  document.getElementById("show-toast").addEventListener("click", () => {
+    toast.classList.add("show");
+    clearTimeout(timer);
+    timer = setTimeout(() => toast.classList.remove("show"), 3000);
+  });
+  document.getElementById("visible-btn").addEventListener("click", () => { status.textContent = "visible button clicked"; });
+  document.getElementById("covered-btn").addEventListener("click", () => { status.textContent = "covered button clicked"; });
+  document.getElementById("site-header").addEventListener("click", () => { status.textContent = "header clicked"; });
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "0.9.0 acceptance: force clicks the covered button anyway",
+  "screens": "all",
+  "setup": [{ "browser": { "url": "page.html" } }],
+  "steps": [
+    { "wait": 1 },
+    { "click": { "web": "#visible-btn" } },
+    { "wait": 0.5 },
+    { "click": { "web": "#covered-btn" }, "force": true },
+    { "wait": 1 }
+  ],
+  "tail": 1
+}
