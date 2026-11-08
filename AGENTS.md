@@ -99,6 +99,8 @@ The real mouse and keyboard are used: tell the user to keep their hands off (tou
 
 On macOS, shortcuts use `cmd` (`cmd+l`, `cmd+c`), not `ctrl`, and the AI app needs Accessibility and Screen Recording permission (errors name the app and the settings pane).
 
+Typing: `type` has `method: "keys" | "paste" | "auto"` (default `auto`). Key-by-key injection drops letters in Arabic and other text outside Latin-1, so `auto` pastes those: it sets the clipboard, presses `ctrl+v` (`cmd+v` on macOS), waits 150 ms and restores the previous clipboard. `{env}` text is pasted the same way and is never left on the clipboard. Paste needs `wl-copy`/`wl-paste` (KDE, GNOME Wayland), `xclip` (X11), or the built-in tools on macOS and Windows; `doctor` warns when missing. A paste still marks a `typing` span.
+
 Take tips: put `say` with `wait: true` before an important click so the viewer hears it first; keep 0.3-1 s `wait`s after navigation; use `waitFor` instead of long waits; keep takes under ~90 s. `say` lines default to `voice.name`; override per line with `voice`.
 
 ## Native apps: `{a11y}` targets

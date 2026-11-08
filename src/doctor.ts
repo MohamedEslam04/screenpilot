@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { APP } from "./brand.js";
 import { DESKTOP_ENV } from "./brand.js";
+import { clipboardCommands } from "./drive/clipboard.js";
 import { Driver } from "./drive/index.js";
 import { portalVersion } from "./drive/portal.js";
 import { findBrowser } from "./drive/web.js";
@@ -219,6 +220,18 @@ export async function pointerSupport(id: DesktopId): Promise<Result> {
   }
 }
 
+/** Paste typing (`type` with `method: "paste"`, or Arabic text) needs a clipboard tool; missing is a warning, key typing still works. */
+export async function clipboardSupport(platform: NodeJS.Platform, id: DesktopId): Promise<Result> {
+  const bin = clipboardCommands(platform, id).set[0]!;
+  try {
+    await run(platform === "win32" ? "where" : "which", [bin]);
+    return { ok: true, detail: bin };
+  } catch {
+    const fix = bin === "wl-copy" ? installHint("wl-clipboard") : bin === "xclip" ? "install xclip with your package manager" : `${bin} is part of the OS`;
+    return skip(`${bin} not found (optional: paste typing for Arabic and other non-Latin text): ${fix}`);
+  }
+}
+
 export async function doctor(opts: { input?: boolean } = {}): Promise<DoctorReport> {
   const checks: Check[] = [];
   const add = async (name: string, fn: () => Promise<Omit<Check, "name"> | { ok: boolean; detail: string }>) => {
@@ -251,6 +264,7 @@ export async function doctor(opts: { input?: boolean } = {}): Promise<DoctorRepo
     await add("window control", () => windowSupport(id));
     await add("accessibility tree", async () => (await import("./a11y/index.js")).a11yStatus(id));
     await add("pointer logging", () => pointerSupport(id));
+    await add("clipboard (paste typing)", () => clipboardSupport(process.platform, id));
   }
   await add("windows", async () => {
     const desktop = await getDesktop();

@@ -65,6 +65,8 @@ If your antivirus asks about ScreenPilot, allow it. ScreenPilot watches mouse cl
 4. **Restart your AI app.**
 5. The first time you record (or let the AI use your desktop), your desktop asks once to allow screen sharing or remote control. Allow it.
 
+When the AI types Arabic or other non-Latin text into an app, it pastes it (your clipboard is put back afterwards). On Linux this needs `wl-clipboard` (Wayland) or `xclip` (X11); `screenpilot doctor` tells you if it is missing.
+
 Don't run the installer with `sudo`. It installs for your user and needs no admin rights.
 
 What works depends on the desktop:
