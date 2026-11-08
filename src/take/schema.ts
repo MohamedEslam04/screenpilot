@@ -65,7 +65,18 @@ export const StepSchema = z.union([
     })
     .strict(),
   z.object({ waitForWindow: z.object({ match: z.string(), timeout: z.number().positive().optional() }).strict() }).strict(),
-  z.object({ focus: z.object({ match: z.string(), screen: z.string().optional() }).strict() }).strict(),
+  z
+    .object({
+      focus: z
+        .object({
+          match: z.string().optional().describe("Window class or title contains. With several windows of one title it picks the active one, else the first: use browser: true for the demo browser"),
+          browser: z.literal(true).optional().describe("Focus the demo browser (found by its process id, never by title)"),
+          screen: z.string().optional(),
+        })
+        .strict()
+        .refine((f) => (f.match !== undefined) !== (f.browser !== undefined), "give either match or browser: true, not both"),
+    })
+    .strict(),
   z.object({ open: z.string().describe("File path (~ ok) or URL; opens with the OS default app (xdg-open / start / open)") }).strict(),
   z.object({ run: z.array(z.string()).min(1).describe("Launch a program (no shell), e.g. [\"xdg-open\", \"~/Downloads/x.pdf\"]") }).strict(),
 ]);
