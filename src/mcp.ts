@@ -877,11 +877,17 @@ server.registerTool(
       `On failure returns {failedStep, error, partial} as an error. Takes about as long as the take. ${DRIVE_NOTE}`,
     inputSchema: {
       take: z.string().describe("Path to take.json"),
-      dir: z.string().optional().describe("Session directory. Default: a new folder in the user's Videos/ScreenPilot"),
+      dir: z
+        .string()
+        .optional()
+        .describe(
+          "Session directory. Default: a new folder in the user's Videos/ScreenPilot. A directory that already holds a take is never overwritten: the take goes to <dir>-2, <dir>-3, ... and <dir>-latest points at the one used; the result's dir is the path used",
+        ),
+      overwrite: z.boolean().optional().describe("With dir: move the earlier take to <dir>.prev (replacing an older .prev) and reuse dir"),
       dryRun: z.boolean().optional().describe("Rehearse without recording"),
     },
   },
-  safe(async ({ take, dir, dryRun }): Promise<Result> => {
+  safe(async ({ take, dir, overwrite, dryRun }): Promise<Result> => {
     requireBrief("perform");
     if (performing) throw new Error("A take is already running. Call abort to stop it.");
     // performTake opens its own driver; release the live one so two remote-control sessions don't compete.
@@ -890,7 +896,7 @@ server.registerTool(
     const limit = Number(process.env[PERFORM_TIMEOUT_ENV]);
     const timer = limit > 0 ? setTimeout(() => performing?.abort(), limit * 1000) : undefined;
     try {
-      const r: PerformResult = await performTake(resolve(take), { dir, dryRun, log, onDriver: (d) => (performing = d) });
+      const r: PerformResult = await performTake(resolve(take), { dir, overwrite, dryRun, log, onDriver: (d) => (performing = d) });
       return text(r);
     } catch (err) {
       if (err instanceof TakeError) {

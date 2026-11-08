@@ -61,7 +61,7 @@ Instead of asking the user to perform the demo, you can perform it. Loop: explor
 1. Explore: `screenshot --grid` (MCP `screenshot`) and `windows`; `browser --url ...` for web apps. Act with `drive` (MCP `click`, `type_text`, ...), screenshot after each action to verify.
 2. Write `take.json` (`screenpilot take-schema`, or MCP `take_schema`). Use `{web: selector}` targets inside the demo browser; they are exact. For a native app use `{a11y: {role, name, app?, exact?, nth?}}` (see below).
 3. Rehearse: `screenpilot perform take.json --dry-run`. Fix the failing step (errors name the step) and repeat until clean.
-4. Perform: `screenpilot perform take.json` -> session dir with video, events and a starter `storyboard.json`.
+4. Perform: `screenpilot perform take.json` -> session dir with video, events and a starter `storyboard.json`. With `--dir x` a retake never collides: if `x` already holds a take, the new one goes to `x-2`, `x-3`, ... (the result's `dir` is the path used; `x-latest` is a symlink to it); `--overwrite` (MCP `overwrite`) instead moves the old take to `x.prev` and reuses `x`.
 5. Review the storyboard (`analyze`, `frames --grid`), refine, `validate`, render `-q draft`, `check`, then `-q delivery`.
 
 The real mouse and keyboard are used: tell the user to keep their hands off (touching the mouse aborts). Secrets: `{"type": {"env": "VAR"}}`, never literal text.

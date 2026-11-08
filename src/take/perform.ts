@@ -20,13 +20,17 @@ import { synthesizeLines } from "../voice/index.js";
 import { openWithDefaultApp } from "./open.js";
 import { type Step, type Take, TakeSchema, type Target } from "./schema.js";
 import type { Typing } from "../storyboard/schema.js";
+import { prepareSessionDir } from "./session-dir.js";
 import { typingSpan } from "./typing.js";
 import { CACHE_DIR } from "../brand.js";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export interface PerformOptions {
+  /** Session directory. A used one is never overwritten: the take goes to `<dir>-2`, `<dir>-3`, ... (the result's `dir` says which). */
   dir?: string;
+  /** With `dir`: move a previous take there to `<dir>.prev` and reuse `dir`, instead of versioning the name. */
+  overwrite?: boolean;
   dryRun?: boolean;
   log?: (m: string) => void;
   /** Lets a caller (MCP abort, Ctrl+C) stop the take. */
@@ -106,7 +110,9 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
 
     if (!opts.dryRun) {
       log("starting recording");
-      rec = await startRecording({ dir: opts.dir, screens: take.screens, input: "auto", log });
+      const dir = opts.dir ? await prepareSessionDir(opts.dir, { overwrite: opts.overwrite }) : undefined;
+      if (dir && dir !== resolve(opts.dir!)) log(`${opts.dir} is in use, recording to ${dir}`);
+      rec = await startRecording({ dir, screens: take.screens, input: "auto", log });
       t0 = rec.startedAt;
     } else {
       t0 = performance.now();
