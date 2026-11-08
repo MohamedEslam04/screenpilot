@@ -404,6 +404,24 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <p>الأنماط: <code>none</code> و<code>fade</code> و<code>rise</code> و<code>drop</code> و<code>slide-left</code> و<code>slide-right</code> و<code>pop</code> و<code>zoom</code> و<code>blur</code> و<code>wipe</code> و<code>words</code> و<code>lines</code>. النمط <code>wipe</code> يكشف النص باتجاه القراءة. و<code>words</code> يُظهر كلمة كلمة، و<code>lines</code> سطرًا سطرًا؛ وكلاهما يعمل مع أي كتابة، ومنها العربية.</p>
 <div class="note">الشروحات الهادئة تناسبها <code>fade</code> و<code>rise</code>. مقاطع التواصل الاجتماعي النشطة يناسبها <code>pop</code> أو <code>words</code> مع ease مرتد. والعناوين يناسبها <code>wipe</code> أو <code>words</code>.</div>
 
+<h2 id="variants">النسخ: الفيديو نفسه بمظهر آخر</h2>
+<p>للحصول على نسخة داكنة أو نسخة بهوية علامة أو نسخة لقناة أخرى، لا تعدّل الـ storyboard. أعطِ <code>render</code> ملف style:</p>
+<pre><code class="language-sh">screenpilot render storyboard.json --style dark.json
+screenpilot sequence sequence.json --style dark.json -q draft</code></pre>
+<p>ملف الـ style فيه <code>theme</code> فقط ولا شيء غيره:</p>
+<pre><code class="language-json">{ "theme": { "background": "#0b1020", "accent": "#7dd3fc" } }</code></pre>
+<p>أي مفتاح آخر، أو مفتاح theme غير موجود، يفشل مع ذكر اسمه. يُدمج الـ theme فوق theme كل storyboard في التصيير: <code>motion</code> و<code>grade</code> يُدمجان مفتاحًا بمفتاح، أما <code>css</code> و<code>fonts</code> وبقية النصوص والمصفوفات فتحلّ محل قيمة الـ storyboard. أما الصوت والحجم والقصّات والتوقيتات فتبقى كما يحددها الـ storyboard.</p>
+<ul>
+<li><strong>لكل style ملفاته.</strong> الخرج <code>&lt;name&gt;.&lt;style&gt;.mp4</code> ومجلد البناء <code>&lt;name&gt;.&lt;style&gt;.build</code>. واسم الـ style هو اسم الملف مختزلًا إلى <code>a-z0-9-</code>. ومع <code>--from</code>/<code>--to</code> أو <code>--formats</code> يأتي قبلها. فلا تكتب الـ styles فوق بعضها.</li>
+<li><strong>الرجوع رخيص.</strong> العودة إلى style سابق تعيد استخدام الـ cache الخاص به. وتُشارَك مقاطع الصوت بين كل الـ styles.</li>
+<li><strong>تغيير الألوان فقط يبقي القصّ.</strong> الـ style الذي يغيّر الألوان فقط يحتفظ بـ cache القصّ (<code>edited.mp4</code>). أما <code>theme.grade</code> مختلف فيعيد قصّ الفيديو.</li>
+<li><strong>الفيديوهات الجاهزة لا يُطبَّق عليها style.</strong> الجزء <code>{video}</code> في sequence ملف جاهز، وتنبّه إلى ذلك رسالة تحذير.</li>
+</ul>
+<div class="note">الـ style يجعل صنع النسخ أسهل، لكنه لا يجعل التصيير أسرع: أول تصيير لـ style جديد تصيير كامل.</div>
+
+<h2 id="long-videos">الفيديوهات الطويلة</h2>
+<p>التصيير يستغرق قدر مدة الفيديو تقريبًا. والفيديو الذي مدته 5 دقائق أو أكثر يُصيَّر على أجزاء مخزّنة مؤقتًا، فبعد أي تعديل لا يُصيَّر من جديد إلا الأجزاء التي مسّها. حدود الأجزاء والخيارات التي تتحكم بها والحالات التي يعيد فيها التعديل تصيير كل ما بعده موجودة في <a href="@guide/cli.html#long-renders">التصيير الطويل</a>.</p>
+
 <h2 id="example">مثال كامل</h2>
 <p>يحتفظ هذا الـ storyboard بتسجيل واحد، ويسرّع مقطع تحميل، ويقرّب على نقرتين، ويضيف ثلاثة captions وhighlight، وينطق ثلاثة أسطر (الأخير بالعربية). المسارات نسبية إلى ملف الـ storyboard. ينجح في <code>screenpilot validate</code>؛ والتحذير الذي يظهر عند غياب الملفات هو فقط أن فيديو المصدر غير موجود.</p>
 <pre><code class="language-json">{

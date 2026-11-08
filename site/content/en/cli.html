@@ -159,10 +159,13 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <tr><td><code>-o, --output &lt;file&gt;</code></td><td>Output video. Default <code>&lt;storyboard&gt;.mp4</code>.</td></tr>
 <tr><td><code>-q, --quality &lt;q&gt;</code></td><td><code>draft</code>, <code>looks</code> or <code>delivery</code>. Default <code>looks</code>.</td></tr>
 <tr><td><code>--png-frames</code></td><td>Use lossless source frames: sharper text in the recorded UI, slower.</td></tr>
-<tr><td><code>--workers &lt;n&gt;</code></td><td>Parallel renderers, each a headless Chrome. Default: half your CPU cores, limited by free memory (1 to 6).</td></tr>
+<tr><td><code>--workers &lt;n&gt;</code></td><td>Parallel renderers, each a headless Chrome: <code>auto</code> (default: half your CPU cores, limited by free memory, 1 to 6), <code>max</code> (all cores but two, limited by free memory) or a number. <code>max</code> is faster but makes the desktop sluggish, so use it when you are away. <code>SCREENPILOT_WORKERS</code> sets the default; the flag wins. See <a href="@guide/cli.html#long-renders">Long renders</a>.</td></tr>
 <tr><td><code>--timings</code></td><td>Log how long each stage takes (probe, voice, cut, render, join) and show HyperFrames phase timings.</td></tr>
 <tr><td><code>--from &lt;s&gt;</code>, <code>--to &lt;s&gt;</code></td><td>Render only this window, in <strong>output</strong> seconds. See <a href="@guide/cli.html#partial">Partial renders</a>.</td></tr>
 <tr><td><code>--formats &lt;list&gt;</code></td><td>Render once per format, for example <code>16:9,9:16,1:1</code>. See <a href="@guide/cli.html#formats">Several formats</a>.</td></tr>
+<tr><td><code>--style &lt;file&gt;</code></td><td>Render with another look: a style file (<code>{ "theme": {...} }</code>) merged over the storyboard's theme. Writes <code>&lt;storyboard&gt;.&lt;style&gt;.mp4</code> with its own build folder. See <a href="@guide/storyboard.html#variants">Variants</a>.</td></tr>
+<tr><td><code>--no-chunks</code></td><td>Render in one piece. By default a video (or <code>--from</code>/<code>--to</code> window) of 5 minutes or more renders in cached chunks. See <a href="@guide/cli.html#long-renders">Long renders</a>.</td></tr>
+<tr><td><code>--chunk-seconds &lt;n&gt;</code></td><td>Length of those chunks in seconds. Default 180, at least 10.</td></tr>
 <tr><td><code>--subtitles &lt;list&gt;</code></td><td>Also write subtitle files from the narration: <code>srt</code>, <code>vtt</code> or <code>srt,vtt</code>. See <a href="@guide/cli.html#extras">Subtitle files and extra outputs</a>.</td></tr>
 <tr><td><code>--also &lt;list&gt;</code></td><td>Also make a <code>gif</code>, a <code>webm</code> or a <code>poster</code> PNG from the finished video (a comma list).</td></tr>
 <tr><td><code>--poster-at &lt;s&gt;</code></td><td>Time of the poster frame, in output seconds. Default: a quarter of the way in.</td></tr>
@@ -220,6 +223,21 @@ screenpilot voices --provider edge --lang ar</code></pre>
 </tbody>
 </table>
 
+<h3 id="long-renders">Long renders</h3>
+<p>A full render takes about as long as the video, and longer at <code>delivery</code>. Each finished render of 5 seconds or more is timed (<code>render-speed.json</code> in the cache folder). When the next render is expected to take 2 minutes or more, the log starts with <code>estimated ~&lt;time&gt;</code>, worked out from your last renders at that quality. It is never printed when there is no history yet.</p>
+<ul>
+<li><strong>Iterate on a draft window.</strong> Use <code>-q draft</code> with <code>--from</code> and <code>--to</code>, and keep <code>-q delivery</code> for the final file.</li>
+<li><strong>Use all the cores when you are away.</strong> <code>--workers max</code> (or <code>SCREENPILOT_WORKERS=max</code>) uses all cores but two. The default is half the cores so the desktop stays responsive.</li>
+<li><strong>Chunks start at 5 minutes.</strong> A video (or a <code>--from</code>/<code>--to</code> window) of 5 minutes or more renders automatically in chunks of about 3 minutes. A chunk is cut only where nothing is in progress: no narration line, caption, card, hold, transition, camera move, overlay video or music fade crosses the cut. When there is no such point, the video renders in one piece.</li>
+</ul>
+<p>Each chunk is cached in <code>&lt;name&gt;.build/chunks/&lt;quality&gt;/</code>, keyed by its own content in chunk-relative time. After an edit, only the chunks it touched render again. The log says <code>chunk 3/12 (...): unchanged, reusing</code> for the others. Then the chunks are joined (the video is copied, the audio is encoded once), and loudness, subtitles and <code>--also</code> run once on the joined file.</p>
+<ul>
+<li>An edit that moves everything after it by whole seconds (a 2 second hold, a card) keeps the later chunks. A fractional shift, which is what most narration-length changes cause, renders them again.</li>
+<li>A failed chunk names its output range. Run the render again and it resumes from the chunks that finished.</li>
+<li><code>--no-chunks</code> renders in one piece. <code>--chunk-seconds &lt;n&gt;</code> sets the chunk length.</li>
+</ul>
+<div class="note">Chunks speed up the render after a small edit, not the first render. To combine different recordings, a <a href="@guide/cli.html#sequence">sequence</a> of parts is still the way.</div>
+
 <h3 id="build">build</h3>
 <p><code>screenpilot build &lt;storyboard&gt;</code> does everything except the final render: it generates the voice, cuts the video and writes the HyperFrames project. It prints the build folder, the output duration, automatic freezes and warnings. It accepts <code>--build-dir &lt;dir&gt;</code>.</p>
 
@@ -248,8 +266,9 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <tr><td><code>-o, --output &lt;file&gt;</code></td><td>Output video. Default <code>&lt;sequence&gt;.mp4</code>.</td></tr>
 <tr><td><code>-q, --quality &lt;q&gt;</code></td><td><code>draft</code>, <code>looks</code> or <code>delivery</code>. Default <code>looks</code>.</td></tr>
 <tr><td><code>--png-frames</code></td><td>Use lossless source frames, slower.</td></tr>
-<tr><td><code>--workers &lt;n&gt;</code></td><td>Parallel renderers, each a headless Chrome. Default: half your CPU cores, limited by free memory (1 to 6).</td></tr>
+<tr><td><code>--workers &lt;n&gt;</code></td><td>Parallel renderers, each a headless Chrome: <code>auto</code> (default: half your CPU cores, limited by free memory, 1 to 6), <code>max</code> (all cores but two, limited by free memory) or a number. <code>max</code> is faster but makes the desktop sluggish, so use it when you are away. <code>SCREENPILOT_WORKERS</code> sets the default; the flag wins. See <a href="@guide/cli.html#long-renders">Long renders</a>.</td></tr>
 <tr><td><code>--timings</code></td><td>Log how long each stage takes (probe, voice, cut, render, join) and show HyperFrames phase timings.</td></tr>
+<tr><td><code>--style &lt;file&gt;</code></td><td>Render the same sequence with another look: a style file (<code>{ "theme": {...} }</code>) merged over the theme of every storyboard part. Writes <code>&lt;sequence&gt;.&lt;style&gt;.mp4</code> with its own build folder. See <a href="@guide/sequence.html#styles">Render with another look</a>.</td></tr>
 <tr><td><code>--build-dir &lt;dir&gt;</code></td><td>Where the parts are built. Default <code>&lt;sequence&gt;.build</code>.</td></tr>
 </tbody>
 </table>

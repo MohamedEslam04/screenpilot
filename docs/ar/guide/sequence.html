@@ -124,16 +124,24 @@ screenpilot sequence sequence.json -q delivery -o demo-with-feature.mp4</code></
 <thead><tr><th>الأمر</th><th>وظيفته</th></tr></thead>
 <tbody>
 <tr><td><code>screenpilot sequence-validate &lt;sequence&gt;</code></td><td>يفحص الـ sequence وكل storyboard يستخدمه. إما يفشل ويعرض مشكلات الـ schema، وإما يطبع <code>valid: true</code> مع تحذيرات كل جزء.</td></tr>
-<tr><td><code>screenpilot sequence &lt;sequence&gt;</code></td><td>يصيّر كل جزء ثم يجمعها. الخيارات: <code>-o, --output</code> (الافتراضي <code>&lt;sequence&gt;.mp4</code>)، و<code>-q, --quality</code> (<code>draft</code> أو <code>looks</code> أو <code>delivery</code>)، و<code>--png-frames</code>، و<code>--workers</code>، و<code>--build-dir</code>.</td></tr>
+<tr><td><code>screenpilot sequence &lt;sequence&gt;</code></td><td>يصيّر كل جزء ثم يجمعها. الخيارات: <code>-o, --output</code> (الافتراضي <code>&lt;sequence&gt;.mp4</code>)، و<code>-q, --quality</code> (<code>draft</code> أو <code>looks</code> أو <code>delivery</code>)، و<code>--png-frames</code>، و<code>--workers</code> (<code>auto</code> أو <code>max</code> أو رقم)، و<code>--style</code>، و<code>--build-dir</code>.</td></tr>
 <tr><td><code>screenpilot sequence-schema</code></td><td>يطبع JSON Schema الخاص بـ <code>sequence.json</code>.</td></tr>
 </tbody>
 </table>
-<p>الخطوات نفسها متاحة كأدوات: <code>sequence_validate</code> و<code>sequence_render</code> (المدخلات <code>sequence</code> و<code>output</code> و<code>quality</code>) و<code>sequence_schema</code>. انظر <a href="../../ar/guide/tools.html#sequence">أدوات MCP</a>.</p>
+<p>الخطوات نفسها متاحة كأدوات: <code>sequence_validate</code> و<code>sequence_render</code> (المدخلات <code>sequence</code> و<code>output</code> و<code>quality</code> و<code>style</code> و<code>workers</code>) و<code>sequence_schema</code>. انظر <a href="../../ar/guide/tools.html#sequence">أدوات MCP</a>.</p>
 <ul>
 <li><strong>الأجزاء التي لم تتغير يُعاد استخدامها.</strong> يُصيَّر كل جزء مثل أي storyboard داخل <code>&lt;sequence&gt;.build/part-N/</code>. في المرة التالية، لا يُعاد تصيير جزء لم يتغير storyboard الخاص به ولا تسجيله ولا events ولا موسيقاه ولا overlays ولا الجودة. تعديل مقطع الميزة لا يعيد تصيير العرض.</li>
 <li><strong>الدمج.</strong> إذا كان كل جزء متصلًا بما بعده بقطع عادي وكانت الأجزاء مرمّزة بالطريقة نفسها، تُدمج بنسخ المسار دون أي فقد في الجودة. وإذا وُجد انتقال، أو اختلف الترميز، يُعاد ترميز الفيديو. تخبرك النتيجة بما حدث في الحقل <code>join</code> (<code>copy</code> أو <code>encode</code>).</li>
 <li><strong>النتيجة.</strong> يطبع الأمر مسار الملف والمدة وقيمة <code>join</code> وكل جزء مع مدته وهل أُعيد استخدامه وتحذيراته.</li>
 </ul>
+<h3 id="styles">التصيير بمظهر آخر<a class="a" href="#styles" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>الأمر <code>screenpilot sequence sequence.json --style dark.json -q draft</code> يصيّر الـ sequence كله بمظهر آخر دون تعديل أي ملف. ملف الـ style فيه <code>theme</code> فقط، ويُدمج فوق theme كل جزء من أجزاء الـ storyboard. القواعد في <a href="../../ar/guide/storyboard.html#variants">النسخ</a>.</p>
+<ul>
+<li>الخرج <code>&lt;sequence&gt;.&lt;style&gt;.mp4</code> ومجلد البناء <code>&lt;sequence&gt;.&lt;style&gt;.build</code>، فلا تكتب الـ styles فوق بعضها، والعودة إلى style سابق تعيد استخدام الـ cache الخاص به.</li>
+<li>الجزء <code>{video}</code> ملف جاهز. يُستخدم كما هو دون تطبيق style، وتنبّه إلى ذلك رسالة تحذير.</li>
+</ul>
+<h3 id="long-parts">الأجزاء الطويلة<a class="a" href="#long-parts" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>يُصيَّر كل جزء مثل storyboard، فالجزء الذي مدته 5 دقائق أو أكثر يُقسَّم إلى أجزاء مخزّنة مؤقتًا كأي تصيير آخر (انظر <a href="../../ar/guide/cli.html#long-renders">التصيير الطويل</a>). والأمر <code>sequence</code> ليس فيه <code>--no-chunks</code> ولا <code>--chunk-seconds</code>. ولتبقى تعديلات الفيديو الطويل سريعة، قسّمه إلى أجزاء: لا يُصيَّر من جديد إلا الأجزاء التي غيّرتها.</p>
 <div class="note">راجع أولًا بـ <code>-q draft</code>، ثم انظر إلى لقطات حول كل نقطة اتصال باستخدام <code>screenpilot check</code>. استخدم <code>-q delivery</code> للملف النهائي فقط.</div>
 
 <h2 id="limits">الحدود<a class="a" href="#limits" aria-label="رابط إلى هذا القسم">#</a></h2>

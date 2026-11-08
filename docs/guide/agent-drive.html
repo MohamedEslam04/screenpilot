@@ -138,7 +138,8 @@ screenpilot perform take.json                      # record and drive; writes th
     <tr><td><code>say</code></td><td><code>voice</code>, <code>wait</code></td><td>A narration line at this moment. A line never starts before the previous one ends. With <code>wait: true</code> the take pauses until the line finishes.</td></tr>
     <tr><td><code>caption</code></td><td><code>dur</code> (3), <code>position</code> (<code>bottom</code>, <code>top</code>, <code>center</code>)</td><td>Show a short text on screen for <code>dur</code> seconds.</td></tr>
     <tr><td><code>view</code></td><td></td><td>Point the camera at a monitor name, or <code>"all"</code> for every monitor. Without <code>view</code> steps the camera follows the pointer.</td></tr>
-    <tr><td><code>browser</code></td><td><code>screen</code>, <code>url</code>, <code>app</code></td><td>Open the demo browser on a monitor. <code>app: true</code> hides the address bar and tabs, so the video shows only the page.</td></tr>
+    <tr><td><code>browser</code></td><td><code>id</code> (main), <code>screen</code>, <code>url</code>, <code>app</code></td><td>Open the demo browser on a monitor. <code>app: true</code> hides the address bar and tabs, so the video shows only the page. Another <code>id</code> opens a second demo browser. See <a href="../guide/agent-drive.html#two-browsers">Two demo browsers</a>.</td></tr>
+    <tr><td><code>tile</code></td><td><code>browsers</code>, <code>screen</code></td><td>Place demo browser windows side by side, left to right in the order of <code>browsers</code>, inside the monitor's usable area.</td></tr>
     <tr><td><code>goto</code></td><td></td><td>Send the demo browser to a URL or a file path.</td></tr>
     <tr><td><code>move</code></td><td><code>dur</code></td><td>Move the pointer to a target, like a hand would.</td></tr>
     <tr><td><code>click</code></td><td><code>button</code> (<code>left</code>, <code>right</code>, <code>middle</code>), <code>count</code> (1 to 3)</td><td>Move to a target and click. <code>count: 2</code> is a double click.</td></tr>
@@ -149,12 +150,27 @@ screenpilot perform take.json                      # record and drive; writes th
     <tr><td><code>wait</code></td><td></td><td>Pause for a number of seconds.</td></tr>
     <tr><td><code>waitFor</code></td><td><code>web</code> or <code>a11y</code>, <code>timeout</code> (30)</td><td>Wait until an element shows up in the demo browser (<code>web</code>) or a control shows up in a native app (<code>a11y</code>). Fails if it does not appear in time.</td></tr>
     <tr><td><code>waitForWindow</code></td><td><code>match</code>, <code>timeout</code> (15)</td><td>Wait until a window whose class or title contains <code>match</code> exists.</td></tr>
-    <tr><td><code>focus</code></td><td><code>match</code>, <code>screen</code></td><td>Raise a window, and optionally move it onto a monitor.</td></tr>
+    <tr><td><code>focus</code></td><td><code>match</code> or <code>browser</code>, <code>screen</code></td><td>Raise a window, and optionally move it onto a monitor. <code>browser</code> (<code>true</code> for the main demo browser, or an id) finds a demo browser by its process, not by its title.</td></tr>
     <tr><td><code>open</code></td><td></td><td>Open a file or URL with the system default app.</td></tr>
     <tr><td><code>run</code></td><td></td><td>Start a program from a list: <code>["xdg-open", "~/Downloads/x.pdf"]</code>. There is no shell, so no pipes or quotes. Prefer <code>open</code>. Apps started by <code>run</code> and <code>open</code> get <code>QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1</code>, so Qt apps show up for <code>{a11y}</code> targets.</td></tr>
   </tbody>
 </table>
 <p><code>say</code>, <code>caption</code> and <code>view</code> do not touch the desktop. They are written into the starter storyboard as narration, captions and camera switches, at the moment they happen. Inside <code>setup</code> they do nothing.</p>
+
+<h2 id="two-browsers">Two demo browsers<a class="a" href="#two-browsers" aria-label="Link to this section">#</a></h2>
+<p>To show an admin and a user at the same time, for example to show a live effect, open a second demo browser. A step <code>{ "browser": { "id": "user", "url": "https://app.example.com" } }</code> opens it with its own profile (<code>browser-user</code> in the config folder) and its own debugging port. The main browser uses port 9333, and the others get 9334, 9335 and so on, in the order they are first used.</p>
+<ul>
+  <li><strong>Pick a browser per step.</strong> Every <code>{web}</code> target, <code>waitFor.web</code>, <code>goto</code> and <code>highlight</code> takes <code>"browser": "user"</code>. The default is <code>"main"</code>.</li>
+  <li><strong>Focus it.</strong> <code>{ "focus": { "browser": "user" } }</code> brings that browser to the front.</li>
+  <li><strong>The camera.</strong> With two or more browsers the generated storyboard gets one view of the tiled area (or around the windows when nothing was tiled) instead of views that follow windows. A take with its own <code>view</code> steps or <code>camera: "all"</code> keeps them. Highlights map from the browser they were measured in.</li>
+</ul>
+
+<h3 id="tile">Tile the windows<a class="a" href="#tile" aria-label="Link to this section">#</a></h3>
+<p><code>{ "tile": { "browsers": ["main", "user"], "screen": "eDP-1" } }</code> places the browsers side by side. <code>screen</code> is optional: the default is the monitor of the first browser. The windows get equal widths, left to right in list order (also for right-to-left apps).</p>
+<p>The windows use the full height of the monitor's <strong>usable area</strong>: below a top panel, above a taskbar or dock, and beside a side panel. Where the desktop cannot report that area (for example GNOME or wlroots Wayland), the whole monitor is used.</p>
+
+<h3 id="two-browsers-live">Try it live over MCP<a class="a" href="#two-browsers-live" aria-label="Link to this section">#</a></h3>
+<p>Explore the second browser before you write the take. <code>browser_open</code> takes the same <code>id</code> (an id that is already open is reused and navigated, never started twice). Then pass the same id as <code>browser</code> to <code>web_locate</code>, <code>wait_for</code> (its <code>web</code> form) and <code>page_text</code>. A second browser that is not open yet fails with "Call browser_open with id ... first". Ports and profiles come from the same registry <code>perform</code> uses, so you can try the second browser live and then write the take with the same ids.</p>
 
 <h2 id="example">A complete take<a class="a" href="#example" aria-label="Link to this section">#</a></h2>
 <p>This take fills in a web form, downloads a file, opens it in a native app on the laptop screen, and scrolls it. The last voice line overrides the voice. The monitor names (<code>HDMI-A-1</code>, <code>eDP-1</code>) are examples: use the names that <code>screenshot</code> or <code>doctor</code> report on your machine.</p>
@@ -217,7 +233,7 @@ screenpilot perform take.json                      # record and drive; writes th
 </ul>
 <p>On Wayland, the first drive asks you to approve a remote control dialog once. On macOS the AI app needs Accessibility permission. On Windows, apps that run as administrator cannot be driven unless the AI app runs as administrator too. See <a href="../guide/platforms.html">Platforms</a> for the full table.</p>
 <nav class="pager" aria-label="Pager"><a href="sequence.html" rel="prev"><small>Previous</small>Combine recordings</a><a href="safety.html" rel="next"><small>Next</small>Safety and privacy</a></nav></article>
-  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#loop">The loop</a><a href="#cli">Commands</a><a href="#structure">What a take looks like</a><a href="#targets">Targets</a><a href="#a11y">Native apps: {a11y} targets</a><a href="#steps">Every step</a><a href="#example">A complete take</a><a href="#output">What perform gives you</a><a href="#tips">Tips</a><a href="#platforms">What each desktop supports</a></aside>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#loop">The loop</a><a href="#cli">Commands</a><a href="#structure">What a take looks like</a><a href="#targets">Targets</a><a href="#a11y">Native apps: {a11y} targets</a><a href="#steps">Every step</a><a href="#two-browsers">Two demo browsers</a><a href="#example">A complete take</a><a href="#output">What perform gives you</a><a href="#tips">Tips</a><a href="#platforms">What each desktop supports</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>

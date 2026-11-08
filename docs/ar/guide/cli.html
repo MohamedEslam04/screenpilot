@@ -185,10 +185,13 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <tr><td><code>-o, --output &lt;file&gt;</code></td><td>ملف الفيديو الناتج. الافتراضي <code>&lt;storyboard&gt;.mp4</code>.</td></tr>
 <tr><td><code>-q, --quality &lt;q&gt;</code></td><td><code>draft</code> أو <code>looks</code> أو <code>delivery</code>. الافتراضي <code>looks</code>.</td></tr>
 <tr><td><code>--png-frames</code></td><td>يستخدم إطارات مصدر بلا فقدان: نص الواجهة المسجَّلة أوضح، والتصيير أبطأ.</td></tr>
-<tr><td><code>--workers &lt;n&gt;</code></td><td>عدد المصيّرات المتوازية، وكل واحد منها متصفح Chrome بلا واجهة. الافتراضي: نصف أنوية المعالج، بحد أقصى حسب الذاكرة الفارغة (من 1 إلى 6).</td></tr>
+<tr><td><code>--workers &lt;n&gt;</code></td><td>عدد المصيّرات المتوازية، وكل واحد منها متصفح Chrome بلا واجهة: <code>auto</code> (الافتراضي: نصف أنوية المعالج، بحد أقصى حسب الذاكرة الفارغة، من 1 إلى 6) أو <code>max</code> (كل الأنوية عدا اثنتين، بحد أقصى حسب الذاكرة الفارغة) أو رقم. الخيار <code>max</code> أسرع لكنه يجعل سطح المكتب بطيئًا، فاستخدمه حين تكون بعيدًا عن الجهاز. المتغير <code>SCREENPILOT_WORKERS</code> يضبط الافتراضي، وللخيار الأولوية عليه. انظر <a href="../../ar/guide/cli.html#long-renders">التصيير الطويل</a>.</td></tr>
 <tr><td><code>--timings</code></td><td>يسجّل مدة كل مرحلة (الفحص والصوت والقص والتصيير والدمج) ويعرض توقيتات HyperFrames.</td></tr>
 <tr><td><code>--from &lt;s&gt;</code>, <code>--to &lt;s&gt;</code></td><td>يصيّر هذه النافذة فقط، بثواني <strong>الخرج</strong>. انظر <a href="../../ar/guide/cli.html#partial">التصيير الجزئي</a>.</td></tr>
 <tr><td><code>--formats &lt;list&gt;</code></td><td>يصيّر مرة لكل صيغة، مثل <code>16:9,9:16,1:1</code>. انظر <a href="../../ar/guide/cli.html#formats">عدة صيغ</a>.</td></tr>
+<tr><td><code>--style &lt;file&gt;</code></td><td>يصيّر بمظهر آخر: ملف style (<code>{ "theme": {...} }</code>) يُدمج فوق theme الـ storyboard. يكتب <code>&lt;storyboard&gt;.&lt;style&gt;.mp4</code> بمجلد بناء خاص به. انظر <a href="../../ar/guide/storyboard.html#variants">النسخ</a>.</td></tr>
+<tr><td><code>--no-chunks</code></td><td>يصيّر قطعة واحدة. افتراضيًا يُصيَّر الفيديو (أو نافذة <code>--from</code>/<code>--to</code>) الذي مدته 5 دقائق أو أكثر على شكل أجزاء مخزّنة مؤقتًا. انظر <a href="../../ar/guide/cli.html#long-renders">التصيير الطويل</a>.</td></tr>
+<tr><td><code>--chunk-seconds &lt;n&gt;</code></td><td>طول تلك الأجزاء بالثواني. الافتراضي 180 والحد الأدنى 10.</td></tr>
 <tr><td><code>--subtitles &lt;list&gt;</code></td><td>يكتب أيضًا ملفات ترجمة من التعليق الصوتي: <code>srt</code> أو <code>vtt</code> أو <code>srt,vtt</code>. انظر <a href="../../ar/guide/cli.html#extras">ملفات الترجمة والمخرجات الإضافية</a>.</td></tr>
 <tr><td><code>--also &lt;list&gt;</code></td><td>يصنع أيضًا ملف <code>gif</code> أو <code>webm</code> أو صورة <code>poster</code> بصيغة PNG من الفيديو النهائي (قائمة مفصولة بفواصل).</td></tr>
 <tr><td><code>--poster-at &lt;s&gt;</code></td><td>وقت إطار الـ poster بثواني الخرج. الافتراضي: ربع المدة.</td></tr>
@@ -246,6 +249,21 @@ screenpilot voices --provider edge --lang ar</code></pre>
 </tbody>
 </table>
 
+<h3 id="long-renders">التصيير الطويل<a class="a" href="#long-renders" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>التصيير الكامل يستغرق قدر مدة الفيديو تقريبًا، وأكثر عند <code>delivery</code>. كل تصيير ينتهي ومدته 5 ثوانٍ أو أكثر يُقاس زمنه (الملف <code>render-speed.json</code> في مجلد الـ cache). وعندما يُتوقع أن يستغرق التصيير التالي دقيقتين أو أكثر، يبدأ السجل بالسطر <code>estimated ~&lt;time&gt;</code>، محسوبًا من تصييراتك الأخيرة بالجودة نفسها. ولا يُطبع هذا السطر إذا لم يكن هناك تاريخ بعد.</p>
+<ul>
+<li><strong>كرّر على نافذة draft.</strong> استخدم <code>-q draft</code> مع <code>--from</code> و<code>--to</code>، واترك <code>-q delivery</code> للملف النهائي.</li>
+<li><strong>استخدم كل الأنوية حين تغيب عن الجهاز.</strong> الخيار <code>--workers max</code> (أو <code>SCREENPILOT_WORKERS=max</code>) يستخدم كل الأنوية عدا اثنتين. والافتراضي نصف الأنوية كي يبقى سطح المكتب سريع الاستجابة.</li>
+<li><strong>الأجزاء تبدأ عند 5 دقائق.</strong> الفيديو (أو نافذة <code>--from</code>/<code>--to</code>) الذي مدته 5 دقائق أو أكثر يُصيَّر تلقائيًا على أجزاء طول كل منها نحو 3 دقائق. لا يُقطع الجزء إلا حيث لا يجري شيء: لا يعبر القطعَ سطر تعليق ولا caption ولا card ولا hold ولا انتقال ولا حركة كاميرا ولا فيديو overlay ولا fade للموسيقى. وإن لم توجد نقطة كهذه يُصيَّر الفيديو قطعة واحدة.</li>
+</ul>
+<p>يُخزَّن كل جزء في <code>&lt;name&gt;.build/chunks/&lt;quality&gt;/</code> بمفتاح من محتواه هو بزمن نسبي إلى الجزء. بعد أي تعديل لا يُصيَّر من جديد إلا الأجزاء التي مسّها. ويكتب السجل <code>chunk 3/12 (...): unchanged, reusing</code> للأجزاء الأخرى. ثم تُجمع الأجزاء (يُنسخ الفيديو، ويُرمَّز الصوت مرة واحدة)، وتعمل معالجة مستوى الصوت والترجمة و<code>--also</code> مرة واحدة على الملف المجمَّع.</p>
+<ul>
+<li>التعديل الذي يزيح كل ما بعده بعدد صحيح من الثواني (hold لثانيتين أو card) تبقى معه الأجزاء اللاحقة. أما الإزاحة الكسرية، وهي ما يسببه معظم تغييرات طول التعليق الصوتي، فتُصيَّر الأجزاء اللاحقة من جديد.</li>
+<li>الجزء الفاشل يذكر مدى الخرج الخاص به. أعد التصيير فيكمل من الأجزاء التي انتهت.</li>
+<li>الخيار <code>--no-chunks</code> يصيّر قطعة واحدة. والخيار <code>--chunk-seconds &lt;n&gt;</code> يضبط طول الجزء.</li>
+</ul>
+<div class="note">الأجزاء تسرّع التصيير بعد تعديل صغير، لا التصيير الأول. ولدمج تسجيلات مختلفة تبقى الطريقة هي <a href="../../ar/guide/cli.html#sequence">sequence</a> من الأجزاء.</div>
+
 <h3 id="build">build<a class="a" href="#build" aria-label="رابط إلى هذا القسم">#</a></h3>
 <p>الأمر <code>screenpilot build &lt;storyboard&gt;</code> ينفّذ كل شيء عدا التصيير النهائي: يولّد الصوت ويقصّ الفيديو ويكتب مشروع HyperFrames. يطبع مجلد البناء ومدة الخرج وفترات التجميد التلقائية والتحذيرات. يقبل الخيار <code>--build-dir &lt;dir&gt;</code>.</p>
 
@@ -274,8 +292,9 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <tr><td><code>-o, --output &lt;file&gt;</code></td><td>ملف الفيديو الناتج. الافتراضي <code>&lt;sequence&gt;.mp4</code>.</td></tr>
 <tr><td><code>-q, --quality &lt;q&gt;</code></td><td><code>draft</code> أو <code>looks</code> أو <code>delivery</code>. الافتراضي <code>looks</code>.</td></tr>
 <tr><td><code>--png-frames</code></td><td>يستخدم إطارات مصدر بلا فقدان، والتصيير أبطأ.</td></tr>
-<tr><td><code>--workers &lt;n&gt;</code></td><td>عدد المصيّرات المتوازية، وكل واحد منها متصفح Chrome بلا واجهة. الافتراضي: نصف أنوية المعالج، بحد أقصى حسب الذاكرة الفارغة (من 1 إلى 6).</td></tr>
+<tr><td><code>--workers &lt;n&gt;</code></td><td>عدد المصيّرات المتوازية، وكل واحد منها متصفح Chrome بلا واجهة: <code>auto</code> (الافتراضي: نصف أنوية المعالج، بحد أقصى حسب الذاكرة الفارغة، من 1 إلى 6) أو <code>max</code> (كل الأنوية عدا اثنتين، بحد أقصى حسب الذاكرة الفارغة) أو رقم. الخيار <code>max</code> أسرع لكنه يجعل سطح المكتب بطيئًا، فاستخدمه حين تكون بعيدًا عن الجهاز. المتغير <code>SCREENPILOT_WORKERS</code> يضبط الافتراضي، وللخيار الأولوية عليه. انظر <a href="../../ar/guide/cli.html#long-renders">التصيير الطويل</a>.</td></tr>
 <tr><td><code>--timings</code></td><td>يسجّل مدة كل مرحلة (الفحص والصوت والقص والتصيير والدمج) ويعرض توقيتات HyperFrames.</td></tr>
+<tr><td><code>--style &lt;file&gt;</code></td><td>يصيّر الـ sequence نفسه بمظهر آخر: ملف style (<code>{ "theme": {...} }</code>) يُدمج فوق theme كل جزء من أجزاء الـ storyboard. يكتب <code>&lt;sequence&gt;.&lt;style&gt;.mp4</code> بمجلد بناء خاص به. انظر <a href="../../ar/guide/sequence.html#styles">التصيير بمظهر آخر</a>.</td></tr>
 <tr><td><code>--build-dir &lt;dir&gt;</code></td><td>المجلد الذي تُبنى فيه الأجزاء. الافتراضي <code>&lt;sequence&gt;.build</code>.</td></tr>
 </tbody>
 </table>

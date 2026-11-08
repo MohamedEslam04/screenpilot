@@ -130,6 +130,10 @@ Binaries: `dist/cli.js` (`screenpilot`) and `dist/mcp.js` (`screenpilot-mcp`).
 
 `pnpm package --ffmpeg-dir <dir>` builds the release files for the OS it runs on (Node, ffmpeg and ffprobe included). Pushing a `v*` tag makes `.github/workflows/release.yml` build them on Windows and Linux runners and publish a GitHub Release.
 
+### Releasing
+
+Checklist for a release: bump the version, tag `v*`, then **add the new release to the README "What's new" section** (one line per item, with the release link), bump the `Docs synced to commit` line at the bottom of the README, and rebuild the website (`node site/build.mjs`, commit `docs/`) when the release changes anything the docs describe.
+
 ## Quick start (CLI)
 
 ```sh
@@ -153,7 +157,11 @@ More render options:
 screenpilot render sessions/<ts>/storyboard.json -q draft --from 12 --to 20   # review only OUTPUT seconds 12-20 (writes storyboard.part-12-20.mp4)
 screenpilot render sessions/<ts>/storyboard.json --formats 16:9,9:16,1:1      # one file per format: storyboard.16x9.mp4, .9x16.mp4, .1x1.mp4
 screenpilot sequence sequence.json                                            # join several storyboards into one video (see Combine recordings)
+screenpilot render sessions/<ts>/storyboard.json --style dark.json            # same video, another look: a style file with only a theme (also on sequence); writes storyboard.dark.mp4 with its own build folder
+screenpilot render sessions/<ts>/storyboard.json --workers max                # all cores but two (idle desktop); SCREENPILOT_WORKERS=auto|max|N sets the default
 ```
+
+A video (or `--from/--to` window) of 5 minutes or more renders in cached chunks of about 3 minutes, cut where nothing is in progress, so an edit re-renders only the chunks it touched; `--no-chunks` turns it off and `--chunk-seconds <n>` sets the length.
 
 `--formats` takes `16:9`, `9:16`, `1:1` or any `WxH` (even sizes), comma separated; `-o` then sets the base name and `--build-dir` is not allowed. Narration is synthesized once for all formats. A portrait or square export crops window-framed views from a landscape recording (they fill the frame); monitor views show the whole monitor.
 
@@ -291,7 +299,7 @@ While recording, screenpilot closes notification popups already on screen (KDE) 
 
 Window framing needs the active window over time: KDE, X11 and Windows log it; on other Wayland desktops window views fall back to monitor views.
 
-Renders pick the number of headless-Chrome workers from the machine (`autoWorkers` in `src/render/workers.ts`: half the cores, about 1.5 GB of free memory each, 1 to 6); `--workers N` overrides it. More is faster but can push a desktop that is also running OBS and browsers out of memory. `--timings` logs the time of each stage. `-q draft` also captures at 15 fps and uses a fast cut, so draft renders are about twice as fast.
+Renders pick the number of headless-Chrome workers from the machine (`autoWorkers` in `src/render/workers.ts`: half the cores, about 1.5 GB of free memory each, 1 to 6); `--workers N` overrides it, `--workers max` uses all cores but two (limited by free memory) and `SCREENPILOT_WORKERS=auto|max|N` sets the default. More is faster but can push a desktop that is also running OBS and browsers out of memory. `--timings` logs the time of each stage. `-q draft` also captures at 15 fps and uses a fast cut, so draft renders are about twice as fast.
 
 ## App-only updates (`screenpilot update`)
 

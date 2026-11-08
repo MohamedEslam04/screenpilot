@@ -404,6 +404,24 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 <p>Presets: <code>none</code>, <code>fade</code>, <code>rise</code>, <code>drop</code>, <code>slide-left</code>, <code>slide-right</code>, <code>pop</code>, <code>zoom</code>, <code>blur</code>, <code>wipe</code>, <code>words</code>, <code>lines</code>. <code>wipe</code> uncovers text in the reading direction. <code>words</code> reveals one word at a time and <code>lines</code> one line at a time; both work in any script, Arabic included.</p>
 <div class="note">Calm tutorials suit <code>fade</code> and <code>rise</code>. Energetic social clips suit <code>pop</code> or <code>words</code> with a bouncy ease. Titles suit <code>wipe</code> or <code>words</code>.</div>
 
+<h2 id="variants">Variants: the same video with another look</h2>
+<p>To get a dark version, a brand version or a version for another channel, do not edit the storyboard. Give <code>render</code> a style file:</p>
+<pre><code class="language-sh">screenpilot render storyboard.json --style dark.json
+screenpilot sequence sequence.json --style dark.json -q draft</code></pre>
+<p>A style file holds a <code>theme</code> and nothing else:</p>
+<pre><code class="language-json">{ "theme": { "background": "#0b1020", "accent": "#7dd3fc" } }</code></pre>
+<p>Any other key, or a theme key that does not exist, fails with its name. The theme is merged over the theme of every storyboard in the render: <code>motion</code> and <code>grade</code> are merged key by key, and <code>css</code>, <code>fonts</code> and other strings and arrays replace the storyboard's value. The voice, the size, the cuts and the timings stay as the storyboard says.</p>
+<ul>
+<li><strong>Each style has its own files.</strong> The output is <code>&lt;name&gt;.&lt;style&gt;.mp4</code> and the build folder is <code>&lt;name&gt;.&lt;style&gt;.build</code>. The style name is the file name reduced to <code>a-z0-9-</code>. With <code>--from</code>/<code>--to</code> or <code>--formats</code> it comes before them. Styles never overwrite each other.</li>
+<li><strong>Going back is cheap.</strong> Returning to an earlier style reuses its cache. Voice clips are shared by all styles.</li>
+<li><strong>Colours only keep the cut.</strong> A style that changes only colours keeps the cut (<code>edited.mp4</code>) cache. A different <code>theme.grade</code> cuts the video again.</li>
+<li><strong>Finished videos are not styled.</strong> A <code>{video}</code> part of a sequence is a finished file; a warning says so.</li>
+</ul>
+<div class="note">A style makes variants easier. It does not make a render faster: the first render of a new style is a full render.</div>
+
+<h2 id="long-videos">Long videos</h2>
+<p>A render takes about as long as the video. A video of 5 minutes or more renders in cached chunks, so after an edit only the chunks it touched render again. Chunk boundaries, the flags that control them and the cases where an edit still re-renders everything after it are in <a href="@guide/cli.html#long-renders">Long renders</a>.</p>
+
 <h2 id="example">A complete example</h2>
 <p>This storyboard keeps one recording, speeds up a loading stretch, zooms on two clicks, adds three captions and a highlight, and speaks three lines (the last one in Arabic). The paths are relative to the storyboard file. It passes <code>screenpilot validate</code>; the warning you see without the files is only that the source video is missing.</p>
 <pre><code class="language-json">{

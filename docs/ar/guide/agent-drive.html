@@ -138,7 +138,8 @@ screenpilot perform take.json                      # record and drive; writes th
     <tr><td><code>say</code></td><td><code>voice</code>, <code>wait</code></td><td>سطر تعليق صوتي في هذه اللحظة. لا يبدأ سطر قبل أن ينتهي الذي قبله. مع <code>wait: true</code> يتوقف الـ take حتى ينتهي السطر.</td></tr>
     <tr><td><code>caption</code></td><td><code>dur</code> (3), <code>position</code> (<code>bottom</code> أو <code>top</code> أو <code>center</code>)</td><td>يعرض نصاً قصيراً على الشاشة مدة <code>dur</code> ثانية.</td></tr>
     <tr><td><code>view</code></td><td></td><td>يوجّه الكاميرا إلى شاشة باسمها، أو إلى <code>"all"</code> لكل الشاشات. بدون خطوات <code>view</code> تتبع الكاميرا المؤشر.</td></tr>
-    <tr><td><code>browser</code></td><td><code>screen</code>, <code>url</code>, <code>app</code></td><td>يفتح المتصفح التجريبي على شاشة. <code>app: true</code> يخفي شريط العنوان والتبويبات فيظهر في الفيديو الصفحة وحدها.</td></tr>
+    <tr><td><code>browser</code></td><td><code>id</code> (main), <code>screen</code>, <code>url</code>, <code>app</code></td><td>يفتح المتصفح التجريبي على شاشة. <code>app: true</code> يخفي شريط العنوان والتبويبات فيظهر في الفيديو الصفحة وحدها. <code>id</code> آخر يفتح متصفحًا تجريبيًا ثانيًا. انظر <a href="../../ar/guide/agent-drive.html#two-browsers">متصفحان تجريبيان</a>.</td></tr>
+    <tr><td><code>tile</code></td><td><code>browsers</code>, <code>screen</code></td><td>يضع نوافذ المتصفحات التجريبية جنبًا إلى جنب، من اليسار إلى اليمين بترتيب <code>browsers</code>، داخل المساحة القابلة للاستخدام من الشاشة.</td></tr>
     <tr><td><code>goto</code></td><td></td><td>ينقل المتصفح التجريبي إلى رابط أو مسار ملف.</td></tr>
     <tr><td><code>move</code></td><td><code>dur</code></td><td>يحرّك المؤشر إلى هدف بحركة تشبه اليد.</td></tr>
     <tr><td><code>click</code></td><td><code>button</code> (<code>left</code> أو <code>right</code> أو <code>middle</code>), <code>count</code> (من 1 إلى 3)</td><td>ينتقل إلى هدف وينقر. <code>count: 2</code> نقر مزدوج.</td></tr>
@@ -149,12 +150,27 @@ screenpilot perform take.json                      # record and drive; writes th
     <tr><td><code>wait</code></td><td></td><td>ينتظر عدداً من الثواني.</td></tr>
     <tr><td><code>waitFor</code></td><td><code>web</code> أو <code>a11y</code>, <code>timeout</code> (30)</td><td>ينتظر ظهور عنصر في المتصفح التجريبي (<code>web</code>) أو عنصر تحكم في تطبيق أصلي (<code>a11y</code>). يفشل إن لم يظهر في الوقت المحدد.</td></tr>
     <tr><td><code>waitForWindow</code></td><td><code>match</code>, <code>timeout</code> (15)</td><td>ينتظر وجود نافذة يحتوي صنفها أو عنوانها على <code>match</code>.</td></tr>
-    <tr><td><code>focus</code></td><td><code>match</code>, <code>screen</code></td><td>يُبرز نافذة، ويمكنه نقلها إلى شاشة محددة.</td></tr>
+    <tr><td><code>focus</code></td><td><code>match</code> أو <code>browser</code>, <code>screen</code></td><td>يُبرز نافذة، ويمكنه نقلها إلى شاشة محددة. الحقل <code>browser</code> (<code>true</code> للمتصفح التجريبي الرئيسي، أو id) يجد المتصفح التجريبي من عمليته لا من عنوانه.</td></tr>
     <tr><td><code>open</code></td><td></td><td>يفتح ملفاً أو رابطاً بالتطبيق الافتراضي في النظام.</td></tr>
     <tr><td><code>run</code></td><td></td><td>يشغّل برنامجاً من قائمة: <code>["xdg-open", "~/Downloads/x.pdf"]</code>. لا يوجد shell، فلا أنابيب ولا علامات اقتباس. فضّل <code>open</code>. التطبيقات التي تبدأ بـ <code>run</code> و<code>open</code> تحصل على <code>QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1</code>، فتظهر تطبيقات Qt لأهداف <code>{a11y}</code>.</td></tr>
   </tbody>
 </table>
 <p>الخطوات <code>say</code> و<code>caption</code> و<code>view</code> لا تلمس سطح المكتب. تُكتب في الـ storyboard المبدئي كتعليق صوتي وعناوين وتبديل للكاميرا، في لحظة حدوثها. وداخل <code>setup</code> لا تفعل شيئاً.</p>
+
+<h2 id="two-browsers">متصفحان تجريبيان<a class="a" href="#two-browsers" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>لإظهار مدير ومستخدم في الوقت نفسه، مثلًا لعرض تأثير مباشر، افتح متصفحًا تجريبيًا ثانيًا. الخطوة <code>{ "browser": { "id": "user", "url": "https://app.example.com" } }</code> تفتحه بملف تعريف خاص به (<code>browser-user</code> في مجلد الإعدادات) ومنفذ تصحيح خاص به. المتصفح الرئيسي يستخدم المنفذ 9333، والبقية تأخذ 9334 و9335 وهكذا بترتيب أول استخدام.</p>
+<ul>
+  <li><strong>اختر المتصفح في كل خطوة.</strong> كل هدف <code>{web}</code> وكل <code>waitFor.web</code> و<code>goto</code> و<code>highlight</code> يقبل <code>"browser": "user"</code>. والافتراضي <code>"main"</code>.</li>
+  <li><strong>انقل التركيز إليه.</strong> الخطوة <code>{ "focus": { "browser": "user" } }</code> تُظهر ذلك المتصفح في المقدمة.</li>
+  <li><strong>الكاميرا.</strong> مع متصفحين أو أكثر يحصل الـ storyboard المولَّد على view واحد للمنطقة المرصوصة (أو حول النوافذ إن لم يُرصّ شيء) بدل views تتبع النوافذ. والـ take الذي فيه خطوات <code>view</code> خاصة به أو <code>camera: "all"</code> يحتفظ بها. وتُحسب الـ highlights من المتصفح الذي قِيست فيه.</li>
+</ul>
+
+<h3 id="tile">رصّ النوافذ<a class="a" href="#tile" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>الخطوة <code>{ "tile": { "browsers": ["main", "user"], "screen": "eDP-1" } }</code> تضع المتصفحات جنبًا إلى جنب. الحقل <code>screen</code> اختياري: الافتراضي شاشة المتصفح الأول. تأخذ النوافذ عروضًا متساوية، من اليسار إلى اليمين بترتيب القائمة (حتى في التطبيقات التي تُكتب من اليمين إلى اليسار).</p>
+<p>تستخدم النوافذ الارتفاع الكامل لـ<strong>المساحة القابلة للاستخدام</strong> من الشاشة: تحت اللوحة العلوية، وفوق شريط المهام أو الـ dock، وبجانب اللوحة الجانبية. وحيث لا يستطيع سطح المكتب أن يبلّغ عن هذه المساحة (مثل GNOME أو wlroots Wayland) تُستخدم الشاشة كاملة.</p>
+
+<h3 id="two-browsers-live">جرّبه مباشرة عبر MCP<a class="a" href="#two-browsers-live" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>استكشف المتصفح الثاني قبل أن تكتب الـ take. الأداة <code>browser_open</code> تقبل الـ <code>id</code> نفسه (الـ id المفتوح من قبل يُعاد استخدامه ويُنتقل به إلى الرابط، ولا يُبدأ مرتين أبدًا). ثم مرّر الـ id نفسه باسم <code>browser</code> إلى <code>web_locate</code> و<code>wait_for</code> (صيغة <code>web</code>) و<code>page_text</code>. والمتصفح الثاني الذي لم يُفتح بعد يفشل بالرسالة "Call browser_open with id ... first". المنافذ وملفات التعريف تأتي من السجل نفسه الذي يستخدمه <code>perform</code>، فيمكنك تجربة المتصفح الثاني مباشرة ثم كتابة الـ take بالـ ids نفسها.</p>
 
 <h2 id="example">take كامل<a class="a" href="#example" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>يملأ هذا الـ take نموذجاً على الويب، ثم ينزّل ملفاً ويفتحه في تطبيق أصلي على شاشة اللابتوب ويمرّر صفحاته. السطر الصوتي الأخير يغيّر الصوت. أسماء الشاشات (<code>HDMI-A-1</code> و<code>eDP-1</code>) أمثلة فقط: استخدم الأسماء التي يعرضها <code>screenshot</code> أو <code>doctor</code> على جهازك.</p>
@@ -217,7 +233,7 @@ screenpilot perform take.json                      # record and drive; writes th
 </ul>
 <p>على Wayland يطلب منك النظام الموافقة على نافذة التحكم عن بعد مرة واحدة عند أول استخدام. على macOS يحتاج تطبيق الذكاء الاصطناعي إلى إذن Accessibility. وعلى Windows لا يمكن التحكم بتطبيقات تعمل بصلاحيات المسؤول إلا إذا كان تطبيق الذكاء الاصطناعي يعمل بها أيضاً. الجدول الكامل في صفحة <a href="../../ar/guide/platforms.html">المنصات</a>.</p>
 <nav class="pager" aria-label="Pager"><a href="sequence.html" rel="prev"><small>السابق</small>دمج التسجيلات</a><a href="safety.html" rel="next"><small>التالي</small>الأمان والخصوصية</a></nav></article>
-  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#loop">الدورة</a><a href="#cli">الأوامر</a><a href="#structure">شكل الـ take</a><a href="#targets">الأهداف</a><a href="#a11y">التطبيقات الأصلية: أهداف {a11y}</a><a href="#steps">كل الخطوات</a><a href="#example">take كامل</a><a href="#output">ما الذي يعطيك إياه perform</a><a href="#tips">نصائح</a><a href="#platforms">ما الذي يدعمه كل سطح مكتب</a></aside>
+  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#loop">الدورة</a><a href="#cli">الأوامر</a><a href="#structure">شكل الـ take</a><a href="#targets">الأهداف</a><a href="#a11y">التطبيقات الأصلية: أهداف {a11y}</a><a href="#steps">كل الخطوات</a><a href="#two-browsers">متصفحان تجريبيان</a><a href="#example">take كامل</a><a href="#output">ما الذي يعطيك إياه perform</a><a href="#tips">نصائح</a><a href="#platforms">ما الذي يدعمه كل سطح مكتب</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../../ar/index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot مفتوح المصدر برخصة MIT.</small><small>أسماء المنتجات ملك لأصحابها. ScreenPilot مشروع مستقل.</small></div>
