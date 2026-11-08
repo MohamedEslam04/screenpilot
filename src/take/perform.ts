@@ -9,7 +9,7 @@ import { analyze } from "../analyze/index.js";
 import { Driver, type DriverAction } from "../drive/index.js";
 import { describeError, type Disposition, TargetError } from "../drive/errors.js";
 import { findWindow } from "../platform/index.js";
-import { locate, openBrowser, waitForWeb, withPage } from "../drive/web.js";
+import { browserWindow, locate, openBrowser, waitForWeb, withPage } from "../drive/web.js";
 import { initStoryboard } from "../init.js";
 import type { InputEvent } from "../record/events.js";
 import { type ActiveRecording, type RecordResult, startRecording } from "../record/index.js";
@@ -21,6 +21,7 @@ import { openWithDefaultApp } from "./open.js";
 import { type Step, type Take, TakeSchema, type Target } from "./schema.js";
 import type { Typing } from "../storyboard/schema.js";
 import { typingSpan } from "./typing.js";
+import { windowMatches } from "./windows.js";
 import { CACHE_DIR } from "../brand.js";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -94,7 +95,7 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
   const now = () => (performance.now() - t0) / 1000;
   let speechFreeAt = 0;
 
-  const ctx: StepContext = { driver, log, baseDir };
+  const ctx: StepContext = { driver, log, baseDir, lastTargetWasWeb: false };
   // Before recording: a layout switch later would flash KDE's OSD in the video.
   const restoreLayout = await driver.desktop.useLatinLayout();
   try {
@@ -206,6 +207,8 @@ interface StepContext {
   driver: Driver;
   log: (m: string) => void;
   baseDir: string;
+  /** The last pointer target was in the demo browser: typed text and keys must reach it too. */
+  lastTargetWasWeb: boolean;
 }
 
 /** Where a take/MCP target is on the desktop (global logical px). */
@@ -226,9 +229,7 @@ export async function resolveTarget(t: Target, d: Driver): Promise<{ x: number; 
 
 /** The window a match refers to: of several, the focused one wins, else the first. */
 export function pickWindow(windows: WindowInfo[], match: string): WindowInfo | undefined {
-  const m = match.toLowerCase();
-  const byClass = windows.filter((w) => w.resourceClass.toLowerCase().includes(m));
-  const hits = byClass.length ? byClass : windows.filter((w) => w.caption.toLowerCase().includes(m));
+  const hits = windowMatches(windows, match);
   return hits.find((w) => w.active) ?? hits[0];
 }
 
@@ -246,7 +247,30 @@ export function pageUrl(u: string, baseDir: string): string {
   return pathToFileURL(resolve(baseDir, expandHome(u))).href;
 }
 
-async function runStep(step: Step, { driver: d, log, baseDir }: StepContext): Promise<void> {
+/**
+ * Playwright drives the demo browser whatever window is in front, but the real
+ * pointer and keys go to the front window: bring the demo browser up first.
+ */
+export async function ensureDemoBrowserActive(d: Driver, log: (m: string) => void): Promise<void> {
+  const win = await browserWindow();
+  if (win.active) return;
+  await d.desktop.focusWindow(win.id);
+  await sleep(350);
+  log("web target: brought the demo browser to the front");
+}
+
+const isWeb = (t: Target) => "web" in t;
+
+async function runStep(step: Step, ctx: StepContext): Promise<void> {
+  const { driver: d, log, baseDir } = ctx;
+  // Pointer targets: a {web} one needs the demo browser in front; remember it for the keys that follow.
+  const pointer = "move" in step ? [step.move] : "click" in step ? [step.click] : "drag" in step ? [step.drag.from, step.drag.to] : "scroll" in step && step.at ? [step.at] : [];
+  if (pointer.length) {
+    if (pointer.some(isWeb)) await ensureDemoBrowserActive(d, log);
+    ctx.lastTargetWasWeb = pointer.some(isWeb);
+  } else if (("type" in step || "key" in step) && ctx.lastTargetWasWeb) {
+    await ensureDemoBrowserActive(d, log);
+  }
   if ("browser" in step) {
     const screen = step.browser.screen ? d.screens().find((s) => s.name === step.browser.screen) : undefined;
     await openBrowser({ screen, url: step.browser.url && pageUrl(step.browser.url, baseDir), app: step.browser.app, log });
@@ -286,10 +310,20 @@ async function runStep(step: Step, { driver: d, log, baseDir }: StepContext): Pr
     }
   } else if ("focus" in step) {
     const windows = await d.desktop.listWindows();
-    const w = pickWindow(windows, step.focus.match);
-    if (!w) throw windowNotFound(windows, step.focus.match);
+    let w: WindowInfo | undefined;
+    if (step.focus.match === undefined) {
+      w = await browserWindow();
+    } else {
+      const hits = windowMatches(windows, step.focus.match);
+      w = pickWindow(windows, step.focus.match);
+      if (!w) throw windowNotFound(windows, step.focus.match);
+      if (hits.length > 1) {
+        log(`focus: ${hits.length} windows match "${step.focus.match}"; using ${w.resourceClass} "${w.caption}" pid ${w.pid}; use {browser: true} for the demo browser`);
+      }
+    }
     const s = step.focus.screen ? d.screens().find((x) => x.name === step.focus.screen) : undefined;
     await d.desktop.focusWindow(w.id, s ? { screen: s.name } : undefined);
+    ctx.lastTargetWasWeb = step.focus.match === undefined;
     await sleep(350);
   } else if ("open" in step) {
     const target = /^[a-z][a-z0-9+.-]+:\/\//i.test(step.open) ? step.open : resolve(baseDir, expandHome(step.open));

@@ -99,7 +99,7 @@ The real mouse and keyboard are used: tell the user to keep their hands off (tou
 
 On macOS, shortcuts use `cmd` (`cmd+l`, `cmd+c`), not `ctrl`, and the AI app needs Accessibility and Screen Recording permission (errors name the app and the settings pane).
 
-Take tips: put `say` with `wait: true` before an important click so the viewer hears it first; keep 0.3-1 s `wait`s after navigation; use `waitFor` instead of long waits; keep takes under ~90 s. `say` lines default to `voice.name`; override per line with `voice`.
+Take tips: put `say` with `wait: true` before an important click so the viewer hears it first; keep 0.3-1 s `wait`s after navigation; use `waitFor` instead of long waits; keep takes under ~90 s. `say` lines default to `voice.name`; override per line with `voice`. Two windows with one title (two browsers)? `focus: {match}` takes the active one, else the first, and logs the count: use `{"focus": {"browser": true}}` for the demo browser (found by process id). A `{web}` target, and the `type`/`key` after it, bring the demo browser to the front first.
 
 ## Native apps: `{a11y}` targets
 
