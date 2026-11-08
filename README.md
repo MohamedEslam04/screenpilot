@@ -12,7 +12,7 @@ Ask your AI app for a screen video. ScreenPilot records your screen (or uses you
 
 ## What's new
 
-### Unreleased
+### 0.10.0 ([release notes](https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.10.0))
 
 - **Style variants:** `--style <file>` on `render` and `sequence` (MCP `style`) renders the same video with another look; a style file carries only a `theme`, and each style has its own build folder and output name.
 - **Faster long renders:** `--workers auto|max|N` (or `SCREENPILOT_WORKERS`), a render time estimate in the log, and `pnpm bench:render` to measure your machine.
@@ -171,4 +171,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 5f1fb27 ("Merge branch 'spike/fast-stage'", 2026-11-08).
+Docs synced to commit dd72a8f ("Merge branch 'docs/post-0.9.0'", 2026-11-08).
