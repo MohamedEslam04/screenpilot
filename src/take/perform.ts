@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 import { a11yFind, a11yWait, launchEnv } from "../a11y/index.js";
 import { analyze } from "../analyze/index.js";
+import { resolveTypeMethod } from "../drive/clipboard.js";
 import { Driver, type DriverAction } from "../drive/index.js";
 import { describeError, type Disposition, TargetError } from "../drive/errors.js";
 import { findWindow } from "../platform/index.js";
@@ -297,7 +298,8 @@ async function runStep(step: Step, ctx: StepContext): Promise<void> {
   } else if ("type" in step) {
     const text = typeof step.type === "string" ? step.type : process.env[step.type.env];
     if (text === undefined) throw new Error(`env var ${typeof step.type === "string" ? "" : step.type.env} is not set`);
-    await d.type(text, { cps: step.cps });
+    if (resolveTypeMethod(step.method, text) === "paste") await d.paste(text, { secret: typeof step.type !== "string" });
+    else await d.type(text, { cps: step.cps });
   } else if ("key" in step) {
     await d.key(step.key);
   } else if ("scroll" in step) {

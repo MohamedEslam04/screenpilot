@@ -53,7 +53,18 @@ export const StepSchema = z.union([
     })
     .strict(),
   z.object({ drag: z.object({ from: TargetSchema, to: TargetSchema }).strict(), dur: z.number().positive().optional() }).strict(),
-  z.object({ type: TextSchema, cps: z.number().positive().optional() }).strict(),
+  z
+    .object({
+      type: TextSchema,
+      cps: z.number().positive().optional().describe("Characters per second when typing key by key (ignored for paste)"),
+      method: z
+        .enum(["keys", "paste", "auto"])
+        .optional()
+        .describe(
+          'How the text gets in: "keys" types key by key, "paste" sets the clipboard and presses ctrl+v (cmd+v on macOS; the previous clipboard is restored, and {env} text is never left on it), "auto" (default) pastes when the text has a character outside Latin-1 (Arabic, Hebrew, CJK, emoji) because key injection drops those. Paste needs wl-copy/wl-paste (Wayland), xclip (X11), or the built-in tools on macOS and Windows; `doctor` checks.',
+        ),
+    })
+    .strict(),
   z.object({ key: z.string().describe('Combo like "ctrl+l", "enter", "alt+tab" (macOS: "cmd+l")') }).strict(),
   z.object({ scroll: z.number().int(), at: TargetSchema.optional(), horizontal: z.boolean().optional() }).strict(),
   z.object({ wait: z.number().min(0) }).strict(),

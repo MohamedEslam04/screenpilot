@@ -1,6 +1,7 @@
 import { performance } from "node:perf_hooks";
 import { INTERRUPT_ENV } from "../brand.js";
 import { getDesktop } from "../platform/index.js";
+import { type Clipboard, pasteCombo, pasteText, systemClipboard } from "./clipboard.js";
 import type { Desktop, Injector, MouseButton, Watcher } from "../platform/types.js";
 import type { ScreenInfo } from "../record/input/types.js";
 
@@ -54,6 +55,10 @@ export interface DriverOptions {
   /** Keep only the last second of actions (long-lived drivers). A take needs the full list, so it stays off there. */
   trimActions?: boolean;
   seed?: number;
+  /** Clipboard used by `paste` (tests inject a fake). Default: the OS clipboard through its command line tool. */
+  clipboard?: Clipboard;
+  /** Wait after the paste key before the clipboard is restored (ms). Default 150. */
+  pasteSettleMs?: number;
 }
 
 /** Actions older than this can no longer matter to the interrupt check. */
@@ -201,6 +206,16 @@ export class Driver {
       before: () => this.checkInterrupted(),
       gap: () => delay * (0.6 + this.rand() * 0.8),
     });
+  }
+
+  /**
+   * Types `text` by pasting it (RTL and other non-Latin text that key injection drops):
+   * sets the clipboard, sends the paste shortcut, then restores the previous clipboard.
+   * `secret` text is never logged and never left on the clipboard.
+   */
+  async paste(text: string, opts: { secret?: boolean } = {}): Promise<void> {
+    const clip = this.opts.clipboard ?? systemClipboard(process.platform, this.desktop.id);
+    await pasteText(clip, () => this.key(pasteCombo()), text, { secret: opts.secret, settleMs: this.opts.pasteSettleMs });
   }
 
   async close(): Promise<void> {

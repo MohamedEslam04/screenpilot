@@ -125,6 +125,8 @@ Example take: web form, download, open the file locally, English lines plus one 
 }
 ```
 
+Typing: `type` takes `method: "keys" | "paste" | "auto"` (default `auto`). Key-by-key injection drops letters in Arabic and other text outside Latin-1, so `auto` pastes those (clipboard set, `ctrl+v` / `cmd+v` on macOS, previous clipboard restored; `{env}` text is never left on it). Needs `wl-copy`/`wl-paste` (Wayland), `xclip` (X11) or the OS tools on macOS/Windows; `doctor` warns when missing. A paste still marks a `typing` span.
+
 Take tips: `say` with `wait: true` before an important click; 0.3-1 s `wait`s after navigation; `waitFor` instead of long waits; keep takes under ~90 s; `say` lines use `voice.name` unless overridden per line; `view` switches which monitor the camera shows (`"all"` for the full wall). Two windows with one title (two browsers)? `focus: {match}` takes the active one, else the first, and logs the count: use `{"focus": {"browser": true}}` for the demo browser (found by process id). A `{web}` target, and the `type`/`key` after it, bring the demo browser to the front first. `run` starts a program and carries on, `{"run": [...], "wait": true, "timeout": 10}` waits for it to exit and fails the step on a non-zero exit code or timeout (e.g. `wl-copy` before `ctrl+v`).
 
 ## Storyboard example
