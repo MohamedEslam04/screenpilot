@@ -1,0 +1,26 @@
+{
+  "name": "0.9.0 acceptance: tracked highlight, second browser, tile, paste",
+  "screens": "all",
+  "setup": [
+    { "browser": { "id": "main", "url": "page.html" } },
+    { "browser": { "id": "user", "url": "page.html" } },
+    { "tile": { "browsers": ["main", "user"] } }
+  ],
+  "steps": [
+    { "wait": 1 },
+    { "caption": "Tracked highlight", "dur": 3 },
+    { "click": { "web": "#show-toast" } },
+    { "highlight": { "web": "#toast", "label": "Saved", "until": "gone", "dur": 6 } },
+    { "wait": 3.8 },
+    { "click": { "web": "#visible-btn" } },
+    { "click": { "web": "#name" } },
+    { "type": "مرحبا بكم في عرض سكرين بايلوت التجريبي", "method": "auto" },
+    { "wait": 0.8 },
+    { "run": ["node", "-e", "setTimeout(() => {}, 1200)"], "wait": true, "timeout": 10 },
+    { "focus": { "browser": "user" } },
+    { "click": { "web": "#show-toast", "browser": "user" } },
+    { "highlight": { "web": "#toast", "browser": "user", "label": "Saved (user)", "until": "gone", "dur": 6 } },
+    { "wait": 3.8 }
+  ],
+  "tail": 1.5
+}
