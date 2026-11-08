@@ -11,6 +11,7 @@ import {
   wmStateData,
   workAreaFor,
 } from "../src/platform/x11/ewmh.js";
+import { workAreaOf } from "../src/platform/work-area.js";
 import { wheelButton, X11Injector } from "../src/platform/x11/injector.js";
 import { findKeystroke, type Keymap, keysymForChar, spareKeycodes } from "../src/platform/x11/keymap.js";
 import { X11Watcher } from "../src/platform/x11/watcher.js";
@@ -150,6 +151,15 @@ describe("X11 monitors and windows (EWMH)", () => {
     expect(m.map((x) => x.screen.name)).toEqual(["eDP-1", "HDMI-1"]);
     expect(m[0]!.work).toEqual({ x: 0, y: 30, w: 1920, h: 1050 });
     expect(m[1]!.primary).toBe(false);
+  });
+
+  it("workArea of a monitor with a left panel starts after the panel, the other monitor is untouched", () => {
+    const x = fakeX({
+      cardinals: (w, p) => (w === 1 && p === "_NET_WORKAREA" ? [48, 0, 3792, 1080] : fakeX().cardinals(w, p)),
+    });
+    expect(workAreaOf(monitors(x), "eDP-1")).toEqual({ x: 48, y: 0, w: 1872, h: 1080 });
+    expect(workAreaOf(monitors(x), "HDMI-1")).toEqual({ x: 1920, y: 0, w: 1920, h: 1080 });
+    expect(workAreaOf(monitors(x), "nope")).toBeUndefined();
   });
 
   it("falls back to the root window when RandR reports no monitor", () => {

@@ -1,4 +1,5 @@
 import type { Rect } from "../../record/input/types.js";
+import { intersect } from "../work-area.js";
 
 // EWMH / ICCCM property decoding and the message payloads we send to the
 // window manager. Pure, so it is unit tested without an X server.
@@ -47,11 +48,7 @@ export function workAreaFor(monitor: Rect, workarea: number[] | undefined, deskt
   const i = desktop * 4;
   if (!workarea || workarea.length < i + 4) return monitor;
   const [x, y, w, h] = workarea.slice(i, i + 4) as [number, number, number, number];
-  const x0 = Math.max(monitor.x, x);
-  const y0 = Math.max(monitor.y, y);
-  const x1 = Math.min(monitor.x + monitor.w, x + w);
-  const y1 = Math.min(monitor.y + monitor.h, y + h);
-  return x1 > x0 && y1 > y0 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : monitor;
+  return intersect(monitor, { x, y, w, h }) ?? monitor;
 }
 
 const NORTH_WEST_GRAVITY = 1;
