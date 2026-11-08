@@ -3,6 +3,7 @@ import { findWindow, type Desktop, type Placement, type WindowInfo } from "../ty
 import { borderInsets, isListable, outerRect, placeInArea } from "./geometry.js";
 import { WindowsInjector } from "./injector.js";
 import { keyInput, VK_MENU } from "./inputs.js";
+import { workAreaOf } from "../work-area.js";
 import { sourceMonitor } from "./obsmap.js";
 import { windowArea, WindowsWatcher } from "./watcher.js";
 import { SW_RESTORE, SWP_NOACTIVATE, SWP_NOOWNERZORDER, SWP_NOZORDER, win32, type Win32 } from "./win32.js";
@@ -139,6 +140,11 @@ export const windowsDesktop: Desktop = {
 
   async screens() {
     return (await win32()).monitors().map((m) => m.screen);
+  },
+
+  // MONITORINFO.rcWork: the monitor without the taskbar and docked app bars, in virtual-screen px.
+  async workArea(screen) {
+    return workAreaOf((await win32()).monitors(), screen);
   },
 
   listWindows,

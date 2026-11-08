@@ -10,6 +10,7 @@ import {
   WS_EX_APPWINDOW,
   WS_EX_TOOLWINDOW,
 } from "../src/platform/windows/geometry.js";
+import { sane } from "../src/platform/work-area.js";
 
 describe("invisible border correction", () => {
   // Windows 10/11: GetWindowRect includes ~7px invisible resize borders left, right and bottom.
@@ -80,6 +81,21 @@ describe("window filtering", () => {
     expect(isListable({ ...app, title: "Program Manager", className: "Progman" })).toBe(false);
     expect(isListable({ ...app, className: "Shell_TrayWnd" })).toBe(false);
     expect(isListable({ ...app, className: "Shell_SecondaryTrayWnd" })).toBe(false);
+  });
+});
+
+describe("work area (MONITORINFO.rcWork)", () => {
+  it("keeps the global origin of a taskbar on the left of a monitor left of the primary", () => {
+    const rcMonitor = { left: -1920, top: 0, right: 0, bottom: 1080 };
+    const rcWork = { left: -1872, top: 0, right: 0, bottom: 1080 };
+    expect(rectFromLTRB(rcWork)).toEqual({ x: -1872, y: 0, w: 1872, h: 1080 });
+    expect(sane(rectFromLTRB(rcWork), rectFromLTRB(rcMonitor))).toBe(true);
+  });
+
+  it("is the monitor height minus a 48 px bottom taskbar", () => {
+    const area = rectFromLTRB({ left: 0, top: 0, right: 1920, bottom: 1032 });
+    expect(area).toEqual({ x: 0, y: 0, w: 1920, h: 1032 });
+    expect(sane(area, { x: 0, y: 0, w: 1920, h: 1080 })).toBe(true);
   });
 });
 
