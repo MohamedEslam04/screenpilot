@@ -367,6 +367,13 @@ export type Hold = z.output<typeof HoldSchema>;
 export type Zoom = z.output<typeof ZoomSchema>;
 export type Screen = z.output<typeof ScreenSchema>;
 export type View = z.output<typeof ViewSchema>;
+/**
+ * A style file for `render --style` / `sequence --style`: only a `theme`, every field optional.
+ * It is merged over the theme of each storyboard (objects such as motion and grade key by key;
+ * css, fonts and other strings and arrays are replaced). Voice, size, cuts and timings stay as the storyboard says.
+ */
+export const StyleSchema = z.object({ theme: ThemeSchema.partial().strict() }).strict();
+
 export type Caption = z.output<typeof CaptionSchema>;
 export type Motion = z.output<typeof MotionSchema>;
 export type Narration = z.output<typeof NarrationSchema>;
