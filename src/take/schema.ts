@@ -49,6 +49,7 @@ export const StepSchema = z.union([
       click: TargetSchema,
       button: z.enum(["left", "right", "middle"]).optional(),
       count: z.number().int().min(1).max(3).optional(),
+      force: z.boolean().optional().describe("{web} targets only: click even if another element covers the target (default: fail with TARGET_COVERED)"),
     })
     .strict(),
   z.object({ drag: z.object({ from: TargetSchema, to: TargetSchema }).strict(), dur: z.number().positive().optional() }).strict(),
