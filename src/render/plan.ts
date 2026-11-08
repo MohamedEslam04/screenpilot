@@ -184,6 +184,23 @@ export function frameBox(outW: number, outH: number, srcW: number, srcH: number,
   return { left: Math.round((outW - w) / 2), top: Math.round((outH - h) / 2), w, h };
 }
 
+/**
+ * Every view with the output time it takes effect. A view whose time was cut out
+ * applies where the next kept moment starts; of views sharing one start only the
+ * last (by `at`) stays, so the camera begins on the view current at that moment.
+ * `views` must be sorted by `at`.
+ */
+function effectiveViews(views: View[], tl: Timeline): { view: View; start: number }[] {
+  const out: { view: View; start: number }[] = [];
+  for (const view of views) {
+    const start = tl.toOutputOrNext(view.at);
+    if (start === null) continue;
+    if (out.at(-1)?.start === start) out.pop();
+    out.push({ view, start });
+  }
+  return out;
+}
+
 export function buildPlan(input: PlanInput): RenderPlan {
   const { sb, timeline: tl } = input;
   const { width, height, fps } = sb.output;
@@ -192,19 +209,22 @@ export function buildPlan(input: PlanInput): RenderPlan {
   const duration = round(tl.videoEnd + outroDur);
   const screens = new Map<string, Rect>(sb.screens.map((s) => [s.name, { x: s.x, y: s.y, w: s.w, h: s.h }]));
   const rectOf = (v: View): Rect | undefined => v.rect ?? (v.screen === "all" ? FULL : v.screen ? screens.get(v.screen) : undefined);
-  const views = sb.views.filter((v) => rectOf(v)).sort((a, b) => a.at - b.at);
-  const firstRect = views[0] ? rectOf(views[0]) : undefined;
+  const views = effectiveViews(
+    sb.views.filter((v) => rectOf(v)).sort((a, b) => a.at - b.at),
+    tl,
+  );
+  const firstRect = views[0] ? rectOf(views[0].view) : undefined;
   const srcW = input.source.width;
   const srcH = input.source.height;
   // A monitor view keeps its own shape; free-form (window) views use the output's shape.
   const frame = !firstRect
     ? frameBox(width, height, srcW, srcH, sb.theme.padding)
-    : views[0]!.rect
+    : views[0]!.view.rect
       ? frameBox(width, height, width, height, sb.theme.padding)
       : frameBox(width, height, firstRect.w * srcW, firstRect.h * srcH, sb.theme.padding);
   // #cam holds the whole source, sized so the first view fits the frame at scale 1.
   let cam = { w: frame.w, h: frame.h };
-  if (firstRect && views[0]!.rect) {
+  if (firstRect && views[0]!.view.rect) {
     const base = Math.max(frame.w / (firstRect.w * srcW), frame.h / (firstRect.h * srcH));
     cam = { w: srcW * base, h: srcH * base };
   } else if (firstRect) {
@@ -219,10 +239,9 @@ export function buildPlan(input: PlanInput): RenderPlan {
 
   function viewSpans(): ViewSpan[] {
     // Free-form (window) views fill the frame so nothing around the window shows.
-    const out: ViewSpan[] = [{ start: 0, rect: firstRect!, cut: false, cover: !!views[0]!.rect }];
-    for (const v of views.slice(1)) {
-      const t = tl.toOutput(v.at);
-      if (t !== null) out.push({ start: t, rect: rectOf(v)!, cut: v.transition === "cut", cover: !!v.rect });
+    const out: ViewSpan[] = [{ start: 0, rect: firstRect!, cut: false, cover: !!views[0]!.view.rect }];
+    for (const { view: v, start } of views.slice(1)) {
+      out.push({ start, rect: rectOf(v)!, cut: v.transition === "cut", cover: !!v.rect });
     }
     return out;
   }

@@ -156,6 +156,57 @@ describe("buildPlan with views", () => {
   });
 });
 
+describe("views before or inside cuts", () => {
+  const two = (segments: { in: number; out: number }[], views: { at: number; screen: string }[]) => {
+    const s = StoryboardSchema.parse({
+      source: "rec.mp4",
+      screens: [
+        { name: "L", ...L },
+        { name: "R", ...R },
+      ],
+      segments,
+      views,
+    });
+    const tl = buildTimeline({ segments: s.segments, holds: [], sourceDuration: 12 });
+    return buildPlan({
+      sb: s,
+      timeline: tl,
+      editedSrc: "e.mp4",
+      editedHasAudio: false,
+      source: { width: 3840, height: 1080 },
+      narration: [],
+      clicks: [],
+    });
+  };
+
+  it("uses the last view before the first kept segment", () => {
+    const p = two(
+      [{ in: 3.31, out: 12 }],
+      [
+        { at: 0, screen: "L" },
+        { at: 0.66, screen: "R" },
+      ],
+    );
+    expect(p.camera[0]).toEqual({ t: 0, dur: 0, x: -p.frame.w, y: 0, scale: 1 });
+    expect(p.camera.filter((c) => c.t === 0)).toHaveLength(1);
+  });
+
+  it("a view inside a later cut applies where the next segment starts", () => {
+    const p = two(
+      [
+        { in: 0, out: 4 },
+        { in: 6, out: 12 },
+      ],
+      [
+        { at: 0, screen: "L" },
+        { at: 5, screen: "R" },
+      ],
+    );
+    expect(p.camera[0]).toEqual({ t: 0, dur: 0, x: 0, y: 0, scale: 1 });
+    expect(p.camera.find((c) => c.t === 4)).toMatchObject({ x: -p.frame.w, scale: 1 });
+  });
+});
+
 describe("schema / lint", () => {
   it("defaults views to pan and screens/views to empty", () => {
     const sb = StoryboardSchema.parse({ source: "a.mp4", views: [{ at: 1, screen: "all" }] });

@@ -120,6 +120,19 @@ export class Timeline {
     return null;
   }
 
+  /**
+   * Like toOutput, but a cut-out time maps to where the next kept source
+   * moment is shown. Null only when nothing after `t` is kept.
+   */
+  toOutputOrNext(t: number): number | null {
+    const exact = this.toOutput(t);
+    if (exact !== null) return exact;
+    for (const p of this.pieces) {
+      if (p.kind === "play" && p.in >= t - EPS) return this.offset + p.outStart;
+    }
+    return null;
+  }
+
   /** Map a source span to output; the end falls back to start+dur when cut. */
   mapSpan(at: number, dur: number): { start: number; end: number } | null {
     const start = this.toOutput(at);
