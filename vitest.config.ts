@@ -4,5 +4,7 @@ export default defineConfig({
   test: {
     // Agent worktrees live under .claude/ and carry their own copy of the tests.
     exclude: [...configDefaults.exclude, ".claude/**"],
+    // Tests that run real ffmpeg take ~2 s here but pass 5 s on slow CI runners (macOS Intel) or a busy machine.
+    testTimeout: 30_000,
   },
 });
