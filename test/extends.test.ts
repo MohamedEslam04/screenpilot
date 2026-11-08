@@ -49,6 +49,17 @@ describe("storyboard extends", () => {
     expect(sb.intro).toBeUndefined();
   });
 
+  it("inherits lint limits, the child winning key by key", async () => {
+    const dir = await files({
+      "base.json": { source: "base.mp4", lint: { narrationWords: 20, off: ["duration"], duration: { max: 3000 } } },
+      "child.json": { extends: "base.json", source: "child.mp4", lint: { narrationWords: 25 } },
+      "plain.json": { extends: "base.json", source: "plain.mp4" },
+    });
+    const { sb } = await loadStoryboard(join(dir, "child.json"));
+    expect(sb.lint).toEqual({ narrationWords: 25, off: ["duration"], duration: { max: 3000 } });
+    expect((await loadStoryboard(join(dir, "plain.json"))).sb.lint?.narrationWords).toBe(20);
+  });
+
   it("follows a chain of bases", async () => {
     const dir = await files({
       "a.json": { source: "a.mp4", theme: { accent: "#aaaaaa", radius: 4 }, output: { fps: 24 } },

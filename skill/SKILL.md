@@ -60,7 +60,7 @@ One storyboard has one `source`. To insert another recording into the middle of 
 
 - MCP `sequence_validate` / `sequence_render` (quality, output) / `sequence_schema`; CLI `screenpilot sequence-validate|sequence|sequence-schema <sequence.json>`.
 - `from`/`to` are SOURCE seconds of that part's storyboard, half-open `[from, to)`. Read the first storyboard's frames to pick the split second (a quiet moment between two actions). Narration that started before `from` is dropped; zooms/captions/highlights that straddle the cut are trimmed (dropped if under 0.5s is left); cards and overlays are clipped too.
-- Make the pieces look the same: give each storyboard `"extends": "base.json"` (shares theme, voice, output, music, keepSourceAudio; the child wins; paths are relative to each file). Intro is used on the first part only, outro on the last; all parts get the first part's output size (override with `sequence.output`).
+- Make the pieces look the same: give each storyboard `"extends": "base.json"` (shares theme, voice, output, music, keepSourceAudio, lint; the child wins; paths are relative to each file). Intro is used on the first part only, outro on the last; all parts get the first part's output size (override with `sequence.output`).
 - Transitions on a part (how it enters from the previous one): `cut`, `crossfade`, `fade-black`, `wipe-left`, `wipe-right`, `slide-left`, `slide-right`; `dur` default 0.5, clamped to half of either neighbour. Unchanged parts are cached, so only edited parts re-render.
 
 ## More editing tools
@@ -74,7 +74,7 @@ One storyboard has one `source`. To insert another recording into the middle of 
 - **Subtitle files and extras.** `render` with `subtitles: ["srt","vtt"]` writes caption files from the narration next to the video (every line, even `caption: false`), and `also: ["gif","webm","poster"]` makes a GIF, WebM or poster PNG from the finished video (`poster_at` sets the time). CLI: `--subtitles srt,vtt --also gif,poster`.
 - **Fast review.** `render` with `from`/`to` (OUTPUT seconds) renders only that window into `<name>.part-A-B.mp4`; use it after editing one section.
 - **Other formats.** `render` with `formats: ["16:9","9:16","1:1"]` (or `1280x720`) renders each into `<name>.<label>.mp4` (labels `16x9`, `9x16`, `1x1`). Portrait crops wide window-framed views, so check frames.
-- **Lint.** `validate` and render warnings flag narration over ~12 words or too fast, captions over 6 words, overlapping captions/zooms, zoom scale outside 1.4-2.5, zoom + highlight + callout stacked, speed over 8, and a final length over 90s or under 15s. Fix them unless there is a reason.
+- **Lint.** `validate` and render warnings flag narration over ~12 words or too fast, captions over 6 words, overlapping captions/zooms, zoom scale outside 1.4-2.5, zoom + highlight + callout stacked, speed over 8, and a final length over 90s or under 15s. Fix them unless there is a reason. Each warning starts with its rule id (`[narration-length]`, `[narration-speed]`, `[caption-length]`, `[duration]`, `[zoom-scale]`, `[stack]`, `[transition]`). For a long tutorial, raise the limits or silence a rule once with `"lint": {"narrationWords": 20, "captionWords": 8, "duration": {"min": 15, "max": 2400}, "off": ["duration"]}` (put it in the shared `extends` base) instead of fixing each warning.
 
 ## Optional: you perform the demo (KDE Wayland, X11, GNOME Wayland, Windows)
 

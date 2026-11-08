@@ -298,8 +298,25 @@ export const SoundsSchema = z
   })
   .describe("Automatic sound effects from recorded events and cards");
 
+/** Ids of the style-lint rules; every lint warning starts with `[id]`. */
+export const LINT_RULES = ["narration-length", "narration-speed", "caption-length", "duration", "zoom-scale", "stack", "transition"] as const;
+
+export const LintSchema = z
+  .object({
+    narrationWords: z.number().int().positive().optional().describe("Longest narration line before the narration-length warning (default 12 words)"),
+    captionWords: z.number().int().positive().optional().describe("Longest caption before the caption-length warning (default 6 words)"),
+    duration: z
+      .object({
+        min: z.number().nonnegative().optional().describe("Shortest final video (s) before the duration warning (default 15)"),
+        max: z.number().positive().optional().describe("Longest final video (s) before the duration warning (default 90)"),
+      })
+      .optional(),
+    off: z.array(z.enum(LINT_RULES)).optional().describe(`Rule ids to silence: ${LINT_RULES.join(", ")}`),
+  })
+  .describe("Style-lint limits for this storyboard (warnings only); long tutorials raise them or turn rules off. Inherited through extends");
+
 /** Keys a storyboard takes from the one it `extends` (deep-merged, the child wins). */
-export const INHERITED_KEYS = ["theme", "voice", "output", "music", "sounds", "audio", "keepSourceAudio"] as const;
+export const INHERITED_KEYS = ["theme", "voice", "output", "music", "sounds", "audio", "keepSourceAudio", "lint"] as const;
 
 export const StoryboardSchema = z.object({
   version: z.literal(1).default(1),
@@ -340,6 +357,7 @@ export const StoryboardSchema = z.object({
   sfx: z.array(SfxSchema).default([]).describe("Sound effects at source times (a file or a builtin:name); see also sounds for automatic ones"),
   sounds: SoundsSchema.optional(),
   audio: AudioSchema.optional(),
+  lint: LintSchema.optional(),
 });
 
 export type Storyboard = z.output<typeof StoryboardSchema>;

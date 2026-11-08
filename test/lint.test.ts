@@ -158,6 +158,69 @@ describe("lintStyle", () => {
   });
 });
 
+describe("lint rule ids and limits", () => {
+  const sbOf = (extra: Record<string, unknown>) => StoryboardSchema.parse({ source: "a.mp4", ...extra });
+  const tl = (dur: number) => buildTimeline({ segments: [], holds: [], sourceDuration: dur, offset: 0 });
+
+  it.each<{ id: string; sb: Record<string, unknown> }>([
+    { id: "narration-length", sb: { narration: [{ at: 0, text: words(15) }] } },
+    {
+      id: "narration-speed",
+      sb: {
+        narration: [
+          { at: 0, text: words(10) },
+          { at: 2, text: "ok" },
+        ],
+      },
+    },
+    { id: "caption-length", sb: { captions: [{ at: 0, text: words(8) }] } },
+    { id: "zoom-scale", sb: { zooms: [{ at: 1, dur: 2, x: 0.5, y: 0.5, scale: 3 }] } },
+    {
+      id: "stack",
+      sb: {
+        zooms: [{ at: 5, dur: 2, x: 0.5, y: 0.5, scale: 1.8 }],
+        highlights: [{ at: 5.5, dur: 2, x: 0.45, y: 0.45, w: 0.1, h: 0.1 }],
+        captions: [{ at: 5.2, dur: 2, text: "Click", style: "callout", x: 0.52, y: 0.5 }],
+      },
+    },
+    { id: "transition", sb: { segments: [{ in: 0, out: 10, transition: { type: "crossfade", dur: 0.5 } }] } },
+  ])("$id warning is prefixed with its id and can be turned off", ({ id, sb }) => {
+    const out = lintStyle(sbOf(sb));
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatch(new RegExp(`^\\[${id}\\] `));
+    expect(lintStyle(sbOf({ ...sb, lint: { off: [id] } }))).toEqual([]);
+  });
+
+  it("prefixes the duration warning and off silences it", () => {
+    expect(lintTimeline(sbOf({}), tl(120))[0]).toMatch(/^\[duration\] /);
+    expect(lintTimeline(sbOf({ lint: { off: ["duration"] } }), tl(120))).toEqual([]);
+    expect(lintTimeline(sbOf({ lint: { off: ["duration"] } }), tl(5))).toEqual([]);
+  });
+
+  it("narrationWords raises the limit", () => {
+    const narration = [{ at: 0, text: words(15) }];
+    expect(lintStyle(sbOf({ narration }))).toHaveLength(1);
+    expect(lintStyle(sbOf({ narration, lint: { narrationWords: 20 } }))).toEqual([]);
+    expect(lintStyle(sbOf({ narration, lint: { narrationWords: 10 } }))[0]).toMatch(/15 words \(over 10\)/);
+  });
+
+  it("captionWords raises the limit", () => {
+    const captions = [{ at: 0, text: words(8) }];
+    expect(lintStyle(sbOf({ captions, lint: { captionWords: 8 } }))).toEqual([]);
+  });
+
+  it("duration min and max replace the defaults", () => {
+    expect(lintTimeline(sbOf({ lint: { duration: { max: 200 } } }), tl(120))).toEqual([]);
+    expect(lintTimeline(sbOf({ lint: { duration: { max: 200 } } }), tl(8))[0]).toMatch(/under 15s/);
+    expect(lintTimeline(sbOf({ lint: { duration: { min: 5 } } }), tl(8))).toEqual([]);
+    expect(lintTimeline(sbOf({ lint: { duration: { min: 5, max: 100 } } }), tl(120))[0]).toMatch(/over 100s/);
+  });
+
+  it("rejects an unknown rule id in off", () => {
+    expect(StoryboardSchema.safeParse({ source: "a.mp4", lint: { off: ["nope"] } }).success).toBe(false);
+  });
+});
+
 describe("lintTimeline", () => {
   const tl = (dur: number, offset = 0) => buildTimeline({ segments: [], holds: [], sourceDuration: dur, offset });
   const sbOf = (extra: Partial<StoryboardInput>) => StoryboardSchema.parse({ source: "a.mp4", ...extra });
