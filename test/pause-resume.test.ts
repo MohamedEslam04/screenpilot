@@ -9,6 +9,7 @@ import { findPausedState, PAUSE_FILE, PAUSED_STATE_FILE, RenderPaused, requestPa
 import { renderSequence } from "../src/sequence/index.js";
 import { resumePaused } from "../src/sequence/resume.js";
 import { MemoryGuardError } from "../src/util/mem.js";
+import { pauseAll } from "../src/util/proc.js";
 import { makeVideo } from "./fixtures/video.js";
 
 // HyperFrames is faked as in render-chunks.test.ts: a real little MP4 as long as the composition
@@ -138,6 +139,19 @@ describe.skipIf(!hasFfmpeg)("pause and resume", { timeout: 600_000 }, () => {
     // The saved options (draft, 100 s chunks) are used again, so the first chunk is a cache hit.
     expect(fake.calls).toEqual([100, 100, 100]);
     expect(r.output).toBe(join(dir, "long.mp4"));
+  });
+
+  it("pauseAll (the MCP pause tool in the same process) pauses through the process scope, no file needed", async () => {
+    const dir = await project({ a: 6, b: 6 });
+    const seq = await sequence(dir, ["a", "b"]);
+    fake.onRender = async (call) => void (call === 1 && pauseAll());
+    const err = await paused(renderSequence(seq, { quality: "draft" }));
+    expect(fake.calls).toHaveLength(1);
+    expect(err.info.parts!.map((p) => p.status)).toEqual(["done", "waiting"]);
+    fake.calls = [];
+    fake.onRender = undefined;
+    await resumePaused(seq, {});
+    expect(fake.calls).toHaveLength(1);
   });
 
   it("ignores a .pause left from before the render started", async () => {

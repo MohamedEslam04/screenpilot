@@ -3,9 +3,12 @@ import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promise
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { APP } from "../brand.js";
 import { type JobInfo, listJobs } from "../history/jobs.js";
+import { currentScope } from "../util/proc.js";
 
-// Pause between parts (and chunks) of a long render. `pause` drops a `.pause`
-// file into the build folder; the running render looks for it before each part
+// Pause between parts (and chunks) of a long render. The request is a flag on the
+// render's process scope (src/util/proc.ts, next to `aborted`): pauseAll sets it in
+// this process, and `pause` from another process drops a `.pause` file into the build
+// folder, which the render turns into the flag. The render looks before each part
 // or chunk it is about to render, stops cleanly there and writes `.paused.json`
 // with the options it ran with, so `resume` renders the same thing again: every
 // finished part and chunk is a cache hit.
@@ -86,13 +89,22 @@ export class RenderPaused extends Error {
 
 export const resumeCommand = (path: string) => `${APP} resume ${path}`;
 
-/** Was a pause asked for since this render started? A file from before is stale (nothing was listening then). */
+/**
+ * Was a pause asked for since this render started? The flag lives on the render's process
+ * scope (next to `aborted`; pauseAll sets it in this process); a `.pause` file in the build
+ * folder is how another process asks, and seeing one sets the flag. A file from before the
+ * render started is stale (nothing was listening then).
+ */
 export function pauseRequested(buildDir: string, since: number): boolean {
+  const scope = currentScope();
+  if (scope?.pauseRequested) return true;
   try {
-    return statSync(join(buildDir, PAUSE_FILE)).mtimeMs >= since - STALE_SLACK_MS;
+    if (statSync(join(buildDir, PAUSE_FILE)).mtimeMs < since - STALE_SLACK_MS) return false;
   } catch {
     return false;
   }
+  if (scope) scope.pauseRequested = true;
+  return true;
 }
 
 /** The build folders of a storyboard or sequence: `<name>.build` and `<name>.<style|format|part-…>.build` next to it. */

@@ -205,6 +205,8 @@ export const detachChildren = (platform: NodeJS.Platform = process.platform) => 
 export class ProcessScope {
   readonly children = new Set<ChildProcess>();
   aborted?: AbortedError;
+  /** Stop cleanly after the part or chunk in progress (pauseAll, or a `.pause` file seen by the render, see render/pause.ts). Nothing is killed. */
+  pauseRequested = false;
   private killing?: Promise<void>;
   constructor(readonly opts: KillOptions = {}) {}
 
@@ -260,6 +262,12 @@ export async function withProcessScope<T>(fn: () => Promise<T>, opts: { signal?:
     scopes.delete(scope);
     if (scopes.size === 0) removeHandlers();
   }
+}
+
+/** Ask every running scope to pause after its current part or chunk. Returns how many scopes were running. */
+export function pauseAll(): number {
+  for (const s of scopes.keys()) s.pauseRequested = true;
+  return scopes.size;
 }
 
 /**

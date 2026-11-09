@@ -39,6 +39,12 @@ describe("pause and resume on the MCP server", () => {
     expect(existsSync(join(dir, "seq.build", ".pause"))).toBe(true);
   });
 
+  it("pause without a path when nothing runs says so", async () => {
+    const r = await call("pause", {});
+    expect(r.isError).toBe(true);
+    expect(r.content[0]!.text).toMatch(/Nothing is rendering/);
+  });
+
   it("resume with a sequence carries on a paused render, and says when nothing is paused", async () => {
     const dir = await mkdtemp(join(tmpdir(), "sp-mcp-pause-"));
     const r = await call("resume", { sequence: join(dir, "seq.json") });

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { findPausedState, PAUSE_FILE, PAUSED_STATE_FILE, pauseRenders, pauseRequested, type PausedState, requestPause, writePausedState } from "../src/render/pause.js";
 import type { JobInfo } from "../src/history/jobs.js";
+import { currentScope, pauseAll, withProcessScope } from "../src/util/proc.js";
 
 const tempDir = () => mkdtemp(join(tmpdir(), "sp-pause-"));
 
@@ -106,5 +107,33 @@ describe("pauseRenders", () => {
     const dir = await tempDir();
     const r = await pauseRenders({ path: join(dir, "seq.json") }, []);
     expect(r).toEqual({ requested: [join(dir, "seq.build")], running: [] });
+  });
+});
+
+describe("pause on the process scope", () => {
+  it("pauseAll sets the pause flag of every running scope, next to aborted", async () => {
+    const dir = await tempDir();
+    expect(pauseAll()).toBe(0);
+    await withProcessScope(async () => {
+      // The scope is registered once the job first yields (a render awaits long before any pause check).
+      await Promise.resolve();
+      const since = Date.now();
+      expect(pauseRequested(dir, since)).toBe(false);
+      expect(pauseAll()).toBe(1);
+      expect(currentScope()!.pauseRequested).toBe(true);
+      expect(currentScope()!.aborted).toBeUndefined();
+      // No file involved: the flag alone pauses.
+      expect(pauseRequested(dir, since)).toBe(true);
+    });
+  });
+
+  it("a .pause file from another process sets the flag of the scope that sees it", async () => {
+    const dir = await tempDir();
+    await withProcessScope(async () => {
+      const since = Date.now();
+      await writeFile(join(dir, PAUSE_FILE), "{}");
+      expect(pauseRequested(dir, since)).toBe(true);
+      expect(currentScope()!.pauseRequested).toBe(true);
+    });
   });
 });

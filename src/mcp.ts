@@ -43,7 +43,7 @@ import { type PerformResult, performTake, resolveTarget, TakeError } from "./tak
 import { A11yQuerySchema, TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
 import { estimateStoryboard } from "./voice/estimate.js";
-import { abortAll } from "./util/proc.js";
+import { abortAll, pauseAll } from "./util/proc.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
 import { readSpend, summarizeSpend } from "./voice/spend.js";
 import { exportScript, importAudio } from "./voice/import.js";
@@ -631,8 +631,14 @@ server.registerTool(
   },
   safe(async ({ sequence, storyboard, build_dir }) => {
     if (sequence && storyboard) throw new Error("Give sequence or storyboard, not both.");
-    const r = await pauseRenders({ path: sequence ?? storyboard, buildDir: build_dir });
-    return text({ ...r, note: "The render stops after the part or chunk in progress; its own call then returns {paused: true}. Carry on with resume and the same path." });
+    const target = { path: sequence ?? storyboard, buildDir: build_dir };
+    // No path: set the pause flag of every render running in this server (its process scope, next to abort), and ask other processes through their `.pause` files.
+    const inProcess = target.path || target.buildDir ? 0 : pauseAll();
+    const r = await pauseRenders(target).catch((err: unknown) => {
+      if (inProcess) return { requested: [] as string[], running: [] };
+      throw err;
+    });
+    return text({ ...r, inProcess, note: "The render stops after the part or chunk in progress; its own call then returns {paused: true}. Carry on with resume and the same path." });
   }),
 );
 
