@@ -56,6 +56,11 @@ export async function loadTranslation(file: string): Promise<Translation> {
   return r.data;
 }
 
+/** Read and check every translation file now, so a missing or broken one fails before a long render, not after it. */
+export async function checkTranslations(languages: SubtitleLanguage[] | undefined): Promise<void> {
+  for (const l of languages ?? []) if (l.file) await loadTranslation(l.file);
+}
+
 const plural = (n: number) => `${n} line${n === 1 ? "" : "s"}`;
 
 /**

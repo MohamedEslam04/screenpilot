@@ -6,6 +6,8 @@ import { CACHE_DIR } from "../brand.js";
 import { recordEvent } from "../history/index.js";
 import { startJob } from "../history/jobs.js";
 import { renderStoryboard } from "../render/index.js";
+import { checkTranslations, type SubtitleLanguage, writeTimelineSubtitles } from "../render/subtitle-langs.js";
+import type { CueRules, SubtitleFormat } from "../render/subtitles.js";
 import { assertTimelineFresh, joinTimelines, readTimeline, type Timeline, timelinePath, type TimelinePart, writeTimeline } from "../render/timeline.js";
 import { lintStoryboard, type LoadedStyle, loadStoryboard, StoryboardError } from "../storyboard/load.js";
 import { clipStoryboard } from "../storyboard/clip.js";
@@ -268,6 +270,10 @@ export interface SequenceRenderOptions {
   workers?: number;
   /** Log how long each stage takes. */
   timings?: boolean;
+  /** Caption files for the joined video, from its timeline: `<output>.srt|vtt`, or `<output>.<code>.srt|vtt` per language (default formats srt and vtt). */
+  subtitles?: SubtitleFormat[];
+  subtitleLanguages?: SubtitleLanguage[];
+  subtitleRules?: Partial<CueRules>;
   log?: (msg: string) => void;
   /** Told which part is rendering, for the live-job file. */
   onProgress?: (step: { label: string; index: number; total: number }) => void;
@@ -279,12 +285,17 @@ export interface SequenceResult {
   join: "copy" | "encode";
   /** `<output>.timeline.json`: when each narration line and card is on screen in the joined video. */
   timeline: string;
+  /** Caption files written next to the joined video (see `subtitles` / `subtitleLanguages`). */
+  files?: string[];
+  /** Translation keys that matched nothing, and the like. */
+  warnings?: string[];
   /** `storyboard` is the derived storyboard of a storyboard part, else the nested sequence or video file. `cached` is also true for a video used as is. */
   parts: { kind: PreparedPart["kind"]; storyboard: string; output: string; duration: number; cached: boolean; warnings: string[] }[];
 }
 
 /** Render every part (reusing unchanged ones) and join them into one video. */
 export async function renderSequence(path: string, opts: SequenceRenderOptions = {}): Promise<SequenceResult> {
+  await checkTranslations(opts.subtitleLanguages);
   const prepared = await prepareSequence(path, opts);
   const quality = opts.quality ?? "looks";
   const job = startJob({ kind: "sequence", path: prepared.path, quality });
@@ -292,6 +303,12 @@ export async function renderSequence(path: string, opts: SequenceRenderOptions =
   const wall = () => Math.round(((performance.now() - started) / 1000) * 1000) / 1000;
   try {
     const r = await renderPrepared(prepared, { ...opts, onProgress: (step) => job.update(step) });
+    if (opts.subtitles?.length || opts.subtitleLanguages?.length) {
+      const subs = await writeTimelineSubtitles(await readTimeline(r.timeline), r.output, { languages: opts.subtitleLanguages ?? [], formats: opts.subtitles?.length ? opts.subtitles : ["srt", "vtt"], rules: opts.subtitleRules });
+      for (const f of subs.files) (opts.log ?? (() => {}))(`wrote ${f}`);
+      r.files = subs.files;
+      r.warnings = subs.warnings;
+    }
     await recordEvent({ kind: "sequence", status: "ok", path: prepared.path, output: r.output, durationSec: r.duration, quality, wallSeconds: wall() });
     return r;
   } catch (err) {
