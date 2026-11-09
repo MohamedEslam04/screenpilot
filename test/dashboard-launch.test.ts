@@ -59,7 +59,7 @@ describe("dashboard inside the package and the per-OS entries", () => {
   it("looks in the installed app first, then the folder it runs from, then next to the app, and accepts the .exe name on Windows", () => {
     const c = dashboardCandidates("linux", "/opt/sp", "/home/u/.local/share/screenpilot");
     // The installed app wins over the folder setup was started from (an unzipped download that may be deleted).
-    expect(c).toEqual(["/home/u/.local/share/screenpilot/dashboard/screenpilot-dashboard", "/opt/sp/dashboard/screenpilot-dashboard", "/home/u/.local/share/screenpilot-dashboard/screenpilot-dashboard"]);
+    expect(c).toEqual([join("/home/u/.local/share/screenpilot", "dashboard", "screenpilot-dashboard"), join("/opt/sp", "dashboard", "screenpilot-dashboard"), join("/home/u/.local/share/screenpilot-dashboard", "screenpilot-dashboard")]);
     expect(dashboardCandidates("win32", "C:\\sp", "C:\\app")[0]).toMatch(/screenpilot-dashboard\.exe$/);
   });
 
@@ -90,16 +90,19 @@ describe("dashboard inside the package and the per-OS entries", () => {
 
 describe("application icon", () => {
   it("finds the logo in the package (icon.png) or the repository (assets/icon.png)", () => {
-    expect(iconCandidates("/opt/sp", "/home/u/.local/share/screenpilot")).toEqual(["/opt/sp/icon.png", "/opt/sp/assets/icon.png", "/home/u/.local/share/screenpilot/icon.png"]);
+    expect(iconCandidates("/opt/sp", "/home/u/.local/share/screenpilot")).toEqual([join("/opt/sp", "icon.png"), join("/opt/sp", "assets", "icon.png"), join("/home/u/.local/share/screenpilot", "icon.png")]);
   });
 
   it("plans the macOS icon: every iconset size, then iconutil", () => {
-    const plan = icnsPlan("/p/icon.png", "/t/AppIcon.iconset", "/app/Contents/Resources/AppIcon.icns");
+    // Paths are built with join(), so the expectations are too (Windows joins with a backslash).
+    const set = "/t/AppIcon.iconset";
+    const inSet = (name: string) => join(set, name);
+    const plan = icnsPlan("/p/icon.png", set, "/app/Contents/Resources/AppIcon.icns");
     const names = plan.filter((c) => c[0] === "sips").map((c) => c[1].at(-1));
-    expect(names).toEqual(expect.arrayContaining(["/t/AppIcon.iconset/icon_16x16.png", "/t/AppIcon.iconset/icon_16x16@2x.png", "/t/AppIcon.iconset/icon_512x512.png", "/t/AppIcon.iconset/icon_512x512@2x.png"]));
-    expect(plan.at(-1)).toEqual(["iconutil", ["-c", "icns", "/t/AppIcon.iconset", "-o", "/app/Contents/Resources/AppIcon.icns"]]);
-    const one = plan.find((c) => c[1].at(-1) === "/t/AppIcon.iconset/icon_32x32@2x.png");
-    expect(one?.[1]).toEqual(["-z", "64", "64", "/p/icon.png", "--out", "/t/AppIcon.iconset/icon_32x32@2x.png"]);
+    expect(names).toEqual(expect.arrayContaining([inSet("icon_16x16.png"), inSet("icon_16x16@2x.png"), inSet("icon_512x512.png"), inSet("icon_512x512@2x.png")]));
+    expect(plan.at(-1)).toEqual(["iconutil", ["-c", "icns", set, "-o", "/app/Contents/Resources/AppIcon.icns"]]);
+    const one = plan.find((c) => c[1].at(-1) === inSet("icon_32x32@2x.png"));
+    expect(one?.[1]).toEqual(["-z", "64", "64", "/p/icon.png", "--out", inSet("icon_32x32@2x.png")]);
   });
 
   it("points the macOS bundle at its icon and the Windows shortcut at the icon inside the program", () => {
