@@ -1,7 +1,0 @@
-{
-  "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "The dashboard window: core defaults and listening to events from Rust (jobs-changed). The commands in src/commands.rs need no permission entry.",
-  "windows": ["main"],
-  "permissions": ["core:default", "core:event:allow-listen", "core:event:allow-unlisten"]
-}

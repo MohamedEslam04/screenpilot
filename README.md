@@ -15,7 +15,7 @@ Ask your AI app for a screen video. ScreenPilot records your screen (or uses you
 ### Unreleased
 
 - **History:** every recording, take, render and sequence (failures too) is logged to `history.jsonl` in the config folder, and a running render leaves a small job file with its progress. `screenpilot history [--live]` shows them, and `screenpilot library import` adds work made before.
-- **Dashboard (new, built from source for now):** a small separate desktop program (Tauri) that lists everything ScreenPilot made, with thumbnails, a video player, running renders, render speed and the voice setup. It has no background process: closing the window ends it. Open it with `screenpilot dashboard`. See [Dashboard](https://mohamedeslam04.github.io/screenpilot/guide/dashboard.html).
+- **Dashboard (new, built from source for now):** a small native desktop program (about 14 MB of memory, no web view) that lists everything ScreenPilot made, with a thumbnail, Open video, running renders, render speed and the voice setup. It has no background process: closing the window ends it. Open it with `screenpilot dashboard`. See [Dashboard](https://mohamedeslam04.github.io/screenpilot/guide/dashboard.html).
 - **Cloud voices (optional):** `elevenlabs` and `gemini` voice providers. Keys go in `ELEVENLABS_API_KEY` / `GEMINI_API_KEY` or in `secrets.json` (mode 0600) through `screenpilot secret set <provider>` (key on stdin). They have been tested against mocked requests only. The default voice still needs no account.
 
 ### 0.10.0 ([release notes](https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.10.0))

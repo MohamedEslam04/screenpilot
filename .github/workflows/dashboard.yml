@@ -1,8 +1,8 @@
 name: Dashboard
 
 # Only the Rust logic of the dashboard (dashboard/core: serde and std, no GUI libraries), and only
-# when the dashboard changes, because Actions minutes are limited. The Tauri shell needs GTK and
-# WebKit and is built by hand from dashboard/src-tauri (see its README).
+# when the dashboard changes, because Actions minutes are limited. The Slint app (dashboard/app)
+# needs fontconfig, freetype, xkbcommon, wayland and X11 development packages and is built by hand.
 on:
   push:
     branches: [main]

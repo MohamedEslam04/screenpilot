@@ -1,6 +1,6 @@
 //! Logic of the ScreenPilot dashboard. Pure functions that take explicit folders so the tests
-//! use temp dirs. No GUI or async dependency: the Tauri shell (`../src-tauri`) only wires
-//! these to commands. See `../API.md` for the contract with the UI.
+//! use temp dirs. No GUI or async dependency: the native UI (`../app`, Slint) only wires
+//! these to its callbacks.
 
 pub mod cache;
 pub mod cli;
