@@ -43,6 +43,9 @@ summary: إجابات قصيرة عن أكثر أسئلة ScreenPilot شيوعا
 <h3 id="files">أين تُحفظ ملفاتي؟</h3>
 <p>تذهب التسجيلات والفيديوهات النهائية إلى مجلد <strong>ScreenPilot</strong> داخل مجلد Videos (وفي ماك Movies). كل تسجيل مجلد جلسة فيه الفيديو و<code>events.jsonl</code> و<code>storyboard.json</code>. وعند استخدام سطر الأوامر تذهب الجلسات إلى <code>sessions/&lt;timestamp&gt;</code> في المجلد الحالي، أو إلى المجلد المحدد في <code>SCREENPILOT_OUTPUT</code>. وخيار المثبّت <code>--output &lt;dir&gt;</code> يحدد هذا المجلد. أما الإعدادات وسجل التدقيق ففي <code>~/.config/screenpilot</code> (وفي Windows: <code>%APPDATA%\screenpilot</code>).</p>
 
+<h3 id="project-folder">هل يمكن لمشروع واحد أن يحتفظ بفيديوهاته في مجلده؟</h3>
+<p>نعم. ضع ملف <code>.screenpilot.json</code> في المجلد الرئيسي للمشروع: <code>{"output": "videos"}</code>، أو نفّذ <code>screenpilot project set-output videos</code> هناك. عندها تُحفظ الفيديوهات التي تسجّلها أو تنفّذها لهذا المشروع في <code>videos/&lt;timestamp&gt;</code> داخله، ويبقى كل ما عداها في مجلدك الافتراضي. يجب أن يكون المجلد داخل المشروع (يُرفض المسار المطلق و<code>..</code>)، فلا يستطيع مستودع تستنسخه إرسال الملفات إلى مكان آخر. أضف المجلد إلى <code>.gitignore</code> إن لم ترد إيداع الفيديوهات. يُطلب من تطبيق الذكاء الاصطناعي أن يمرّر المشروع الذي يعمل فيه، ويبحث ScreenPilot عن الملف في ذلك المجلد وفي المجلدات التي فوقه. وتعرض لوحة المتابعة هذه الفيديوهات كغيرها أينما كانت.</p>
+
 <h2 id="checks">الفحص والأذونات</h2>
 
 <h3 id="doctor">ماذا يفحص doctor؟</h3>

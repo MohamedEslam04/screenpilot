@@ -11,7 +11,7 @@ import { detectDesktop, getDesktop, type Watcher } from "../platform/index.js";
 import { detectLayout } from "../drive/see.js";
 import { loadState, saveState } from "../drive/state.js";
 import { type CaptureInfo, ObsRecorder, resolveObsConfig, unionRect } from "./obs.js";
-import { APP, sessionsRoot } from "../brand.js";
+import { APP, outputRoot } from "../brand.js";
 import { recordEvent } from "../history/index.js";
 
 // Public recording API (used by the CLI and the MCP server).
@@ -38,6 +38,8 @@ export interface RecordOptions {
   recorder?: RecorderId;
   /** Close notification popups on screen and hold new ones while recording (default true). */
   quiet?: boolean;
+  /** A folder or file the video belongs to: its `.screenpilot.json` (searched upwards) picks the video folder. Default: the working directory. Ignored with `dir`. */
+  project?: string;
   /** false: leave no history line (a take adds its own). */
   history?: boolean;
   log?: (msg: string) => void;
@@ -94,9 +96,14 @@ function sessionName(d = new Date()): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
 }
 
+/** Where a new recording goes: `dir`, else a new folder in the project's video folder, else in the default one. */
+export function newSessionDir(opts: Pick<RecordOptions, "dir" | "project">, now = new Date()): string {
+  return resolve(opts.dir ?? join(outputRoot(opts.project), sessionName(now)));
+}
+
 export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRecording> {
   const log = opts.log ?? (() => {});
-  const dir = resolve(opts.dir ?? join(sessionsRoot(), sessionName()));
+  const dir = newSessionDir(opts);
   await mkdir(dir, { recursive: true });
 
   const recorder = opts.recorder ?? (await defaultRecorder());
