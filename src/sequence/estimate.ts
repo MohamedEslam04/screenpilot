@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import type { LoadedStyle } from "../storyboard/load.js";
 import { estimateNarration, type NarrationEstimate } from "../voice/estimate.js";
-import { clipPart, loadParts, loadSequence } from "./index.js";
+import { clipPart, loadParts, loadSequence, type SequenceVariant, type VariantOptions } from "./index.js";
 
 export interface SequenceEstimate {
   dryRun: true;
@@ -19,9 +19,10 @@ export interface SequenceEstimate {
  * part (only the range of each part), before any request. Unlike a real run it writes nothing,
  * not even the build folder; finished video parts cost nothing.
  */
-export async function estimateSequence(path: string, opts: { style?: LoadedStyle } = {}): Promise<SequenceEstimate> {
+export async function estimateSequence(path: string, opts: { style?: LoadedStyle } & VariantOptions = {}): Promise<SequenceEstimate> {
   const parts: SequenceEstimate["parts"] = [];
-  await collect(resolve(path), [], opts.style, new Set(), parts);
+  const variant: SequenceVariant | undefined = opts.variant ? { name: opts.variant, dir: opts.variantDir ? resolve(opts.variantDir) : undefined } : undefined;
+  await collect(resolve(path), [], opts.style, new Set(), parts, variant);
   const sum = (f: (p: NarrationEstimate) => number) => parts.reduce((a, p) => a + f(p), 0);
   return {
     dryRun: true,
@@ -34,13 +35,13 @@ export async function estimateSequence(path: string, opts: { style?: LoadedStyle
   };
 }
 
-async function collect(path: string, ancestors: string[], style: LoadedStyle | undefined, seen: Set<string>, out: SequenceEstimate["parts"]): Promise<void> {
+async function collect(path: string, ancestors: string[], style: LoadedStyle | undefined, seen: Set<string>, out: SequenceEstimate["parts"], variant?: SequenceVariant): Promise<void> {
   const loaded = await loadSequence(path);
   const chain = [...ancestors, loaded.path];
-  const loadedParts = await loadParts(loaded, chain, style);
+  const loadedParts = await loadParts(loaded, chain, style, variant);
   for (const [index, lp] of loadedParts.entries()) {
     const part = loaded.seq.parts[index]!;
-    if (lp.kind === "sequence") await collect(lp.file, chain, style, seen, out);
+    if (lp.kind === "sequence") await collect(lp.file, chain, style, seen, out, variant);
     else if (lp.kind === "storyboard") {
       const sb = await clipPart(loaded, index, lp.sb, lp.baseDir);
       out.push({ part: `${part.storyboard} (part ${index + 1})`, ...estimateNarration(sb, lp.baseDir, seen) });

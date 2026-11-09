@@ -586,12 +586,14 @@ program
   .option("--workers <n>", "Parallel renderers, each a headless Chrome: auto (default: half the cores, from free memory), max (idle desktop: all cores but two) or a number. SCREENPILOT_WORKERS sets the default")
   .option("--timings", "Log how long each stage takes and show HyperFrames phase timings")
   .option("--style <file>", "Style file ({ \"theme\": {...} }) merged over the theme of every part; writes <sequence>.<style>.mp4 and keeps its own build folder")
+  .option("--variant <name>", "Variant name: each part takes <its folder>/variants/<name>.json (a part without one renders as written, with a warning). Writes <sequence>.<variant>.mp4; parts that do not use the variant are reused between variants")
+  .option("--variant-dir <dir>", "Folder with <name>.json variants for the parts that have no variants/<name>.json of their own")
   .option("--build-dir <dir>")
   .option("--dry-run", "Print the lines, characters and estimated USD the voices would cost, part by part, then stop: no request, no file, no build folder")
   .addOption(new Option("--dry").hideHelp())
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string; dryRun?: boolean; dry?: boolean }) => {
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string; variant?: string; variantDir?: string; dryRun?: boolean; dry?: boolean }) => {
     if (o.dryRun || o.dry) {
-      const e = await estimateSequence(path, { style: o.style ? await loadStyle(o.style) : undefined });
+      const e = await estimateSequence(path, { style: o.style ? await loadStyle(o.style) : undefined, variant: o.variant, variantDir: o.variantDir });
       log(describeEstimate(e, " (all parts)"));
       print(e);
       return;
@@ -604,8 +606,10 @@ program
   .command("sequence-validate")
   .description("Check a sequence.json and every storyboard it uses")
   .argument("<sequence>")
-  .action(async (path: string) => {
-    print(await validateSequence(path));
+  .option("--variant <name>", "Check the sequence with this variant applied to each part (see sequence --variant)")
+  .option("--variant-dir <dir>", "Folder with <name>.json variants for parts without their own")
+  .action(async (path: string, o: { variant?: string; variantDir?: string }) => {
+    print(await validateSequence(path, o));
   });
 
 program

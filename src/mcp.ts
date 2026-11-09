@@ -559,12 +559,16 @@ server.registerTool(
 server.registerTool(
   "sequence_validate",
   {
-    description: "Validate a sequence.json and every storyboard it uses. Returns schema errors and lint warnings as text (never throws).",
-    inputSchema: { path: z.string().describe("Path to sequence.json") },
+    description: "Validate a sequence.json and every storyboard it uses. Returns schema errors and lint warnings as text (never throws). Pass variant (and variant_dir) to check it with a variant applied.",
+    inputSchema: {
+      path: z.string().describe("Path to sequence.json"),
+      variant: z.string().optional().describe("Variant name: each part takes <its folder>/variants/<name>.json"),
+      variant_dir: z.string().optional().describe("Folder with <name>.json variants for parts that have none of their own"),
+    },
   },
-  safe(async ({ path }) => {
+  safe(async ({ path, variant, variant_dir }) => {
     try {
-      return text(await validateSequence(path));
+      return text(await validateSequence(path, { variant, variantDir: variant_dir }));
     } catch (err) {
       if (err instanceof StoryboardError) return text({ valid: false, issues: err.issues });
       throw err;
@@ -579,6 +583,7 @@ server.registerTool(
       "Render a sequence.json: each part is rendered like a storyboard (unchanged parts are reused), all at one output size, " +
       "with the intro of the first part and the outro of the last, then joined into one MP4. " +
       "Pass style (a style file, JSON with only a theme) to render the same sequence with another look: its theme is merged over every storyboard part (not over finished video parts), the file is named <sequence>.<style>.mp4 and each style keeps its own build folder and cache. " +
+      "Pass variant (a name) to render the same sequence with another script: each part takes <its folder>/variants/<name>.json (else <variant_dir>/<name>.json; a part with none renders as written and the result warns), the file is named <sequence>.<variant>.mp4 (with a style: <sequence>.<variant>.<style>.mp4), and parts that do not use the variant are reused between variants. " +
       "dryRun=true sends nothing and writes nothing (no build folder): it returns the lines, characters and estimated USD the voices would cost, part by part. " +
       "Slow (minutes). Follow with check_output.",
     inputSchema: {
@@ -586,14 +591,16 @@ server.registerTool(
       output: z.string().optional().describe("Output mp4. Default: <sequence>.mp4"),
       quality: z.enum(["draft", "looks", "delivery"]).optional().describe("Default looks"),
       style: z.string().optional().describe('Path to a style file: { "theme": {...} } only; merged over the theme of every storyboard part'),
+      variant: z.string().optional().describe("Variant name: each part takes <its folder>/variants/<name>.json (another script, voice and overlay files for the same recordings)"),
+      variant_dir: z.string().optional().describe("Folder with <name>.json variants for parts that have no variants/<name>.json of their own"),
       workers: workersField,
       dryRun: z.boolean().optional().describe("Only estimate the voice cost (lines, characters, USD) part by part: no request, no file, no build folder"),
     },
   },
-  safe(async ({ sequence, output, quality, style, workers, dryRun }) => {
-    if (dryRun) return text(await estimateSequence(sequence, { style: style ? await loadStyle(style) : undefined }));
+  safe(async ({ sequence, output, quality, style, variant, variant_dir, workers, dryRun }) => {
+    if (dryRun) return text(await estimateSequence(sequence, { style: style ? await loadStyle(style) : undefined, variant, variantDir: variant_dir }));
     requireBrief("sequence_render");
-    return text(await renderSequence(sequence, { output, quality, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(workers), log }));
+    return text(await renderSequence(sequence, { output, quality, style: style ? await loadStyle(style) : undefined, variant, variantDir: variant_dir, workers: parseWorkers(workers), log }));
   }),
 );
 

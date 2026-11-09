@@ -10,6 +10,7 @@ import { assertTimelineFresh, joinTimelines, readTimeline, type Timeline, timeli
 import { lintStoryboard, type LoadedStyle, loadStoryboard, StoryboardError } from "../storyboard/load.js";
 import { clipStoryboard } from "../storyboard/clip.js";
 import { isBuiltinSfx, type Storyboard } from "../storyboard/schema.js";
+import { type LoadedVariant, readVariant, variantFileIn, variantKey, variantName } from "../storyboard/variant.js";
 import { probeVideo } from "../util/media.js";
 import { makeTimer } from "../util/timing.js";
 import { concatParts, type OutputSize, probePart, type Quality, trimVideo } from "./concat.js";
@@ -41,9 +42,23 @@ export async function loadSequence(path: string): Promise<LoadedSequence> {
 
 const abs = (baseDir: string, p: string) => (isAbsolute(p) ? p : resolve(baseDir, p));
 
+/** `--variant <name>` for a sequence: each part looks for `<its folder>/variants/<name>.json`, then `<dir>/<name>.json`. */
+export interface SequenceVariant {
+  name: string;
+  dir?: string;
+}
+
+/** The variant options of the sequence functions, as the CLI and MCP pass them. */
+export interface VariantOptions {
+  variant?: string;
+  variantDir?: string;
+}
+
+const sequenceVariant = (o: VariantOptions): SequenceVariant | undefined => (o.variant ? { name: o.variant, dir: o.variantDir ? resolve(o.variantDir) : undefined } : undefined);
+
 /** A part with what it needs loaded: a storyboard is parsed; a nested sequence or a video is only located. */
 export type LoadedPart =
-  | { kind: "storyboard"; sb: Storyboard; baseDir: string }
+  | { kind: "storyboard"; sb: Storyboard; baseDir: string; variant?: LoadedVariant; warnings: string[] }
   | { kind: "sequence"; file: string }
   | { kind: "video"; file: string };
 
@@ -59,7 +74,7 @@ const partIssues = (i: number, part: Part, err: StoryboardError) =>
  * leads back to one being loaded fails with the chain printed. `chain` is the
  * sequences being loaded, outermost first, this one included.
  */
-export async function loadParts(loaded: LoadedSequence, chain: string[], style?: LoadedStyle): Promise<LoadedPart[]> {
+export async function loadParts(loaded: LoadedSequence, chain: string[], style?: LoadedStyle, variant?: SequenceVariant): Promise<LoadedPart[]> {
   const issues: string[] = [];
   const parts: LoadedPart[] = [];
   for (const [i, part] of loaded.seq.parts.entries()) {
@@ -74,16 +89,35 @@ export async function loadParts(loaded: LoadedSequence, chain: string[], style?:
       parts.push({ kind: "video", file: abs(loaded.baseDir, part.video) });
     } else {
       try {
-        const { sb, baseDir } = await loadStoryboard(resolve(loaded.baseDir, part.storyboard!), { style });
-        parts.push({ kind: "storyboard", sb, baseDir });
+        const file = resolve(loaded.baseDir, part.storyboard!);
+        const found = variant ? await findVariant(variant, dirname(file)) : undefined;
+        const { sb, baseDir } = await loadStoryboard(file, { style, variant: found });
+        const warnings = variant && !found ? [`no variant "${variant.name}" for this part (looked for ${variantLookups(variant, dirname(file)).join(" and ")}); it renders as written`] : [];
+        parts.push({ kind: "storyboard", sb, baseDir, variant: found, warnings });
       } catch (err) {
         if (!(err instanceof StoryboardError)) throw err;
         issues.push(...partIssues(i, part, err));
       }
     }
   }
+  if (variant) {
+    const stories = parts.filter((p) => p.kind === "storyboard");
+    // A nested sequence checks for itself.
+    if (stories.length && !parts.some((p) => p.kind === "sequence") && stories.every((p) => p.kind === "storyboard" && !p.variant)) {
+      const first = loaded.seq.parts.find((p) => p.storyboard !== undefined)!;
+      issues.push(`variant "${variant.name}" was not found for any part (looked for ${variantLookups(variant, dirname(resolve(loaded.baseDir, first.storyboard!))).join(" and ")}, for each part's folder)`);
+    }
+  }
   if (issues.length) throw new StoryboardError(`Invalid sequence ${loaded.path}`, issues);
   return parts;
+}
+
+const variantLookups = (v: SequenceVariant, partDir: string) => [variantFileIn(partDir, v.name), ...(v.dir ? [join(v.dir, `${v.name}.json`)] : [])];
+
+/** The variant file of a part: its own folder first, then the shared --variant-dir. */
+async function findVariant(v: SequenceVariant, partDir: string): Promise<LoadedVariant | undefined> {
+  for (const file of variantLookups(v, partDir)) if (existsSync(file)) return readVariant(file);
+  return undefined;
 }
 
 interface PreparedBase {
@@ -98,6 +132,8 @@ interface PreparedBase {
   transition?: Transition;
   /** Folder name of the part's storyboard, the chapter of its lines in timeline.json. */
   chapter?: string;
+  /** True when this part's picture or sound comes from a variant file; such a part has its own folder per variant, every other one is shared by all variants. */
+  usesVariant?: boolean;
 }
 
 export interface PreparedStoryboardPart extends PreparedBase {
@@ -107,6 +143,8 @@ export interface PreparedStoryboardPart extends PreparedBase {
   /** Voice cache of the original storyboard, so parts share it with normal renders. */
   cacheDir: string;
   sb: Storyboard;
+  /** Said when a variant was asked for and this part has none. */
+  warnings: string[];
 }
 
 /** A nested sequence, rendered on its own to `output`. */
@@ -134,8 +172,12 @@ export interface PreparedSequence {
   parts: PreparedPart[];
   /** Name of the style applied to every storyboard part (see loadStyle); it names the default build folder and output. */
   style?: string;
+  /** Name of the variant (`--variant`); it names the default output, and the folder of every part that has it. */
+  variant?: string;
   /** Changes whenever a part, a transition, the size or the style changes, so a nested sequence is re-rendered only then. */
   key: string;
+  /** True when any part (at any depth) takes something from the variant. */
+  usesVariant: boolean;
 }
 
 /** The part's source range of its storyboard (the whole storyboard without from/to). */
@@ -167,15 +209,17 @@ const sha1 = (text: string) => createHash("sha1").update(text).digest("hex");
  * absolute. The user's files are never changed. Nested sequences are prepared
  * recursively (in their own build folder), videos are only probed.
  */
-export async function prepareSequence(path: string, opts: { buildDir?: string; style?: LoadedStyle } = {}): Promise<PreparedSequence> {
+export async function prepareSequence(path: string, opts: { buildDir?: string; style?: LoadedStyle } & VariantOptions = {}): Promise<PreparedSequence> {
   return prepare(path, opts, []);
 }
 
-async function prepare(path: string, opts: { buildDir?: string; style?: LoadedStyle }, ancestors: string[]): Promise<PreparedSequence> {
+async function prepare(path: string, opts: { buildDir?: string; style?: LoadedStyle } & VariantOptions, ancestors: string[]): Promise<PreparedSequence> {
   const { style } = opts;
+  const variant = sequenceVariant(opts);
+  const label = variant ? variantName(variant.name) : undefined;
   const loaded = await loadSequence(path);
   const chain = [...ancestors, loaded.path];
-  const loadedParts = await loadParts(loaded, chain, style);
+  const loadedParts = await loadParts(loaded, chain, style, variant);
   const buildDir = resolve(opts.buildDir ?? join(loaded.baseDir, `${basename(loaded.path, extname(loaded.path))}${style ? `.${style.name}` : ""}.build`));
 
   // Nested sequences first: the output size can come from the first part.
@@ -185,7 +229,7 @@ async function prepare(path: string, opts: { buildDir?: string; style?: LoadedSt
   for (const [i, lp] of loadedParts.entries()) {
     const part = loaded.seq.parts[i]!;
     try {
-      if (lp.kind === "sequence") nested.set(i, await prepare(lp.file, { style }, chain));
+      if (lp.kind === "sequence") nested.set(i, await prepare(lp.file, { style, variant: opts.variant, variantDir: opts.variantDir }, chain));
       else if (lp.kind === "video") {
         if (!existsSync(lp.file)) throw new StoryboardError("", [`video not found: ${lp.file}`]);
         videoInfo.set(i, await probeVideo(lp.file));
@@ -206,9 +250,11 @@ async function prepare(path: string, opts: { buildDir?: string; style?: LoadedSt
   const parts: PreparedPart[] = [];
   for (const [index, lp] of loadedParts.entries()) {
     const part = loaded.seq.parts[index]!;
-    const dir = join(buildDir, `part-${index}`);
+    // A part that has the variant gets its own folder per variant; the others are shared, so the next variant reuses their picture.
+    const usesVariant = lp.kind === "sequence" ? nested.get(index)!.usesVariant : lp.kind === "storyboard" && lp.variant !== undefined;
+    const dir = join(buildDir, `part-${index}${usesVariant && label ? `.${label}` : ""}`);
     await mkdir(dir, { recursive: true });
-    const base = { index, dir, transition: part.transition, ...(part.storyboard !== undefined ? { chapter: basename(dirname(abs(loaded.baseDir, part.storyboard))) } : {}) };
+    const base = { index, dir, transition: part.transition, ...(usesVariant ? { usesVariant: true } : {}), ...(part.storyboard !== undefined ? { chapter: basename(dirname(abs(loaded.baseDir, part.storyboard))) } : {}) };
     if (lp.kind === "sequence") {
       const sequence = nested.get(index)!;
       parts.push({ ...base, kind: "sequence", sequence, output: join(dir, "part.mp4"), key: sequence.key });
@@ -218,7 +264,10 @@ async function prepare(path: string, opts: { buildDir?: string; style?: LoadedSt
       const { from, to } = part;
       const trimmed = from !== undefined || to !== undefined;
       const key = sha1(`${lp.file}|${from ?? ""}|${to ?? ""}|${await fileStamp(lp.file)}`);
-      const warnings = style ? [`style "${style.name}" is not applied to ${part.video} (a finished video)`] : [];
+      const warnings = [
+        ...(style ? [`style "${style.name}" is not applied to ${part.video} (a finished video)`] : []),
+        ...(variant ? [`variant "${variant.name}" is not applied to ${part.video} (a finished video)`] : []),
+      ];
       parts.push({ ...base, kind: "video", file: lp.file, from, to, output: trimmed ? join(dir, "part.mp4") : lp.file, key, warnings });
       continue;
     }
@@ -249,16 +298,17 @@ async function prepare(path: string, opts: { buildDir?: string; style?: LoadedSt
     const stamps = await Promise.all(
       [sb.source, sb.events, sb.music?.src, ...sb.overlays.map((o) => o.src), ...sb.narration.map((n) => n.audio), ...sb.sfx.map((x) => x.src), ...sounds].map(fileStamp),
     );
-    const key = sha1(`${text}|${stamps.join("|")}`);
-    parts.push({ ...base, kind: "storyboard", storyboard, output: join(dir, "part.mp4"), cacheDir: join(baseDir, CACHE_DIR), key, sb });
+    const key = sha1(`${text}|${stamps.join("|")}${lp.variant ? `|${variantKey(lp.variant)}` : ""}`);
+    parts.push({ ...base, kind: "storyboard", storyboard, output: join(dir, "part.mp4"), cacheDir: join(baseDir, CACHE_DIR), key, sb, warnings: lp.warnings });
   }
   const key = sha1(JSON.stringify([output, parts.map((p) => [p.key, p.transition ?? null]), ...(style ? [style.name] : [])]));
-  return { path: loaded.path, buildDir, output, parts, style: style?.name, key };
+  return { path: loaded.path, buildDir, output, parts, style: style?.name, ...(label ? { variant: label } : {}), key, usesVariant: parts.some((p) => p.usesVariant) };
 }
 
 const sizeOf = (v: { width: number; height: number; fps: number }): OutputSize => ({ width: v.width, height: v.height, fps: Math.round(v.fps) });
 
-export interface SequenceRenderOptions {
+export interface SequenceRenderOptions extends VariantOptions {
+  /** A variant name (see SequenceVariant): each part takes its own variants/<name>.json; writes <sequence>.<variant>.mp4 (then .<style>). */
   /** A style file (see loadStyle) applied to every storyboard part; writes <sequence>.<style>.mp4. */
   style?: LoadedStyle;
   output?: string;
@@ -319,7 +369,7 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
     // A part keeps its timeline next to its video (part.timeline.json), so a cached part still has one; without it (cached by an older version) it is rendered again.
     const hasTimeline = part.kind === "video" || existsSync(timelinePath(part.output));
     const cached = existsSync(part.output) && hasTimeline && existsSync(keyFile) && (await readFile(keyFile, "utf8")) === key;
-    let warnings: string[] = part.kind === "video" ? part.warnings : [];
+    let warnings: string[] = part.kind === "video" || part.kind === "storyboard" ? part.warnings : [];
     opts.onProgress?.({ label: "part", index: part.index + 1, total: prepared.parts.length });
     if (cached) log(`${label}: unchanged, reusing ${part.output}`);
     else {
@@ -336,7 +386,7 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
           log,
           history: false,
         });
-        warnings = r.warnings;
+        warnings = [...part.warnings, ...r.warnings];
       } else if (part.kind === "sequence") {
         const r = await renderPrepared(part.sequence, { ...opts, output: part.output, buildDir: undefined, onProgress: undefined });
         warnings = r.parts.flatMap((p) => p.warnings);
@@ -353,7 +403,7 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
   );
   media.forEach((m, i) => (results[i]!.duration = m.duration));
   const base = prepared.path.slice(0, -extname(prepared.path).length);
-  const output = resolve(opts.output ?? `${base}${prepared.style ? `.${prepared.style}` : ""}.mp4`);
+  const output = resolve(opts.output ?? `${base}${prepared.variant ? `.${prepared.variant}` : ""}${prepared.style ? `.${prepared.style}` : ""}.mp4`);
   await mkdir(dirname(output), { recursive: true });
   const joined = await makeTimer(opts.timings, log)("join", () =>
     concatParts(media, output, prepared.output, { workDir: prepared.buildDir, quality, log }),
@@ -388,14 +438,15 @@ async function partTimeline(part: PreparedPart, videoDuration: number): Promise<
 }
 
 /** Schema problems throw (StoryboardError with issues); everything else is a warning. */
-export async function validateSequence(path: string): Promise<{ valid: true; warnings: string[] }> {
-  return validate(path, []);
+export async function validateSequence(path: string, opts: VariantOptions = {}): Promise<{ valid: true; warnings: string[] }> {
+  return validate(path, [], opts);
 }
 
-async function validate(path: string, ancestors: string[]): Promise<{ valid: true; warnings: string[] }> {
+async function validate(path: string, ancestors: string[], opts: VariantOptions): Promise<{ valid: true; warnings: string[] }> {
   const loaded = await loadSequence(path);
   const chain = [...ancestors, loaded.path];
-  const loadedParts = await loadParts(loaded, chain);
+  const variant = sequenceVariant(opts);
+  const loadedParts = await loadParts(loaded, chain, undefined, variant);
   const warnings: string[] = [];
   const issues: string[] = [];
   for (const [i, lp] of loadedParts.entries()) {
@@ -403,7 +454,7 @@ async function validate(path: string, ancestors: string[]): Promise<{ valid: tru
     const label = `parts[${i}] (${partRef(part)})`;
     if (lp.kind === "sequence") {
       try {
-        warnings.push(...(await validate(lp.file, chain)).warnings.map((w) => `${label}: ${w}`));
+        warnings.push(...(await validate(lp.file, chain, opts)).warnings.map((w) => `${label}: ${w}`));
       } catch (err) {
         if (!(err instanceof StoryboardError)) throw err;
         issues.push(...partIssues(i, part, err));
@@ -423,6 +474,7 @@ async function validate(path: string, ancestors: string[]): Promise<{ valid: tru
       if (from !== undefined && from >= duration) issues.push(`${label}: keeps nothing: from ${from}s is past the end of the video (${duration.toFixed(2)}s)`);
       continue;
     }
+    warnings.push(...lp.warnings.map((w) => `${label}: ${w}`));
     warnings.push(...lintStoryboard(lp.sb, duration).map((w) => `${label}: ${w}`));
     try {
       await clipPart(loaded, i, lp.sb, lp.baseDir);
