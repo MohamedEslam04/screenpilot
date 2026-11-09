@@ -9,6 +9,8 @@ import { lintStoryboard, type LoadedStyle, loadStoryboard } from "../storyboard/
 import type { Storyboard } from "../storyboard/schema.js";
 import { buildTimeline, planNarrationHolds, type Timeline } from "../storyboard/timeline.js";
 import { run } from "../util/exec.js";
+import { writeAtomically } from "../util/partial.js";
+import { withProcessScope } from "../util/proc.js";
 import { makeTimer } from "../util/timing.js";
 import { ffmpegFilterScriptFlag, probeVideo, type VideoInfo } from "../util/media.js";
 import { externalClip } from "../voice/external.js";
@@ -292,6 +294,8 @@ async function cutVideo(
   log(`cut: ${timeline.pieces.length} piece(s) -> ${timeline.videoDuration.toFixed(2)}s`);
   const filterPath = join(buildDir, "cut.filter");
   await writeFile(filterPath, filter);
+  // An aborted cut leaves a half-written edited.mp4: no key may vouch for it.
+  await rm(keyFile, { force: true });
   await run(
     "ffmpeg",
     buildCutArgs(
@@ -328,6 +332,8 @@ export interface RenderOptions extends PrepareOptions, MemGuardOptions {
   pauseCheck?: () => boolean;
   /** Internal: what this render is inside a sequence ("part 2/8"), for memory guard messages. */
   stepLabel?: string;
+  /** Aborts the render (an MCP request cancelled): its whole process tree is killed. abortAll does the same for every render. */
+  signal?: AbortSignal;
 }
 
 /** Outputs (or --from/--to windows) shorter than this render in one piece, exactly as before chunks existed. */
@@ -390,7 +396,12 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
   }
 }
 
-async function renderStoryboardNow(storyboardPath: string, opts: RenderOptions): Promise<RenderResult> {
+function renderStoryboardNow(storyboardPath: string, opts: RenderOptions): Promise<RenderResult> {
+  // Every child (HyperFrames, its Chrome, ffmpeg) is tracked: abortAll, opts.signal or our own exit kills the whole tree.
+  return withProcessScope(() => renderTracked(storyboardPath, opts), { signal: opts.signal });
+}
+
+async function renderTracked(storyboardPath: string, opts: RenderOptions): Promise<RenderResult> {
   const log = opts.log ?? (() => {});
   const draft = opts.quality === "draft";
   const started = Date.now();
@@ -447,7 +458,8 @@ async function renderStoryboardNow(storyboardPath: string, opts: RenderOptions):
     log(`estimated ~${formatDuration(estimate)} (from your last ${quality} renders). Faster: -q draft, --workers max, --from/--to for a window`);
   }
   const renderStart = performance.now();
-  // Before each chunk (or the one piece): wait for memory, and stop there if a pause was asked for.
+  // Before each chunk (or the one piece): wait for memory, and stop there if a pause was asked for
+  // (the pause flag of this render's process scope; `.pause` in the build folder sets it from another process).
   const control: ChunkControl = {
     shouldPause: opts.pauseCheck ?? (() => pauseRequested(prepared.buildDir, started)),
     waitForMemory: (label) =>
@@ -457,11 +469,22 @@ async function renderStoryboardNow(storyboardPath: string, opts: RenderOptions):
   const sampler = opts.pauseCheck ? undefined : startRssSampler();
   let peakRssMB: number | undefined;
   try {
-    await time("render", async () => {
-      if (chunks) await renderChunks(prepared, chunks, output, hyperframes, log, opts.onProgress, control);
-      else {
-        await control.waitForMemory("render");
-        await hyperframes(output);
+    // Written as <name>.partial.mp4 and renamed when complete: whoever watches the folder sees a playable file or none.
+    await writeAtomically(output, async (partial) => {
+      await time("render", async () => {
+        if (chunks) await renderChunks(prepared, chunks, partial, hyperframes, log, opts.onProgress, control);
+        else {
+          await control.waitForMemory("render");
+          await hyperframes(partial);
+        }
+      });
+      if (prepared.loudness) {
+        const target = prepared.loudness;
+        await time("loudness", async () => {
+          const r = await normalizeLoudness(partial, target);
+          if (r.applied) log(`loudness: ${r.measured!.input_i} LUFS -> ${target.target} LUFS`);
+          else prepared.warnings.push(`audio.loudness was not applied: ${r.reason}`);
+        });
       }
     });
   } catch (err) {
@@ -476,14 +499,6 @@ async function renderStoryboardNow(storyboardPath: string, opts: RenderOptions):
     peakRssMB = await sampler?.stop();
   }
   if (!opts.pauseCheck) await clearPause(prepared.buildDir);
-  if (prepared.loudness) {
-    const target = prepared.loudness;
-    await time("loudness", async () => {
-      const r = await normalizeLoudness(output, target);
-      if (r.applied) log(`loudness: ${r.measured!.input_i} LUFS -> ${target.target} LUFS`);
-      else prepared.warnings.push(`audio.loudness was not applied: ${r.reason}`);
-    });
-  }
   // Only a render that finished: a failed or aborted one threw above and never gets here.
   // Very short clips (the setup warm-up, tiny windows) are dominated by browser start-up and would skew the estimate.
   if (renderSeconds >= MIN_RECORDED_SECONDS) {

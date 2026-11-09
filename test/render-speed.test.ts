@@ -21,6 +21,8 @@ vi.mock("../src/util/exec.js", async (importActual) => {
       if (args.some((a) => a.endsWith("hyperframes.mjs"))) {
         fake.calls++;
         if (fake.fail) throw new Error("hyperframes failed");
+        // Like the real one, it writes the file named with -o (the render renames it when complete).
+        await (await import("node:fs/promises")).writeFile(args[args.indexOf("-o") + 1]!, "");
         return { stdout: "", stderr: "" };
       }
       return actual.run(cmd, args, opts);

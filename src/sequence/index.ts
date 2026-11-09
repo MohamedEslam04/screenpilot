@@ -13,6 +13,8 @@ import { lintStoryboard, type LoadedStyle, loadStoryboard, StoryboardError } fro
 import { clipStoryboard } from "../storyboard/clip.js";
 import { isBuiltinSfx, type Storyboard } from "../storyboard/schema.js";
 import { probeVideo } from "../util/media.js";
+import { writeAtomically } from "../util/partial.js";
+import { withProcessScope } from "../util/proc.js";
 import { makeTimer } from "../util/timing.js";
 import { concatParts, type OutputSize, probePart, type Quality, trimVideo } from "./concat.js";
 import { type Part, type Sequence, SequenceSchema, type Transition } from "./schema.js";
@@ -273,6 +275,8 @@ export interface SequenceRenderOptions extends MemGuardOptions {
   log?: (msg: string) => void;
   /** Told which part is rendering, for the live-job file. */
   onProgress?: (step: { label: string; index: number; total: number }) => void;
+  /** Aborts the render (an MCP request cancelled): its whole process tree is killed. abortAll does the same for every render. */
+  signal?: AbortSignal;
 }
 
 export interface SequenceResult {
@@ -288,12 +292,16 @@ export interface SequenceResult {
 }
 
 /**
- * Render every part (reusing unchanged ones) and join them into one video.
- * A `.pause` dropped into the build folder while it runs (see requestPause) stops it
- * before the next part or chunk it would render: it throws RenderPaused with which
- * parts are done, after saving what resumePaused needs.
+ * Render every part (reusing unchanged ones) and join them into one video. Every child process is tracked, so abort kills the whole tree.
+ * A pause (the flag of its process scope, set by pauseAll or by a `.pause` dropped into the build folder, see requestPause)
+ * stops it before the next part or chunk it would render: it throws RenderPaused with which parts are done, after saving
+ * what resumePaused needs.
  */
-export async function renderSequence(path: string, opts: SequenceRenderOptions = {}): Promise<SequenceResult> {
+export function renderSequence(path: string, opts: SequenceRenderOptions = {}): Promise<SequenceResult> {
+  return withProcessScope(() => renderSequenceTracked(path, opts), { signal: opts.signal });
+}
+
+async function renderSequenceTracked(path: string, opts: SequenceRenderOptions): Promise<SequenceResult> {
   const since = Date.now();
   memGuardSettings(opts); // bad values fail before any work
   const prepared = await prepareSequence(path, opts);
@@ -414,7 +422,7 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
           const r = await renderPrepared(part.sequence, { ...opts, output: part.output, buildDir: undefined, onProgress: undefined }, shouldPause);
           warnings = r.parts.flatMap((p) => p.warnings);
         } else {
-          await trimVideo(part.file, part.output, { from: part.from, to: part.to }, quality);
+          await writeAtomically(part.output, (partial) => trimVideo(part.file, partial, { from: part.from, to: part.to }, quality));
         }
       } catch (err) {
         if (err instanceof RenderPaused) throw sequencePaused(prepared, part.index, err.info);
@@ -432,7 +440,8 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
   const output = sequenceOutput(prepared, opts);
   await mkdir(dirname(output), { recursive: true });
   const joined = await makeTimer(opts.timings, log)("join", () =>
-    concatParts(media, output, prepared.output, { workDir: prepared.buildDir, quality, log }),
+    // <name>.partial.mp4 until complete, so a poller sees a playable file or none.
+    writeAtomically(output, (partial) => concatParts(media, partial, prepared.output, { workDir: prepared.buildDir, quality, log })),
   );
   const duration = (await probeVideo(output)).duration;
   const timelines: TimelinePart[] = [];

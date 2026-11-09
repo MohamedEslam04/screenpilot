@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { MUSIC_FADE_IN, MUSIC_FADE_OUT, type Storyboard } from "../storyboard/schema.js";
 import type { Timeline } from "../storyboard/timeline.js";
@@ -115,6 +115,7 @@ export async function prepareMusic(
   opts.log?.(`music: preparing ${length.toFixed(1)}s${music.loop ? " (looped)" : ""}`);
   const script = join(opts.buildDir, "music.filter");
   await writeFile(script, filter);
+  await rm(keyFile, { force: true }); // an aborted run leaves a half-written file
   await run("ffmpeg", ["-y", "-loglevel", "error", "-i", source, await ffmpegFilterScriptFlag(), script, "-map", "[out]", "-c:a", "pcm_s16le", "-ar", String(SAMPLE_RATE), "-ac", "2", out]);
   await writeFile(keyFile, key);
   return { file: "music-track.wav", length, warnings: [] };
