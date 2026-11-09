@@ -88,6 +88,11 @@ export const CaptionSchema = z.object({
 });
 
 export const NarrationSchema = z.object({
+  id: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("Stable name of the line (unique in the storyboard), used in timeline.json and by translation files; default: its position in `narration`, counted from 0"),
   at: time.describe("Source time the line starts"),
   text: z.string().min(1),
   voice: z.string().optional().describe("Override voice, e.g. ar-EG-ShakirNeural"),

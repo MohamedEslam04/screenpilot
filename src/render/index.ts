@@ -25,6 +25,7 @@ import { mixSfx, planSfx, sfxInput } from "./sfx.js";
 import { type ChunkSources, chunkKey, planChunks, type Span, timelineBusy } from "./chunks.js";
 import { joinChunks } from "./join.js";
 import { type SubtitleFormat, writeSubtitles } from "./subtitles.js";
+import { buildOutputTimeline, timelinePath, writeTimeline } from "./timeline.js";
 import { buildPlan, type OverlayAsset, type RenderPlan } from "./plan.js";
 import { partSuffix, type Window, windowPlan } from "./window.js";
 import { estimateSeconds, formatDuration, recordSpeed, speedFile } from "./speed.js";
@@ -70,6 +71,8 @@ export interface Prepared {
   loudness?: LoudnessTarget;
   /** What the build-dir files of the plan contain, for the chunk cache keys. */
   sources: ChunkSources;
+  /** The storyboard's outro card, so timeline.json can tell it from the other cards. */
+  outro?: { title: string; subtitle?: string };
 }
 
 /** Identity of a file's content for the chunk cache: name, size and modification time (as the sequence part keys). */
@@ -113,7 +116,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
       const src = l.audio ? `voice/ext-${i}${extname(clip.file).toLowerCase()}` : `voice/${basename(clip.file)}`;
       await copyFile(clip.file, join(buildDir, src));
       files[src] = await fileStamp(clip.file);
-      return { ...clip, at: l.at, caption: l.caption ?? sb.voice.subtitles, src };
+      return { ...clip, at: l.at, caption: l.caption ?? sb.voice.subtitles, src, id: l.id ?? String(i) };
     }),
   );
 
@@ -249,7 +252,8 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     sources.sfx = { src: sfxMix.file, hits: await Promise.all(sfxPlan.hits.map(async (h) => ({ at: h.at, volume: h.volume, sound: await sound(h.src) }))) };
   }
 
-  return { buildDir, plan, timeline, source, warnings, autoHolds, loudness: sb.audio?.loudness, sources };
+  const outro = sb.outro && { title: sb.outro.title, ...(sb.outro.subtitle !== undefined ? { subtitle: sb.outro.subtitle } : {}) };
+  return { buildDir, plan, timeline, source, warnings, autoHolds, loudness: sb.audio?.loudness, sources, ...(outro ? { outro } : {}) };
 }
 
 /** ".<style>" in default build dir and output names, so styles never overwrite each other; nothing without a style. */
@@ -328,6 +332,8 @@ export interface RenderResult extends Prepared {
   output: string;
   /** Subtitle and extra files that were written next to the video. */
   files: string[];
+  /** `<output>.timeline.json`: when each narration line and card is on screen in the finished video. */
+  timelineFile: string;
 }
 
 export function hyperframesBin(): string {
@@ -450,7 +456,12 @@ async function renderStoryboardNow(storyboardPath: string, opts: RenderOptions):
   if (opts.subtitles?.length) files.push(...(await writeSubtitles(prepared.plan.subtitles, output, opts.subtitles)));
   if (opts.also?.length) files.push(...(await time("extras", () => exportExtras(output, opts.also!, { posterAt: opts.posterAt }))));
   for (const f of files) log(`wrote ${f}`);
-  return { ...prepared, output, files };
+  // The length the file really has (a short file next to a longer plan is what a stale timeline looks like later).
+  const length = await probeVideo(output).then((v) => v.duration, () => prepared.plan.duration);
+  const timelineFile = timelinePath(output);
+  await writeTimeline(timelineFile, { ...buildOutputTimeline(prepared.plan, { outro: prepared.outro }), duration: round3(length) });
+  log(`wrote ${timelineFile}`);
+  return { ...prepared, output, files, timelineFile };
 }
 
 interface RenderChunk extends Span {
