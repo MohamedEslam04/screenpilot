@@ -27,7 +27,7 @@
   <nav class="nav" aria-label="Main"><a href="../../ar/guide/index.html" aria-current=page>التوثيق</a><a href="../../ar/guide/install.html" class="hide-s">التثبيت</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../../guide/cli.html" lang="en" hreflang="en">English</a><button class="theme" type="button" aria-label="تبديل المظهر"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
 </div></header>
 <main id="main"><div class="wrap docs">
-  <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html" aria-current=page>سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html">مرجع الـ storyboard</a><a href="voices.html">الأصوات</a><a href="sequence.html">دمج التسجيلات</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html">الأسئلة الشائعة وحل المشكلات</a></details></nav>
+  <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html" aria-current=page>سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html">مرجع الـ storyboard</a><a href="voices.html">الأصوات</a><a href="dashboard.html">لوحة التحكم</a><a href="sequence.html">دمج التسجيلات</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html">الأسئلة الشائعة وحل المشكلات</a></details></nav>
   <article class="doc"><h1>سطر الأوامر</h1><p class="summary">كل أوامر screenpilot وأهم خياراتها مجمّعة حسب المهمة: التسجيل والتحرير والتصيير ودمج التسجيلات والتحكم بسطح المكتب والإعداد، مع الخطوات كاملة في كتلة واحدة.</p><p>سطر الأوامر ينفّذ الخطوات نفسها التي تنفّذها أدوات MCP. شغّله بالاسم <code>screenpilot</code>، أو بالأمر <code>node dist/cli.js</code> من نسخة المصدر. أغلب المستخدمين لا يحتاجونه، لأن تطبيق الذكاء الاصطناعي عندهم يستدعي <a href="../../ar/guide/tools.html">الأدوات</a> بدلًا منهم. استخدم سطر الأوامر لأتمتة عملية التصيير، أو لفحص جهاز، أو لإصلاح الإعداد.</p>
 <p>نفّذ <code>screenpilot --help</code> لعرض قائمة الأوامر، و<code>screenpilot &lt;command&gt; --help</code> لعرض خيارات أمر واحد. تطبع الأوامر نتيجتها بصيغة JSON على stdout، ورسائل التقدّم على stderr.</p>
 
@@ -138,12 +138,12 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 <p>الأمر <code>screenpilot schema</code> يطبع JSON Schema الخاص بالـ storyboard. هو المرجع النهائي لكل حقل.</p>
 
 <h3 id="voices">voices<a class="a" href="#voices" aria-label="رابط إلى هذا القسم">#</a></h3>
-<p>الأمر <code>screenpilot voices</code> يعرض أصوات مزوّد واحد. مع <code>edge</code> (الافتراضي) يحتاج إلى اتصال بالشبكة. ومع <code>local</code> يعرض النماذج المثبّتة وأصواتها. ومع <code>command</code> يعرض الأصوات المعرّفة في <code>voices.json</code>. شرح المزوّدين في <a href="../../ar/guide/voices.html">الأصوات</a>.</p>
+<p>الأمر <code>screenpilot voices</code> يعرض أصوات مزوّد واحد. مع <code>edge</code> (الافتراضي) يحتاج إلى اتصال بالشبكة. ومع <code>local</code> يعرض النماذج المثبّتة وأصواتها. ومع <code>command</code> يعرض الأصوات المعرّفة في <code>voices.json</code>. ومع <code>elevenlabs</code> يعرض الأصوات الموجودة في حسابك، ومع <code>gemini</code> أصوات Gemini الجاهزة؛ وكلاهما يحتاج إلى مفتاح (انظر <a href="../../ar/guide/cli.html#secret">secret</a>). شرح المزوّدين في <a href="../../ar/guide/voices.html">الأصوات</a>.</p>
 <table>
 <thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
 <tbody>
 <tr><td><code>--lang &lt;prefix&gt;</code></td><td>تصفية ببادئة اللغة، مثل <code>ar</code> أو <code>ar-EG</code> أو <code>en-US</code>.</td></tr>
-<tr><td><code>--provider &lt;id&gt;</code></td><td>مزوّد الصوت: <code>edge</code> (افتراضي) أو <code>local</code> أو <code>command</code>.</td></tr>
+<tr><td><code>--provider &lt;id&gt;</code></td><td>مزوّد الصوت: <code>edge</code> (افتراضي) أو <code>local</code> أو <code>command</code> أو <code>elevenlabs</code> أو <code>gemini</code>.</td></tr>
 </tbody>
 </table>
 <pre><code class="language-sh">screenpilot voices --provider local
@@ -158,6 +158,20 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <tr><td><code>-y, --yes</code></td><td>لا يسأل قبل التنزيل.</td></tr>
 </tbody>
 </table>
+
+<h3 id="secret">secret<a class="a" href="#secret" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>الأمر <code>screenpilot secret</code> يدير مفاتيح API للأصوات السحابية <code>elevenlabs</code> و<code>gemini</code>. تُحفظ المفاتيح في <code>secrets.json</code> داخل مجلد الإعداد، بصلاحية 0600. متغير البيئة (<code>ELEVENLABS_API_KEY</code> أو <code>GEMINI_API_KEY</code>) له الأولوية على الملف. شرح المزوّدين في <a href="../../ar/guide/voices.html#cloud-voices">الأصوات</a>.</p>
+<table>
+<thead><tr><th>الأمر</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>secret set &lt;provider&gt;</code></td><td>يخزّن المفتاح. يُقرأ من stdin ولا يُقرأ أبدًا من وسيط، فلا يظهر في سجل الـ shell ولا في قائمة العمليات. في الطرفية يطلب منك لصق المفتاح والضغط على Enter.</td></tr>
+<tr><td><code>secret status</code></td><td>يطبع لكل مزوّد القيمة <code>env</code> أو <code>file</code> أو <code>null</code> (غير مضبوط). ولا يطبع المفتاح أبدًا.</td></tr>
+<tr><td><code>secret remove &lt;provider&gt;</code></td><td>يحذف المفتاح المخزَّن. يبقى متغير البيئة كما هو.</td></tr>
+</tbody>
+</table>
+<p>قيمة <code>&lt;provider&gt;</code> هي <code>elevenlabs</code> أو <code>gemini</code>.</p>
+<pre><code class="language-sh">printf '%s' "$GEMINI_API_KEY" | screenpilot secret set gemini
+screenpilot secret status</code></pre>
 
 <h3 id="script">script<a class="a" href="#script" aria-label="رابط إلى هذا القسم">#</a></h3>
 <p><code>screenpilot script &lt;storyboard&gt;</code> يكتب التعليق الصوتي كسكريبت للصقه في موقع تحويل النص إلى كلام: النص، وتعليمات قصيرة، وجدول بالمتاح لكل سطر. الخرج الافتراضي <code>&lt;storyboard&gt;.script.md</code>، وتغيّره بـ <code>-o, --out</code>. <a href="../../ar/guide/voices.html#external-audio">صفحة الأصوات</a> تشرح الخطوات كاملة.</p>
@@ -361,6 +375,53 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <h3 id="take-schema">take-schema<a class="a" href="#take-schema" aria-label="رابط إلى هذا القسم">#</a></h3>
 <p>الأمر <code>screenpilot take-schema</code> يطبع JSON Schema الخاص بملف <code>take.json</code>.</p>
 
+<h2 id="history-group">سجل أعمالك<a class="a" href="#history-group" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>يحتفظ ScreenPilot بقائمة بما سجّله وصيّره. هي سطر JSON واحد لكل عمل منتهٍ في الملف <code>history.jsonl</code> داخل مجلد الإعداد. التسجيل (<code>record</code>) وتنفيذ take (<code>perform</code>) و<code>render</code> و<code>sequence</code> تضيف سطرًا عند انتهائها. والتصيير أو الـ sequence الفاشل يُسجَّل أيضًا مع خطئه. أما أجزاء الـ sequence والتصيير أثناء <code>setup</code> فلا تضيف شيئًا، فيظهر كل فيديو مرة واحدة.</p>
+
+<h3 id="history">history<a class="a" href="#history" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>الأمر <code>screenpilot history</code> يطبع الأحداث من الأحدث إلى الأقدم، كقائمة JSON.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--limit &lt;n&gt;</code></td><td>عدد الأحداث. الافتراضي 50.</td></tr>
+<tr><td><code>--before &lt;iso&gt;</code></td><td>الأحداث الأقدم من هذا الوقت فقط. مرّر قيمة <code>at</code> لآخر حدث في الصفحة السابقة لتحصل على الصفحة التالية.</td></tr>
+<tr><td><code>--live</code></td><td>يعرض عمليات التصيير الجارية الآن بدل السجل.</td></tr>
+</tbody>
+</table>
+<p>لكل حدث هذه الحقول. الحقول غير المنطبقة تُحذف.</p>
+<table>
+<thead><tr><th>الحقل</th><th>معناه</th></tr></thead>
+<tbody>
+<tr><td><code>v</code></td><td>إصدار الصيغة، دائمًا 1.</td></tr>
+<tr><td><code>at</code></td><td>وقت انتهاء العمل بصيغة ISO.</td></tr>
+<tr><td><code>kind</code></td><td><code>record</code> أو <code>take</code> أو <code>render</code> أو <code>sequence</code>.</td></tr>
+<tr><td><code>status</code></td><td><code>ok</code> أو <code>failed</code>.</td></tr>
+<tr><td><code>path</code></td><td>مجلد الجلسة (record وtake)، أو الـ storyboard (render)، أو ملف الـ sequence (sequence).</td></tr>
+<tr><td><code>storyboard</code></td><td>الـ storyboard التي كتبها take (take فقط).</td></tr>
+<tr><td><code>output</code></td><td>الفيديو الذي أنتجه أو سجّله.</td></tr>
+<tr><td><code>durationSec</code></td><td>مدة ذلك الفيديو بالثواني.</td></tr>
+<tr><td><code>quality</code></td><td>جودة التصيير (render وsequence).</td></tr>
+<tr><td><code>wallSeconds</code></td><td>المدة التي استغرقها العمل.</td></tr>
+<tr><td><code>error</code></td><td>رسالة خطأ العمل الفاشل، مقطوعة عند 500 حرف.</td></tr>
+<tr><td><code>imported</code></td><td><code>true</code> إذا وجده <code>library import</code> على القرص.</td></tr>
+</tbody>
+</table>
+<p>مع <code>--live</code>، لكل تصيير أو sequence جارٍ ملف صغير واحد في المجلد <code>jobs</code> داخل مجلد الـ cache. يُحذف الملف عند انتهاء العمل. والملف الذي تركته عملية انهارت يُحذف عند العرض التالي. للعمل الجاري الحقول <code>id</code> و<code>pid</code> و<code>kind</code> و<code>path</code> و<code>quality</code> و<code>startedAt</code> و<code>updatedAt</code>، وكذلك <code>step</code> (<code>label</code> و<code>index</code> و<code>total</code>) عندما يعرف تقدّمه، مثل الجزء 3 من 12 أو الجزء 2 من 4.</p>
+<pre><code class="language-sh">screenpilot history --limit 10
+screenpilot history --live</code></pre>
+<div class="note">كتابة السجل لا تُفشل أي عمل. إذا تعذّرت كتابة الملف يكتمل العمل ويُتخطّى السطر.</div>
+
+<h3 id="library">library<a class="a" href="#library" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>الأمر <code>screenpilot library import</code> يضيف أعمالًا أنجزتها قبل وجود السجل: تسجيلات (مجلد فيه <code>meta.json</code>) وتصييرات منتهية (ملف <code>storyboard.json</code> بجانبه <code>storyboard.mp4</code>). يبحث بعمق مستويين من المجلدات تحت كل جذر. ما هو موجود في السجل يُترك كما هو، وتُوسم الأسطر المضافة بالقيمة <code>imported</code>. يطبع عدد ما أضافه وعدد الأحداث في السجل الآن.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--root &lt;dir...&gt;</code></td><td>المجلدات التي يبحث فيها. الافتراضي: مجلد الجلسات (<code>SCREENPILOT_OUTPUT</code>، وإلا <code>./sessions</code>).</td></tr>
+</tbody>
+</table>
+<pre><code class="language-sh">screenpilot library import --root ~/Videos/ScreenPilot</code></pre>
+<div class="warn">يعيد الاستيراد كتابة <code>history.jsonl</code> مرتّبًا بالوقت. نفّذه حين لا يوشك تصيير على الانتهاء.</div>
+
 <h2 id="setup-and-checks">إعداد الجهاز وفحصه<a class="a" href="#setup-and-checks" aria-label="رابط إلى هذا القسم">#</a></h2>
 
 <h3 id="setup">setup<a class="a" href="#setup" aria-label="رابط إلى هذا القسم">#</a></h3>
@@ -380,10 +441,10 @@ screenpilot voices --provider edge --lang ar</code></pre>
 </table>
 
 <h3 id="doctor">doctor<a class="a" href="#doctor" aria-label="رابط إلى هذا القسم">#</a></h3>
-<p>الأمر <code>screenpilot doctor</code> يفحص هذا الجهاز: ffmpeg وسطح المكتب والشاشات وOBS ومتصفح العرض والأصوات، ومنها فحص "accessibility tree" وفحص "local voice" الذي يُتخطّى إذا لم تُعدّ صوتًا محليًا (فهو اختياري). يطبع تقريرًا بصيغة JSON وسطر ملخص. رمز الخروج دائمًا 0، فاقرأ التقرير. أضف <code>--input</code> لاختبار حقن الإدخال أيضًا، وهو يحرّك المؤشر الفعلي لحظة.</p>
+<p>الأمر <code>screenpilot doctor</code> يفحص هذا الجهاز: ffmpeg وسطح المكتب والشاشات وOBS ومتصفح العرض والأصوات، ومنها فحص "accessibility tree" وفحص "local voice" الذي يُتخطّى إذا لم تُعدّ صوتًا محليًا (فهو اختياري)، وفحصا "elevenlabs voice" و"gemini voice" اللذان يقولان فقط هل المفتاح مضبوط (ويُتخطّيان إذا لم يُضبط، ولا يُرسل أي طلب). يطبع تقريرًا بصيغة JSON وسطر ملخص. رمز الخروج دائمًا 0، فاقرأ التقرير. أضف <code>--input</code> لاختبار حقن الإدخال أيضًا، وهو يحرّك المؤشر الفعلي لحظة.</p>
 <div class="note">نفّذ <code>screenpilot doctor</code> أولًا على أي جهاز جديد، وأعد تنفيذه كلما فشل التسجيل أو التحكم.</div>
 <nav class="pager" aria-label="Pager"><a href="install.html" rel="prev"><small>السابق</small>تثبيت ScreenPilot</a><a href="tools.html" rel="next"><small>التالي</small>أدوات MCP</a></nav></article>
-  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#workflow">سير العمل كاملًا</a><a href="#update-app">التحديث</a><a href="#decisions">القرارات أولًا</a><a href="#record-and-look">التسجيل والمعاينة</a><a href="#edit">التحرير</a><a href="#render-and-check">التصيير والفحص</a><a href="#combine">دمج التسجيلات</a><a href="#drive">رؤية سطح المكتب والتحكم فيه</a><a href="#setup-and-checks">إعداد الجهاز وفحصه</a></aside>
+  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#workflow">سير العمل كاملًا</a><a href="#update-app">التحديث</a><a href="#decisions">القرارات أولًا</a><a href="#record-and-look">التسجيل والمعاينة</a><a href="#edit">التحرير</a><a href="#render-and-check">التصيير والفحص</a><a href="#combine">دمج التسجيلات</a><a href="#drive">رؤية سطح المكتب والتحكم فيه</a><a href="#history-group">سجل أعمالك</a><a href="#setup-and-checks">إعداد الجهاز وفحصه</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../../ar/index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot مفتوح المصدر برخصة MIT.</small><small>أسماء المنتجات ملك لأصحابها. ScreenPilot مشروع مستقل.</small></div>

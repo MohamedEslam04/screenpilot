@@ -1,0 +1,88 @@
+<!--
+title: Dashboard
+summary: A small desktop window for your recordings, renders, running jobs and voices. What it shows, what it does, how to start it, and how to build it for now.
+-->
+<p>The dashboard is a separate small desktop program. It shows everything ScreenPilot recorded and rendered, the renders running now, your voice providers and some numbers about your renders. It runs on your computer only and does not need an account.</p>
+<div class="warn">The dashboard is new. For now you build it from the repository: it is not part of the main download yet. It has been tested with mocked data in a browser and with unit tests of its Rust logic. Its window has not been run on a real desktop in this repository's checks, so expect rough edges. The steps are in <a href="@guide/dashboard.html#build">Build it</a>.</div>
+
+<h2 id="start">Start the dashboard</h2>
+<p>Run this in a terminal:</p>
+<pre><code class="language-sh">screenpilot dashboard</code></pre>
+<p>It starts the program and returns at once. The dashboard is its own program with its own window.</p>
+<p>ScreenPilot looks for the program in this order:</p>
+<ol>
+<li>The path in the <code>SCREENPILOT_DASHBOARD_BIN</code> environment variable, if you set it.</li>
+<li>The file <code>screenpilot-dashboard</code> (<code>screenpilot-dashboard.exe</code> on Windows) in the dashboard folder. This folder sits next to the app folder, with <code>-dashboard</code> added to its name, because <code>setup</code> replaces the app folder every time it runs.</li>
+</ol>
+<ul>
+<li>Linux: <code>~/.local/share/screenpilot-dashboard</code></li>
+<li>Windows: <code>%LOCALAPPDATA%\ScreenPilot-dashboard</code></li>
+<li>macOS: <code>~/Library/Application Support/ScreenPilot-dashboard</code></li>
+</ul>
+<p>If the program is not there, <code>screenpilot dashboard</code> says it is not installed and names the folder it looked in.</p>
+<p>On Linux, <code>screenpilot setup</code> adds a ScreenPilot entry to your application menu when the dashboard program is already in that folder. <code>screenpilot setup --remove</code> removes the entry.</p>
+
+<h2 id="build">Build it</h2>
+<p>You need Rust. On Linux you also need the WebKitGTK 4.1 development packages. The repository's <code>dashboard/src-tauri/README.md</code> lists the package names for Fedora.</p>
+<pre><code class="language-sh">cargo install tauri-cli --locked
+cd dashboard/src-tauri
+cargo tauri build</code></pre>
+<p>Put the program it builds in the dashboard folder above, or point <code>SCREENPILOT_DASHBOARD_BIN</code> at it.</p>
+
+<h2 id="tabs">What it shows</h2>
+<p>The window has four tabs.</p>
+
+<h3 id="library">Library</h3>
+<p>The Library lists your recordings, takes, renders and sequences from <code>history.jsonl</code>, newest first, with a thumbnail for each video. It loads 50 rows at a time, and <strong>Load older</strong> adds more. Type in the search box to search the loaded rows (press <kbd>/</kbd> to jump to it). The buttons above the list filter by kind (Records, Takes, Renders, Sequences) or show only failed work.</p>
+<p>Select a row to open the detail panel:</p>
+<ul>
+<li>A video player, when the work has a video.</li>
+<li>The kind, time, status, duration, quality, how long it took, and the paths. A failed job shows its error.</li>
+<li>A summary of the storyboard: output size, voice, source, and how many narration lines, captions, zooms, highlights and segments it has. A sequence lists its parts.</li>
+<li>The narration lines with their times.</li>
+</ul>
+<div class="note">The player and the thumbnails read files under your home folder, <code>/data</code>, <code>/mnt</code> and <code>/run/media</code>. A video somewhere else, such as another drive on Windows, does not play in the window. <strong>Open video</strong> still opens it.</div>
+
+<h3 id="live">Live</h3>
+<p>The Live tab lists the renders running now, with the quality, the time elapsed and a progress bar when the render knows its step (chunk 3 of 12, or part 2 of 4). It updates when a render moves to its next step. A number on the tab shows how many are running. It lists renders started from anywhere: the dashboard, the command line or your AI app.</p>
+
+<h3 id="voices-tab">Voices</h3>
+<p>The Voices tab shows one card for each provider: <code>edge</code>, <code>local</code>, <code>command</code>, <code>elevenlabs</code> and <code>gemini</code>. Each card says whether a key is set (and whether it comes from an environment variable or from the saved file), where the narration text goes, and lists the voices of that provider. For ElevenLabs and Gemini you can paste a key and save it, or remove a saved key. <a href="@guide/voices.html#cloud-voices">Voices</a> explains the providers.</p>
+
+<h3 id="stats">Stats</h3>
+<p>The Stats tab shows how many events the history holds, the render speed for each quality (video seconds made per second of waiting, from your finished renders, with the number of runs), and the size of the render cache. The cache is measured when you open the tab, and a button measures it again. A large cache can take a while.</p>
+
+<h2 id="actions">What you can do</h2>
+<p>These buttons are in the detail panel of a row:</p>
+<table>
+<thead><tr><th>Button</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><strong>Open video</strong></td><td>Opens the video with your default player.</td></tr>
+<tr><td><strong>Show in folder</strong></td><td>Opens the folder that holds the video or the session.</td></tr>
+<tr><td><strong>Render draft</strong></td><td>Runs <code>screenpilot render</code> on the storyboard with <code>-q draft</code>. It starts in the background. Follow it on the Live tab.</td></tr>
+<tr><td><strong>Render delivery</strong></td><td>The same at delivery quality. You click twice: the button first asks you to confirm.</td></tr>
+<tr><td><strong>Copy command</strong></td><td>Copies the command to your clipboard so you can run it yourself.</td></tr>
+</tbody>
+</table>
+<p>The render buttons appear for a render and for a take that wrote a storyboard. A sequence only has <strong>Copy command</strong>, which copies a <code>screenpilot sequence</code> command.</p>
+<p>The dashboard opens only videos, images, subtitles, audio and text files. It refuses to open anything else, such as a program or a script. <strong>Show in folder</strong> works for any file, because it only shows it in its folder.</p>
+
+<h2 id="old-work">Work from before the history</h2>
+<p>The Library reads <code>history.jsonl</code>. Recordings and renders you made before the history existed are not in it. Add them from a terminal:</p>
+<pre><code class="language-sh">screenpilot library import</code></pre>
+<p>See <a href="@guide/cli.html#library">library</a> for the folders it looks in.</p>
+
+<h2 id="keys">How keys are stored</h2>
+<p>When you save a key on the Voices tab, the dashboard does not keep it. It sends the key to <code>screenpilot secret set</code> on standard input, and ScreenPilot writes it to <code>secrets.json</code> in the config folder with file mode 0600. The dashboard never shows a key again, and it never reads <code>secrets.json</code>. A key set by an environment variable cannot be changed or removed there. <a href="@guide/cli.html#secret">secret</a> has the same commands for the terminal.</p>
+
+<h2 id="light">Why it stays light</h2>
+<ul>
+<li>No background process. Closing the window ends the program.</li>
+<li>It watches the folder of running jobs only while the window is shown. There is no polling loop.</li>
+<li>The list draws only the rows you can see, and loads older rows when you ask.</li>
+<li>Each thumbnail is made once, when its row first appears, by ffmpeg. It is saved in the <code>thumbs</code> folder of the cache folder and reused.</li>
+</ul>
+
+<h2 id="privacy">Local only</h2>
+<p>The dashboard window makes no network requests. It reads files on your computer and runs the <code>screenpilot</code> command. One exception is the voice list of an online provider: it runs <code>screenpilot voices</code>, which contacts that service.</p>
+<div class="note">More commands are in the <a href="@guide/cli.html">command line</a> page: <a href="@guide/cli.html#history">history</a>, <a href="@guide/cli.html#library">library</a> and <a href="@guide/cli.html#secret">secret</a>.</div>

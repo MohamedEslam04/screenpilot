@@ -414,7 +414,7 @@ program
     const bin = dashboardBin();
     if (!bin) {
       throw new Error(
-        `The dashboard is not installed. It is a separate program: download it from https://github.com/MohamedEslam04/screenpilot/releases/latest and put it in ${dashboardHome()} (or set ${DASHBOARD_BIN_ENV} to its path).`,
+        `The dashboard is not installed. It is a separate program, built from the repository for now (see https://mohamedeslam04.github.io/screenpilot/guide/dashboard.html): put the built screenpilot-dashboard in ${dashboardHome()}, or set ${DASHBOARD_BIN_ENV} to its path.`,
       );
     }
     launchDashboard(bin);

@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>الأصوات · ScreenPilot</title>
-<meta name="description" content="اختر صوت التعليق: أصوات Edge عبر الإنترنت، أو نماذج كلام على جهازك، أو أي برنامج تعرّفه بنفسك. الإعداد والحدود والحلول.">
+<meta name="description" content="اختر صوت التعليق: Edge، أو أصوات سحابية بمفتاحك الخاص من ElevenLabs أو Gemini، أو نماذج كلام على جهازك، أو أي برنامج تعرّفه. الإعداد والحلول.">
 <link rel="canonical" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/voices.html">
 <link rel="alternate" hreflang="en" href="https://mohamedeslam04.github.io/screenpilot/guide/voices.html">
 <link rel="alternate" hreflang="ar" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/voices.html">
 <link rel="alternate" hreflang="x-default" href="https://mohamedeslam04.github.io/screenpilot/guide/voices.html">
-<meta property="og:type" content="article"><meta property="og:title" content="الأصوات · ScreenPilot"><meta property="og:description" content="اختر صوت التعليق: أصوات Edge عبر الإنترنت، أو نماذج كلام على جهازك، أو أي برنامج تعرّفه بنفسك. الإعداد والحدود والحلول.">
+<meta property="og:type" content="article"><meta property="og:title" content="الأصوات · ScreenPilot"><meta property="og:description" content="اختر صوت التعليق: Edge، أو أصوات سحابية بمفتاحك الخاص من ElevenLabs أو Gemini، أو نماذج كلام على جهازك، أو أي برنامج تعرّفه. الإعداد والحلول.">
 <meta property="og:url" content="https://mohamedeslam04.github.io/screenpilot/ar/guide/voices.html"><meta property="og:image" content="https://mohamedeslam04.github.io/screenpilot/assets/og.png"><meta property="og:site_name" content="ScreenPilot"><meta property="og:locale" content="ar">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0b132b">
@@ -27,19 +27,21 @@
   <nav class="nav" aria-label="Main"><a href="../../ar/guide/index.html" aria-current=page>التوثيق</a><a href="../../ar/guide/install.html" class="hide-s">التثبيت</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../../guide/voices.html" lang="en" hreflang="en">English</a><button class="theme" type="button" aria-label="تبديل المظهر"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
 </div></header>
 <main id="main"><div class="wrap docs">
-  <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html">سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html">مرجع الـ storyboard</a><a href="voices.html" aria-current=page>الأصوات</a><a href="sequence.html">دمج التسجيلات</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html">الأسئلة الشائعة وحل المشكلات</a></details></nav>
-  <article class="doc"><h1>الأصوات</h1><p class="summary">اختر صوت التعليق: أصوات Edge عبر الإنترنت، أو نماذج كلام على جهازك، أو أي برنامج تعرّفه بنفسك. الإعداد والحدود والحلول.</p><p>يقرأ ScreenPilot كل سطر تعليق بواسطة مزوّد صوت. هناك ثلاثة مزوّدين. <code>edge</code> هو الافتراضي ولا يحتاج إعدادًا. <code>local</code> يشغّل نماذج كلام على جهازك. <code>command</code> يشغّل أي برنامج تعرّفه يحوّل النص إلى ملف صوت. الـ storyboard الموجودة تعمل كما هي: إذا لم يكن في الـ storyboard حقل <code>provider</code> فالمزوّد هو <code>edge</code>.</p>
+  <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html">سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html">مرجع الـ storyboard</a><a href="voices.html" aria-current=page>الأصوات</a><a href="dashboard.html">لوحة التحكم</a><a href="sequence.html">دمج التسجيلات</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html">الأسئلة الشائعة وحل المشكلات</a></details></nav>
+  <article class="doc"><h1>الأصوات</h1><p class="summary">اختر صوت التعليق: Edge، أو أصوات سحابية بمفتاحك الخاص من ElevenLabs أو Gemini، أو نماذج كلام على جهازك، أو أي برنامج تعرّفه. الإعداد والحلول.</p><p>يقرأ ScreenPilot كل سطر تعليق بواسطة مزوّد صوت. هناك خمسة مزوّدين. <code>edge</code> هو الافتراضي ولا يحتاج إعدادًا. <code>elevenlabs</code> و<code>gemini</code> أصوات سحابية تستخدم مفتاح حسابك أنت. <code>local</code> يشغّل نماذج كلام على جهازك. <code>command</code> يشغّل أي برنامج تعرّفه يحوّل النص إلى ملف صوت. الـ storyboard الموجودة تعمل كما هي: إذا لم يكن في الـ storyboard حقل <code>provider</code> فالمزوّد هو <code>edge</code>.</p>
 
 <h2 id="choose">اختر المزوّد<a class="a" href="#choose" aria-label="رابط إلى هذا القسم">#</a></h2>
 <table>
 <thead><tr><th>المزوّد</th><th>ما هو</th><th>الإنترنت</th><th>التكلفة</th><th>ملاحظة عن الجودة</th></tr></thead>
 <tbody>
 <tr><td><code>edge</code></td><td>أصوات Microsoft Edge بلغات كثيرة، منها العربية المصرية.</td><td>مطلوب عند كل تصيير لأسطر جديدة.</td><td>لا شيء.</td><td>يعمل بلا إعداد. هذه خدمة غير رسمية وقد تتغير.</td></tr>
+<tr><td><code>elevenlabs</code></td><td>أصوات ElevenLabs السحابية، بمفتاح API خاص بك.</td><td>مطلوب عند كل تصيير لأسطر جديدة.</td><td>تعتمد على خطة ElevenLabs عندك. للخطط المجانية حدود.</td><td>جودة عالية. نص التعليق يُرسل إلى ElevenLabs. اختياري: يحتاج إلى حساب.</td></tr>
+<tr><td><code>gemini</code></td><td>أصوات Gemini API السحابية من Google، بمفتاح API خاص بك.</td><td>مطلوب عند كل تصيير لأسطر جديدة.</td><td>تعتمد على حصتك لدى Google. للطبقات المجانية حدود.</td><td>نص التعليق يُرسل إلى Google. اختياري: يحتاج إلى حساب.</td></tr>
 <tr><td><code>local</code></td><td>نماذج كلام تعمل على جهازك: VoiceTut وNAMAA.</td><td>للتنزيل أثناء الإعداد فقط. لا حاجة له بعد ذلك.</td><td>مجاني. يستهلك نحو 10 إلى 16 GB من القرص.</td><td>العربية المصرية والإنجليزية. العربية أقل دقة من الإنجليزية. جُرّب على Linux مع كرت NVIDIA فقط.</td></tr>
 <tr><td><code>command</code></td><td>برنامج تعرّفه في <code>voices.json</code>، مثل Piper.</td><td>يعتمد على البرنامج.</td><td>يعتمد على البرنامج.</td><td>ما ينتجه البرنامج.</td></tr>
 </tbody>
 </table>
-<p>اختر <code>edge</code> إذا أردت أن يعمل الآن. اختر <code>local</code> إذا أردت تصييرًا بلا إنترنت. اختر <code>command</code> إذا كان عندك نموذج كلام خاص بك.</p>
+<p>اختر <code>edge</code> إذا أردت أن يعمل الآن. اختر <code>elevenlabs</code> أو <code>gemini</code> إذا كان عندك حساب وتريد صوتًا سحابيًا. اختر <code>local</code> إذا أردت تصييرًا بلا إنترنت. اختر <code>command</code> إذا كان عندك نموذج كلام خاص بك.</p>
 <p>حدّد المزوّد مرة واحدة للـ storyboard كلها في <code>voice</code>. الحقول كلها في <a href="../../ar/guide/storyboard.html#output">الخرج والصوت</a>.</p>
 
 <h2 id="edge">أصوات Edge<a class="a" href="#edge" aria-label="رابط إلى هذا القسم">#</a></h2>
@@ -48,6 +50,57 @@
 <p>اعرض الأصوات، ويمكنك تحديد لغة واحدة:</p>
 <pre><code class="language-sh">screenpilot voices --lang ar-EG</code></pre>
 <p>أمثلة: <code>ar-EG-SalmaNeural</code> و<code>ar-EG-ShakirNeural</code> و<code>en-US-AndrewNeural</code> (الافتراضي) و<code>en-US-AriaNeural</code>.</p>
+
+<h2 id="cloud-voices">الأصوات السحابية: ElevenLabs وGemini<a class="a" href="#cloud-voices" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>يرسل هذان المزوّدان كل سطر تعليق إلى خدمة سحابية ويستلمان الصوت. هما اختياريان. ما زال ScreenPilot لا يحتاج إلى حساب افتراضيًا، والـ storyboard التي لا تستخدم <code>elevenlabs</code> أو <code>gemini</code> لا تتصل بأي من الخدمتين. المفتاح مفتاحك أنت.</p>
+<div class="warn">نص التعليق يُرسل إلى ElevenLabs أو Google. لا تستخدم هذين المزوّدين لنص لا يجوز لك مشاركته معهما. للخطط المجانية حدود وقد تمنع الاستخدام التجاري. اقرأ شروط الخدمة الحالية قبل نشر الفيديو.</div>
+
+<h3 id="cloud-keys">ضبط مفتاح API<a class="a" href="#cloud-keys" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>كل مزوّد يقرأ مفتاحًا واحدًا. متغير البيئة له الأولوية على المفتاح المخزَّن.</p>
+<table>
+<thead><tr><th>المزوّد</th><th>متغير البيئة</th></tr></thead>
+<tbody>
+<tr><td><code>elevenlabs</code></td><td><code>ELEVENLABS_API_KEY</code></td></tr>
+<tr><td><code>gemini</code></td><td><code>GEMINI_API_KEY</code></td></tr>
+</tbody>
+</table>
+<p>لتخزين المفتاح بدل تصديره، مرّره إلى <code>screenpilot secret set</code> عبر pipe. يُقرأ المفتاح من الإدخال القياسي (stdin) ولا يُقرأ أبدًا من وسيط في سطر الأوامر، فلا يظهر في سجل الـ shell ولا في قائمة العمليات. يُحفظ في الملف <code>secrets.json</code> داخل مجلد الإعداد، بصلاحية 0600 (أنت وحدك تقرؤه).</p>
+<pre><code class="language-sh">printf '%s' "$ELEVENLABS_API_KEY" | screenpilot secret set elevenlabs
+screenpilot secret status
+screenpilot secret remove elevenlabs</code></pre>
+<ul>
+<li>الأمر <code>secret status</code> يذكر لكل مزوّد هل المفتاح من <code>env</code> أم من <code>file</code> أم غير مضبوط. ولا يطبع المفتاح أبدًا.</li>
+<li>الأمر <code>secret remove</code> يحذف المفتاح المخزَّن. ولا يستطيع إلغاء متغير بيئة.</li>
+<li>إذا نفّذت <code>secret set</code> في طرفية بدون pipe فإنه يطلب منك لصق المفتاح ثم الضغط على Enter.</li>
+</ul>
+<p>لا يُكتب المفتاح في سجل ولا في مفتاح cache ولا في رسالة خطأ. في <code>screenpilot doctor</code> سطران هما "elevenlabs voice" و"gemini voice". كل سطر يقول فقط هل المفتاح مضبوط. يُتخطّى السطر إذا لم يُضبط مفتاح لأن المزوّدين اختياريان، ولا يرسل أي طلب.</p>
+
+<h3 id="cloud-elevenlabs">ElevenLabs<a class="a" href="#cloud-elevenlabs" aria-label="رابط إلى هذا القسم">#</a></h3>
+<pre><code class="language-json">"voice": { "provider": "elevenlabs", "name": "Your Voice Name", "rate": "+0%" }</code></pre>
+<ul>
+<li>قيمة <code>name</code> هي معرّف صوت (20 حرفًا وأرقامًا) أو اسم صوت موجود في حسابك. يُبحث عن الاسم في حسابك دون اعتبار حالة الأحرف. الـ <code>name</code> الافتراضي خاص بـ Edge، فاضبطه دائمًا.</li>
+<li>النموذج هو <code>eleven_multilingual_v2</code>. اضبط <code>ELEVENLABS_MODEL_ID</code> لاستخدام نموذج آخر.</li>
+<li>يتحول <code>rate</code> إلى سرعة الصوت، محصورة بين 0.7 و1.2. مثلًا <code>+10%</code> تعني 1.1. مع <code>+0%</code> لا تُرسل سرعة، فتُطبَّق الإعدادات المخزَّنة للصوت.</li>
+<li>يطلب ScreenPilot سطرين في وقت واحد، لأن الخطة المجانية تسمح بطلبين معًا.</li>
+</ul>
+<p>اعرض الأصوات الموجودة في حسابك:</p>
+<pre><code class="language-sh">screenpilot voices --provider elevenlabs</code></pre>
+
+<h3 id="cloud-gemini">Gemini<a class="a" href="#cloud-gemini" aria-label="رابط إلى هذا القسم">#</a></h3>
+<pre><code class="language-json">"voice": { "provider": "gemini", "name": "Kore" }</code></pre>
+<ul>
+<li>قيمة <code>name</code> هي أحد أصوات Gemini الجاهزة وعددها 30، مثل <code>Kore</code> و<code>Puck</code> و<code>Charon</code> و<code>Zephyr</code> و<code>Fenrir</code>. الأمر <code>screenpilot voices --provider gemini</code> يعرضها كلها. تنطق هذه الأصوات كل لغة يدعمها النموذج، وتُكتشف اللغة من النص.</li>
+<li>النموذج هو <code>gemini-2.5-flash-preview-tts</code>. اضبط <code>GEMINI_TTS_MODEL</code> لاستخدام نموذج آخر.</li>
+<li>يُتجاهل <code>rate</code>: واجهة Gemini API لا تملك إعداد سرعة.</li>
+<li>إذا لم ترسل الخدمة صوتًا فإن ScreenPilot يذكر ذلك. قد يكون النص قد حُظر.</li>
+</ul>
+<pre><code class="language-sh">screenpilot voices --provider gemini</code></pre>
+
+<h3 id="cloud-behavior">التخزين المؤقت وإعادة المحاولة<a class="a" href="#cloud-behavior" aria-label="رابط إلى هذا القسم">#</a></h3>
+<ul>
+<li>تُخزَّن المقاطع المولَّدة مؤقتًا بحسب المزوّد والصوت والنموذج والسرعة والنص. لا يُطلب السطر غير المتغير مرة أخرى، فلا يستهلك التصيير المكرر حصة. تغيير النموذج يعيد توليد الأسطر.</li>
+<li>الطلب الذي يفشل بسبب انقطاع الشبكة، أو انشغال الخدمة (429)، أو خطأ منها (5xx) يُعاد حتى 3 محاولات في المجموع. أي خطأ آخر يتوقف فورًا وتذكر الرسالة اسم الخدمة.</li>
+</ul>
 
 <h2 id="local-models">النماذج المحلية<a class="a" href="#local-models" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>الأصوات المحلية نماذج كلام تعمل على جهازك. هي مجانية ولا تحتاج إنترنت بعد الإعداد. ثبّت نموذجًا بالأمر <code>screenpilot voice-setup</code>، ثم استخدمه في الـ storyboard.</p>
@@ -238,11 +291,15 @@ screenpilot doctor</code></pre>
 <tr><td>توقف محرك الصوت، متبوعًا بآخر أسطر طبعها.</td><td>اقرأ تلك الأسطر: هي ما طبعه المحرك قبل أن يتوقف. نفّذ <code>screenpilot doctor</code> واقرأ فحص "local voice".</td></tr>
 <tr><td>يقول <code>voice-setup</code> إنه يحتاج <code>uv</code>.</td><td>ثبّت <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> ثم أعد تنفيذ الأمر.</td></tr>
 <tr><td>يقول <code>voice-setup</code> إن مساحة القرص غير كافية.</td><td>حرّر مساحة، أو مرّر <code>--dir</code> لاستخدام قرص آخر.</td></tr>
+<tr><td><code>ELEVENLABS_API_KEY</code> أو <code>GEMINI_API_KEY</code> غير مضبوط.</td><td>صدّر المتغير، أو نفّذ <code>screenpilot secret set elevenlabs</code> أو <code>screenpilot secret set gemini</code> والصق المفتاح. تحقق بالأمر <code>screenpilot secret status</code>.</td></tr>
+<tr><td>صوت سحابي أجاب بالرمز 401 أو 403.</td><td>المفتاح خاطئ أو لا يملك صلاحية. اضبطه من جديد. متغير البيئة له الأولوية على المفتاح المخزَّن، فتحقق من <code>secret status</code>.</td></tr>
+<tr><td>صوت سحابي أجاب بالرمز 429.</td><td>وصلت إلى حد خطتك. يحاول ScreenPilot ثلاث مرات ثم يتوقف. انتظر، أو غيّر الخطة أو المزوّد. الأسطر التي اكتملت مخزَّنة.</td></tr>
+<tr><td>ElevenLabs لا يملك صوتًا بهذا الاسم في هذا الحساب.</td><td>استخدم معرّف صوت، أو أحد الأسماء التي تعرضها الرسالة. نفّذ <code>screenpilot voices --provider elevenlabs</code>.</td></tr>
 </tbody>
 </table>
 <div class="note">إجابات أخرى في <a href="../../ar/guide/faq.html">الأسئلة الشائعة</a>. سطر الأوامر في <a href="../../ar/guide/cli.html#voice-setup">voice-setup</a> و<a href="../../ar/guide/cli.html#voices">voices</a>.</div>
-<nav class="pager" aria-label="Pager"><a href="storyboard.html" rel="prev"><small>السابق</small>مرجع الـ storyboard</a><a href="sequence.html" rel="next"><small>التالي</small>دمج التسجيلات</a></nav></article>
-  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#choose">اختر المزوّد</a><a href="#edge">أصوات Edge</a><a href="#local-models">النماذج المحلية</a><a href="#external-audio">صوت من موقع خارجي</a><a href="#own-model">نموذجك الخاص</a><a href="#troubleshooting">حل المشكلات</a></aside>
+<nav class="pager" aria-label="Pager"><a href="storyboard.html" rel="prev"><small>السابق</small>مرجع الـ storyboard</a><a href="dashboard.html" rel="next"><small>التالي</small>لوحة التحكم</a></nav></article>
+  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#choose">اختر المزوّد</a><a href="#edge">أصوات Edge</a><a href="#cloud-voices">الأصوات السحابية: ElevenLabs وGemini</a><a href="#local-models">النماذج المحلية</a><a href="#external-audio">صوت من موقع خارجي</a><a href="#own-model">نموذجك الخاص</a><a href="#troubleshooting">حل المشكلات</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../../ar/index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot مفتوح المصدر برخصة MIT.</small><small>أسماء المنتجات ملك لأصحابها. ScreenPilot مشروع مستقل.</small></div>

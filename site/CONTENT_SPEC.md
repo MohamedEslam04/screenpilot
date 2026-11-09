@@ -15,6 +15,7 @@ The docs site is built from small HTML fragments by `site/build.mjs` (not part o
 | tools | The MCP tools an AI app gets, grouped by job |
 | storyboard | `storyboard.json` reference: segments, zooms, captions, highlights, narration, intro/outro, chapter cards, overlays, music (and ducking), extends, theme, style warnings |
 | voices | Narration voices: Edge, cloud voices (ElevenLabs, Gemini: keys, `secret`, models, rate), local models (`voice-setup`, VoiceTut, NAMAA), your own program in `voices.json`, mixing, limits, troubleshooting |
+| dashboard | The local desktop dashboard: library from history, live renders, voices and keys, stats, how to start and build it (new, built from the repository for now) |
 | sequence | `sequence.json`: join several storyboards into one video, insert a feature clip into an existing demo, `from`/`to` ranges, transitions |
 | agent-drive | Let the agent drive the desktop: takes (`take.json`), targets, steps, tips |
 | safety | What the agent can touch and how to limit it: abort/resume, env vars, audit log, `setup --allow-tools` |

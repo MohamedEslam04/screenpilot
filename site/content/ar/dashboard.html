@@ -1,0 +1,88 @@
+<!--
+title: لوحة التحكم
+summary: نافذة سطح مكتب صغيرة لتسجيلاتك وتصييراتك والأعمال الجارية وأصواتك. ما تعرضه، وما تفعله، وكيف تشغّلها، وكيف تبنيها حاليًا.
+-->
+<p>لوحة التحكم (dashboard) برنامج سطح مكتب صغير ومنفصل. تعرض كل ما سجّله ScreenPilot وصيّره، وعمليات التصيير الجارية الآن، ومزوّدي الأصوات عندك، وبعض الأرقام عن تصييراتك. تعمل على جهازك فقط ولا تحتاج إلى حساب.</p>
+<div class="warn">لوحة التحكم جديدة. تبنيها الآن من المستودع: فهي ليست جزءًا من التنزيل الرئيسي بعد. جُرّبت ببيانات تجريبية في المتصفح وباختبارات وحدة لمنطقها المكتوب بـ Rust. أما نافذتها فلم تُشغَّل على سطح مكتب حقيقي ضمن فحوصات هذا المستودع، فتوقّع بعض الخشونة. الخطوات في <a href="@guide/dashboard.html#build">بناء اللوحة</a>.</div>
+
+<h2 id="start">تشغيل لوحة التحكم</h2>
+<p>نفّذ هذا الأمر في الطرفية:</p>
+<pre><code class="language-sh">screenpilot dashboard</code></pre>
+<p>يشغّل البرنامج ويعود فورًا. لوحة التحكم برنامج مستقل بنافذته الخاصة.</p>
+<p>يبحث ScreenPilot عن البرنامج بهذا الترتيب:</p>
+<ol>
+<li>المسار الموجود في متغير البيئة <code>SCREENPILOT_DASHBOARD_BIN</code> إذا ضبطته.</li>
+<li>الملف <code>screenpilot-dashboard</code> (وعلى Windows <code>screenpilot-dashboard.exe</code>) في مجلد لوحة التحكم. هذا المجلد بجوار مجلد التطبيق، باسمه مع إضافة <code>-dashboard</code>، لأن <code>setup</code> يستبدل مجلد التطبيق في كل مرة يعمل فيها.</li>
+</ol>
+<ul>
+<li>Linux: <code>~/.local/share/screenpilot-dashboard</code></li>
+<li>Windows: <code>%LOCALAPPDATA%\ScreenPilot-dashboard</code></li>
+<li>macOS: <code>~/Library/Application Support/ScreenPilot-dashboard</code></li>
+</ul>
+<p>إذا لم يكن البرنامج هناك، يقول <code>screenpilot dashboard</code> إنه غير مثبّت ويذكر المجلد الذي بحث فيه.</p>
+<p>على Linux، يضيف <code>screenpilot setup</code> عنصر ScreenPilot إلى قائمة التطبيقات إذا كان برنامج لوحة التحكم موجودًا في ذلك المجلد. والأمر <code>screenpilot setup --remove</code> يزيل العنصر.</p>
+
+<h2 id="build">بناء اللوحة</h2>
+<p>تحتاج إلى Rust. وعلى Linux تحتاج أيضًا إلى حزم تطوير WebKitGTK 4.1. الملف <code>dashboard/src-tauri/README.md</code> في المستودع يذكر أسماء الحزم لنظام Fedora.</p>
+<pre><code class="language-sh">cargo install tauri-cli --locked
+cd dashboard/src-tauri
+cargo tauri build</code></pre>
+<p>ضع البرنامج الذي يبنيه في مجلد لوحة التحكم المذكور أعلاه، أو وجّه <code>SCREENPILOT_DASHBOARD_BIN</code> إليه.</p>
+
+<h2 id="tabs">ما تعرضه اللوحة</h2>
+<p>في النافذة أربع تبويبات.</p>
+
+<h3 id="library">المكتبة</h3>
+<p>تعرض المكتبة تسجيلاتك وtakes وتصييراتك وsequences من <code>history.jsonl</code>، من الأحدث إلى الأقدم، مع صورة مصغّرة لكل فيديو. تحمّل 50 صفًا في كل مرة، والزر <strong>Load older</strong> يضيف المزيد. اكتب في مربع البحث للبحث في الصفوف المحمّلة (اضغط <kbd>/</kbd> للانتقال إليه). الأزرار فوق القائمة تصفّي حسب النوع (Records وTakes وRenders وSequences) أو تعرض الأعمال الفاشلة فقط.</p>
+<p>اختر صفًا لتفتح لوحة التفاصيل:</p>
+<ul>
+<li>مشغّل فيديو، إذا كان للعمل فيديو.</li>
+<li>النوع والوقت والحالة والمدة والجودة ومدة التنفيذ والمسارات. والعمل الفاشل يعرض خطأه.</li>
+<li>ملخص الـ storyboard: حجم الخرج والصوت والمصدر وعدد أسطر التعليق والتسميات والتكبيرات والتظليلات والمقاطع. والـ sequence تعرض أجزاءها.</li>
+<li>أسطر التعليق مع أوقاتها.</li>
+</ul>
+<div class="note">يقرأ المشغّل والصور المصغّرة الملفات تحت مجلد المنزل و<code>/data</code> و<code>/mnt</code> و<code>/run/media</code>. الفيديو في مكان آخر، مثل قرص آخر على Windows، لا يعمل في النافذة. والزر <strong>Open video</strong> ما زال يفتحه.</div>
+
+<h3 id="live">المباشر</h3>
+<p>يعرض تبويب Live عمليات التصيير الجارية الآن، مع الجودة والوقت المنقضي وشريط تقدّم عندما تعرف العملية خطوتها (الجزء 3 من 12، أو الجزء 2 من 4). يتحدّث عندما ينتقل التصيير إلى خطوته التالية. ورقم على التبويب يبيّن عدد العمليات الجارية. يعرض التصييرات التي بدأت من أي مكان: لوحة التحكم أو سطر الأوامر أو تطبيقك الذكي.</p>
+
+<h3 id="voices-tab">الأصوات</h3>
+<p>يعرض تبويب Voices بطاقة لكل مزوّد: <code>edge</code> و<code>local</code> و<code>command</code> و<code>elevenlabs</code> و<code>gemini</code>. تقول كل بطاقة هل المفتاح مضبوط (وهل هو من متغير بيئة أم من الملف المحفوظ)، وإلى أين يذهب نص التعليق، وتعرض أصوات ذلك المزوّد. وفي ElevenLabs وGemini تستطيع لصق مفتاح وحفظه، أو حذف مفتاح محفوظ. شرح المزوّدين في <a href="@guide/voices.html#cloud-voices">الأصوات</a>.</p>
+
+<h3 id="stats">الإحصاءات</h3>
+<p>يعرض تبويب Stats عدد الأحداث في السجل، وسرعة التصيير لكل جودة (ثواني الفيديو المنتَجة في كل ثانية انتظار، من تصييراتك المنتهية، مع عدد المرات)، وحجم render cache. يُقاس الـ cache عند فتح التبويب، وزر يقيسه من جديد. وقد يطول قياس cache كبير.</p>
+
+<h2 id="actions">ما تستطيع فعله</h2>
+<p>هذه الأزرار في لوحة تفاصيل الصف:</p>
+<table>
+<thead><tr><th>الزر</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><strong>Open video</strong></td><td>يفتح الفيديو بمشغّلك الافتراضي.</td></tr>
+<tr><td><strong>Show in folder</strong></td><td>يفتح المجلد الذي فيه الفيديو أو الجلسة.</td></tr>
+<tr><td><strong>Render draft</strong></td><td>ينفّذ <code>screenpilot render</code> على الـ storyboard مع <code>-q draft</code>. يبدأ في الخلفية. تابعه في تبويب Live.</td></tr>
+<tr><td><strong>Render delivery</strong></td><td>الشيء نفسه بجودة delivery. تنقر مرتين: يطلب الزر أولًا تأكيدك.</td></tr>
+<tr><td><strong>Copy command</strong></td><td>ينسخ الأمر إلى الحافظة لتنفّذه بنفسك.</td></tr>
+</tbody>
+</table>
+<p>تظهر أزرار التصيير للتصيير وللـ take الذي كتب storyboard. أما الـ sequence ففيها <strong>Copy command</strong> فقط، وهو ينسخ أمر <code>screenpilot sequence</code>.</p>
+<p>تفتح لوحة التحكم الفيديوهات والصور والترجمات والصوت والملفات النصية فقط. وترفض فتح أي شيء آخر، مثل برنامج أو سكربت. والزر <strong>Show in folder</strong> يعمل مع أي ملف، لأنه يعرضه في مجلده فقط.</p>
+
+<h2 id="old-work">أعمال سابقة للسجل</h2>
+<p>تقرأ المكتبة الملف <code>history.jsonl</code>. التسجيلات والتصييرات التي أنجزتها قبل وجود السجل ليست فيه. أضفها من الطرفية:</p>
+<pre><code class="language-sh">screenpilot library import</code></pre>
+<p>المجلدات التي يبحث فيها مذكورة في <a href="@guide/cli.html#library">library</a>.</p>
+
+<h2 id="keys">كيف تُخزَّن المفاتيح</h2>
+<p>عندما تحفظ مفتاحًا في تبويب Voices لا تحتفظ لوحة التحكم به. ترسله إلى <code>screenpilot secret set</code> عبر الإدخال القياسي (stdin)، فيكتبه ScreenPilot في <code>secrets.json</code> داخل مجلد الإعداد بصلاحية 0600. لا تعرض اللوحة المفتاح مرة أخرى، ولا تقرأ <code>secrets.json</code> أبدًا. والمفتاح المضبوط بمتغير بيئة لا يمكن تغييره أو حذفه من هناك. في <a href="@guide/cli.html#secret">secret</a> الأوامر نفسها للطرفية.</p>
+
+<h2 id="light">لماذا تبقى خفيفة</h2>
+<ul>
+<li>لا توجد عملية في الخلفية. إغلاق النافذة ينهي البرنامج.</li>
+<li>تراقب مجلد الأعمال الجارية فقط أثناء ظهور النافذة. ولا توجد حلقة استطلاع دورية.</li>
+<li>ترسم القائمة الصفوف التي تراها فقط، وتحمّل الصفوف الأقدم عندما تطلبها.</li>
+<li>كل صورة مصغّرة تُنشأ مرة واحدة، حين يظهر صفها أول مرة، بواسطة ffmpeg. وتُحفظ في المجلد <code>thumbs</code> داخل مجلد الـ cache وتُعاد استعمالها.</li>
+</ul>
+
+<h2 id="privacy">محلية فقط</h2>
+<p>نافذة لوحة التحكم لا ترسل أي طلب شبكة. تقرأ ملفات على جهازك وتشغّل الأمر <code>screenpilot</code>. والاستثناء الوحيد قائمة أصوات مزوّد عبر الإنترنت: تشغّل <code>screenpilot voices</code>، وهو يتصل بتلك الخدمة.</p>
+<div class="note">مزيد من الأوامر في صفحة <a href="@guide/cli.html">سطر الأوامر</a>: <a href="@guide/cli.html#history">history</a> و<a href="@guide/cli.html#library">library</a> و<a href="@guide/cli.html#secret">secret</a>.</div>
