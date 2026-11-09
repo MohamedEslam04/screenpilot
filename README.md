@@ -12,6 +12,10 @@ Ask your AI app for a screen video. ScreenPilot records your screen (or uses you
 
 ## What's new
 
+### Unreleased
+
+- **A video folder per project:** a `.screenpilot.json` in a project's root (`{"output": "videos"}`, or `screenpilot project set-output videos`) sends that project's recordings and takes to its own folder; everything else still goes to your default folder. `record` and `perform` take `--project <path>`, and the MCP tools `record_start` and `perform` take `project`, which your AI app passes for the project it works in. The folder must be inside the project. The dashboard lists these videos wherever they are.
+
 ### 0.11.0 ([release notes](https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.11.0))
 
 - **Timeline and subtitles in several languages:** every render and sequence writes `<video>.timeline.json` (when each narration line and card is on screen), and narration lines take an optional `id`. `--subtitle-lang ar,en=en.json` writes one caption file per language, and `screenpilot subs <video>` (MCP `subs`) makes them for a video that is already rendered, with no new render. `--mux` adds soft subtitle tracks, and `check` warns when a caption lands more than 0.4 s away from the sound. See [Subtitles and timeline](https://mohamedeslam04.github.io/screenpilot/guide/subtitles.html).
@@ -132,7 +136,7 @@ Then ask, for example:
 - "Turn this recording into a tutorial with zooms on every click: `~/Videos/demo.mp4`."
 - "Show the admin turning off a permission and the user's page reacting, in two browsers side by side."
 
-Your recordings and finished videos are saved in the **ScreenPilot** folder inside your Videos folder (on a Mac: Movies). The first video takes a little longer while everything warms up.
+Your recordings and finished videos are saved in the **ScreenPilot** folder inside your Videos folder (on a Mac: Movies), or in the project's own video folder when that project has a `.screenpilot.json`. The first video takes a little longer while everything warms up.
 
 ## Voices
 
