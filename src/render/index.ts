@@ -199,6 +199,11 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   await mkdir(join(buildDir, "overlays"), { recursive: true });
   const overlays: (OverlayAsset | undefined)[] = [];
   for (const [i, o] of sb.overlays.entries()) {
+    if (o.kind === "card") {
+      // Drawn from its data by the page: no file. The slot keeps overlays[] aligned with sb.overlays.
+      overlays.push(undefined);
+      continue;
+    }
     const file = resolve(baseDir, o.src);
     const kind = overlayKind(o.src);
     if (!kind) warnings.push(`overlays[${i}] "${o.src}" is not a known image or video type and was skipped`);

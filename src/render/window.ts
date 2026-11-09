@@ -1,5 +1,5 @@
 import type { DuckTween } from "./duck.js";
-import type { AnnotationItem, AudioItem, CardItem, KeysItem, OverlayItem, RenderPlan, SubtitleItem } from "./plan.js";
+import type { AnnotationItem, AudioItem, CardItem, DataCardItem, KeysItem, OverlayItem, RenderPlan, SubtitleItem } from "./plan.js";
 import type { CamState, CamTween } from "./zoom.js";
 import { IDENTITY } from "./zoom.js";
 
@@ -97,6 +97,15 @@ export function windowPlan(plan: RenderPlan, win: Window): RenderPlan {
     overlays.push({ ...o, start: c.start, end: round(c.start + c.dur), clips, ...(Object.keys(motion).length > 0 ? { motion } : {}) });
   }
 
+  const dataCards: DataCardItem[] = [];
+  for (const d of plan.dataCards ?? []) {
+    const c = clip(d.start, d.end, from, to);
+    if (!c) continue;
+    // Like an overlay: an entrance or exit the window cut off would replay from nothing, so skip it.
+    const motion = { ...d.motion, ...(c.headCut > 0 ? { in: "none" as const } : {}), ...(c.tailCut ? { out: "none" as const } : {}) };
+    dataCards.push({ ...d, start: c.start, end: round(c.start + c.dur), ...(Object.keys(motion).length > 0 ? { motion } : {}) });
+  }
+
   return {
     ...plan,
     duration: round(to - from),
@@ -104,6 +113,7 @@ export function windowPlan(plan: RenderPlan, win: Window): RenderPlan {
     audio,
     cards,
     overlays,
+    ...(plan.dataCards ? { dataCards } : {}),
     camera: windowCamera(plan.camera, from, to),
     texts: plan.texts.flatMap((t) => {
       const c = clip(t.start, t.end, from, to);
