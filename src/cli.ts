@@ -32,6 +32,7 @@ import { renderSequence, validateSequence } from "./sequence/index.js";
 import { sequenceJsonSchema } from "./sequence/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
+import { removeSecret, type SecretName, secretSource, secretsFile, setSecret } from "./voice/secrets.js";
 import { exportScript, importAudio } from "./voice/import.js";
 import { detectBriefEnv } from "./brief/detect.js";
 import { applyUpdate, checkForUpdate, sourceFrom, updateCommand } from "./update/index.js";
@@ -58,6 +59,12 @@ async function withDriver(fn: (d: Driver) => Promise<void>): Promise<void> {
 async function withDriverScreens<T>(fn: (screens: ScreenInfo[]) => Promise<T>): Promise<T> {
   return fn(await (await getDesktop()).screens());
 }
+
+const secretNameFor = (provider: string): SecretName => {
+  if (provider === "elevenlabs") return "ELEVENLABS_API_KEY";
+  if (provider === "gemini") return "GEMINI_API_KEY";
+  throw new Error(`Unknown provider "${provider}" (want elevenlabs or gemini)`);
+};
 
 const parseMap = (s: string) =>
   Object.fromEntries(
@@ -394,6 +401,35 @@ program
     } finally {
       await provider.close?.();
     }
+  });
+
+const secret = program.command("secret").description("API keys for the cloud voices (ElevenLabs, Gemini), kept in secrets.json (mode 0600) in the config folder");
+secret
+  .command("set")
+  .description("Store a key. It is read from stdin, never from an argument, so it stays out of shell history and process lists")
+  .argument("<provider>", "elevenlabs | gemini")
+  .action(async (provider: string) => {
+    const name = secretNameFor(provider);
+    if (process.stdin.isTTY) log(`paste the ${provider} key, then press Enter`);
+    const chunks: Buffer[] = [];
+    for await (const c of process.stdin) chunks.push(c as Buffer);
+    const key = Buffer.concat(chunks).toString("utf8").trim();
+    if (!key) throw new Error("No key on stdin");
+    setSecret(name, key);
+    print({ provider, stored: true, file: secretsFile() });
+  });
+secret
+  .command("status")
+  .description("Which keys are set and where they come from (env or file). Never prints a key")
+  .action(() => {
+    print(Object.fromEntries(["elevenlabs", "gemini"].map((p) => [p, secretSource(secretNameFor(p))])));
+  });
+secret
+  .command("remove")
+  .description("Delete a stored key (an environment variable stays)")
+  .argument("<provider>", "elevenlabs | gemini")
+  .action((provider: string) => {
+    print({ provider, removed: removeSecret(secretNameFor(provider)) });
   });
 
 program

@@ -5,7 +5,8 @@ import { configDir } from "../brand.js";
 // API keys for the cloud voice providers. The environment wins; otherwise a JSON map in the
 // config folder (mode 0600). A key is never logged, put in a cache key or in an error message.
 
-export type SecretName = "ELEVENLABS_API_KEY" | "GEMINI_API_KEY";
+export const SECRET_NAMES = ["ELEVENLABS_API_KEY", "GEMINI_API_KEY"] as const;
+export type SecretName = (typeof SECRET_NAMES)[number];
 
 export const secretsFile = () => join(configDir(), "secrets.json");
 
@@ -40,4 +41,24 @@ export function setSecret(name: SecretName, value: string): void {
   writeFileSync(tmp, `${JSON.stringify({ ...readSecrets(), [name]: value }, null, 2)}\n`, { mode: 0o600 });
   chmodSync(tmp, 0o600); // the mode above only applies to a newly created file
   renameSync(tmp, file);
+}
+
+/** Where a key comes from ("env" wins over "file"), or null when it is not set. Never returns the value. */
+export function secretSource(name: SecretName): "env" | "file" | null {
+  if (process.env[name]) return "env";
+  const fromFile = readSecrets()[name];
+  return typeof fromFile === "string" && fromFile ? "file" : null;
+}
+
+/** Remove a key from secrets.json (an environment variable is not ours to unset). True when it was there. */
+export function removeSecret(name: SecretName): boolean {
+  const all = readSecrets();
+  if (!(name in all)) return false;
+  delete all[name];
+  const file = secretsFile();
+  const tmp = `${file}.${process.pid}.tmp`;
+  writeFileSync(tmp, `${JSON.stringify(all, null, 2)}\n`, { mode: 0o600 });
+  chmodSync(tmp, 0o600);
+  renameSync(tmp, file);
+  return true;
 }

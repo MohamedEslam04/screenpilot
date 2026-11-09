@@ -3,7 +3,7 @@ import { mkdtemp, readFile, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { findSecret, getSecret, secretsFile, setSecret } from "../src/voice/secrets.js";
+import { findSecret, getSecret, removeSecret, secretSource, SECRET_NAMES, secretsFile, setSecret } from "../src/voice/secrets.js";
 
 let dir: string;
 const saved = { xdg: process.env.XDG_CONFIG_HOME, eleven: process.env.ELEVENLABS_API_KEY, gemini: process.env.GEMINI_API_KEY };
@@ -76,5 +76,25 @@ describe("voice secrets", () => {
     mkdirSync(join(dir, "screenpilot"), { recursive: true });
     writeFileSync(secretsFile(), "{not json");
     expect(findSecret("GEMINI_API_KEY")).toBeUndefined();
+  });
+});
+
+describe("secret status and removal", () => {
+  it("says where each key comes from without returning its value", () => {
+    expect(SECRET_NAMES).toEqual(["ELEVENLABS_API_KEY", "GEMINI_API_KEY"]);
+    expect(secretSource("GEMINI_API_KEY")).toBeNull();
+    setSecret("GEMINI_API_KEY", "from-file");
+    expect(secretSource("GEMINI_API_KEY")).toBe("file");
+    process.env.GEMINI_API_KEY = "from-env";
+    expect(secretSource("GEMINI_API_KEY")).toBe("env");
+  });
+
+  it("removes one key and keeps the others", async () => {
+    setSecret("GEMINI_API_KEY", "g");
+    setSecret("ELEVENLABS_API_KEY", "e");
+    expect(removeSecret("GEMINI_API_KEY")).toBe(true);
+    expect(removeSecret("GEMINI_API_KEY")).toBe(false);
+    expect(JSON.parse(await readFile(secretsFile(), "utf8"))).toEqual({ ELEVENLABS_API_KEY: "e" });
+    expect((await stat(secretsFile())).mode & 0o777).toBe(0o600);
   });
 });
