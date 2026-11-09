@@ -28,6 +28,7 @@ import { remapSession } from "./record/remap.js";
 import { parseExtras } from "./render/export.js";
 import { parseFormats } from "./render/formats.js";
 import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
+import { parseSubtitleLanguages } from "./render/subtitle-langs.js";
 import { parseSubtitleFormats } from "./render/subtitles.js";
 import { parseWindow } from "./render/window.js";
 import { parseWorkers } from "./render/workers.js";
@@ -491,6 +492,12 @@ const workersField = z
   .optional()
   .describe('Parallel renderers: "auto" (default, half the cores), "max" (all cores but two: faster, but the desktop gets sluggish, so use it when the user is away) or a number. SCREENPILOT_WORKERS sets the default.');
 
+const languagesField = z
+  .record(z.string(), z.string())
+  .optional()
+  .describe('Caption files per language: { "ar": "auto", "en": "en.json" }. "auto" = the video\'s own narration lines; a path = a translation JSON ({ "<id or index>": "line" }, or { "<chapter>": ["line", ...] } for a sequence). Writes <video>.<code>.srt|vtt instead of the plain file.');
+const subtitleCharsField = z.number().int().min(10).optional().describe("Characters per caption line for languages (default 42; at most 2 lines per cue)");
+
 server.registerTool(
   "render",
   {
@@ -500,7 +507,7 @@ server.registerTool(
       "Pass from/to (OUTPUT seconds) to re-render only that window for a fast review; the file is named <storyboard>.part-<from>-<to>.mp4. " +
       "Pass style (a style file, JSON with only a theme) to render the same video with another look: its theme is merged over the storyboard's, the file is named <storyboard>.<style>.mp4 and each style keeps its own build folder. " +
       'Pass formats (e.g. ["16:9","9:16","1:1"] or ["1280x720"]) to render one file per format: <storyboard>.<format>.mp4 (16x9, 9x16, 1x1), narration synthesized once. ' +
-      'Pass subtitles (["srt","vtt"]) to also write caption files from the narration next to the video, and also (["gif","webm","poster"]) for an animated GIF, a WebM or a poster PNG made from the finished video (poster_at sets its time). The result lists them under files. ' +
+      'Pass subtitles (["srt","vtt"]) to also write caption files from the narration next to the video; with languages ({code: translation file or "auto"}) one file per language, <video>.<code>.srt|vtt, from the video\'s own lines ("auto") or a JSON translation ({"<id or index>": "line"}), and also (["gif","webm","poster"]) for an animated GIF, a WebM or a poster PNG made from the finished video (poster_at sets its time). The result lists them under files. ' +
       "A video (or from/to window) of 5 minutes or more renders in chunks of about 3 minutes cut where nothing is moving or speaking, each cached: after an edit only the chunks it touched render again, then all are joined. chunks: false renders in one piece; chunk_seconds sets the chunk length. " +
       "dryRun=true sends nothing and writes nothing: it returns the lines, characters and estimated USD the voice would cost (cached lines are free), so check it before the first render with a paid voice. " +
       "Slow (minutes). Follow with check_output to review the result.",
@@ -512,6 +519,8 @@ server.registerTool(
       to: z.number().min(0).optional().describe("Partial render: end, in OUTPUT seconds"),
       formats: z.array(z.string()).optional().describe('Output formats, each "16:9", "9:16", "1:1" or "WxH". One file per format; output becomes the base name.'),
       subtitles: z.array(z.enum(["srt", "vtt"])).optional().describe("Also write subtitle files from the narration lines, next to the video"),
+      languages: languagesField,
+      subtitle_chars: subtitleCharsField,
       also: z.array(z.enum(["gif", "webm", "poster"])).optional().describe("Also make these from the finished video: an animated GIF, a WebM, a poster PNG"),
       poster_at: z.number().min(0).optional().describe("Poster frame time in OUTPUT seconds (default: a quarter of the way in)"),
       style: z.string().optional().describe('Path to a style file: { "theme": {...} } only; merged over the storyboard\'s theme (css and fonts replace, motion and grade merge key by key)'),
@@ -521,12 +530,14 @@ server.registerTool(
       dryRun: z.boolean().optional().describe("Only estimate the voice cost (lines, characters, USD): no request, no file, no cache entry"),
     },
   },
-  safe(async ({ storyboard, output, quality, from, to, formats, subtitles, also, poster_at, style, workers, chunks, chunk_seconds, dryRun }) => {
+  safe(async ({ storyboard, output, quality, from, to, formats, subtitles, languages, subtitle_chars, also, poster_at, style, workers, chunks, chunk_seconds, dryRun }) => {
     if (dryRun) return text(await estimateStoryboard(storyboard, { style: style ? await loadStyle(style) : undefined }));
     requireBrief("render");
     const window = parseWindow(from, to);
     const extra = {
       subtitles: parseSubtitleFormats(subtitles),
+      subtitleLanguages: parseSubtitleLanguages(languages),
+      subtitleRules: subtitle_chars !== undefined ? { maxChars: subtitle_chars } : undefined,
       also: parseExtras(also),
       posterAt: poster_at,
       style: style ? await loadStyle(style) : undefined,
@@ -576,6 +587,7 @@ server.registerTool(
       "with the intro of the first part and the outro of the last, then joined into one MP4. " +
       "Pass style (a style file, JSON with only a theme) to render the same sequence with another look: its theme is merged over every storyboard part (not over finished video parts), the file is named <sequence>.<style>.mp4 and each style keeps its own build folder and cache. " +
       "dryRun=true sends nothing and writes nothing (no build folder): it returns the lines, characters and estimated USD the voices would cost, part by part. " +
+      "subtitles (srt, vtt) and languages ({code: translation file or \"auto\"}) also write caption files for the joined video from its timeline (<video>.<code>.srt|vtt); a translation is {\"<chapter>\": [\"line\", ...]} (chapter = the part's storyboard folder name) or {\"<id>\": \"line\"}. " +
       "Slow (minutes). Follow with check_output.",
     inputSchema: {
       sequence: z.string().describe("Path to sequence.json"),
@@ -583,13 +595,27 @@ server.registerTool(
       quality: z.enum(["draft", "looks", "delivery"]).optional().describe("Default looks"),
       style: z.string().optional().describe('Path to a style file: { "theme": {...} } only; merged over the theme of every storyboard part'),
       workers: workersField,
+      subtitles: z.array(z.enum(["srt", "vtt"])).optional().describe("Also write caption files for the joined video, from its timeline.json (default formats srt and vtt when languages is given)"),
+      languages: languagesField,
+      subtitle_chars: subtitleCharsField,
       dryRun: z.boolean().optional().describe("Only estimate the voice cost (lines, characters, USD) part by part: no request, no file, no build folder"),
     },
   },
-  safe(async ({ sequence, output, quality, style, workers, dryRun }) => {
+  safe(async ({ sequence, output, quality, style, workers, subtitles, languages, subtitle_chars, dryRun }) => {
     if (dryRun) return text(await estimateSequence(sequence, { style: style ? await loadStyle(style) : undefined }));
     requireBrief("sequence_render");
-    return text(await renderSequence(sequence, { output, quality, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(workers), log }));
+    return text(
+      await renderSequence(sequence, {
+        output,
+        quality,
+        style: style ? await loadStyle(style) : undefined,
+        workers: parseWorkers(workers),
+        subtitles: parseSubtitleFormats(subtitles),
+        subtitleLanguages: parseSubtitleLanguages(languages),
+        subtitleRules: subtitle_chars !== undefined ? { maxChars: subtitle_chars } : undefined,
+        log,
+      }),
+    );
   }),
 );
 

@@ -22,6 +22,7 @@ import { takeJsonSchema } from "./take/schema.js";
 import { parseExtras } from "./render/export.js";
 import { parseFormats } from "./render/formats.js";
 import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
+import { parseSubtitleLanguages } from "./render/subtitle-langs.js";
 import { parseSubtitleFormats } from "./render/subtitles.js";
 import { parseWindow } from "./render/window.js";
 import { parseWorkers } from "./render/workers.js";
@@ -547,6 +548,8 @@ program
   .option("--formats <list>", "Render once per format, e.g. 16:9,9:16,1:1 or 1280x720 (writes <storyboard>.<format>.mp4)")
   .option("--style <file>", "Style file ({ \"theme\": {...} }) merged over the storyboard's theme; writes <storyboard>.<style>.mp4 and keeps its own build folder")
   .option("--subtitles <list>", "Also write subtitle files from the narration: srt, vtt or srt,vtt (next to the video)")
+  .option("--subtitle-lang <list>", "One caption file per language: ar,en=en.json,es=es.json (code = the video's own lines, code=file = a translation: {\"<id or index>\": \"line\"}). Writes <video>.<code>.srt|vtt instead of the plain file (formats from --subtitles, default srt,vtt)")
+  .option("--subtitle-chars <n>", "Characters per caption line for --subtitle-lang (default 42; at most 2 lines per cue)", Number)
   .option("--also <list>", "Also make files from the finished video: gif, webm, poster (a PNG frame), or a comma list")
   .option("--poster-at <s>", "Time of the poster frame, in OUTPUT seconds (default: a quarter of the way in)", Number)
   .option("--no-chunks", "Render in one piece. By default a video (or --from/--to window) of 5 minutes or more renders in cached chunks cut at quiet points, so after an edit only the touched chunks render again")
@@ -554,16 +557,16 @@ program
   .option("--build-dir <dir>")
   .option("--dry-run", "Print the lines, characters and estimated USD the voice would cost, then stop: no request, no file, no cache entry")
   .addOption(new Option("--dry").hideHelp())
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; subtitles?: string; also?: string; posterAt?: number; chunks: boolean; chunkSeconds?: number; dryRun?: boolean; dry?: boolean }) => {
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; subtitles?: string; subtitleLang?: string; subtitleChars?: number; also?: string; posterAt?: number; chunks: boolean; chunkSeconds?: number; dryRun?: boolean; dry?: boolean }) => {
     if (o.dryRun || o.dry) {
       const e = await estimateStoryboard(path, { style: o.style ? await loadStyle(o.style) : undefined });
       log(describeEstimate(e));
       print(e);
       return;
     }
-    const { subtitles, also, posterAt, style, chunks, dryRun: _dryRun, dry: _dry, ...rest } = o;
+    const { subtitles, subtitleLang, subtitleChars, also, posterAt, style, chunks, dryRun: _dryRun, dry: _dry, ...rest } = o;
     // Commander sets chunks: true unless --no-chunks; only an explicit "off" is passed on.
-    const opts = { ...rest, chunks: chunks ? undefined : false, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt, log };
+    const opts = { ...rest, chunks: chunks ? undefined : false, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), subtitleLanguages: parseSubtitleLanguages(subtitleLang), subtitleRules: subtitleChars !== undefined ? { maxChars: subtitleChars } : undefined, also: parseExtras(also), posterAt, log };
     if (o.formats) {
       if (o.buildDir) throw new Error("--build-dir cannot be combined with --formats (each format gets its own <name>.<format>.build)");
       const rs = await renderFormats(path, parseFormats(o.formats), opts);
@@ -584,18 +587,21 @@ program
   .option("--workers <n>", "Parallel renderers, each a headless Chrome: auto (default: half the cores, from free memory), max (idle desktop: all cores but two) or a number. SCREENPILOT_WORKERS sets the default")
   .option("--timings", "Log how long each stage takes and show HyperFrames phase timings")
   .option("--style <file>", "Style file ({ \"theme\": {...} }) merged over the theme of every part; writes <sequence>.<style>.mp4 and keeps its own build folder")
+  .option("--subtitles <list>", "Also write caption files for the joined video from its timeline: srt, vtt or srt,vtt (next to the video)")
+  .option("--subtitle-lang <list>", "One caption file per language: ar,en=en.json (translation = {\"<chapter>\": [\"line\", ...]} or {\"<id>\": \"line\"}, chapter = the part's storyboard folder). Writes <video>.<code>.srt|vtt")
+  .option("--subtitle-chars <n>", "Characters per caption line (default 42; at most 2 lines per cue)", Number)
   .option("--build-dir <dir>")
   .option("--dry-run", "Print the lines, characters and estimated USD the voices would cost, part by part, then stop: no request, no file, no build folder")
   .addOption(new Option("--dry").hideHelp())
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string; dryRun?: boolean; dry?: boolean }) => {
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string; subtitles?: string; subtitleLang?: string; subtitleChars?: number; dryRun?: boolean; dry?: boolean }) => {
     if (o.dryRun || o.dry) {
       const e = await estimateSequence(path, { style: o.style ? await loadStyle(o.style) : undefined });
       log(describeEstimate(e, " (all parts)"));
       print(e);
       return;
     }
-    const { style, dryRun: _dryRun, dry: _dry, ...rest } = o;
-    print(await renderSequence(path, { ...rest, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), log }));
+    const { style, subtitles, subtitleLang, subtitleChars, dryRun: _dryRun, dry: _dry, ...rest } = o;
+    print(await renderSequence(path, { ...rest, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), subtitles: parseSubtitleFormats(subtitles), subtitleLanguages: parseSubtitleLanguages(subtitleLang), subtitleRules: subtitleChars !== undefined ? { maxChars: subtitleChars } : undefined, log }));
   });
 
 program
