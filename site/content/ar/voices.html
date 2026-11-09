@@ -1,19 +1,21 @@
 <!--
 title: الأصوات
-summary: اختر صوت التعليق: أصوات Edge عبر الإنترنت، أو نماذج كلام على جهازك، أو أي برنامج تعرّفه بنفسك. الإعداد والحدود والحلول.
+summary: اختر صوت التعليق: Edge، أو أصوات سحابية بمفتاحك الخاص من ElevenLabs أو Gemini، أو نماذج كلام على جهازك، أو أي برنامج تعرّفه. الإعداد والحلول.
 -->
-<p>يقرأ ScreenPilot كل سطر تعليق بواسطة مزوّد صوت. هناك ثلاثة مزوّدين. <code>edge</code> هو الافتراضي ولا يحتاج إعدادًا. <code>local</code> يشغّل نماذج كلام على جهازك. <code>command</code> يشغّل أي برنامج تعرّفه يحوّل النص إلى ملف صوت. الـ storyboard الموجودة تعمل كما هي: إذا لم يكن في الـ storyboard حقل <code>provider</code> فالمزوّد هو <code>edge</code>.</p>
+<p>يقرأ ScreenPilot كل سطر تعليق بواسطة مزوّد صوت. هناك خمسة مزوّدين. <code>edge</code> هو الافتراضي ولا يحتاج إعدادًا. <code>elevenlabs</code> و<code>gemini</code> أصوات سحابية تستخدم مفتاح حسابك أنت. <code>local</code> يشغّل نماذج كلام على جهازك. <code>command</code> يشغّل أي برنامج تعرّفه يحوّل النص إلى ملف صوت. الـ storyboard الموجودة تعمل كما هي: إذا لم يكن في الـ storyboard حقل <code>provider</code> فالمزوّد هو <code>edge</code>.</p>
 
 <h2 id="choose">اختر المزوّد</h2>
 <table>
 <thead><tr><th>المزوّد</th><th>ما هو</th><th>الإنترنت</th><th>التكلفة</th><th>ملاحظة عن الجودة</th></tr></thead>
 <tbody>
 <tr><td><code>edge</code></td><td>أصوات Microsoft Edge بلغات كثيرة، منها العربية المصرية.</td><td>مطلوب عند كل تصيير لأسطر جديدة.</td><td>لا شيء.</td><td>يعمل بلا إعداد. هذه خدمة غير رسمية وقد تتغير.</td></tr>
+<tr><td><code>elevenlabs</code></td><td>أصوات ElevenLabs السحابية، بمفتاح API خاص بك.</td><td>مطلوب عند كل تصيير لأسطر جديدة.</td><td>تعتمد على خطة ElevenLabs عندك. للخطط المجانية حدود.</td><td>جودة عالية. نص التعليق يُرسل إلى ElevenLabs. اختياري: يحتاج إلى حساب.</td></tr>
+<tr><td><code>gemini</code></td><td>أصوات Gemini API السحابية من Google، بمفتاح API خاص بك.</td><td>مطلوب عند كل تصيير لأسطر جديدة.</td><td>تعتمد على حصتك لدى Google. للطبقات المجانية حدود.</td><td>نص التعليق يُرسل إلى Google. اختياري: يحتاج إلى حساب.</td></tr>
 <tr><td><code>local</code></td><td>نماذج كلام تعمل على جهازك: VoiceTut وNAMAA.</td><td>للتنزيل أثناء الإعداد فقط. لا حاجة له بعد ذلك.</td><td>مجاني. يستهلك نحو 10 إلى 16 GB من القرص.</td><td>العربية المصرية والإنجليزية. العربية أقل دقة من الإنجليزية. جُرّب على Linux مع كرت NVIDIA فقط.</td></tr>
 <tr><td><code>command</code></td><td>برنامج تعرّفه في <code>voices.json</code>، مثل Piper.</td><td>يعتمد على البرنامج.</td><td>يعتمد على البرنامج.</td><td>ما ينتجه البرنامج.</td></tr>
 </tbody>
 </table>
-<p>اختر <code>edge</code> إذا أردت أن يعمل الآن. اختر <code>local</code> إذا أردت تصييرًا بلا إنترنت. اختر <code>command</code> إذا كان عندك نموذج كلام خاص بك.</p>
+<p>اختر <code>edge</code> إذا أردت أن يعمل الآن. اختر <code>elevenlabs</code> أو <code>gemini</code> إذا كان عندك حساب وتريد صوتًا سحابيًا. اختر <code>local</code> إذا أردت تصييرًا بلا إنترنت. اختر <code>command</code> إذا كان عندك نموذج كلام خاص بك.</p>
 <p>حدّد المزوّد مرة واحدة للـ storyboard كلها في <code>voice</code>. الحقول كلها في <a href="@guide/storyboard.html#output">الخرج والصوت</a>.</p>
 
 <h2 id="edge">أصوات Edge</h2>
@@ -22,6 +24,57 @@ summary: اختر صوت التعليق: أصوات Edge عبر الإنترنت
 <p>اعرض الأصوات، ويمكنك تحديد لغة واحدة:</p>
 <pre><code class="language-sh">screenpilot voices --lang ar-EG</code></pre>
 <p>أمثلة: <code>ar-EG-SalmaNeural</code> و<code>ar-EG-ShakirNeural</code> و<code>en-US-AndrewNeural</code> (الافتراضي) و<code>en-US-AriaNeural</code>.</p>
+
+<h2 id="cloud-voices">الأصوات السحابية: ElevenLabs وGemini</h2>
+<p>يرسل هذان المزوّدان كل سطر تعليق إلى خدمة سحابية ويستلمان الصوت. هما اختياريان. ما زال ScreenPilot لا يحتاج إلى حساب افتراضيًا، والـ storyboard التي لا تستخدم <code>elevenlabs</code> أو <code>gemini</code> لا تتصل بأي من الخدمتين. المفتاح مفتاحك أنت.</p>
+<div class="warn">نص التعليق يُرسل إلى ElevenLabs أو Google. لا تستخدم هذين المزوّدين لنص لا يجوز لك مشاركته معهما. للخطط المجانية حدود وقد تمنع الاستخدام التجاري. اقرأ شروط الخدمة الحالية قبل نشر الفيديو.</div>
+
+<h3 id="cloud-keys">ضبط مفتاح API</h3>
+<p>كل مزوّد يقرأ مفتاحًا واحدًا. متغير البيئة له الأولوية على المفتاح المخزَّن.</p>
+<table>
+<thead><tr><th>المزوّد</th><th>متغير البيئة</th></tr></thead>
+<tbody>
+<tr><td><code>elevenlabs</code></td><td><code>ELEVENLABS_API_KEY</code></td></tr>
+<tr><td><code>gemini</code></td><td><code>GEMINI_API_KEY</code></td></tr>
+</tbody>
+</table>
+<p>لتخزين المفتاح بدل تصديره، مرّره إلى <code>screenpilot secret set</code> عبر pipe. يُقرأ المفتاح من الإدخال القياسي (stdin) ولا يُقرأ أبدًا من وسيط في سطر الأوامر، فلا يظهر في سجل الـ shell ولا في قائمة العمليات. يُحفظ في الملف <code>secrets.json</code> داخل مجلد الإعداد، بصلاحية 0600 (أنت وحدك تقرؤه).</p>
+<pre><code class="language-sh">printf '%s' "$ELEVENLABS_API_KEY" | screenpilot secret set elevenlabs
+screenpilot secret status
+screenpilot secret remove elevenlabs</code></pre>
+<ul>
+<li>الأمر <code>secret status</code> يذكر لكل مزوّد هل المفتاح من <code>env</code> أم من <code>file</code> أم غير مضبوط. ولا يطبع المفتاح أبدًا.</li>
+<li>الأمر <code>secret remove</code> يحذف المفتاح المخزَّن. ولا يستطيع إلغاء متغير بيئة.</li>
+<li>إذا نفّذت <code>secret set</code> في طرفية بدون pipe فإنه يطلب منك لصق المفتاح ثم الضغط على Enter.</li>
+</ul>
+<p>لا يُكتب المفتاح في سجل ولا في مفتاح cache ولا في رسالة خطأ. في <code>screenpilot doctor</code> سطران هما "elevenlabs voice" و"gemini voice". كل سطر يقول فقط هل المفتاح مضبوط. يُتخطّى السطر إذا لم يُضبط مفتاح لأن المزوّدين اختياريان، ولا يرسل أي طلب.</p>
+
+<h3 id="cloud-elevenlabs">ElevenLabs</h3>
+<pre><code class="language-json">"voice": { "provider": "elevenlabs", "name": "Your Voice Name", "rate": "+0%" }</code></pre>
+<ul>
+<li>قيمة <code>name</code> هي معرّف صوت (20 حرفًا وأرقامًا) أو اسم صوت موجود في حسابك. يُبحث عن الاسم في حسابك دون اعتبار حالة الأحرف. الـ <code>name</code> الافتراضي خاص بـ Edge، فاضبطه دائمًا.</li>
+<li>النموذج هو <code>eleven_multilingual_v2</code>. اضبط <code>ELEVENLABS_MODEL_ID</code> لاستخدام نموذج آخر.</li>
+<li>يتحول <code>rate</code> إلى سرعة الصوت، محصورة بين 0.7 و1.2. مثلًا <code>+10%</code> تعني 1.1. مع <code>+0%</code> لا تُرسل سرعة، فتُطبَّق الإعدادات المخزَّنة للصوت.</li>
+<li>يطلب ScreenPilot سطرين في وقت واحد، لأن الخطة المجانية تسمح بطلبين معًا.</li>
+</ul>
+<p>اعرض الأصوات الموجودة في حسابك:</p>
+<pre><code class="language-sh">screenpilot voices --provider elevenlabs</code></pre>
+
+<h3 id="cloud-gemini">Gemini</h3>
+<pre><code class="language-json">"voice": { "provider": "gemini", "name": "Kore" }</code></pre>
+<ul>
+<li>قيمة <code>name</code> هي أحد أصوات Gemini الجاهزة وعددها 30، مثل <code>Kore</code> و<code>Puck</code> و<code>Charon</code> و<code>Zephyr</code> و<code>Fenrir</code>. الأمر <code>screenpilot voices --provider gemini</code> يعرضها كلها. تنطق هذه الأصوات كل لغة يدعمها النموذج، وتُكتشف اللغة من النص.</li>
+<li>النموذج هو <code>gemini-2.5-flash-preview-tts</code>. اضبط <code>GEMINI_TTS_MODEL</code> لاستخدام نموذج آخر.</li>
+<li>يُتجاهل <code>rate</code>: واجهة Gemini API لا تملك إعداد سرعة.</li>
+<li>إذا لم ترسل الخدمة صوتًا فإن ScreenPilot يذكر ذلك. قد يكون النص قد حُظر.</li>
+</ul>
+<pre><code class="language-sh">screenpilot voices --provider gemini</code></pre>
+
+<h3 id="cloud-behavior">التخزين المؤقت وإعادة المحاولة</h3>
+<ul>
+<li>تُخزَّن المقاطع المولَّدة مؤقتًا بحسب المزوّد والصوت والنموذج والسرعة والنص. لا يُطلب السطر غير المتغير مرة أخرى، فلا يستهلك التصيير المكرر حصة. تغيير النموذج يعيد توليد الأسطر.</li>
+<li>الطلب الذي يفشل بسبب انقطاع الشبكة، أو انشغال الخدمة (429)، أو خطأ منها (5xx) يُعاد حتى 3 محاولات في المجموع. أي خطأ آخر يتوقف فورًا وتذكر الرسالة اسم الخدمة.</li>
+</ul>
 
 <h2 id="local-models">النماذج المحلية</h2>
 <p>الأصوات المحلية نماذج كلام تعمل على جهازك. هي مجانية ولا تحتاج إنترنت بعد الإعداد. ثبّت نموذجًا بالأمر <code>screenpilot voice-setup</code>، ثم استخدمه في الـ storyboard.</p>
@@ -212,6 +265,10 @@ screenpilot doctor</code></pre>
 <tr><td>توقف محرك الصوت، متبوعًا بآخر أسطر طبعها.</td><td>اقرأ تلك الأسطر: هي ما طبعه المحرك قبل أن يتوقف. نفّذ <code>screenpilot doctor</code> واقرأ فحص "local voice".</td></tr>
 <tr><td>يقول <code>voice-setup</code> إنه يحتاج <code>uv</code>.</td><td>ثبّت <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> ثم أعد تنفيذ الأمر.</td></tr>
 <tr><td>يقول <code>voice-setup</code> إن مساحة القرص غير كافية.</td><td>حرّر مساحة، أو مرّر <code>--dir</code> لاستخدام قرص آخر.</td></tr>
+<tr><td><code>ELEVENLABS_API_KEY</code> أو <code>GEMINI_API_KEY</code> غير مضبوط.</td><td>صدّر المتغير، أو نفّذ <code>screenpilot secret set elevenlabs</code> أو <code>screenpilot secret set gemini</code> والصق المفتاح. تحقق بالأمر <code>screenpilot secret status</code>.</td></tr>
+<tr><td>صوت سحابي أجاب بالرمز 401 أو 403.</td><td>المفتاح خاطئ أو لا يملك صلاحية. اضبطه من جديد. متغير البيئة له الأولوية على المفتاح المخزَّن، فتحقق من <code>secret status</code>.</td></tr>
+<tr><td>صوت سحابي أجاب بالرمز 429.</td><td>وصلت إلى حد خطتك. يحاول ScreenPilot ثلاث مرات ثم يتوقف. انتظر، أو غيّر الخطة أو المزوّد. الأسطر التي اكتملت مخزَّنة.</td></tr>
+<tr><td>ElevenLabs لا يملك صوتًا بهذا الاسم في هذا الحساب.</td><td>استخدم معرّف صوت، أو أحد الأسماء التي تعرضها الرسالة. نفّذ <code>screenpilot voices --provider elevenlabs</code>.</td></tr>
 </tbody>
 </table>
 <div class="note">إجابات أخرى في <a href="@guide/faq.html">الأسئلة الشائعة</a>. سطر الأوامر في <a href="@guide/cli.html#voice-setup">voice-setup</a> و<a href="@guide/cli.html#voices">voices</a>.</div>

@@ -112,12 +112,12 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 <p>الأمر <code>screenpilot schema</code> يطبع JSON Schema الخاص بالـ storyboard. هو المرجع النهائي لكل حقل.</p>
 
 <h3 id="voices">voices</h3>
-<p>الأمر <code>screenpilot voices</code> يعرض أصوات مزوّد واحد. مع <code>edge</code> (الافتراضي) يحتاج إلى اتصال بالشبكة. ومع <code>local</code> يعرض النماذج المثبّتة وأصواتها. ومع <code>command</code> يعرض الأصوات المعرّفة في <code>voices.json</code>. شرح المزوّدين في <a href="@guide/voices.html">الأصوات</a>.</p>
+<p>الأمر <code>screenpilot voices</code> يعرض أصوات مزوّد واحد. مع <code>edge</code> (الافتراضي) يحتاج إلى اتصال بالشبكة. ومع <code>local</code> يعرض النماذج المثبّتة وأصواتها. ومع <code>command</code> يعرض الأصوات المعرّفة في <code>voices.json</code>. ومع <code>elevenlabs</code> يعرض الأصوات الموجودة في حسابك، ومع <code>gemini</code> أصوات Gemini الجاهزة؛ وكلاهما يحتاج إلى مفتاح (انظر <a href="@guide/cli.html#secret">secret</a>). شرح المزوّدين في <a href="@guide/voices.html">الأصوات</a>.</p>
 <table>
 <thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
 <tbody>
 <tr><td><code>--lang &lt;prefix&gt;</code></td><td>تصفية ببادئة اللغة، مثل <code>ar</code> أو <code>ar-EG</code> أو <code>en-US</code>.</td></tr>
-<tr><td><code>--provider &lt;id&gt;</code></td><td>مزوّد الصوت: <code>edge</code> (افتراضي) أو <code>local</code> أو <code>command</code>.</td></tr>
+<tr><td><code>--provider &lt;id&gt;</code></td><td>مزوّد الصوت: <code>edge</code> (افتراضي) أو <code>local</code> أو <code>command</code> أو <code>elevenlabs</code> أو <code>gemini</code>.</td></tr>
 </tbody>
 </table>
 <pre><code class="language-sh">screenpilot voices --provider local
@@ -132,6 +132,20 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <tr><td><code>-y, --yes</code></td><td>لا يسأل قبل التنزيل.</td></tr>
 </tbody>
 </table>
+
+<h3 id="secret">secret</h3>
+<p>الأمر <code>screenpilot secret</code> يدير مفاتيح API للأصوات السحابية <code>elevenlabs</code> و<code>gemini</code>. تُحفظ المفاتيح في <code>secrets.json</code> داخل مجلد الإعداد، بصلاحية 0600. متغير البيئة (<code>ELEVENLABS_API_KEY</code> أو <code>GEMINI_API_KEY</code>) له الأولوية على الملف. شرح المزوّدين في <a href="@guide/voices.html#cloud-voices">الأصوات</a>.</p>
+<table>
+<thead><tr><th>الأمر</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>secret set &lt;provider&gt;</code></td><td>يخزّن المفتاح. يُقرأ من stdin ولا يُقرأ أبدًا من وسيط، فلا يظهر في سجل الـ shell ولا في قائمة العمليات. في الطرفية يطلب منك لصق المفتاح والضغط على Enter.</td></tr>
+<tr><td><code>secret status</code></td><td>يطبع لكل مزوّد القيمة <code>env</code> أو <code>file</code> أو <code>null</code> (غير مضبوط). ولا يطبع المفتاح أبدًا.</td></tr>
+<tr><td><code>secret remove &lt;provider&gt;</code></td><td>يحذف المفتاح المخزَّن. يبقى متغير البيئة كما هو.</td></tr>
+</tbody>
+</table>
+<p>قيمة <code>&lt;provider&gt;</code> هي <code>elevenlabs</code> أو <code>gemini</code>.</p>
+<pre><code class="language-sh">printf '%s' "$GEMINI_API_KEY" | screenpilot secret set gemini
+screenpilot secret status</code></pre>
 
 <h3 id="script">script</h3>
 <p><code>screenpilot script &lt;storyboard&gt;</code> يكتب التعليق الصوتي كسكريبت للصقه في موقع تحويل النص إلى كلام: النص، وتعليمات قصيرة، وجدول بالمتاح لكل سطر. الخرج الافتراضي <code>&lt;storyboard&gt;.script.md</code>، وتغيّره بـ <code>-o, --out</code>. <a href="@guide/voices.html#external-audio">صفحة الأصوات</a> تشرح الخطوات كاملة.</p>
@@ -335,6 +349,53 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <h3 id="take-schema">take-schema</h3>
 <p>الأمر <code>screenpilot take-schema</code> يطبع JSON Schema الخاص بملف <code>take.json</code>.</p>
 
+<h2 id="history-group">سجل أعمالك</h2>
+<p>يحتفظ ScreenPilot بقائمة بما سجّله وصيّره. هي سطر JSON واحد لكل عمل منتهٍ في الملف <code>history.jsonl</code> داخل مجلد الإعداد. التسجيل (<code>record</code>) وتنفيذ take (<code>perform</code>) و<code>render</code> و<code>sequence</code> تضيف سطرًا عند انتهائها. والتصيير أو الـ sequence الفاشل يُسجَّل أيضًا مع خطئه. أما أجزاء الـ sequence والتصيير أثناء <code>setup</code> فلا تضيف شيئًا، فيظهر كل فيديو مرة واحدة.</p>
+
+<h3 id="history">history</h3>
+<p>الأمر <code>screenpilot history</code> يطبع الأحداث من الأحدث إلى الأقدم، كقائمة JSON.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--limit &lt;n&gt;</code></td><td>عدد الأحداث. الافتراضي 50.</td></tr>
+<tr><td><code>--before &lt;iso&gt;</code></td><td>الأحداث الأقدم من هذا الوقت فقط. مرّر قيمة <code>at</code> لآخر حدث في الصفحة السابقة لتحصل على الصفحة التالية.</td></tr>
+<tr><td><code>--live</code></td><td>يعرض عمليات التصيير الجارية الآن بدل السجل.</td></tr>
+</tbody>
+</table>
+<p>لكل حدث هذه الحقول. الحقول غير المنطبقة تُحذف.</p>
+<table>
+<thead><tr><th>الحقل</th><th>معناه</th></tr></thead>
+<tbody>
+<tr><td><code>v</code></td><td>إصدار الصيغة، دائمًا 1.</td></tr>
+<tr><td><code>at</code></td><td>وقت انتهاء العمل بصيغة ISO.</td></tr>
+<tr><td><code>kind</code></td><td><code>record</code> أو <code>take</code> أو <code>render</code> أو <code>sequence</code>.</td></tr>
+<tr><td><code>status</code></td><td><code>ok</code> أو <code>failed</code>.</td></tr>
+<tr><td><code>path</code></td><td>مجلد الجلسة (record وtake)، أو الـ storyboard (render)، أو ملف الـ sequence (sequence).</td></tr>
+<tr><td><code>storyboard</code></td><td>الـ storyboard التي كتبها take (take فقط).</td></tr>
+<tr><td><code>output</code></td><td>الفيديو الذي أنتجه أو سجّله.</td></tr>
+<tr><td><code>durationSec</code></td><td>مدة ذلك الفيديو بالثواني.</td></tr>
+<tr><td><code>quality</code></td><td>جودة التصيير (render وsequence).</td></tr>
+<tr><td><code>wallSeconds</code></td><td>المدة التي استغرقها العمل.</td></tr>
+<tr><td><code>error</code></td><td>رسالة خطأ العمل الفاشل، مقطوعة عند 500 حرف.</td></tr>
+<tr><td><code>imported</code></td><td><code>true</code> إذا وجده <code>library import</code> على القرص.</td></tr>
+</tbody>
+</table>
+<p>مع <code>--live</code>، لكل تصيير أو sequence جارٍ ملف صغير واحد في المجلد <code>jobs</code> داخل مجلد الـ cache. يُحذف الملف عند انتهاء العمل. والملف الذي تركته عملية انهارت يُحذف عند العرض التالي. للعمل الجاري الحقول <code>id</code> و<code>pid</code> و<code>kind</code> و<code>path</code> و<code>quality</code> و<code>startedAt</code> و<code>updatedAt</code>، وكذلك <code>step</code> (<code>label</code> و<code>index</code> و<code>total</code>) عندما يعرف تقدّمه، مثل الجزء 3 من 12 أو الجزء 2 من 4.</p>
+<pre><code class="language-sh">screenpilot history --limit 10
+screenpilot history --live</code></pre>
+<div class="note">كتابة السجل لا تُفشل أي عمل. إذا تعذّرت كتابة الملف يكتمل العمل ويُتخطّى السطر.</div>
+
+<h3 id="library">library</h3>
+<p>الأمر <code>screenpilot library import</code> يضيف أعمالًا أنجزتها قبل وجود السجل: تسجيلات (مجلد فيه <code>meta.json</code>) وتصييرات منتهية (ملف <code>storyboard.json</code> بجانبه <code>storyboard.mp4</code>). يبحث بعمق مستويين من المجلدات تحت كل جذر. ما هو موجود في السجل يُترك كما هو، وتُوسم الأسطر المضافة بالقيمة <code>imported</code>. يطبع عدد ما أضافه وعدد الأحداث في السجل الآن.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--root &lt;dir...&gt;</code></td><td>المجلدات التي يبحث فيها. الافتراضي: مجلد الجلسات (<code>SCREENPILOT_OUTPUT</code>، وإلا <code>./sessions</code>).</td></tr>
+</tbody>
+</table>
+<pre><code class="language-sh">screenpilot library import --root ~/Videos/ScreenPilot</code></pre>
+<div class="warn">يعيد الاستيراد كتابة <code>history.jsonl</code> مرتّبًا بالوقت. نفّذه حين لا يوشك تصيير على الانتهاء.</div>
+
 <h2 id="setup-and-checks">إعداد الجهاز وفحصه</h2>
 
 <h3 id="setup">setup</h3>
@@ -354,5 +415,5 @@ screenpilot voices --provider edge --lang ar</code></pre>
 </table>
 
 <h3 id="doctor">doctor</h3>
-<p>الأمر <code>screenpilot doctor</code> يفحص هذا الجهاز: ffmpeg وسطح المكتب والشاشات وOBS ومتصفح العرض والأصوات، ومنها فحص "accessibility tree" وفحص "local voice" الذي يُتخطّى إذا لم تُعدّ صوتًا محليًا (فهو اختياري). يطبع تقريرًا بصيغة JSON وسطر ملخص. رمز الخروج دائمًا 0، فاقرأ التقرير. أضف <code>--input</code> لاختبار حقن الإدخال أيضًا، وهو يحرّك المؤشر الفعلي لحظة.</p>
+<p>الأمر <code>screenpilot doctor</code> يفحص هذا الجهاز: ffmpeg وسطح المكتب والشاشات وOBS ومتصفح العرض والأصوات، ومنها فحص "accessibility tree" وفحص "local voice" الذي يُتخطّى إذا لم تُعدّ صوتًا محليًا (فهو اختياري)، وفحصا "elevenlabs voice" و"gemini voice" اللذان يقولان فقط هل المفتاح مضبوط (ويُتخطّيان إذا لم يُضبط، ولا يُرسل أي طلب). يطبع تقريرًا بصيغة JSON وسطر ملخص. رمز الخروج دائمًا 0، فاقرأ التقرير. أضف <code>--input</code> لاختبار حقن الإدخال أيضًا، وهو يحرّك المؤشر الفعلي لحظة.</p>
 <div class="note">نفّذ <code>screenpilot doctor</code> أولًا على أي جهاز جديد، وأعد تنفيذه كلما فشل التسجيل أو التحكم.</div>
