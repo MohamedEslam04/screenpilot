@@ -228,6 +228,13 @@ export const VoiceSchema = z.object({
   subtitles: z.boolean().default(true).describe("Show narration lines as subtitles"),
   gap: z.number().min(0).default(0.3).describe("Min silence between lines; video freezes to make room"),
   volume: z.number().min(0).max(4).default(1),
+  fit: z
+    .object({
+      max: z.number().min(1).optional().describe("Slowest a line may be sped up to fit its slot, e.g. 1.18 (default). Over it the line is reported (and `--strict-fit` fails)"),
+      auto: z.boolean().optional().describe("Speed lines that overrun their slot up (atempo) to fit it, at most `max`; the sped-up clip is cached, so a re-render never stretches twice"),
+    })
+    .optional()
+    .describe("Slot-fit of narration lines: a line's slot is the time from its `at` to the next line's `at`, minus `gap`"),
 });
 
 export const OutputSchema = z.object({
@@ -304,7 +311,7 @@ export const SoundsSchema = z
   .describe("Automatic sound effects from recorded events and cards");
 
 /** Ids of the style-lint rules; every lint warning starts with `[id]`. */
-export const LINT_RULES = ["narration-length", "narration-speed", "caption-length", "duration", "zoom-scale", "stack", "transition"] as const;
+export const LINT_RULES = ["narration-length", "narration-speed", "caption-length", "duration", "zoom-scale", "stack", "transition", "narration-fit"] as const;
 
 export const LintSchema = z
   .object({
@@ -378,6 +385,31 @@ export type View = z.output<typeof ViewSchema>;
  * css, fonts and other strings and arrays are replaced). Voice, size, cuts and timings stay as the storyboard says.
  */
 export const StyleSchema = z.object({ theme: ThemeSchema.partial().strict() }).strict();
+
+/**
+ * A variant file for `render --variant` / `sequence --variant`: the same recording with another script.
+ * It rewrites narration text (by line id, or by position when a line has no id; an array covers every line in order),
+ * merges `voice` key by key, and swaps overlay files by position. It never adds or drops lines (they are timed to the
+ * recording) and never touches anything else. Paths in it are relative to the storyboard, like everywhere else.
+ */
+export const VariantSchema = z
+  .object({
+    voice: VoiceSchema.partial().strict().optional().describe("Voice settings to replace (provider, name, rate, gap, subtitles, volume, fit); the rest stay as the storyboard says"),
+    narration: z
+      .union([z.array(z.string().min(1)), z.record(z.string(), z.string().min(1))])
+      .optional()
+      .describe(
+        "New text of narration lines: { \"<line id>\": \"text\" } (the id of a line is its `id`, else its position counted from 0; lines not named keep their text), " +
+          "or an array with one text per line in order. It cannot add or remove lines: a different number of lines fails",
+      ),
+    overlays: z
+      .record(z.string(), z.object({ src: z.string().min(1).describe("Replacement image or video, relative to the storyboard file") }).strict())
+      .optional()
+      .describe("Swap the file of overlays, keyed by their position in `overlays` counted from 0 (everything else about the overlay stays)"),
+  })
+  .strict();
+
+export type Variant = z.output<typeof VariantSchema>;
 
 export type Caption = z.output<typeof CaptionSchema>;
 export type Motion = z.output<typeof MotionSchema>;

@@ -146,3 +146,48 @@ export function lintTimeline(sb: Storyboard, timeline: Timeline): string[] {
   if (total < min) return [`[duration] the video is only ${fix(total)}s long (under ${min}s); add pacing or a longer take`];
   return [];
 }
+
+/** Slowest speed-up of a voice clip that still sounds natural; the cap of the slot-fit check. */
+export const DEFAULT_FIT_MAX = 1.18;
+
+export interface FitEntry {
+  /** The line's `id` (default: its position). */
+  id: string;
+  /** Position in `narration`. */
+  index: number;
+  /** Seconds of the voice clip as made. */
+  raw: number;
+  /** Seconds from the line's `at` to the next line's `at`, minus `voice.gap`. */
+  slot: number;
+  /** raw / slot: above 1 the line does not fit; 1.25 means it must be spoken 25% faster. */
+  needed: number;
+  /** Set by auto-fit: the speed-up the clip was given. */
+  applied?: number;
+}
+
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+/**
+ * The slot of every narration line but the last (it has no next line): the room before the next line starts,
+ * less the silence `voice.gap` keeps between lines. Times are source seconds, as in the storyboard.
+ */
+export function fitLines(lines: { id: string; index: number; at: number; duration: number }[], gap: number): FitEntry[] {
+  const sorted = [...lines].sort((a, b) => a.at - b.at || a.index - b.index);
+  return sorted.slice(0, -1).map((l, k) => {
+    const slot = Math.max(sorted[k + 1]!.at - l.at - gap, 0.01);
+    return { id: l.id, index: l.index, raw: round3(l.duration), slot: round3(slot), needed: round3(l.duration / slot) };
+  });
+}
+
+/** One `[narration-fit]` warning per line that needs more than the cap (a line exactly at the cap is fine). */
+export function fitWarnings(entries: FitEntry[], max: number): string[] {
+  const x = (n: number) => `${+n.toFixed(2)}x`;
+  return entries
+    .filter((e) => e.needed > max)
+    .map((e) => {
+      const head = `[narration-fit] narration "${e.id}" (narration[${e.index}]): the clip is ${+e.raw.toFixed(2)}s but its slot is ${+e.slot.toFixed(2)}s, so it needs a ${x(e.needed)} speed-up (over the ${x(max)} cap)`;
+      return e.applied !== undefined
+        ? `${head}; even sped up to ${x(e.applied)} it overruns, so the video freezes to make room. Shorten the text`
+        : `${head}; shorten the text, or the video freezes to make room`;
+    });
+}

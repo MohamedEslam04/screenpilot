@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { CACHE_DIR } from "../brand.js";
 import { type LoadedStyle, loadStoryboard } from "../storyboard/load.js";
 import type { Storyboard } from "../storyboard/schema.js";
+import type { LoadedVariant } from "../storyboard/variant.js";
 import { clipFile, estimateLineSeconds, getProvider } from "./index.js";
 import { countChars, creditsFor, usdPerCredit } from "./spend.js";
 
@@ -61,8 +62,8 @@ export function estimateNarration(sb: Pick<Storyboard, "narration" | "voice">, b
 }
 
 /** `render --dry-run`: the estimate for a storyboard file. */
-export async function estimateStoryboard(path: string, opts: { style?: LoadedStyle } = {}): Promise<NarrationEstimate> {
-  const { sb, baseDir } = await loadStoryboard(path, { style: opts.style });
+export async function estimateStoryboard(path: string, opts: { style?: LoadedStyle; variant?: LoadedVariant } = {}): Promise<NarrationEstimate> {
+  const { sb, baseDir } = await loadStoryboard(path, { style: opts.style, variant: opts.variant });
   return estimateNarration(sb, baseDir);
 }
 
