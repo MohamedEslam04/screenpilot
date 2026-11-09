@@ -49,7 +49,7 @@ export async function warmUpRender(log: (m: string) => void): Promise<void> {
     sb.captions = [{ at: 0.2, dur: 1.5, text: "ScreenPilot جاهز" }];
     await writeFile(storyboard, JSON.stringify(sb));
     const out = join(dir, "out.mp4");
-    await renderStoryboard(storyboard, { output: out, quality: "draft", workers: 1, log });
+    await renderStoryboard(storyboard, { output: out, quality: "draft", workers: 1, log, history: false });
     if (!existsSync(out)) throw new Error("the test render produced no file");
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => {});

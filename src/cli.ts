@@ -37,10 +37,13 @@ import { exportScript, importAudio } from "./voice/import.js";
 import { detectBriefEnv } from "./brief/detect.js";
 import { applyUpdate, checkForUpdate, sourceFrom, updateCommand } from "./update/index.js";
 import { buildBrief, recommendedAnswers, summaryLines } from "./brief/questions.js";
-import { APP, APP_TITLE, VERSION } from "./brand.js";
+import { APP, APP_TITLE, sessionsRoot, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { getDesktop } from "./platform/index.js";
 import { hookPinned } from "./record/input/hook.js";
+import { importLibrary } from "./history/import.js";
+import { readHistory } from "./history/index.js";
+import { listJobs } from "./history/jobs.js";
 
 useBundledTools(import.meta.url);
 const log = (msg: string) => process.stderr.write(`${APP}: ${msg}\n`);
@@ -596,6 +599,27 @@ program
     print(r);
     log(r.summary);
     process.exit(0);
+  });
+
+program
+  .command("history")
+  .description("What ScreenPilot recorded and rendered, newest first (JSON). --live lists the renders running now")
+  .option("--limit <n>", "How many events", "50")
+  .option("--before <iso>", "Only events older than this time (the `at` of the last one of the previous page)")
+  .option("--live", "List the renders running now instead")
+  .action(async (o: { limit: string; before?: string; live?: boolean }) => {
+    print(o.live ? listJobs() : await readHistory({ limit: Number(o.limit), before: o.before }));
+  });
+
+const library = program.command("library").description("The history of your work");
+library
+  .command("import")
+  .description("Add recordings and finished renders made before the history existed (two folder levels deep under each root)")
+  .option("--root <dir...>", "Folders to look in (default: the sessions folder)")
+  .action(async (o: { root?: string[] }) => {
+    const r = await importLibrary(o.root?.length ? o.root : [sessionsRoot()]);
+    print(r);
+    log(`${r.added} added, ${r.total} in the history`);
   });
 
 program

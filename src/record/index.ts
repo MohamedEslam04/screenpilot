@@ -12,6 +12,7 @@ import { detectLayout } from "../drive/see.js";
 import { loadState, saveState } from "../drive/state.js";
 import { type CaptureInfo, ObsRecorder, resolveObsConfig, unionRect } from "./obs.js";
 import { APP, sessionsRoot } from "../brand.js";
+import { recordEvent } from "../history/index.js";
 
 // Public recording API (used by the CLI and the MCP server).
 
@@ -37,6 +38,8 @@ export interface RecordOptions {
   recorder?: RecorderId;
   /** Close notification popups on screen and hold new ones while recording (default true). */
   quiet?: boolean;
+  /** false: leave no history line (a take adds its own). */
+  history?: boolean;
   log?: (msg: string) => void;
 }
 
@@ -216,6 +219,7 @@ export async function startRecording(opts: RecordOptions = {}): Promise<ActiveRe
             2,
           )}\n`,
         );
+        if (opts.history !== false) await recordEvent({ kind: "record", status: "ok", path: dir, output, durationSec: info.duration });
         return {
           dir,
           video: output,

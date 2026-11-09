@@ -31,6 +31,8 @@ import { estimateSeconds, formatDuration, recordSpeed, speedFile } from "./speed
 import { autoWorkers } from "./workers.js";
 import { CACHE_DIR, cacheHome } from "../brand.js";
 import { pruneCache, renderCacheLimit } from "./cache.js";
+import { recordEvent } from "../history/index.js";
+import { startJob } from "../history/jobs.js";
 
 const require = createRequire(import.meta.url);
 
@@ -312,6 +314,10 @@ export interface RenderOptions extends PrepareOptions {
   chunks?: boolean;
   /** Preferred chunk length in seconds (`--chunk-seconds`, at least MIN_CHUNK_SECONDS). Default 180. */
   chunkSeconds?: number;
+  /** false: leave no history line and no live-job file (parts of a sequence, the setup warm-up). */
+  history?: boolean;
+  /** Told which chunk is rendering, for the live-job file. */
+  onProgress?: (step: { label: string; index: number; total: number }) => void;
 }
 
 /** Outputs (or --from/--to windows) shorter than this render in one piece, exactly as before chunks existed. */
@@ -343,7 +349,32 @@ export function hyperframesEnv(): NodeJS.ProcessEnv {
   };
 }
 
+/** Render a storyboard. Also leaves a live-job file while it runs and a history line when it ends (unless `history: false`). */
 export async function renderStoryboard(storyboardPath: string, opts: RenderOptions = {}): Promise<RenderResult> {
+  if (opts.history === false) return renderStoryboardNow(storyboardPath, opts);
+  const quality = opts.quality ?? "looks";
+  const path = resolve(storyboardPath);
+  const job = startJob({ kind: "render", path, quality });
+  const started = performance.now();
+  try {
+    const r = await renderStoryboardNow(storyboardPath, {
+      ...opts,
+      onProgress: (step) => {
+        job.update(step);
+        opts.onProgress?.(step);
+      },
+    });
+    await recordEvent({ kind: "render", status: "ok", path, output: r.output, durationSec: r.plan.duration, quality, wallSeconds: round3((performance.now() - started) / 1000) });
+    return r;
+  } catch (err) {
+    await recordEvent({ kind: "render", status: "failed", path, quality, wallSeconds: round3((performance.now() - started) / 1000), error: (err as Error).message.slice(0, 500) });
+    throw err;
+  } finally {
+    job.end();
+  }
+}
+
+async function renderStoryboardNow(storyboardPath: string, opts: RenderOptions): Promise<RenderResult> {
   const log = opts.log ?? (() => {});
   const draft = opts.quality === "draft";
   checkPosterAt(opts.posterAt);
@@ -399,7 +430,7 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
   }
   const renderStart = performance.now();
   await time("render", async () => {
-    if (chunks) await renderChunks(prepared, chunks, output, hyperframes, log);
+    if (chunks) await renderChunks(prepared, chunks, output, hyperframes, log, opts.onProgress);
     else await hyperframes(output);
   });
   if (prepared.loudness) {
@@ -464,6 +495,7 @@ async function renderChunks(
   output: string,
   hyperframes: (out: string) => Promise<unknown>,
   log: (msg: string) => void,
+  onProgress?: RenderOptions["onProgress"],
 ): Promise<void> {
   const index = join(prepared.buildDir, "index.html");
   const dir = dirname(chunks[0]!.file);
@@ -472,6 +504,7 @@ async function renderChunks(
   try {
     for (const [i, c] of chunks.entries()) {
       const label = `chunk ${i + 1}/${chunks.length}`;
+      onProgress?.({ label: "chunk", index: i + 1, total: chunks.length });
       if (c.cached) {
         log(`${label} (${range(c)}): unchanged, reusing`);
         continue;
