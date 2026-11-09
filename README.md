@@ -177,4 +177,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 0df228b ("fix: the test suite no longer writes into the developer's own history (SCREENPILOT_NO_HISTORY)", 2026-11-09).
+Docs synced to commit 8b7c3fa ("feat: the dashboard ships in every release package with the ScreenPilot logo (Linux menu, macOS app bundle, Windows Start Menu and exe icon); release job builds, checks and bundles it", 2026-11-09).
