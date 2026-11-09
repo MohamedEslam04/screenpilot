@@ -318,12 +318,12 @@ program
   .description("Write a starter storyboard.json for a recording or session")
   .argument("<target>", "Session directory or raw recording (mp4, mkv, webm, mov)")
   .option("-o, --out <file>", "Storyboard path (default: storyboard.json in the session / next to the video)")
-  .option("--voice <name>", "Default voice: an Edge voice, a local model (voicetut:Sarah, namaa) or a command voice name", "en-US-AndrewNeural")
-  .option("--provider <id>", "Voice provider: edge | local | command", "edge")
+  .option("--voice <name>", "Default voice: an Edge voice, a local model (voicetut:Sarah, namaa) a command voice name, an ElevenLabs voice or a Gemini voice (Kore)", "en-US-AndrewNeural")
+  .option("--provider <id>", "Voice provider: edge | local | command | elevenlabs | gemini", "edge")
   .option("--suggest", "Pre-fill segments, zooms and camera views from `analyze`")
   .option("--frame <how>", "Camera for suggested views: window | screen | all", "window")
   .option("-f, --force", "Overwrite an existing storyboard")
-  .action(async (target: string, o: { out?: string; voice: string; provider: "edge" | "local" | "command"; suggest?: boolean; force?: boolean; frame: "window" | "screen" | "all" }) => {
+  .action(async (target: string, o: { out?: string; voice: string; provider: "edge" | "local" | "command" | "elevenlabs" | "gemini"; suggest?: boolean; force?: boolean; frame: "window" | "screen" | "all" }) => {
     print(await initStoryboard(target, o));
   });
 
@@ -386,7 +386,7 @@ program
   .command("voices")
   .description("List available voices")
   .option("--lang <prefix>", "Filter by locale prefix, e.g. ar or en-US")
-  .option("--provider <id>", "Voice provider: edge | local | command", "edge")
+  .option("--provider <id>", "Voice provider: edge | local | command | elevenlabs | gemini", "edge")
   .action(async (o: { lang?: string; provider: string }) => {
     const provider = getProvider(o.provider);
     try {

@@ -51,6 +51,10 @@ describe("detectProject", () => {
     expect((await detectProject(dir))!.answers).toMatchObject({ voice_source: "builtin", voice_builtin: "local" });
     writeSb({ voice: { provider: "command", name: "piper" }, narration: [{ at: 1, text: "Hello" }] });
     expect((await detectProject(dir))!.answers).toMatchObject({ voice_source: "own", voice_own: "command" });
+    writeSb({ voice: { provider: "elevenlabs", name: "Rachel" }, narration: [{ at: 1, text: "Hello" }] });
+    expect((await detectProject(dir))!.answers).toMatchObject({ voice_source: "builtin", voice_builtin: "elevenlabs" });
+    writeSb({ voice: { provider: "gemini", name: "Kore" }, narration: [{ at: 1, text: "Hello" }] });
+    expect((await detectProject(dir))!.answers).toMatchObject({ voice_source: "builtin", voice_builtin: "gemini" });
   });
 
   it("maps the output size to where the video is shown", async () => {

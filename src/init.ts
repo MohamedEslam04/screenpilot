@@ -8,7 +8,7 @@ export interface InitOptions {
   out?: string;
   voice?: string;
   /** Voice provider written to the storyboard when it is not the default (edge). */
-  provider?: "edge" | "local" | "command";
+  provider?: "edge" | "local" | "command" | "elevenlabs" | "gemini";
   force?: boolean;
   /** Pre-fill segments (idle cut), zooms (from clicks) and camera views using `analyze`. */
   suggest?: boolean;

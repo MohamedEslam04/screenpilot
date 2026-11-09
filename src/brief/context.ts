@@ -54,6 +54,9 @@ function fromStoryboard(file: string, sb: Record<string, unknown>): ProjectHint 
   } else if (provider === "local") {
     answers.voice_source = "builtin";
     answers.voice_builtin = "local";
+  } else if (provider === "elevenlabs" || provider === "gemini") {
+    answers.voice_source = "builtin";
+    answers.voice_builtin = provider;
   } else if (provider === "command") {
     answers.voice_source = "own";
     answers.voice_own = "command";
