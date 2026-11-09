@@ -177,4 +177,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit e990b89 ("docs: dashboard page (en, ar), site rebuilt; dashboard command message matches", 2026-11-09).
+Docs synced to commit 540998e ("docs: dashboard page rewritten for the native app; site rebuilt", 2026-11-09).
