@@ -70,7 +70,7 @@ describe("gemini voice", () => {
     await geminiProvider.synthesize("Say this", "Kore", "+0%", out);
 
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent");
+    expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-tts:generateContent");
     expect(init.method).toBe("POST");
     expect((init.headers as Record<string, string>)["x-goog-api-key"]).toBe(KEY);
     expect(url).not.toContain(KEY);
@@ -116,6 +116,16 @@ describe("gemini voice", () => {
     vi.stubGlobal("fetch", fetchMock);
     await geminiProvider.synthesize("x", "Kore", "+0%", join(dir, "d.wav"));
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("points at GEMINI_TTS_MODEL when the model is not found", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(`models/old-model is not found for key ${KEY}`, { status: 404 })));
+    process.env.GEMINI_TTS_MODEL = "old-model";
+    const err = (await geminiProvider.synthesize("x", "Kore", "+0%", join(dir, "m.wav")).catch((e: Error) => e)) as Error;
+    expect(err.message).toMatch(/404/);
+    expect(err.message).toContain("old-model");
+    expect(err.message).toContain("GEMINI_TTS_MODEL");
+    expect(err.message).not.toContain(KEY);
   });
 
   it("keeps the key out of errors", async () => {

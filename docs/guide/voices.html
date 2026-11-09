@@ -90,7 +90,7 @@ screenpilot secret remove elevenlabs</code></pre>
 <pre><code class="language-json">"voice": { "provider": "gemini", "name": "Kore" }</code></pre>
 <ul>
 <li><code>name</code> is one of the 30 prebuilt Gemini voices, for example <code>Kore</code>, <code>Puck</code>, <code>Charon</code>, <code>Zephyr</code> or <code>Fenrir</code>. <code>screenpilot voices --provider gemini</code> lists all of them. They speak every language the model supports, and the language is detected from the text.</li>
-<li>The model is <code>gemini-2.5-flash-preview-tts</code>. Set <code>GEMINI_TTS_MODEL</code> to use another one.</li>
+<li>The model is <code>gemini-3.8-flash-tts</code>. Set <code>GEMINI_TTS_MODEL</code> to use another one.</li>
 <li><code>rate</code> is ignored: the Gemini API has no speed setting.</li>
 <li>If the service sends no audio, ScreenPilot says so. The text may have been blocked.</li>
 </ul>

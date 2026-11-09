@@ -64,7 +64,7 @@ screenpilot secret remove elevenlabs</code></pre>
 <pre><code class="language-json">"voice": { "provider": "gemini", "name": "Kore" }</code></pre>
 <ul>
 <li>قيمة <code>name</code> هي أحد أصوات Gemini الجاهزة وعددها 30، مثل <code>Kore</code> و<code>Puck</code> و<code>Charon</code> و<code>Zephyr</code> و<code>Fenrir</code>. الأمر <code>screenpilot voices --provider gemini</code> يعرضها كلها. تنطق هذه الأصوات كل لغة يدعمها النموذج، وتُكتشف اللغة من النص.</li>
-<li>النموذج هو <code>gemini-2.5-flash-preview-tts</code>. اضبط <code>GEMINI_TTS_MODEL</code> لاستخدام نموذج آخر.</li>
+<li>النموذج هو <code>gemini-3.8-flash-tts</code>. اضبط <code>GEMINI_TTS_MODEL</code> لاستخدام نموذج آخر.</li>
 <li>يُتجاهل <code>rate</code>: واجهة Gemini API لا تملك إعداد سرعة.</li>
 <li>إذا لم ترسل الخدمة صوتًا فإن ScreenPilot يذكر ذلك. قد يكون النص قد حُظر.</li>
 </ul>

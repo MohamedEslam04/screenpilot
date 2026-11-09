@@ -8,7 +8,8 @@ import { getSecret } from "./secrets.js";
 // Needs GEMINI_API_KEY. The voice name is one of the prebuilt voices below.
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-const DEFAULT_MODEL = "gemini-2.5-flash-preview-tts";
+const DEFAULT_MODEL = "gemini-3.8-flash-tts";
+// Current TTS model per https://aistudio.google.com/docs/speech-generation (checked 2026-11-09; the older gemini-2.5-flash-preview-tts is no longer listed there). Not tried against a live account.
 const SAMPLE_RATE = 24000; // the TTS models answer 24 kHz, 16-bit, mono PCM
 
 // The 30 prebuilt voices of the docs. They speak every supported language; the language is detected from the text.
@@ -61,6 +62,12 @@ export const geminiProvider: VoiceProvider = {
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
         },
       }),
+    }).catch((err: Error) => {
+      // Model names change: say how to pick another one instead of leaving a bare 404.
+      if (/answered 404/.test(err.message)) {
+        throw new Error(`${err.message} (model "${model()}" not found: set GEMINI_TTS_MODEL to a TTS model listed at https://aistudio.google.com/docs/speech-generation)`);
+      }
+      throw err;
     });
     const data = ((await res.json()) as GeminiReply).candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData?.data;
     const audio = data ? Buffer.from(data, "base64") : Buffer.alloc(0);
