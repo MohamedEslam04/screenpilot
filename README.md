@@ -187,4 +187,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit d3a67f8 ("docs: README 0.11.0 note and CONTRIBUTING rows for sequence --joins", 2026-11-09).
+Docs synced to commit 2294d98 ("docs: per-project video folder (README, AGENTS, skill, site en and ar)", 2026-11-09).
