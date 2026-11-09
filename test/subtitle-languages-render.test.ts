@@ -65,7 +65,7 @@ describe("subtitle files per language", () => {
       subtitles: ["srt"],
       subtitleLanguages: parseSubtitleLanguages(`en,es=${join(dir, "es.json")}`),
     });
-    expect(r.files.map((f) => f.slice(dir.length + 1))).toEqual(["out/demo.en.srt", "out/demo.es.srt"]);
+    expect(r.files.map((f) => f.slice(dir.length + 1))).toEqual([join("out", "demo.en.srt"), join("out", "demo.es.srt")]);
     expect(existsSync(join(dir, "out/demo.srt"))).toBe(false);
     expect(await readFile(join(dir, "out/demo.es.srt"), "utf8")).toBe("1\n00:00:01,500 --> 00:00:02,300\nUno\n\n2\n00:00:02,800 --> 00:00:03,600\nDos\n");
     expect(await readFile(join(dir, "out/demo.en.srt"), "utf8")).toContain("A one");
@@ -74,7 +74,7 @@ describe("subtitle files per language", () => {
   ffmpegIt("render --subtitles alone still writes the plain file with the old cues", async () => {
     const dir = await fixture();
     const r = await renderStoryboard(join(dir, "a/demo.json"), { output: join(dir, "out/demo.mp4"), quality: "draft", history: false, subtitles: ["srt", "vtt"] });
-    expect(r.files.map((f) => f.slice(dir.length + 1))).toEqual(["out/demo.srt", "out/demo.vtt"]);
+    expect(r.files.map((f) => f.slice(dir.length + 1))).toEqual([join("out", "demo.srt"), join("out", "demo.vtt")]);
     expect(await readFile(join(dir, "out/demo.srt"), "utf8")).toBe("1\n00:00:01,500 --> 00:00:02,300\nA one\n\n2\n00:00:02,800 --> 00:00:03,600\nA two\n");
   }, 60_000);
 

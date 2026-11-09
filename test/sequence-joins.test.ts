@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { copyFile, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { RenderPaused, requestPause } from "../src/render/pause.js";
 import { readTimeline } from "../src/render/timeline.js";
@@ -95,12 +95,12 @@ describe("parseJoins / expandJoins", () => {
   });
 
   it("expands names into groups (sequence files, resolved) and finds loops", () => {
-    expect(expandJoins({ setup: ["g1.json", "g2.json"], operations: ["g3.json"], full: ["setup", "operations"] }, "/p")).toEqual({
-      setup: ["/p/g1.json", "/p/g2.json"],
-      operations: ["/p/g3.json"],
-      full: ["/p/g1.json", "/p/g2.json", "/p/g3.json"],
+    expect(expandJoins({ setup: ["g1.json", "g2.json"], operations: ["g3.json"], full: ["setup", "operations"] }, resolve("/p"))).toEqual({
+      setup: [resolve("/p/g1.json"), resolve("/p/g2.json")],
+      operations: [resolve("/p/g3.json")],
+      full: [resolve("/p/g1.json"), resolve("/p/g2.json"), resolve("/p/g3.json")],
     });
-    expect(() => expandJoins({ a: ["b"], b: ["a"] }, "/p")).toThrow(/a → b → a/);
+    expect(() => expandJoins({ a: ["b"], b: ["a"] }, resolve("/p"))).toThrow(/a → b → a/);
   });
 });
 

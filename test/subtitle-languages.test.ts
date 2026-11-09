@@ -1,6 +1,6 @@
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CUE_RULES, shapeCues, toSrt } from "../src/render/subtitles.js";
 import { cuesForLanguage, loadTranslation, parseSubtitleLanguages, writeTimelineSubtitles } from "../src/render/subtitle-langs.js";
@@ -101,12 +101,12 @@ describe("parseSubtitleLanguages", () => {
     expect(parseSubtitleLanguages("ar, en=en.json,es=/x/es.json")).toEqual([
       { code: "ar" },
       { code: "en", file: expect.stringMatching(/en\.json$/) },
-      { code: "es", file: "/x/es.json" },
+      { code: "es", file: resolve("/x/es.json") },
     ]);
   });
 
   it("reads an object (MCP) where auto means the video's own text", () => {
-    expect(parseSubtitleLanguages({ ar: "auto", en: "/t/en.json" })).toEqual([{ code: "ar" }, { code: "en", file: "/t/en.json" }]);
+    expect(parseSubtitleLanguages({ ar: "auto", en: "/t/en.json" })).toEqual([{ code: "ar" }, { code: "en", file: resolve("/t/en.json") }]);
   });
 
   it("rejects codes that cannot be part of a file name, and repeats", () => {
