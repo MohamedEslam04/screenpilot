@@ -12,6 +12,8 @@ export interface ResumeOverrides extends MemGuardOptions {
   /** Change the worker count for the rest of the render. */
   workers?: number;
   log?: (msg: string) => void;
+  /** Aborts the resumed render (an MCP request cancelled): its whole process tree is killed. */
+  signal?: AbortSignal;
 }
 
 /** What a resumed single render returns (as the render command prints it). */

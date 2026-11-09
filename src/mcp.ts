@@ -1152,10 +1152,10 @@ server.registerTool(
       mem_timeout: memTimeoutField,
     },
   },
-  safe(async ({ sequence, storyboard, build_dir, workers, min_free_mem, mem_timeout }) => {
+  safe(async ({ sequence, storyboard, build_dir, workers, min_free_mem, mem_timeout }, ctx) => {
     if (sequence && storyboard) throw new Error("Give sequence or storyboard, not both.");
     const path = sequence ?? storyboard;
-    if (path) return text(await resumePaused(path, { buildDir: build_dir, workers: parseWorkers(workers, {}), minFreeMemMB: min_free_mem, memTimeoutS: mem_timeout, log }));
+    if (path) return text(await resumePaused(path, { buildDir: build_dir, workers: parseWorkers(workers, {}), minFreeMemMB: min_free_mem, memTimeoutS: mem_timeout, log, signal: ctx?.signal }));
     if (!driver) return text({ resumed: false, reason: "no live driver; the next drive tool opens one" });
     driver.resume();
     return text({ resumed: true });
