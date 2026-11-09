@@ -1,0 +1,10 @@
+[package]
+name = "screenpilot-dashboard-core"
+description = "Logic of the ScreenPilot dashboard: history, jobs, projects, stats, CLI calls. No GUI dependency."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

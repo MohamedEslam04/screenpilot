@@ -1,0 +1,17 @@
+[package]
+name = "screenpilot-dashboard"
+description = "ScreenPilot local desktop dashboard (Tauri shell around screenpilot-dashboard-core)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[build-dependencies]
+tauri-build = "2"
+
+[dependencies]
+# `protocol-asset` serves local videos and thumbnails to the UI through convertFileSrc (asset protocol).
+tauri = { version = "2", features = ["protocol-asset"] }
+screenpilot-dashboard-core = { path = "../core" }
+serde_json = "1"
+# Watches <cache>/jobs/ while the window is visible (no polling loop).
+notify = "8"
