@@ -12,8 +12,10 @@ Ask your AI app for a screen video. ScreenPilot records your screen (or uses you
 
 ## What's new
 
-### Unreleased
+### 0.11.1 ([release notes](https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.11.1))
 
+- **Dashboard fix:** saving a voice key (and every other dashboard action that runs the CLI) failed with `exec: node: not found` when the dashboard was started from the application menu, because a menu has no shell PATH. The dashboard now uses the Node that ships in the package.
+- **Updating from 0.10.0:** `screenpilot update` in 0.10.0 refuses the 0.11 package (it contains the new `dashboard/` folder). Install 0.11.1 once from the full download; after that `screenpilot update` works.
 - **A video folder per project:** a `.screenpilot.json` in a project's root (`{"output": "videos"}`, or `screenpilot project set-output videos`) sends that project's recordings and takes to its own folder; everything else still goes to your default folder. `record` and `perform` take `--project <path>`, and the MCP tools `record_start` and `perform` take `project`, which your AI app passes for the project it works in. The folder must be inside the project. The dashboard lists these videos wherever they are.
 
 ### 0.11.0 ([release notes](https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.11.0))
@@ -187,4 +189,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 2294d98 ("docs: per-project video folder (README, AGENTS, skill, site en and ar)", 2026-11-09).
+Docs synced to commit 7b14746 ("Merge pull request #13 from MohamedEslam04/feat/project-output", 2026-11-09).
