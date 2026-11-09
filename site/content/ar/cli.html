@@ -455,6 +455,12 @@ screenpilot secret status</code></pre>
 screenpilot history --live</code></pre>
 <div class="note">كتابة السجل لا تُفشل أي عمل. إذا تعذّرت كتابة الملف يكتمل العمل ويُتخطّى السطر.</div>
 
+<h3 id="project">project</h3>
+<p>الأمر <code>screenpilot project set-output &lt;dir&gt;</code> يكتب <code>.screenpilot.json</code> في المجلد الحالي (أو في المجلد المعطى بـ <code>--project</code>) فتذهب فيديوهات هذا المشروع إلى <code>&lt;dir&gt;</code> داخله. يبحث <code>record</code> و<code>perform</code> عن هذا الملف انطلاقًا من <code>--project &lt;path&gt;</code> أو من المجلد الحالي صعودًا. ويتقدّم <code>--dir</code> دائمًا؛ وإن لم يوجد ملف يُستخدم المجلد الافتراضي.</p>
+<pre><code class="language-sh">cd ~/work/my-app
+screenpilot project set-output videos
+screenpilot perform take.json        # records into ~/work/my-app/videos/&lt;timestamp&gt;</code></pre>
+
 <h3 id="library">library</h3>
 <p>الأمر <code>screenpilot library import</code> يضيف أعمالًا أنجزتها قبل وجود السجل: تسجيلات (مجلد فيه <code>meta.json</code>) وتصييرات منتهية (ملف <code>storyboard.json</code> بجانبه <code>storyboard.mp4</code>). يبحث بعمق مستويين من المجلدات تحت كل جذر. ما هو موجود في السجل يُترك كما هو، وتُوسم الأسطر المضافة بالقيمة <code>imported</code>. يطبع عدد ما أضافه وعدد الأحداث في السجل الآن.</p>
 <table>

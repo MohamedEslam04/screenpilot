@@ -34,6 +34,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export interface PerformOptions {
   /** Session directory. A used one is never overwritten: the take goes to `<dir>-2`, `<dir>-3`, ... (the result's `dir` says which). */
   dir?: string;
+  /** A folder or file the video belongs to: its `.screenpilot.json` picks the video folder (ignored with `dir`). Default: the working directory. */
+  project?: string;
   /** With `dir`: move a previous take there to `<dir>.prev` and reuse `dir`, instead of versioning the name. */
   overwrite?: boolean;
   dryRun?: boolean;
@@ -134,7 +136,7 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
       log("starting recording");
       const dir = opts.dir ? await prepareSessionDir(opts.dir, { overwrite: opts.overwrite }) : undefined;
       if (dir && dir !== resolve(opts.dir!)) log(`${opts.dir} is in use, recording to ${dir}`);
-      rec = await startRecording({ dir, screens: take.screens, input: "auto", history: false, log });
+      rec = await startRecording({ dir, project: opts.project, screens: take.screens, input: "auto", history: false, log });
       t0 = rec.startedAt;
       ctx.recording = true;
     } else {

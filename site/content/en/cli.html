@@ -455,6 +455,12 @@ screenpilot secret status</code></pre>
 screenpilot history --live</code></pre>
 <div class="note">Writing the history never makes a job fail. If the file cannot be written, the job still finishes and the line is skipped.</div>
 
+<h3 id="project">project</h3>
+<p><code>screenpilot project set-output &lt;dir&gt;</code> writes <code>.screenpilot.json</code> in the current folder (or the folder in <code>--project</code>) so that this project's videos go to <code>&lt;dir&gt;</code> inside it. <code>record</code> and <code>perform</code> look for that file from <code>--project &lt;path&gt;</code>, or from the current folder, upwards. <code>--dir</code> always wins; with no file the default folder is used.</p>
+<pre><code class="language-sh">cd ~/work/my-app
+screenpilot project set-output videos
+screenpilot perform take.json        # records into ~/work/my-app/videos/&lt;timestamp&gt;</code></pre>
+
 <h3 id="library">library</h3>
 <p><code>screenpilot library import</code> adds work you made before the history existed: recordings (a folder with <code>meta.json</code>) and finished renders (a <code>storyboard.json</code> with <code>storyboard.mp4</code> next to it). It looks two folder levels deep under each root. What is already in the history is left alone, and added lines are marked <code>imported</code>. It prints how many it added and how many events the history now holds.</p>
 <table>

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, renameSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { projectOutput } from "./project.js";
 
 // The product name lives here and only here. Renaming the project = change
 // APP (and add the old name to PREVIOUS_NAMES so existing users keep their
@@ -68,6 +69,14 @@ export const PERFORM_TIMEOUT_ENV = `${APP.toUpperCase()}_PERFORM_TIMEOUT`;
 /** Folder for new recording sessions: $SCREENPILOT_OUTPUT, else ./sessions. */
 export function sessionsRoot(): string {
   return process.env[OUTPUT_ENV] || "sessions";
+}
+
+/**
+ * Folder for new recordings: the project's own (`.screenpilot.json` found from `project`, else from the
+ * working directory), else the default one. An explicit `--dir`/`dir` is applied before this.
+ */
+export function outputRoot(project?: string): string {
+  return projectOutput(project ?? process.cwd()) ?? sessionsRoot();
 }
 
 /** The app version, from package.json (one level above src/ and dist/). */

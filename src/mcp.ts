@@ -158,7 +158,10 @@ async function runningBrowser(id?: string): Promise<DemoBrowser> {
 
 // Sent to every MCP client on connect (Claude, Codex, OpenCode, Cursor…), so
 // any agent knows the workflow without a client-specific skill.
-const INSTRUCTIONS = `${APP_TITLE} makes screen videos. FIRST, for every new video, call brief: it asks the user the decisions only they can make (goal, source, language, which voice: built-in, a website like Google AI Studio, their own or none, look, camera, review, permissions) as option pickers, and record_start, perform, render and sequence_render refuse until it is done. Never answer for the user, never install anything for them, and do not start recording or building before the answers are in. Typical loops:
+const PROJECT_DESCRIPTION =
+  "The project this video belongs to (its folder, or a file in it), when the user is working on one. If that project has a .screenpilot.json the video goes to the folder it names; otherwise to the user's default folder. Default: the server's working directory";
+
+const INSTRUCTIONS = `${APP_TITLE} makes screen videos. FIRST, for every new video, call brief: it asks the user the decisions only they can make (goal, source, language, which voice: built-in, a website like Google AI Studio, their own or none, look, camera, review, permissions) as option pickers, and record_start, perform, render and sequence_render refuse until it is done. Never answer for the user, never install anything for them, and do not start recording or building before the answers are in. Where videos go: the user has one default folder; when the video belongs to a project the user is working on, pass that project's folder as \`project\` to record_start and perform (a .screenpilot.json there can name its own video folder; \`screenpilot project set-output <dir>\` writes it). Never pass \`dir\` to reach the default folder, and never invent a folder: only pass \`dir\` when the user named one. Typical loops:
 1. User records: record_start (screens "all" or one), user works, record_stop → analyze (look at the contact sheet) → storyboard_init with suggest → edit the storyboard (narration lines, captions, highlights, zooms) → render quality "draft" → check_output frames → fix → render "delivery".
 2. You perform it: screenshot to see the monitors, windows to see apps, browser_open for websites (app: true hides the address bar and tabs, so nothing about this machine shows; a second demo browser: browser_open with \`id\`, then pass the same \`browser\` to web_locate, wait_for, page_text); in take.json, file paths are relative to the take, so it runs on any machine; try the flow live with pointer_move/click/type_text; then write a take.json (take_schema) and call perform (it records, logs clicks/windows and writes a storyboard), add intro/outro/zooms, render.
 Design every video for its purpose; there is no house style. Before rendering, decide who it's for and where it will be shown, then set the storyboard to match: output size (1920x1080 for YouTube/README/slides, 1080x1920 for Reels/TikTok/Shorts, 1080x1080 for feeds), theme (background, padding, radius, accent, font, caption colors), theme.fonts (any Google Fonts), theme.css (your own CSS for captions, cards, highlights; storyboard_schema lists the classes) and text motion (theme.motion.captions / .cards, or motion per caption: in/out presets fade, rise, drop, slide-left, slide-right, pop, zoom, blur, wipe, words, lines, none; duration, any GSAP ease, stagger). Match the product's brand when you can see it (colors and type from its site or app). Pace and wording follow the audience: short punchy captions for social, calm explanatory ones for tutorials, bilingual lines ("English\nعربي") when asked. Defaults are only a fallback.
@@ -260,7 +263,8 @@ server.registerTool(
       "Start recording the desktop (built-in recorder, no OBS needed; plus pointer/click/active-window events). Only one recording at a time. " +
       "Tell the user to perform the demo, then call record_stop. recorder \"obs\" records through a running OBS Studio instead.",
     inputSchema: {
-      dir: z.string().optional().describe("Session directory. Default: a new folder in the user's Videos/ScreenPilot"),
+      dir: z.string().optional().describe("Exact session directory. Default: a new folder in the project's video folder (see project), else in the user's Videos/ScreenPilot. Leave it out unless the user named a folder"),
+      project: z.string().optional().describe(PROJECT_DESCRIPTION),
       input: z.enum(["auto", "kwin", "uiohook", "none"]).optional().describe("Pointer/click capture adapter. Default auto"),
       screen: z.string().optional().describe("Monitor name to normalize pointer coordinates against (e.g. eDP-1)"),
       obsUrl: z.string().optional().describe("obs-websocket URL. Default ws://127.0.0.1:4455"),
@@ -280,7 +284,7 @@ server.registerTool(
   safe(async (a) => {
     requireBrief("record_start");
     if (recording) throw new Error(`A recording is already running (dir: ${recording.dir}). Call record_stop first.`);
-    recording = await startRecording({ ...a, log });
+    recording = await startRecording({ ...a, project: a.project ? resolve(a.project) : undefined, log });
     return text({ recording: true, dir: recording.dir, inputAdapter: recording.inputAdapter, startedAt: new Date().toISOString() });
   }),
 );
@@ -1107,13 +1111,14 @@ server.registerTool(
         .string()
         .optional()
         .describe(
-          "Session directory. Default: a new folder in the user's Videos/ScreenPilot. A directory that already holds a take is never overwritten: the take goes to <dir>-2, <dir>-3, ... and <dir>-latest points at the one used; the result's dir is the path used",
+          "Exact session directory. Default: a new folder in the project's video folder (see project), else in the user's Videos/ScreenPilot. Leave it out unless the user named a folder. A directory that already holds a take is never overwritten: the take goes to <dir>-2, <dir>-3, ... and <dir>-latest points at the one used; the result's dir is the path used",
         ),
+      project: z.string().optional().describe(PROJECT_DESCRIPTION),
       overwrite: z.boolean().optional().describe("With dir: move the earlier take to <dir>.prev (replacing an older .prev) and reuse dir"),
       dryRun: z.boolean().optional().describe("Rehearse without recording"),
     },
   },
-  safe(async ({ take, dir, overwrite, dryRun }): Promise<Result> => {
+  safe(async ({ take, dir, project, overwrite, dryRun }): Promise<Result> => {
     requireBrief("perform");
     if (performing) throw new Error("A take is already running. Call abort to stop it.");
     // performTake opens its own driver; release the live one so two remote-control sessions don't compete.
@@ -1122,7 +1127,7 @@ server.registerTool(
     const limit = Number(process.env[PERFORM_TIMEOUT_ENV]);
     const timer = limit > 0 ? setTimeout(() => performing?.abort(), limit * 1000) : undefined;
     try {
-      const r: PerformResult = await performTake(resolve(take), { dir, overwrite, dryRun, log, onDriver: (d) => (performing = d) });
+      const r: PerformResult = await performTake(resolve(take), { dir, project: project ? resolve(project) : undefined, overwrite, dryRun, log, onDriver: (d) => (performing = d) });
       return text(r);
     } catch (err) {
       if (err instanceof TakeError) {

@@ -43,6 +43,9 @@ summary: Short answers to common questions about ScreenPilot, plus fixes for the
 <h3 id="files">Where are my files saved?</h3>
 <p>Recordings and finished videos go to the <strong>ScreenPilot</strong> folder inside your Videos folder (on a Mac: Movies). Each recording is a session folder holding the video, <code>events.jsonl</code> and a <code>storyboard.json</code>. When you use the command line, sessions go to <code>sessions/&lt;timestamp&gt;</code> in the current folder, or to the folder in <code>SCREENPILOT_OUTPUT</code>. The installer option <code>--output &lt;dir&gt;</code> sets that folder. Settings and the audit log are in <code>~/.config/screenpilot</code> (Windows: <code>%APPDATA%\screenpilot</code>).</p>
 
+<h3 id="project-folder">Can one project keep its own videos?</h3>
+<p>Yes. Put a <code>.screenpilot.json</code> file in the project's root folder: <code>{"output": "videos"}</code>, or run <code>screenpilot project set-output videos</code> there. Videos you record or perform for that project then go to <code>videos/&lt;timestamp&gt;</code> inside it, and everything else keeps going to your default folder. The folder must be inside the project (an absolute path or <code>..</code> is refused), so a repository you clone cannot send files elsewhere. Add the folder to <code>.gitignore</code> if you do not want to commit the videos. Your AI app is told to pass the project it works in; ScreenPilot looks for the file in that folder and above it. The dashboard lists these videos like any other, wherever they are.</p>
+
 <h2 id="checks">Checks and permissions</h2>
 
 <h3 id="doctor">What does doctor check?</h3>

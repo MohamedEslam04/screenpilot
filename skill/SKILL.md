@@ -52,6 +52,10 @@ Long renders: a full render takes about as long as the video (more at delivery).
 
 Pause, resume and memory: when the user needs the machine mid-render (a meeting), call `pause` with the sequence (or storyboard) being rendered (CLI `screenpilot pause [path]`; without a path it pauses every render running now). It drops `.pause` into the build folder; the render finishes the part in progress (or the chunk, for a part or render of 5 minutes or more), saves `.paused.json` and its call returns `{paused: true, partsDone, parts: [{part, status: done|in progress|waiting, chunks?}], resume}` (CLI exit 0). Later `resume` with the same path (MCP `resume` with `sequence` or `storyboard`; CLI `screenpilot resume <path>`) renders again with the saved options: every finished part and chunk is a cache hit, and `workers`, `min_free_mem` and `mem_timeout` may be changed. Before each part or chunk a render waits until `min_free_mem` MB are available (`--min-free-mem`, default 1500, `0` turns it off, `SCREENPILOT_MIN_FREE_MEM` sets the default; Linux reads MemAvailable), up to `mem_timeout` seconds (`--mem-timeout`, default 300), then fails with the measured numbers; finished parts and chunks are kept. Results carry `peakRssMB`, the highest memory of the render's child processes (sampled; absent on Windows).
 
+## Where videos go
+
+One default folder for everything. When the video belongs to a project the user is working on, pass that project's folder as `--project <path>` (MCP `project` on `record_start` and `perform`): a `.screenpilot.json` found there or above it (`{"output": "videos"}`, made by `screenpilot project set-output videos`) sends the session to that folder inside the project, else it goes to the default. Pass `--dir`/`dir` only when the user named a folder. `output` must stay inside the project.
+
 ## Combine recordings (insert a feature clip, no re-recording)
 
 One storyboard has one `source`. To insert another recording into the middle of a demo, record or `perform` only the new part, `init` a storyboard for it, then join storyboards with a `sequence.json`:

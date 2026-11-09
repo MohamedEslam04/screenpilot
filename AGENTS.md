@@ -97,6 +97,10 @@ A variant is a file `variants/<name>.json` next to the storyboard: `{ "voice"?: 
 
 The slot of a narration line is its `at` to the next line's `at`, minus `voice.gap` (the last line has none). Once the clips exist, render reports `fit: [{id, raw, slot, needed}]` (clip seconds, slot seconds, speed-up factor needed; only lines with needed above 1) and warns `[narration-fit]` for lines above the cap (default 1.18x; `voice.fit.max`, `--fit-max`; MCP `fit_max`). `--strict-fit` (MCP `strict_fit`) fails instead. `--fit` (MCP `fit`, or `voice.fit.auto`) speeds the overrunning clips up (ffmpeg atempo) to the cap; the sped-up clip is cached next to the raw one (`<clip>.x1.180.mp3`) and always made from the raw clip, so a re-render never stretches twice; ready-made `audio` is reported, never stretched. `sequence-validate --fit` (MCP `sequence_validate` `fit`) checks the clips already in the voice cache without synthesizing, and counts lines that have none. Turn the warning off with `lint.off: ["narration-fit"]`.
 
+## Where videos go
+
+One default folder (`SCREENPILOT_OUTPUT`, normally Videos/ScreenPilot). When the video belongs to a project the user is working on, pass that project's folder as `project` (MCP `record_start` and `perform`, CLI `--project`): if a `.screenpilot.json` (`{"output": "videos"}`, written by `screenpilot project set-output <dir>`) is found in that folder or above it, the new session goes to that folder inside the project, else to the default. Pass `dir` only when the user named a folder; never to reach the default. `output` must stay inside the project (absolute paths and `..` are refused).
+
 ## Agent drives the desktop (KDE Wayland, X11, GNOME Wayland, Windows)
 
 Instead of asking the user to perform the demo, you can perform it. Loop: explore, rehearse, perform, review, render. `screenpilot doctor` says what the desktop supports: on GNOME/other Wayland there is no window control (use only `{screen, x, y}` targets; no `focus`, `waitForWindow`, `{window}`, `{web}` or clicking `{a11y}` targets), and wlroots (sway, Hyprland) cannot be driven at all (recording works).

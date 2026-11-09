@@ -49,6 +49,7 @@ import { detectBriefEnv } from "./brief/detect.js";
 import { applyUpdate, checkForUpdate, sourceFrom, updateCommand } from "./update/index.js";
 import { buildBrief, recommendedAnswers, summaryLines } from "./brief/questions.js";
 import { APP, APP_TITLE, sessionsRoot, VERSION } from "./brand.js";
+import { projectOutput, writeProjectOutput } from "./project.js";
 import { useBundledTools } from "./bundle.js";
 import { getDesktop } from "./platform/index.js";
 import { hookPinned } from "./record/input/hook.js";
@@ -99,7 +100,8 @@ const program = new Command()
 program
   .command("record")
   .description("Record the screen through OBS and log the pointer; Enter or Ctrl+C stops")
-  .option("-d, --dir <dir>", "Session directory (default: sessions/<timestamp>)")
+  .option("-d, --dir <dir>", "Session directory (default: a new folder in the project's video folder, else sessions/<timestamp>)")
+  .option("--project <path>", "Folder or file the video belongs to: its .screenpilot.json (searched upwards) picks the video folder (default: the working directory)")
   .option("--input <adapter>", "auto | kwin | uiohook | none", "auto")
   .option("--screen <name>", "Monitor being recorded, e.g. eDP-1 (default: the one under the cursor)")
   .option("--obs-url <url>", "obs-websocket URL (default: from OBS config, else ws://127.0.0.1:4455)")
@@ -112,6 +114,7 @@ program
   .action(
     async (o: {
       dir?: string;
+      project?: string;
       input: InputAdapterId;
       screen?: string;
       obsUrl?: string;
@@ -210,9 +213,10 @@ program
   .description("The agent performs a take.json on the real desktop while recording; writes a ready storyboard")
   .argument("<take>", "take.json")
   .option("-d, --dir <dir>", "Session directory (default: sessions/<timestamp>). One already in use is kept: the take goes to <dir>-2, <dir>-3, ...; <dir>-latest points at the one used")
+  .option("--project <path>", "Folder or file the video belongs to: its .screenpilot.json (searched upwards) picks the video folder (default: the working directory)")
   .option("--overwrite", "With --dir: move the earlier take to <dir>.prev and reuse <dir>")
   .option("--dry-run", "Drive the desktop without recording (rehearsal)")
-  .action(async (takePath: string, o: { dir?: string; overwrite?: boolean; dryRun?: boolean }) => {
+  .action(async (takePath: string, o: { dir?: string; project?: string; overwrite?: boolean; dryRun?: boolean }) => {
     let driver: Driver | undefined;
     process.once("SIGINT", () => {
       log("stopping…");
@@ -751,6 +755,18 @@ program
   .option("--live", "List the renders running now instead")
   .action(async (o: { limit: string; before?: string; live?: boolean }) => {
     print(o.live ? listJobs() : await readHistory({ limit: Number(o.limit), before: o.before }));
+  });
+
+const project = program.command("project").description("Per-project settings (.screenpilot.json)");
+project
+  .command("set-output")
+  .description("Keep this project's videos in <dir> (inside the project) instead of the default folder")
+  .argument("<dir>", "Folder inside the project, relative to it, e.g. videos")
+  .option("--project <dir>", "The project folder (default: the working directory)")
+  .action((dir: string, o: { project?: string }) => {
+    const file = writeProjectOutput(o.project ?? process.cwd(), dir);
+    print({ file, output: projectOutput(file) });
+    log(`videos recorded from here now go to ${dir}. Add it to .gitignore if the videos should not be committed.`);
   });
 
 const library = program.command("library").description("The history of your work");
