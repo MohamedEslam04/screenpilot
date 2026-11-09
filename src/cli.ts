@@ -35,6 +35,8 @@ import { qaStoryboard } from "./storyboard/qa.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { estimateSequence } from "./sequence/estimate.js";
 import { renderSequence, validateSequence } from "./sequence/index.js";
+import { resumePaused } from "./sequence/resume.js";
+import { pauseRenders, RenderPaused } from "./render/pause.js";
 import { sequenceJsonSchema } from "./sequence/schema.js";
 import { probeVideo } from "./util/media.js";
 import { describeEstimate, estimateStoryboard } from "./voice/estimate.js";
@@ -567,19 +569,21 @@ program
   .option("--poster-at <s>", "Time of the poster frame, in OUTPUT seconds (default: a quarter of the way in)", Number)
   .option("--no-chunks", "Render in one piece. By default a video (or --from/--to window) of 5 minutes or more renders in cached chunks cut at quiet points, so after an edit only the touched chunks render again")
   .option("--chunk-seconds <n>", "Length of those chunks (default 180, at least 10)", Number)
+  .option("--min-free-mem <MB>", "Before each part or chunk, wait until this much memory is available (default 1500, 0 = off; SCREENPILOT_MIN_FREE_MEM sets the default)", Number)
+  .option("--mem-timeout <s>", "Longest wait for that memory, then fail with the numbers (default 300)", Number)
   .option("--build-dir <dir>")
   .option("--dry-run", "Print the lines, characters and estimated USD the voice would cost, then stop: no request, no file, no cache entry")
   .addOption(new Option("--dry").hideHelp())
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; variant?: string; fit?: boolean; strictFit?: boolean; fitMax?: number; subtitles?: string; subtitleLang?: string; subtitleChars?: number; also?: string; posterAt?: number; chunks: boolean; chunkSeconds?: number; dryRun?: boolean; dry?: boolean }) => {
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; variant?: string; fit?: boolean; strictFit?: boolean; fitMax?: number; subtitles?: string; subtitleLang?: string; subtitleChars?: number; also?: string; posterAt?: number; chunks: boolean; chunkSeconds?: number; minFreeMem?: number; memTimeout?: number; dryRun?: boolean; dry?: boolean }) => {
     if (o.dryRun || o.dry) {
       const e = await estimateStoryboard(path, { style: o.style ? await loadStyle(o.style) : undefined, variant: o.variant ? await loadVariant(o.variant, path) : undefined });
       log(describeEstimate(e));
       print(e);
       return;
     }
-    const { subtitles, subtitleLang, subtitleChars, also, posterAt, style, variant, fit, strictFit, fitMax, chunks, dryRun: _dryRun, dry: _dry, ...rest } = o;
+    const { subtitles, subtitleLang, subtitleChars, also, posterAt, style, variant, fit, strictFit, fitMax, chunks, minFreeMem, memTimeout, dryRun: _dryRun, dry: _dry, ...rest } = o;
     // Commander sets chunks: true unless --no-chunks; only an explicit "off" is passed on.
-    const opts = { ...rest, chunks: chunks ? undefined : false, style: style ? await loadStyle(style) : undefined, variant: variant ? await loadVariant(variant, path) : undefined, fit: fitFlags(fit, strictFit, fitMax), workers: parseWorkers(o.workers), window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), subtitleLanguages: parseSubtitleLanguages(subtitleLang), subtitleRules: subtitleChars !== undefined ? { maxChars: subtitleChars } : undefined, also: parseExtras(also), posterAt, log };
+    const opts = { ...rest, minFreeMemMB: minFreeMem, memTimeoutS: memTimeout, chunks: chunks ? undefined : false, style: style ? await loadStyle(style) : undefined, variant: variant ? await loadVariant(variant, path) : undefined, fit: fitFlags(fit, strictFit, fitMax), workers: parseWorkers(o.workers), window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), subtitleLanguages: parseSubtitleLanguages(subtitleLang), subtitleRules: subtitleChars !== undefined ? { maxChars: subtitleChars } : undefined, also: parseExtras(also), posterAt, log };
     if (o.formats) {
       if (o.buildDir) throw new Error("--build-dir cannot be combined with --formats (each format gets its own <name>.<format>.build)");
       const rs = await renderFormats(path, parseFormats(o.formats), opts);
@@ -608,18 +612,43 @@ program
   .option("--fit", "Speed narration clips that overrun their slot (the time to the next line, minus voice.gap) up to the cap so they fit; the sped-up clip is cached, never stretched twice")
   .option("--strict-fit", "Fail when a narration clip needs more than the cap to fit its slot (instead of freezing the video)")
   .option("--fit-max <x>", "The cap of --fit and --strict-fit as a speed-up factor (default voice.fit.max, else 1.18)", Number)
+  .option("--min-free-mem <MB>", "Before each part or chunk, wait until this much memory is available (default 1500, 0 = off; SCREENPILOT_MIN_FREE_MEM sets the default)", Number)
+  .option("--mem-timeout <s>", "Longest wait for that memory, then fail with the numbers (default 300)", Number)
   .option("--build-dir <dir>")
   .option("--dry-run", "Print the lines, characters and estimated USD the voices would cost, part by part, then stop: no request, no file, no build folder")
   .addOption(new Option("--dry").hideHelp())
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string; variant?: string; variantDir?: string; fit?: boolean; strictFit?: boolean; fitMax?: number; subtitles?: string; subtitleLang?: string; subtitleChars?: number; dryRun?: boolean; dry?: boolean }) => {
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string; variant?: string; variantDir?: string; fit?: boolean; strictFit?: boolean; fitMax?: number; subtitles?: string; subtitleLang?: string; subtitleChars?: number; minFreeMem?: number; memTimeout?: number; dryRun?: boolean; dry?: boolean }) => {
     if (o.dryRun || o.dry) {
       const e = await estimateSequence(path, { style: o.style ? await loadStyle(o.style) : undefined, variant: o.variant, variantDir: o.variantDir });
       log(describeEstimate(e, " (all parts)"));
       print(e);
       return;
     }
-    const { style, fit, strictFit, fitMax, subtitles, subtitleLang, subtitleChars, dryRun: _dryRun, dry: _dry, ...rest } = o;
-    print(await renderSequence(path, { ...rest, fit: fitFlags(fit, strictFit, fitMax), style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), subtitles: parseSubtitleFormats(subtitles), subtitleLanguages: parseSubtitleLanguages(subtitleLang), subtitleRules: subtitleChars !== undefined ? { maxChars: subtitleChars } : undefined, log }));
+    const { style, fit, strictFit, fitMax, subtitles, subtitleLang, subtitleChars, minFreeMem, memTimeout, dryRun: _dryRun, dry: _dry, ...rest } = o;
+    print(await renderSequence(path, { ...rest, fit: fitFlags(fit, strictFit, fitMax), minFreeMemMB: minFreeMem, memTimeoutS: memTimeout, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), subtitles: parseSubtitleFormats(subtitles), subtitleLanguages: parseSubtitleLanguages(subtitleLang), subtitleRules: subtitleChars !== undefined ? { maxChars: subtitleChars } : undefined, log }));
+  });
+
+program
+  .command("pause")
+  .description("Pause a running render or sequence: it finishes the part (or chunk) in progress, then stops and prints which parts are done. Without a path: every render running now")
+  .argument("[path]", "The storyboard or sequence being rendered")
+  .option("--build-dir <dir>", "Its build folder, when it is not the default one")
+  .action(async (path: string | undefined, o: { buildDir?: string }) => {
+    const r = await pauseRenders({ path, buildDir: o.buildDir });
+    print(r);
+    log("the render stops after the part or chunk in progress; carry on with: screenpilot resume <storyboard or sequence>");
+  });
+
+program
+  .command("resume")
+  .description("Carry on a paused render or sequence with the options it was started with: finished parts and chunks are reused")
+  .argument("<path>", "The storyboard or sequence that was paused")
+  .option("--build-dir <dir>", "Its build folder, when it is not the default one")
+  .option("--workers <n>", "Change the parallel renderers for the rest: auto, max or a number")
+  .option("--min-free-mem <MB>", "Before each part or chunk, wait until this much memory is available (default 1500, 0 = off; SCREENPILOT_MIN_FREE_MEM sets the default)", Number)
+  .option("--mem-timeout <s>", "Longest wait for that memory, then fail with the numbers (default 300)", Number)
+  .action(async (path: string, o: { buildDir?: string; workers?: string; minFreeMem?: number; memTimeout?: number }) => {
+    print(await resumePaused(path, { buildDir: o.buildDir, workers: parseWorkers(o.workers, {}), minFreeMemMB: o.minFreeMem, memTimeoutS: o.memTimeout, log }));
   });
 
 program
@@ -732,6 +761,12 @@ program
     if (hookPinned()) process.exit(process.exitCode ?? 0);
   })
   .catch((err: unknown) => {
+    // A pause is a clean stop: print where it stopped, exit 0.
+    if (err instanceof RenderPaused) {
+      print(err.info);
+      log(`paused; carry on with: ${err.info.resume}`);
+      process.exit(0);
+    }
     if (err instanceof StoryboardError) log(err.message);
     else log(err instanceof Error ? err.message : String(err));
     process.exit(1);

@@ -41,12 +41,14 @@ import { qaStoryboard } from "./storyboard/qa.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { estimateSequence } from "./sequence/estimate.js";
 import { renderSequence, validateSequence } from "./sequence/index.js";
+import { resumePaused } from "./sequence/resume.js";
+import { pauseRenders, RenderPaused } from "./render/pause.js";
 import { sequenceJsonSchema } from "./sequence/schema.js";
 import { type PerformResult, performTake, resolveTarget, TakeError } from "./take/perform.js";
 import { A11yQuerySchema, TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
 import { estimateStoryboard } from "./voice/estimate.js";
-import { abortAll } from "./util/proc.js";
+import { abortAll, pauseAll } from "./util/proc.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
 import { readSpend, summarizeSpend } from "./voice/spend.js";
 import { exportScript, importAudio } from "./voice/import.js";
@@ -88,6 +90,8 @@ const safe =
     try {
       return await fn(args, extra);
     } catch (err) {
+      // A paused render or sequence stopped cleanly: its result says which parts are done and how to resume.
+      if (err instanceof RenderPaused) return text(err.info);
       log(err instanceof Error ? (err.stack ?? err.message) : String(err));
       return fail(err);
     }
@@ -163,7 +167,7 @@ To put another recording in the middle of a video without re-recording the rest:
 To make the same recording with another script or voice (a dialect, a language): write variants/<name>.json next to the storyboard ({voice?, narration?: {"<line id or position>": "text"} or ["text", ...], overlays?: {"<position>": {src}}}; it only rewrites lines, so a different number of lines fails) and pass variant to render, or variant (and variant_dir) to sequence_render, which looks for <part folder>/variants/<name>.json in each part. Output is <name>.<variant>.mp4 and rendering variants in turn reuses each one's cache. Narration lines have a slot (their at to the next line's at, minus voice.gap): render returns fit [{id, raw, slot, needed}] and warns above the cap (default 1.18x); fit: true speeds overrunning clips up to the cap (cached, never twice), strict_fit: true fails instead, sequence_validate fit: true checks cached clips for free.
 Subtitles: render and sequence_render take subtitles (["srt","vtt"]) and languages ({code: "auto" | translation.json}) to write <video>.<code>.srt|vtt next to the video from its timeline.json (a translation is {"<id or index>": "line"}, or {"<chapter>": ["line", ...]} for a sequence, chapter = the part's storyboard folder; no machine translation: the user or you write it); for a video that is already rendered call subs (no render), with join for a video joined by hand and mux for soft tracks in <video>.subs.mp4. check_output also checks that the captions land on the audio.
 Before the delivery render run storyboard_qa: it flags highlights that frame an empty area and views that show the desktop.
-Long renders: a full render takes about as long as the video (more at delivery). For a long video iterate with quality "draft" and from/to, use workers "max" when the user is away from the desktop. A render of 5 minutes or more is split into cached chunks at quiet points automatically, so after an edit only the chunks it touched render again (chunks: false turns it off). When a render is expected to take 2 minutes or more the log starts with "estimated ~<time>" (from past renders).
+Long renders: a full render takes about as long as the video (more at delivery). For a long video iterate with quality "draft" and from/to, use workers "max" when the user is away from the desktop. A render of 5 minutes or more is split into cached chunks at quiet points automatically, so after an edit only the chunks it touched render again (chunks: false turns it off). When a render is expected to take 2 minutes or more the log starts with "estimated ~<time>" (from past renders). If the user needs the machine (a meeting), call pause with the sequence (or storyboard): the render finishes the part or chunk in progress and its call returns {paused: true, parts}; later resume with the same path carries on, reusing every finished part and chunk. Before each part or chunk a render waits for min_free_mem MB (default 1500) up to mem_timeout seconds, then fails with the numbers; results carry peakRssMB.
 Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, {a11y: {role, name}} for a control in a native app (a11y_tree lists them; Linux AT-SPI, Qt apps must be launched with QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1), or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). Free offline voices: voice.provider "local" with name voicetut:Sarah (Egyptian Arabic and English) or namaa (Egyptian Arabic); voices with provider "local" lists what is installed. If none is installed and the user wants one, tell them to run "screenpilot voice-setup voicetut" in a terminal (about 10 GB; do not start it yourself). Command voices (any program) are defined by the user in voices.json; you cannot add them in a storyboard. Cloud voices: provider "elevenlabs" (name = a voice id or the name of a voice on the user's account) and provider "gemini" (name like Kore) need the user's own key in ELEVENLABS_API_KEY / GEMINI_API_KEY or in secrets.json in the config folder (doctor shows whether it is set); never ask for the key in chat or write it anywhere yourself, and say the text is sent to that service. Paid voices cost money: before the first render with one, call render (or sequence_render) with dryRun: true to get the lines, characters and estimated USD with nothing sent, tell the user the estimate, and render only after they agree; every billed request is added to a spend ledger and the voices tool shows the running total. For a better voice than the built-in ones, the user can make the audio on a web text-to-speech site: script_export writes the script to paste, the user generates ONE audio file (blank line between lines) and gives it back, then audio_import cuts it per line and sets narration[].audio; render as usual. Warn that free plans have limits and may forbid commercial use. The camera frames the window in use by default. You can run the whole loop yourself: drive live, write the take, perform, render, check_output. If a person is present, ask them not to touch the mouse while you drive; moving it stops the action with a message, and resume carries on from where the pointer is. For unattended runs start the server with SCREENPILOT_INTERRUPT=off. Run doctor first on a new machine.`;
 
 const server = new McpServer({ name: APP, title: APP_TITLE, version: VERSION }, { instructions: INSTRUCTIONS });
@@ -494,6 +498,13 @@ server.registerTool(
   }),
 );
 
+const minFreeMemField = z
+  .number()
+  .min(0)
+  .optional()
+  .describe("Before each part or chunk, wait until this much memory (MB) is available (default 1500, 0 = off; SCREENPILOT_MIN_FREE_MEM sets the default). Waits up to mem_timeout, then fails with the measured numbers");
+const memTimeoutField = z.number().min(0).optional().describe("Longest wait for min_free_mem, in seconds (default 300)");
+
 const workersField = z
   .union([z.enum(["auto", "max"]), z.number().int().min(1)])
   .optional()
@@ -520,6 +531,7 @@ server.registerTool(
       'Pass subtitles (["srt","vtt"]) to also write caption files from the narration next to the video; with languages ({code: translation file or "auto"}) one file per language, <video>.<code>.srt|vtt, from the video\'s own lines ("auto") or a JSON translation ({"<id or index>": "line"}), and also (["gif","webm","poster"]) for an animated GIF, a WebM or a poster PNG made from the finished video (poster_at sets its time). The result lists them under files. ' +
       "A video (or from/to window) of 5 minutes or more renders in chunks of about 3 minutes cut where nothing is moving or speaking, each cached: after an edit only the chunks it touched render again, then all are joined. chunks: false renders in one piece; chunk_seconds sets the chunk length. " +
       "dryRun=true sends nothing and writes nothing: it returns the lines, characters and estimated USD the voice would cost (cached lines are free), so check it before the first render with a paid voice. " +
+      "A long render can be paused (pause tool) between chunks and resumed (resume with storyboard). Before each chunk it waits for min_free_mem; the result has peakRssMB (memory of the render's processes). " +
       "Slow (minutes). The video is written as <name>.partial.mp4 and renamed when complete, so the output file only appears finished; abort (or cancelling this call) kills the whole render (HyperFrames, Chrome, ffmpeg) and removes the partial file. Follow with check_output to review the result.",
     inputSchema: {
       storyboard: z.string().describe("Path to storyboard.json"),
@@ -542,9 +554,11 @@ server.registerTool(
       chunks: z.boolean().optional().describe("false: render in one piece even when the video is 5 minutes or longer (default: cached chunks from 5 minutes)"),
       chunk_seconds: z.number().min(10).optional().describe("Chunk length in seconds for a long render (default 180)"),
       dryRun: z.boolean().optional().describe("Only estimate the voice cost (lines, characters, USD): no request, no file, no cache entry"),
+      min_free_mem: minFreeMemField,
+      mem_timeout: memTimeoutField,
     },
   },
-  safe(async ({ storyboard, output, quality, from, to, formats, subtitles, languages, subtitle_chars, also, poster_at, style, variant, fit, strict_fit, fit_max, workers, chunks, chunk_seconds, dryRun }, ctx) => {
+  safe(async ({ storyboard, output, quality, from, to, formats, subtitles, languages, subtitle_chars, also, poster_at, style, variant, fit, strict_fit, fit_max, workers, chunks, chunk_seconds, dryRun, min_free_mem, mem_timeout }, ctx) => {
     if (dryRun) return text(await estimateStoryboard(storyboard, { style: style ? await loadStyle(style) : undefined, variant: variant ? await loadVariant(variant, storyboard) : undefined }));
     requireBrief("render");
     const window = parseWindow(from, to);
@@ -560,6 +574,8 @@ server.registerTool(
       workers: parseWorkers(workers),
       chunks,
       chunkSeconds: chunk_seconds,
+      minFreeMemMB: min_free_mem,
+      memTimeoutS: mem_timeout,
       signal: ctx?.signal,
     };
     if (formats?.length) {
@@ -567,7 +583,7 @@ server.registerTool(
       return text(rs.map((r) => ({ format: r.format, output: r.output, files: r.files, timeline: r.timelineFile, duration: r.plan.duration, autoHolds: r.autoHolds, fit: r.fit.filter((e) => e.needed > 1), warnings: r.warnings })));
     }
     const r = await renderStoryboard(storyboard, { output, quality, window, log, ...extra });
-    return text({ output: r.output, files: r.files, timeline: r.timelineFile, duration: r.plan.duration, autoHolds: r.autoHolds, fit: r.fit.filter((e) => e.needed > 1), warnings: r.warnings });
+    return text({ output: r.output, files: r.files, timeline: r.timelineFile, duration: r.plan.duration, autoHolds: r.autoHolds, fit: r.fit.filter((e) => e.needed > 1), warnings: r.warnings, peakRssMB: r.peakRssMB });
   }),
 );
 
@@ -612,6 +628,8 @@ server.registerTool(
       "Pass variant (a name) to render the same sequence with another script: each part takes <its folder>/variants/<name>.json (else <variant_dir>/<name>.json; a part with none renders as written and the result warns), the file is named <sequence>.<variant>.mp4 (with a style: <sequence>.<variant>.<style>.mp4), and parts that do not use the variant are reused between variants. " +
       "fit / strict_fit / fit_max work as in render (slot-fit of narration lines, per part). " +
       "dryRun=true sends nothing and writes nothing (no build folder): it returns the lines, characters and estimated USD the voices would cost, part by part. " +
+      "pause (tool) makes it finish the part (or chunk of a long part) in progress and stop with {paused, parts}; resume with sequence carries on, reusing every finished part and chunk. " +
+      "Before each part or chunk it waits for min_free_mem (MB) up to mem_timeout, then fails with the numbers; the result has peakRssMB. " +
       "subtitles (srt, vtt) and languages ({code: translation file or \"auto\"}) also write caption files for the joined video from its timeline (<video>.<code>.srt|vtt); a translation is {\"<chapter>\": [\"line\", ...]} (chapter = the part's storyboard folder name) or {\"<id>\": \"line\"}. " +
       "Slow (minutes). The video only appears once complete (written as <name>.partial.mp4, then renamed); abort (or cancelling this call) kills the whole render tree. Follow with check_output.",
     inputSchema: {
@@ -629,9 +647,11 @@ server.registerTool(
       languages: languagesField,
       subtitle_chars: subtitleCharsField,
       dryRun: z.boolean().optional().describe("Only estimate the voice cost (lines, characters, USD) part by part: no request, no file, no build folder"),
+      min_free_mem: minFreeMemField,
+      mem_timeout: memTimeoutField,
     },
   },
-  safe(async ({ sequence, output, quality, style, variant, variant_dir, fit, strict_fit, fit_max, workers, subtitles, languages, subtitle_chars, dryRun }, ctx) => {
+  safe(async ({ sequence, output, quality, style, variant, variant_dir, fit, strict_fit, fit_max, workers, subtitles, languages, subtitle_chars, dryRun, min_free_mem, mem_timeout }, ctx) => {
     if (dryRun) return text(await estimateSequence(sequence, { style: style ? await loadStyle(style) : undefined, variant, variantDir: variant_dir }));
     requireBrief("sequence_render");
     return text(
@@ -646,10 +666,37 @@ server.registerTool(
         subtitles: parseSubtitleFormats(subtitles),
         subtitleLanguages: parseSubtitleLanguages(languages),
         subtitleRules: subtitle_chars !== undefined ? { maxChars: subtitle_chars } : undefined,
+        minFreeMemMB: min_free_mem,
+        memTimeoutS: mem_timeout,
         log,
         signal: ctx?.signal,
       }),
     );
+  }),
+);
+
+server.registerTool(
+  "pause",
+  {
+    description:
+      "Pause a running sequence_render or render (e.g. the user needs the machine for a meeting): it finishes the part in progress (or the chunk, for a part or render of 5 minutes or more), then stops; that call returns {paused: true, parts: [{part, status: done|in progress|waiting}], resume}. " +
+      "Give the sequence or storyboard being rendered; with neither, every render running now is paused. Carry on later with resume (same path): finished parts and chunks are reused.",
+    inputSchema: {
+      sequence: z.string().optional().describe("Path to the sequence.json being rendered"),
+      storyboard: z.string().optional().describe("Path to the storyboard.json being rendered (a single render)"),
+      build_dir: z.string().optional().describe("Its build folder, when it is not the default one"),
+    },
+  },
+  safe(async ({ sequence, storyboard, build_dir }) => {
+    if (sequence && storyboard) throw new Error("Give sequence or storyboard, not both.");
+    const target = { path: sequence ?? storyboard, buildDir: build_dir };
+    // No path: set the pause flag of every render running in this server (its process scope, next to abort), and ask other processes through their `.pause` files.
+    const inProcess = target.path || target.buildDir ? 0 : pauseAll();
+    const r = await pauseRenders(target).catch((err: unknown) => {
+      if (inProcess) return { requested: [] as string[], running: [] };
+      throw err;
+    });
+    return text({ ...r, inProcess, note: "The render stops after the part or chunk in progress; its own call then returns {paused: true}. Carry on with resume and the same path." });
   }),
 );
 
@@ -1081,9 +1128,21 @@ server.registerTool(
   "resume",
   {
     description:
-      "Carry on driving after a click/move/type stopped because the pointer was moved by someone else. Adopts the pointer where it is now; keeps the driver open (no new approval dialog). Take a screenshot afterwards: the screen may have changed.",
+      "Two uses. (1) Without arguments: carry on driving after a click/move/type stopped because the pointer was moved by someone else. Adopts the pointer where it is now; keeps the driver open (no new approval dialog). Take a screenshot afterwards: the screen may have changed. " +
+      "(2) With sequence (or storyboard): carry on a render that was paused with the pause tool, with the options it was started with; every finished part and chunk is reused, so only the rest renders. Slow (minutes), returns what sequence_render (or render) returns, and can be paused again.",
+    inputSchema: {
+      sequence: z.string().optional().describe("Path to a paused sequence.json: resume that render"),
+      storyboard: z.string().optional().describe("Path to a paused storyboard.json (a single long render): resume that render"),
+      build_dir: z.string().optional().describe("Build folder of the paused render, when it is not the default one"),
+      workers: workersField,
+      min_free_mem: minFreeMemField,
+      mem_timeout: memTimeoutField,
+    },
   },
-  safe(async () => {
+  safe(async ({ sequence, storyboard, build_dir, workers, min_free_mem, mem_timeout }) => {
+    if (sequence && storyboard) throw new Error("Give sequence or storyboard, not both.");
+    const path = sequence ?? storyboard;
+    if (path) return text(await resumePaused(path, { buildDir: build_dir, workers: parseWorkers(workers, {}), minFreeMemMB: min_free_mem, memTimeoutS: mem_timeout, log }));
     if (!driver) return text({ resumed: false, reason: "no live driver; the next drive tool opens one" });
     driver.resume();
     return text({ resumed: true });

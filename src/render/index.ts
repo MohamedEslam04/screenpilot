@@ -38,6 +38,8 @@ import { CACHE_DIR, cacheHome } from "../brand.js";
 import { pruneCache, renderCacheLimit } from "./cache.js";
 import { recordEvent } from "../history/index.js";
 import { startJob } from "../history/jobs.js";
+import { type MemGuardOptions, memGuardSettings, startRssSampler, waitForMemory } from "../util/mem.js";
+import { clearPause, pauseRequested, RenderPaused, type ResumeOptions, resumeCommand, writePausedState } from "./pause.js";
 
 const require = createRequire(import.meta.url);
 
@@ -343,7 +345,7 @@ async function cutVideo(
   await writeFile(keyFile, key);
 }
 
-export interface RenderOptions extends PrepareOptions {
+export interface RenderOptions extends PrepareOptions, MemGuardOptions {
   output?: string;
   quality?: "draft" | "looks" | "delivery";
   /** Lossless frame extraction; sharper UI text, slower. */
@@ -368,6 +370,10 @@ export interface RenderOptions extends PrepareOptions {
   history?: boolean;
   /** Told which chunk is rendering, for the live-job file. */
   onProgress?: (step: { label: string; index: number; total: number }) => void;
+  /** Internal: a sequence passes its own pause check (its build folder); a render on its own watches `<buildDir>/.pause`. */
+  pauseCheck?: () => boolean;
+  /** Internal: what this render is inside a sequence ("part 2/8"), for memory guard messages. */
+  stepLabel?: string;
   /** Aborts the render (an MCP request cancelled): its whole process tree is killed. abortAll does the same for every render. */
   signal?: AbortSignal;
 }
@@ -382,6 +388,8 @@ export interface RenderResult extends Prepared {
   files: string[];
   /** `<output>.timeline.json`: when each narration line and card is on screen in the finished video. */
   timelineFile: string;
+  /** Highest memory of the render's child processes (HyperFrames, Chrome, ffmpeg) in MB, sampled; undefined where it cannot be measured. */
+  peakRssMB?: number;
 }
 
 export function hyperframesBin(): string {
@@ -421,6 +429,8 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
     await recordEvent({ kind: "render", status: "ok", path, output: r.output, durationSec: r.plan.duration, quality, wallSeconds: round3((performance.now() - started) / 1000) });
     return r;
   } catch (err) {
+    // A pause is not a failure; the resumed render leaves the history line.
+    if (err instanceof RenderPaused) throw err;
     await recordEvent({ kind: "render", status: "failed", path, quality, wallSeconds: round3((performance.now() - started) / 1000), error: (err as Error).message.slice(0, 500) });
     throw err;
   } finally {
@@ -436,6 +446,8 @@ function renderStoryboardNow(storyboardPath: string, opts: RenderOptions): Promi
 async function renderTracked(storyboardPath: string, opts: RenderOptions): Promise<RenderResult> {
   const log = opts.log ?? (() => {});
   const draft = opts.quality === "draft";
+  const started = Date.now();
+  const guard = memGuardSettings(opts);
   checkPosterAt(opts.posterAt);
   await checkTranslations(opts.subtitleLanguages);
   if (opts.chunkSeconds !== undefined && !(opts.chunkSeconds >= MIN_CHUNK_SECONDS)) {
@@ -489,21 +501,47 @@ async function renderTracked(storyboardPath: string, opts: RenderOptions): Promi
     log(`estimated ~${formatDuration(estimate)} (from your last ${quality} renders). Faster: -q draft, --workers max, --from/--to for a window`);
   }
   const renderStart = performance.now();
-  // Written as <name>.partial.mp4 and renamed when complete: whoever watches the folder sees a playable file or none.
-  await writeAtomically(output, async (partial) => {
-    await time("render", async () => {
-      if (chunks) await renderChunks(prepared, chunks, partial, hyperframes, log, opts.onProgress);
-      else await hyperframes(partial);
-    });
-    if (prepared.loudness) {
-      const target = prepared.loudness;
-      await time("loudness", async () => {
-        const r = await normalizeLoudness(partial, target);
-        if (r.applied) log(`loudness: ${r.measured!.input_i} LUFS -> ${target.target} LUFS`);
-        else prepared.warnings.push(`audio.loudness was not applied: ${r.reason}`);
+  // Before each chunk (or the one piece): wait for memory, and stop there if a pause was asked for
+  // (the pause flag of this render's process scope; `.pause` in the build folder sets it from another process).
+  const control: ChunkControl = {
+    shouldPause: opts.pauseCheck ?? (() => pauseRequested(prepared.buildDir, started)),
+    waitForMemory: (label) =>
+      waitForMemory({ ...guard, label: opts.stepLabel ? (label === "render" ? opts.stepLabel : `${opts.stepLabel} ${label}`) : label, read: opts.memReader, pollMs: opts.memPollMs, log }),
+  };
+  // Inside a sequence the sequence samples the whole run.
+  const sampler = opts.pauseCheck ? undefined : startRssSampler();
+  let peakRssMB: number | undefined;
+  try {
+    // Written as <name>.partial.mp4 and renamed when complete: whoever watches the folder sees a playable file or none.
+    await writeAtomically(output, async (partial) => {
+      await time("render", async () => {
+        if (chunks) await renderChunks(prepared, chunks, partial, hyperframes, log, opts.onProgress, control);
+        else {
+          await control.waitForMemory("render");
+          await hyperframes(partial);
+        }
       });
+      if (prepared.loudness) {
+        const target = prepared.loudness;
+        await time("loudness", async () => {
+          const r = await normalizeLoudness(partial, target);
+          if (r.applied) log(`loudness: ${r.measured!.input_i} LUFS -> ${target.target} LUFS`);
+          else prepared.warnings.push(`audio.loudness was not applied: ${r.reason}`);
+        });
+      }
+    });
+  } catch (err) {
+    // On its own, a paused render saves how to carry on; inside a sequence the sequence does.
+    if (err instanceof RenderPaused && !opts.pauseCheck) {
+      const stateFile = await writePausedState({ version: 1, kind: "render", path: resolve(storyboardPath), buildDir: prepared.buildDir, pausedAt: new Date().toISOString(), options: resumeOptions(opts, output, prepared.buildDir) });
+      log(`paused after ${err.info.chunks?.done ?? 0}/${err.info.chunks?.total ?? 0} chunks; carry on with: ${resumeCommand(resolve(storyboardPath))}`);
+      throw new RenderPaused({ ...err.info, path: resolve(storyboardPath), buildDir: prepared.buildDir, stateFile, resume: resumeCommand(resolve(storyboardPath)) });
     }
-  });
+    throw err;
+  } finally {
+    peakRssMB = await sampler?.stop();
+  }
+  if (!opts.pauseCheck) await clearPause(prepared.buildDir);
   // Only a render that finished: a failed or aborted one threw above and never gets here.
   // Very short clips (the setup warm-up, tiny windows) are dominated by browser start-up and would skew the estimate.
   if (renderSeconds >= MIN_RECORDED_SECONDS) {
@@ -525,12 +563,44 @@ async function renderTracked(storyboardPath: string, opts: RenderOptions): Promi
     files.push(...subs.files);
     prepared.warnings.push(...subs.warnings);
   }
-  return { ...prepared, output, files, timelineFile };
+  return { ...prepared, output, files, timelineFile, peakRssMB };
+}
+
+/** What a render on its own saves for resume: the same options, with the paths it used. */
+function resumeOptions(opts: RenderOptions, output: string, buildDir: string): ResumeOptions {
+  return {
+    output,
+    buildDir,
+    quality: opts.quality,
+    style: opts.style?.path,
+    variant: opts.variant?.path,
+    fit: opts.fit,
+    workers: opts.workers,
+    pngFrames: opts.pngFrames,
+    timings: opts.timings,
+    window: opts.window,
+    size: opts.size,
+    chunks: opts.chunks,
+    chunkSeconds: opts.chunkSeconds,
+    subtitles: opts.subtitles,
+    subtitleLanguages: opts.subtitleLanguages,
+    subtitleRules: opts.subtitleRules,
+    also: opts.also,
+    posterAt: opts.posterAt,
+    minFreeMemMB: opts.minFreeMemMB,
+    memTimeoutS: opts.memTimeoutS,
+  };
 }
 
 interface RenderChunk extends Span {
   file: string;
   cached: boolean;
+}
+
+/** Called before a chunk is rendered: stop there on a pause, wait for memory. */
+interface ChunkControl {
+  shouldPause: () => boolean;
+  waitForMemory: (label: string) => Promise<unknown>;
 }
 
 /** Where the chunks of one quality live: draft and delivery never evict each other. */
@@ -571,6 +641,7 @@ async function renderChunks(
   hyperframes: (out: string) => Promise<unknown>,
   log: (msg: string) => void,
   onProgress?: RenderOptions["onProgress"],
+  control?: ChunkControl,
 ): Promise<void> {
   const index = join(prepared.buildDir, "index.html");
   const dir = dirname(chunks[0]!.file);
@@ -584,6 +655,12 @@ async function renderChunks(
         log(`${label} (${range(c)}): unchanged, reusing`);
         continue;
       }
+      if (control?.shouldPause()) {
+        const done = chunks.filter((x) => existsSync(x.file)).length;
+        log(`${label}: pause requested, stopping before it`);
+        throw new RenderPaused({ paused: true, kind: "render", path: "", buildDir: prepared.buildDir, chunks: { done, total: chunks.length }, resume: "" });
+      }
+      await control?.waitForMemory(label);
       log(`${label} (${range(c)}): rendering`);
       await writeFile(index, renderHtml(windowPlan(prepared.plan, { from: c.start, to: c.end }), { gsapSrc: "gsap.min.js" }));
       const partial = c.file.replace(/\.mp4$/, ".partial.mp4");
