@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { basename, extname } from "node:path";
-import type { Transition } from "../sequence/schema.js";
+import { type Transition, TRANSITIONS } from "../sequence/schema.js";
 import { probeVideo } from "../util/media.js";
 import { type SubtitleTrack } from "./mux-subs.js";
 import { checkTranslations, type SubtitleLanguage, writeTimelineSubtitles } from "./subtitle-langs.js";
@@ -32,6 +32,12 @@ export interface SubsResult {
   warnings: string[];
   /** One caption file per language, ready for muxSubtitles (srt when written, else vtt). */
   tracks: SubtitleTrack[];
+}
+
+export function parseTransitionType(value: string): Transition["type"] {
+  const t = TRANSITIONS.find((x) => x === value);
+  if (!t) throw new Error(`unknown transition type "${value}" (use ${TRANSITIONS.join(", ")})`);
+  return t;
 }
 
 const VIDEO_EXTENSIONS = [".mp4", ".mkv", ".webm", ".mov", ".m4v"];

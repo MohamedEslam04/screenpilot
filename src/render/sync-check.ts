@@ -1,7 +1,8 @@
+import { existsSync } from "node:fs";
 import { run } from "../util/exec.js";
 import { probeVideo } from "../util/media.js";
 import { parseSilences } from "../voice/split.js";
-import type { Timeline } from "./timeline.js";
+import { readTimeline, type Timeline, timelinePath } from "./timeline.js";
 
 // Do the caption times land on the audio? For each narration line of a timeline, find the first sound at
 // or after its start (ffmpeg silencedetect over the finished video) and warn when it is far from the start.
@@ -48,4 +49,16 @@ export async function checkSubtitleSync(video: string, timeline: Timeline, opts:
     return o.offset > tolerance ? [`subtitle sync: the sound for ${label} starts ${o.offset.toFixed(2)}s later (more than ${tolerance}s)`] : [];
   });
   return { checked: narration.length, offsets, warnings };
+}
+
+/** The check for a rendered video that has a `<video>.timeline.json`; undefined without one. A problem with the check itself is reported as a warning, never thrown. */
+export async function subtitleSyncReport(video: string): Promise<{ checked: number; warnings: string[] } | undefined> {
+  const file = timelinePath(video);
+  if (!existsSync(file)) return undefined;
+  try {
+    const r = await checkSubtitleSync(video, await readTimeline(file));
+    return { checked: r.checked, warnings: r.warnings };
+  } catch (err) {
+    return { checked: 0, warnings: [`subtitle sync check skipped: ${(err as Error).message}`] };
+  }
 }

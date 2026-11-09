@@ -22,7 +22,10 @@ import { takeJsonSchema } from "./take/schema.js";
 import { parseExtras } from "./render/export.js";
 import { parseFormats } from "./render/formats.js";
 import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
+import { muxSubtitles } from "./render/mux-subs.js";
+import { makeSubtitles, parseTransitionType } from "./render/subs-cli.js";
 import { parseSubtitleLanguages } from "./render/subtitle-langs.js";
+import { subtitleSyncReport } from "./render/sync-check.js";
 import { parseSubtitleFormats } from "./render/subtitles.js";
 import { parseWindow } from "./render/window.js";
 import { parseWorkers } from "./render/workers.js";
@@ -629,18 +632,46 @@ program
   });
 
 program
+  .command("subs")
+  .description("Caption files (and optionally soft subtitle tracks) for a video that is already rendered, from its timeline.json: no render")
+  .argument("<video>", "The rendered video; its <video>.timeline.json is read")
+  .option("--lang <list>", "Languages: ar,en=en.json,es=es.json (code = the video's own lines, code=file = a translation: {\"<id or index>\": \"line\"} or {\"<chapter>\": [\"line\", ...]}). Writes <video>.<code>.srt|vtt; without it one plain <video>.srt|vtt")
+  .option("--formats <list>", "srt, vtt or srt,vtt", "srt,vtt")
+  .option("--chars <n>", "Characters per caption line (default 42; at most 2 lines per cue)", Number)
+  .option("--join <list>", "For a video joined outside ScreenPilot: the timelines of its parts, in order (a.timeline.json,b.timeline.json), instead of <video>.timeline.json")
+  .option("--transition <s>", "With --join: seconds each part overlaps the one before it (the transition the video was joined with; default 0 = cuts)", Number)
+  .option("--transition-type <type>", "With --join and --transition: crossfade (default), fade-black, wipe-left ... (the overlap is the same for all of them)")
+  .option("--mux", "Also add the files to the video as soft subtitle tracks with language metadata, into <video>.subs.<ext> (copy, no re-encode; the original is untouched)")
+  .action(async (video: string, o: { lang?: string; formats: string; chars?: number; join?: string; transition?: number; transitionType?: string; mux?: boolean }) => {
+    const r = await makeSubtitles(resolve(video), {
+      languages: parseSubtitleLanguages(o.lang),
+      formats: parseSubtitleFormats(o.formats),
+      rules: o.chars !== undefined ? { maxChars: o.chars } : undefined,
+      join: o.join?.split(",").map((f) => resolve(f.trim())).filter(Boolean),
+      transition: o.transition,
+      transitionType: o.transitionType ? parseTransitionType(o.transitionType) : undefined,
+    });
+    for (const f of r.files) log(`wrote ${f}`);
+    const muxed = o.mux ? await muxSubtitles(resolve(video), r.tracks) : undefined;
+    if (muxed) log(`wrote ${muxed}`);
+    print({ files: r.files, ...(muxed ? { muxed } : {}), timeline: r.timeline, duration: r.duration, warnings: r.warnings });
+  });
+
+program
   .command("check")
-  .description("Pull frames from a rendered video to review the result")
+  .description("Pull frames from a rendered video to review the result; also checks that the subtitle times land on the audio when <video>.timeline.json exists")
   .argument("<video>")
   .option("--at <times>", "Comma-separated output seconds")
   .option("--every <n>", "Evenly spaced frames", "8")
   .option("-o, --out <dir>", "Output directory")
-  .action(async (video: string, o: { at?: string; every: string; out?: string }) => {
+  .option("--no-sync", "Skip the subtitle sync check")
+  .action(async (video: string, o: { at?: string; every: string; out?: string; sync: boolean }) => {
     const info = await probeVideo(video);
     const times = o.at ? parseTimes(o.at) : evenTimes(info.duration, Number(o.every));
     const outDir = o.out ?? join(dirname(resolve(video)), `${basename(video)}.check`);
     const frames = await grabFrames(video, times, { outDir, width: 960, prefix: "out" });
-    print({ duration: info.duration, hasAudio: info.hasAudio, frames });
+    const sync = o.sync ? await subtitleSyncReport(resolve(video)) : undefined;
+    print({ duration: info.duration, hasAudio: info.hasAudio, frames, ...(sync ? { sync } : {}) });
   });
 
 program
