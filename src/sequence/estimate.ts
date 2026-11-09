@@ -17,12 +17,14 @@ export interface SequenceEstimate {
 /**
  * `sequence --dry-run`: what rendering the sequence would send to the voice services, part by
  * part (only the range of each part), before any request. Unlike a real run it writes nothing,
- * not even the build folder; finished video parts cost nothing.
+ * not even the build folder; finished video parts cost nothing. Several paths (the groups of `--joins`) are priced together.
  */
-export async function estimateSequence(path: string, opts: { style?: LoadedStyle } & VariantOptions = {}): Promise<SequenceEstimate> {
+export async function estimateSequence(path: string | string[], opts: { style?: LoadedStyle } & VariantOptions = {}): Promise<SequenceEstimate> {
   const parts: SequenceEstimate["parts"] = [];
   const variant: SequenceVariant | undefined = opts.variant ? { name: opts.variant, dir: opts.variantDir ? resolve(opts.variantDir) : undefined } : undefined;
-  await collect(resolve(path), [], opts.style, new Set(), parts, variant);
+  // Several sequences (the groups of `--joins`): a line said in two of them is priced once, like the render's voice cache.
+  const seen = new Set<string>();
+  for (const p of typeof path === "string" ? [path] : path) await collect(resolve(p), [], opts.style, seen, parts, variant);
   const sum = (f: (p: NarrationEstimate) => number) => parts.reduce((a, p) => a + f(p), 0);
   return {
     dryRun: true,

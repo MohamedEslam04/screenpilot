@@ -42,6 +42,12 @@ export interface ResumeOptions {
   subtitles?: ("srt" | "vtt")[];
   subtitleLanguages?: { code: string; file?: string }[];
   subtitleRules?: Record<string, number>;
+  // `sequence --joins` only: the joined videos (name -> groups or names), their transition and folders.
+  joins?: Record<string, string[]>;
+  joinTransition?: { type: "cut" | "crossfade" | "fade-black" | "wipe-left" | "wipe-right" | "slide-left" | "slide-right"; dur: number };
+  /** Folder the sequence files and names of `joins` are read from. */
+  baseDir?: string;
+  outputDir?: string;
   // A single render only:
   window?: { from: number; to?: number };
   size?: { width: number; height: number };
@@ -53,8 +59,8 @@ export interface ResumeOptions {
 
 export interface PausedState {
   version: 1;
-  kind: "render" | "sequence";
-  /** The storyboard or sequence file. */
+  kind: "render" | "sequence" | "joins";
+  /** The storyboard or sequence file; for joins `<output folder>/joins` (no such file: it names the build folder). */
   path: string;
   buildDir: string;
   pausedAt: string;
@@ -72,8 +78,10 @@ export interface PausedPart {
 /** What a paused render or sequence tells its caller. */
 export interface PausedInfo {
   paused: true;
-  kind: "render" | "sequence";
+  kind: "render" | "sequence" | "joins";
   path: string;
+  /** Joins: the joined video being made when it stopped (its groups are the parts). */
+  join?: string;
   buildDir: string;
   /** Sequence: parts finished and how many there are. */
   partsDone?: number;
@@ -172,7 +180,7 @@ export async function clearPause(buildDir: string): Promise<void> {
 async function readState(buildDir: string): Promise<PausedState | undefined> {
   try {
     const s = JSON.parse(await readFile(join(buildDir, PAUSED_STATE_FILE), "utf8")) as PausedState;
-    return s.version === 1 && (s.kind === "render" || s.kind === "sequence") ? s : undefined;
+    return s.version === 1 && (s.kind === "render" || s.kind === "sequence" || s.kind === "joins") ? s : undefined;
   } catch {
     return undefined;
   }

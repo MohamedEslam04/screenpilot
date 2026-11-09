@@ -4,6 +4,7 @@ import { loadStyle } from "../storyboard/load.js";
 import { readVariant } from "../storyboard/variant.js";
 import { type MemGuardOptions } from "../util/mem.js";
 import { renderSequence, type SequenceResult } from "./index.js";
+import { type JoinsResult, renderJoins } from "./joins.js";
 
 export interface ResumeOverrides extends MemGuardOptions {
   /** The build folder of the paused render, when it was not the default one. */
@@ -25,12 +26,12 @@ export interface ResumedRender {
 }
 
 /**
- * Carry on a paused render or sequence of `path` (a storyboard or sequence file):
+ * Carry on a paused render or sequence of `path` (a storyboard or sequence file, or `<folder>/joins` for `sequence --joins`):
  * render it again with the options it was paused with (saved in `.paused.json`),
  * so every finished part and chunk is a cache hit. `overrides` may change the
  * workers and the memory guard. It can be paused again.
  */
-export async function resumePaused(path: string, overrides: ResumeOverrides = {}): Promise<SequenceResult | ResumedRender> {
+export async function resumePaused(path: string, overrides: ResumeOverrides = {}): Promise<SequenceResult | ResumedRender | JoinsResult> {
   const state = await findPausedState(path, overrides.buildDir);
   if (!state) {
     throw new Error(`Nothing paused for ${path}: no ${PAUSED_STATE_FILE} in its build folder. Render it again instead; finished parts and chunks are reused.`);
@@ -57,6 +58,10 @@ export async function resumePaused(path: string, overrides: ResumeOverrides = {}
     memTimeoutS: pick(guard.memTimeoutS, o.memTimeoutS),
   };
   log?.(`resuming ${state.path} (paused ${state.pausedAt})`);
+  if (state.kind === "joins") {
+    const { output: _o, ...rest } = common;
+    return renderJoins({ joins: o.joins ?? {}, transition: o.joinTransition, baseDir: o.baseDir }, { ...rest, outputDir: o.outputDir, variant: o.variant, variantDir: o.variantDir });
+  }
   if (state.kind === "sequence") return renderSequence(state.path, { ...common, variant: o.variant, variantDir: o.variantDir });
   const r = await renderStoryboard(state.path, {
     ...common,

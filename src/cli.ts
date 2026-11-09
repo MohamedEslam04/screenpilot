@@ -35,6 +35,7 @@ import { qaStoryboard } from "./storyboard/qa.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { estimateSequence } from "./sequence/estimate.js";
 import { renderSequence, validateSequence } from "./sequence/index.js";
+import { expandJoins, parseJoins, parseJoinTransition, renderJoins } from "./sequence/joins.js";
 import { resumePaused } from "./sequence/resume.js";
 import { pauseRenders, RenderPaused } from "./render/pause.js";
 import { sequenceJsonSchema } from "./sequence/schema.js";
@@ -596,9 +597,12 @@ program
 
 program
   .command("sequence")
-  .description("Render several storyboards (each with its own recording) and join them into one MP4")
-  .argument("<sequence>", "sequence.json")
+  .description("Render several storyboards (each with its own recording) and join them into one MP4; with --joins, several joined videos from shared groups in one call")
+  .argument("[sequence]", "sequence.json (or none with --joins)")
   .option("-o, --output <file>", "Output video (default: <sequence>.mp4)")
+  .option("--joins <list>", "Several joined videos in one call: setup=g1.json+g2.json,operations=g3.json,full=setup+operations (a name, then sequence files or other names joined with +). Each group is rendered once and reused by every video; writes <out-dir>/<name>.mp4 and <name>.timeline.json")
+  .option("--join-transition <type[:s]>", "With --joins: how each group enters from the one before (cut, crossfade, fade-black, wipe-left, wipe-right, slide-left, slide-right; seconds default 0.5, at most half of either group), e.g. fade-black:0.6. Default cut")
+  .option("--out-dir <dir>", "With --joins: folder of the joined videos (default: the folder holding all the groups); the build folder is <out-dir>/joins.build and pause/resume take <out-dir>/joins")
   .option("-q, --quality <q>", "draft | looks | delivery", "looks")
   .option("--png-frames", "Lossless source frames: sharper UI text, slower")
   .option("--workers <n>", "Parallel renderers, each a headless Chrome: auto (default: half the cores, from free memory), max (idle desktop: all cores but two) or a number. SCREENPILOT_WORKERS sets the default")
@@ -617,21 +621,27 @@ program
   .option("--build-dir <dir>")
   .option("--dry-run", "Print the lines, characters and estimated USD the voices would cost, part by part, then stop: no request, no file, no build folder")
   .addOption(new Option("--dry").hideHelp())
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string; variant?: string; variantDir?: string; fit?: boolean; strictFit?: boolean; fitMax?: number; subtitles?: string; subtitleLang?: string; subtitleChars?: number; minFreeMem?: number; memTimeout?: number; dryRun?: boolean; dry?: boolean }) => {
+  .action(async (path: string | undefined, o: { output?: string; joins?: string; joinTransition?: string; outDir?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string; variant?: string; variantDir?: string; fit?: boolean; strictFit?: boolean; fitMax?: number; subtitles?: string; subtitleLang?: string; subtitleChars?: number; minFreeMem?: number; memTimeout?: number; dryRun?: boolean; dry?: boolean }) => {
+    if (!path === !o.joins) throw new Error("Give a sequence.json or --joins, not both (and not neither)");
+    if (!o.joins && (o.joinTransition || o.outDir)) throw new Error("--join-transition and --out-dir only go with --joins");
+    if (o.joins && o.output) throw new Error("--output does not go with --joins: each joined video is <out-dir>/<name>.mp4");
+    const joins = o.joins ? parseJoins(o.joins) : undefined;
     if (o.dryRun || o.dry) {
-      const e = await estimateSequence(path, { style: o.style ? await loadStyle(o.style) : undefined, variant: o.variant, variantDir: o.variantDir });
+      const e = await estimateSequence(joins ? [...new Set(Object.values(expandJoins(joins, process.cwd())).flat())] : path!, { style: o.style ? await loadStyle(o.style) : undefined, variant: o.variant, variantDir: o.variantDir });
       log(describeEstimate(e, " (all parts)"));
       print(e);
       return;
     }
-    const { style, fit, strictFit, fitMax, subtitles, subtitleLang, subtitleChars, minFreeMem, memTimeout, dryRun: _dryRun, dry: _dry, ...rest } = o;
-    print(await renderSequence(path, { ...rest, fit: fitFlags(fit, strictFit, fitMax), minFreeMemMB: minFreeMem, memTimeoutS: memTimeout, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), subtitles: parseSubtitleFormats(subtitles), subtitleLanguages: parseSubtitleLanguages(subtitleLang), subtitleRules: subtitleChars !== undefined ? { maxChars: subtitleChars } : undefined, log }));
+    const { style, fit, strictFit, fitMax, subtitles, subtitleLang, subtitleChars, minFreeMem, memTimeout, dryRun: _dryRun, dry: _dry, joins: _joins, joinTransition, outDir, ...rest } = o;
+    const opts = { ...rest, fit: fitFlags(fit, strictFit, fitMax), minFreeMemMB: minFreeMem, memTimeoutS: memTimeout, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), subtitles: parseSubtitleFormats(subtitles), subtitleLanguages: parseSubtitleLanguages(subtitleLang), subtitleRules: subtitleChars !== undefined ? { maxChars: subtitleChars } : undefined, log };
+    if (joins) print(await renderJoins({ joins, transition: joinTransition ? parseJoinTransition(joinTransition) : undefined }, { ...opts, outputDir: outDir }));
+    else print(await renderSequence(path!, opts));
   });
 
 program
   .command("pause")
   .description("Pause a running render or sequence: it finishes the part (or chunk) in progress, then stops and prints which parts are done. Without a path: every render running now")
-  .argument("[path]", "The storyboard or sequence being rendered")
+  .argument("[path]", "The storyboard or sequence being rendered (<out-dir>/joins for sequence --joins)")
   .option("--build-dir <dir>", "Its build folder, when it is not the default one")
   .action(async (path: string | undefined, o: { buildDir?: string }) => {
     const r = await pauseRenders({ path, buildDir: o.buildDir });
@@ -642,7 +652,7 @@ program
 program
   .command("resume")
   .description("Carry on a paused render or sequence with the options it was started with: finished parts and chunks are reused")
-  .argument("<path>", "The storyboard or sequence that was paused")
+  .argument("<path>", "The storyboard or sequence that was paused (<out-dir>/joins for sequence --joins)")
   .option("--build-dir <dir>", "Its build folder, when it is not the default one")
   .option("--workers <n>", "Change the parallel renderers for the rest: auto, max or a number")
   .option("--min-free-mem <MB>", "Before each part or chunk, wait until this much memory is available (default 1500, 0 = off; SCREENPILOT_MIN_FREE_MEM sets the default)", Number)
