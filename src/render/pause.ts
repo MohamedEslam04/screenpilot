@@ -33,12 +33,15 @@ export interface ResumeOptions {
   buildDir?: string;
   minFreeMemMB?: number;
   memTimeoutS?: number;
+  /** Caption files and languages ({code, file?}) and cue rules. */
+  subtitles?: ("srt" | "vtt")[];
+  subtitleLanguages?: { code: string; file?: string }[];
+  subtitleRules?: Record<string, number>;
   // A single render only:
   window?: { from: number; to?: number };
   size?: { width: number; height: number };
   chunks?: boolean;
   chunkSeconds?: number;
-  subtitles?: ("srt" | "vtt")[];
   also?: ("gif" | "webm" | "poster")[];
   posterAt?: number;
 }

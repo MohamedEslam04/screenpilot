@@ -46,6 +46,9 @@ export async function resumePaused(path: string, overrides: ResumeOverrides = {}
     workers: pick(overrides.workers, o.workers),
     pngFrames: o.pngFrames,
     timings: o.timings,
+    subtitles: o.subtitles,
+    subtitleLanguages: o.subtitleLanguages,
+    subtitleRules: o.subtitleRules,
     log,
     ...guard,
     minFreeMemMB: pick(guard.minFreeMemMB, o.minFreeMemMB),
@@ -59,7 +62,6 @@ export async function resumePaused(path: string, overrides: ResumeOverrides = {}
     size: o.size,
     chunks: o.chunks,
     chunkSeconds: o.chunkSeconds,
-    subtitles: o.subtitles,
     also: o.also,
     posterAt: o.posterAt,
   });

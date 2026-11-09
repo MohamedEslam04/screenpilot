@@ -22,6 +22,10 @@ import { takeJsonSchema } from "./take/schema.js";
 import { parseExtras } from "./render/export.js";
 import { parseFormats } from "./render/formats.js";
 import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
+import { muxSubtitles } from "./render/mux-subs.js";
+import { makeSubtitles, parseTransitionType } from "./render/subs-cli.js";
+import { parseSubtitleLanguages } from "./render/subtitle-langs.js";
+import { subtitleSyncReport } from "./render/sync-check.js";
 import { parseSubtitleFormats } from "./render/subtitles.js";
 import { parseWindow } from "./render/window.js";
 import { parseWorkers } from "./render/workers.js";
@@ -549,6 +553,8 @@ program
   .option("--formats <list>", "Render once per format, e.g. 16:9,9:16,1:1 or 1280x720 (writes <storyboard>.<format>.mp4)")
   .option("--style <file>", "Style file ({ \"theme\": {...} }) merged over the storyboard's theme; writes <storyboard>.<style>.mp4 and keeps its own build folder")
   .option("--subtitles <list>", "Also write subtitle files from the narration: srt, vtt or srt,vtt (next to the video)")
+  .option("--subtitle-lang <list>", "One caption file per language: ar,en=en.json,es=es.json (code = the video's own lines, code=file = a translation: {\"<id or index>\": \"line\"}). Writes <video>.<code>.srt|vtt instead of the plain file (formats from --subtitles, default srt,vtt)")
+  .option("--subtitle-chars <n>", "Characters per caption line for --subtitle-lang (default 42; at most 2 lines per cue)", Number)
   .option("--also <list>", "Also make files from the finished video: gif, webm, poster (a PNG frame), or a comma list")
   .option("--poster-at <s>", "Time of the poster frame, in OUTPUT seconds (default: a quarter of the way in)", Number)
   .option("--no-chunks", "Render in one piece. By default a video (or --from/--to window) of 5 minutes or more renders in cached chunks cut at quiet points, so after an edit only the touched chunks render again")
@@ -558,16 +564,16 @@ program
   .option("--build-dir <dir>")
   .option("--dry-run", "Print the lines, characters and estimated USD the voice would cost, then stop: no request, no file, no cache entry")
   .addOption(new Option("--dry").hideHelp())
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; subtitles?: string; also?: string; posterAt?: number; chunks: boolean; chunkSeconds?: number; minFreeMem?: number; memTimeout?: number; dryRun?: boolean; dry?: boolean }) => {
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; subtitles?: string; subtitleLang?: string; subtitleChars?: number; also?: string; posterAt?: number; chunks: boolean; chunkSeconds?: number; minFreeMem?: number; memTimeout?: number; dryRun?: boolean; dry?: boolean }) => {
     if (o.dryRun || o.dry) {
       const e = await estimateStoryboard(path, { style: o.style ? await loadStyle(o.style) : undefined });
       log(describeEstimate(e));
       print(e);
       return;
     }
-    const { subtitles, also, posterAt, style, chunks, minFreeMem, memTimeout, dryRun: _dryRun, dry: _dry, ...rest } = o;
+    const { subtitles, subtitleLang, subtitleChars, also, posterAt, style, chunks, minFreeMem, memTimeout, dryRun: _dryRun, dry: _dry, ...rest } = o;
     // Commander sets chunks: true unless --no-chunks; only an explicit "off" is passed on.
-    const opts = { ...rest, minFreeMemMB: minFreeMem, memTimeoutS: memTimeout, chunks: chunks ? undefined : false, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt, log };
+    const opts = { ...rest, minFreeMemMB: minFreeMem, memTimeoutS: memTimeout, chunks: chunks ? undefined : false, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), subtitleLanguages: parseSubtitleLanguages(subtitleLang), subtitleRules: subtitleChars !== undefined ? { maxChars: subtitleChars } : undefined, also: parseExtras(also), posterAt, log };
     if (o.formats) {
       if (o.buildDir) throw new Error("--build-dir cannot be combined with --formats (each format gets its own <name>.<format>.build)");
       const rs = await renderFormats(path, parseFormats(o.formats), opts);
@@ -588,20 +594,23 @@ program
   .option("--workers <n>", "Parallel renderers, each a headless Chrome: auto (default: half the cores, from free memory), max (idle desktop: all cores but two) or a number. SCREENPILOT_WORKERS sets the default")
   .option("--timings", "Log how long each stage takes and show HyperFrames phase timings")
   .option("--style <file>", "Style file ({ \"theme\": {...} }) merged over the theme of every part; writes <sequence>.<style>.mp4 and keeps its own build folder")
+  .option("--subtitles <list>", "Also write caption files for the joined video from its timeline: srt, vtt or srt,vtt (next to the video)")
+  .option("--subtitle-lang <list>", "One caption file per language: ar,en=en.json (translation = {\"<chapter>\": [\"line\", ...]} or {\"<id>\": \"line\"}, chapter = the part's storyboard folder). Writes <video>.<code>.srt|vtt")
+  .option("--subtitle-chars <n>", "Characters per caption line (default 42; at most 2 lines per cue)", Number)
   .option("--min-free-mem <MB>", "Before each part or chunk, wait until this much memory is available (default 1500, 0 = off; SCREENPILOT_MIN_FREE_MEM sets the default)", Number)
   .option("--mem-timeout <s>", "Longest wait for that memory, then fail with the numbers (default 300)", Number)
   .option("--build-dir <dir>")
   .option("--dry-run", "Print the lines, characters and estimated USD the voices would cost, part by part, then stop: no request, no file, no build folder")
   .addOption(new Option("--dry").hideHelp())
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string; minFreeMem?: number; memTimeout?: number; dryRun?: boolean; dry?: boolean }) => {
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string; subtitles?: string; subtitleLang?: string; subtitleChars?: number; minFreeMem?: number; memTimeout?: number; dryRun?: boolean; dry?: boolean }) => {
     if (o.dryRun || o.dry) {
       const e = await estimateSequence(path, { style: o.style ? await loadStyle(o.style) : undefined });
       log(describeEstimate(e, " (all parts)"));
       print(e);
       return;
     }
-    const { style, minFreeMem, memTimeout, dryRun: _dryRun, dry: _dry, ...rest } = o;
-    print(await renderSequence(path, { ...rest, minFreeMemMB: minFreeMem, memTimeoutS: memTimeout, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), log }));
+    const { style, subtitles, subtitleLang, subtitleChars, minFreeMem, memTimeout, dryRun: _dryRun, dry: _dry, ...rest } = o;
+    print(await renderSequence(path, { ...rest, minFreeMemMB: minFreeMem, memTimeoutS: memTimeout, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), subtitles: parseSubtitleFormats(subtitles), subtitleLanguages: parseSubtitleLanguages(subtitleLang), subtitleRules: subtitleChars !== undefined ? { maxChars: subtitleChars } : undefined, log }));
   });
 
 program
@@ -652,18 +661,46 @@ program
   });
 
 program
+  .command("subs")
+  .description("Caption files (and optionally soft subtitle tracks) for a video that is already rendered, from its timeline.json: no render")
+  .argument("<video>", "The rendered video; its <video>.timeline.json is read")
+  .option("--lang <list>", "Languages: ar,en=en.json,es=es.json (code = the video's own lines, code=file = a translation: {\"<id or index>\": \"line\"} or {\"<chapter>\": [\"line\", ...]}). Writes <video>.<code>.srt|vtt; without it one plain <video>.srt|vtt")
+  .option("--formats <list>", "srt, vtt or srt,vtt", "srt,vtt")
+  .option("--chars <n>", "Characters per caption line (default 42; at most 2 lines per cue)", Number)
+  .option("--join <list>", "For a video joined outside ScreenPilot: the timelines of its parts, in order (a.timeline.json,b.timeline.json), instead of <video>.timeline.json")
+  .option("--transition <s>", "With --join: seconds each part overlaps the one before it (the transition the video was joined with; default 0 = cuts)", Number)
+  .option("--transition-type <type>", "With --join and --transition: crossfade (default), fade-black, wipe-left ... (the overlap is the same for all of them)")
+  .option("--mux", "Also add the files to the video as soft subtitle tracks with language metadata, into <video>.subs.<ext> (copy, no re-encode; the original is untouched)")
+  .action(async (video: string, o: { lang?: string; formats: string; chars?: number; join?: string; transition?: number; transitionType?: string; mux?: boolean }) => {
+    const r = await makeSubtitles(resolve(video), {
+      languages: parseSubtitleLanguages(o.lang),
+      formats: parseSubtitleFormats(o.formats),
+      rules: o.chars !== undefined ? { maxChars: o.chars } : undefined,
+      join: o.join?.split(",").map((f) => resolve(f.trim())).filter(Boolean),
+      transition: o.transition,
+      transitionType: o.transitionType ? parseTransitionType(o.transitionType) : undefined,
+    });
+    for (const f of r.files) log(`wrote ${f}`);
+    const muxed = o.mux ? await muxSubtitles(resolve(video), r.tracks) : undefined;
+    if (muxed) log(`wrote ${muxed}`);
+    print({ files: r.files, ...(muxed ? { muxed } : {}), timeline: r.timeline, duration: r.duration, warnings: r.warnings });
+  });
+
+program
   .command("check")
-  .description("Pull frames from a rendered video to review the result")
+  .description("Pull frames from a rendered video to review the result; also checks that the subtitle times land on the audio when <video>.timeline.json exists")
   .argument("<video>")
   .option("--at <times>", "Comma-separated output seconds")
   .option("--every <n>", "Evenly spaced frames", "8")
   .option("-o, --out <dir>", "Output directory")
-  .action(async (video: string, o: { at?: string; every: string; out?: string }) => {
+  .option("--no-sync", "Skip the subtitle sync check")
+  .action(async (video: string, o: { at?: string; every: string; out?: string; sync: boolean }) => {
     const info = await probeVideo(video);
     const times = o.at ? parseTimes(o.at) : evenTimes(info.duration, Number(o.every));
     const outDir = o.out ?? join(dirname(resolve(video)), `${basename(video)}.check`);
     const frames = await grabFrames(video, times, { outDir, width: 960, prefix: "out" });
-    print({ duration: info.duration, hasAudio: info.hasAudio, frames });
+    const sync = o.sync ? await subtitleSyncReport(resolve(video)) : undefined;
+    print({ duration: info.duration, hasAudio: info.hasAudio, frames, ...(sync ? { sync } : {}) });
   });
 
 program

@@ -26,7 +26,8 @@ import { planMusicRange, prepareMusic } from "./music.js";
 import { mixSfx, planSfx, sfxInput } from "./sfx.js";
 import { type ChunkSources, chunkKey, planChunks, type Span, timelineBusy } from "./chunks.js";
 import { joinChunks } from "./join.js";
-import { type SubtitleFormat, writeSubtitles } from "./subtitles.js";
+import { checkTranslations, type SubtitleLanguage, writeTimelineSubtitles } from "./subtitle-langs.js";
+import { type CueRules, type SubtitleFormat, writeSubtitles } from "./subtitles.js";
 import { buildOutputTimeline, timelinePath, writeTimeline } from "./timeline.js";
 import { buildPlan, type OverlayAsset, type RenderPlan } from "./plan.js";
 import { partSuffix, type Window, windowPlan } from "./window.js";
@@ -316,6 +317,10 @@ export interface RenderOptions extends PrepareOptions, MemGuardOptions {
   workers?: number;
   /** Write subtitle files (from the narration) next to the video. */
   subtitles?: SubtitleFormat[];
+  /** One caption file per language, `<output>.<code>.srt|vtt` (formats from `subtitles`, default srt and vtt), made from the timeline; instead of the plain `<output>.srt`. */
+  subtitleLanguages?: SubtitleLanguage[];
+  /** Cue rules (lines, width, shortest cue) for the per-language files. */
+  subtitleRules?: Partial<CueRules>;
   /** Also make a GIF, a WebM or a poster frame from the finished video. */
   also?: ExtraFormat[];
   /** Poster frame time, in OUTPUT seconds (default: a quarter of the way in). */
@@ -407,6 +412,7 @@ async function renderTracked(storyboardPath: string, opts: RenderOptions): Promi
   const started = Date.now();
   const guard = memGuardSettings(opts);
   checkPosterAt(opts.posterAt);
+  await checkTranslations(opts.subtitleLanguages);
   if (opts.chunkSeconds !== undefined && !(opts.chunkSeconds >= MIN_CHUNK_SECONDS)) {
     throw new Error(`--chunk-seconds must be at least ${MIN_CHUNK_SECONDS} (got ${opts.chunkSeconds})`);
   }
@@ -505,14 +511,21 @@ async function renderTracked(storyboardPath: string, opts: RenderOptions): Promi
     await recordSpeed(speedFile(), { quality, workers, outSeconds: round3(renderSeconds), wallSeconds: (performance.now() - renderStart) / 1000 }).catch(() => {});
   }
   const files: string[] = [];
-  if (opts.subtitles?.length) files.push(...(await writeSubtitles(prepared.plan.subtitles, output, opts.subtitles)));
+  if (opts.subtitles?.length && !opts.subtitleLanguages?.length) files.push(...(await writeSubtitles(prepared.plan.subtitles, output, opts.subtitles)));
   if (opts.also?.length) files.push(...(await time("extras", () => exportExtras(output, opts.also!, { posterAt: opts.posterAt }))));
   for (const f of files) log(`wrote ${f}`);
   // The length the file really has (a short file next to a longer plan is what a stale timeline looks like later).
   const length = await probeVideo(output).then((v) => v.duration, () => prepared.plan.duration);
   const timelineFile = timelinePath(output);
-  await writeTimeline(timelineFile, { ...buildOutputTimeline(prepared.plan, { outro: prepared.outro }), duration: round3(length) });
+  const timeline = { ...buildOutputTimeline(prepared.plan, { outro: prepared.outro }), duration: round3(length) };
+  await writeTimeline(timelineFile, timeline);
   log(`wrote ${timelineFile}`);
+  if (opts.subtitleLanguages?.length) {
+    const subs = await writeTimelineSubtitles(timeline, output, { languages: opts.subtitleLanguages, formats: opts.subtitles?.length ? opts.subtitles : ["srt", "vtt"], rules: opts.subtitleRules });
+    for (const f of subs.files) log(`wrote ${f}`);
+    files.push(...subs.files);
+    prepared.warnings.push(...subs.warnings);
+  }
   return { ...prepared, output, files, timelineFile, peakRssMB };
 }
 
@@ -531,6 +544,8 @@ function resumeOptions(opts: RenderOptions, output: string, buildDir: string): R
     chunks: opts.chunks,
     chunkSeconds: opts.chunkSeconds,
     subtitles: opts.subtitles,
+    subtitleLanguages: opts.subtitleLanguages,
+    subtitleRules: opts.subtitleRules,
     also: opts.also,
     posterAt: opts.posterAt,
     minFreeMemMB: opts.minFreeMemMB,

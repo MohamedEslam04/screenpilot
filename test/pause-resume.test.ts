@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { copyFile, mkdtemp, utimes, writeFile } from "node:fs/promises";
+import { copyFile, mkdtemp, readFile, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -88,8 +88,10 @@ describe.skipIf(!hasFfmpeg)("pause and resume", { timeout: 600_000 }, () => {
     const dir = await project({ a: 6, b: 6, c: 6 });
     const seq = await sequence(dir, ["a", "b", "c"]);
     pauseDuring(1, seq);
-    const err = await paused(renderSequence(seq, { quality: "draft" }));
+    const err = await paused(renderSequence(seq, { quality: "draft", subtitles: ["srt"], subtitleRules: { maxChars: 30 } }));
     expect(fake.calls).toHaveLength(1);
+    // Everything the render was started with is saved for resume, caption options too.
+    expect(JSON.parse(await readFile(join(dir, "seq.build", PAUSED_STATE_FILE), "utf8")).options).toMatchObject({ quality: "draft", subtitles: ["srt"], subtitleRules: { maxChars: 30 } });
     expect(err.info).toMatchObject({ paused: true, kind: "sequence", path: seq, partsDone: 1, partsTotal: 3 });
     expect(err.info.parts!.map((p) => p.status)).toEqual(["done", "waiting", "waiting"]);
     expect(err.info.resume).toBe(`screenpilot resume ${seq}`);

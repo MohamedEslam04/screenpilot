@@ -21,9 +21,10 @@ vi.mock("../src/util/exec.js", async (importActual) => {
     ...actual,
     run: async (cmd: string, args: string[], opts?: Parameters<typeof actual.run>[2]) => {
       // Every file ffmpeg or HyperFrames writes, and whether the final video existed meanwhile.
-      fake.outputs.push(args.at(-1)!);
+      // ffprobe only reads (the timeline probes the finished video), so its last argument is not an output.
+      if (cmd !== "ffprobe") fake.outputs.push(args.at(-1)!);
       if (args.includes("-o")) fake.outputs.push(args[args.indexOf("-o") + 1]!);
-      if (fake.final) fake.finalSeen.push((await import("node:fs")).existsSync(fake.final));
+      if (fake.final && cmd !== "ffprobe") fake.finalSeen.push((await import("node:fs")).existsSync(fake.final));
       if (!args.some((a) => a.endsWith("hyperframes.mjs"))) return actual.run(cmd, args, opts);
       const html = await read(pjoin(args[args.indexOf("render") + 1]!, "index.html"), "utf8");
       const m = /id="root"[^>]*data-duration="([\d.]+)"[^>]*data-width="(\d+)"[^>]*data-height="(\d+)"[^>]*data-fps="(\d+)"/.exec(html)!;
