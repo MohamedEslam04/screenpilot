@@ -57,7 +57,7 @@
 screenpilot render storyboard.json --variant variants/saudi.json -q draft</code></pre>
 <p><code>--variant</code> takes a name (looked up as <code>variants/&lt;name&gt;.json</code> next to the storyboard) or a file path (a value with a folder or <code>.json</code> is a file). Over MCP, pass <code>variant</code> to <code>render</code>.</p>
 <ul>
-<li>The output is <code>&lt;name&gt;.&lt;variant&gt;.mp4</code>, built in <code>&lt;name&gt;.&lt;variant&gt;.build</code>. With <code>--style</code> it is <code>&lt;name&gt;.&lt;variant&gt;.&lt;style&gt;.mp4</code>; then comes the format (<code>.9x16</code>) and the window (<code>.part-12-20</code>).</li>
+<li>The output is <code>&lt;name&gt;.&lt;variant&gt;.mp4</code> (the variant name is the file name reduced to <code>a-z0-9-</code>), built in <code>&lt;name&gt;.&lt;variant&gt;.build</code>. With <code>--style</code> it is <code>&lt;name&gt;.&lt;variant&gt;.&lt;style&gt;.mp4</code>; then comes the format (<code>.9x16</code>) and the window (<code>.part-12-20</code>).</li>
 <li>The voice cache is shared and keyed by text and voice. Rendering variant A, then B, then A again, renders A from the cache.</li>
 <li><code>--dry-run</code> prices the variant's text. See <a href="../guide/voices.html#cost">What cloud voices cost</a>.</li>
 </ul>

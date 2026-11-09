@@ -57,7 +57,7 @@
 screenpilot render storyboard.json --variant variants/saudi.json -q draft</code></pre>
 <p>الخيار <code>--variant</code> يقبل اسمًا (يُبحث عنه كـ <code>variants/&lt;name&gt;.json</code> بجوار الـ storyboard) أو مسار ملف (القيمة التي فيها مجلد أو <code>.json</code> تعامل كملف). وعبر MCP مرّر <code>variant</code> إلى <code>render</code>.</p>
 <ul>
-<li>الخرج هو <code>&lt;name&gt;.&lt;variant&gt;.mp4</code> ويُبنى في <code>&lt;name&gt;.&lt;variant&gt;.build</code>. ومع <code>--style</code> يكون <code>&lt;name&gt;.&lt;variant&gt;.&lt;style&gt;.mp4</code>؛ ثم تأتي الصيغة (<code>.9x16</code>) والنافذة (<code>.part-12-20</code>).</li>
+<li>الخرج هو <code>&lt;name&gt;.&lt;variant&gt;.mp4</code> (اسم الـ variant هو اسم الملف مختزلًا إلى <code>a-z0-9-</code>) ويُبنى في <code>&lt;name&gt;.&lt;variant&gt;.build</code>. ومع <code>--style</code> يكون <code>&lt;name&gt;.&lt;variant&gt;.&lt;style&gt;.mp4</code>؛ ثم تأتي الصيغة (<code>.9x16</code>) والنافذة (<code>.part-12-20</code>).</li>
 <li>كاش الصوت مشترك ومفتاحه النص والصوت. إذا صيّرت الـ variant A ثم B ثم A فإن A يُصيَّر من الكاش.</li>
 <li>الخيار <code>--dry-run</code> يقدّر كلفة نص الـ variant. انظر <a href="../../ar/guide/voices.html#cost">كم تكلّف الأصوات السحابية</a>.</li>
 </ul>
