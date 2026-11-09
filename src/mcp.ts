@@ -34,12 +34,15 @@ import { parseWorkers } from "./render/workers.js";
 import { lintStoryboard, loadStoryboard, loadStyle, StoryboardError } from "./storyboard/load.js";
 import { qaStoryboard } from "./storyboard/qa.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
+import { estimateSequence } from "./sequence/estimate.js";
 import { renderSequence, validateSequence } from "./sequence/index.js";
 import { sequenceJsonSchema } from "./sequence/schema.js";
 import { type PerformResult, performTake, resolveTarget, TakeError } from "./take/perform.js";
 import { A11yQuerySchema, TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
+import { estimateStoryboard } from "./voice/estimate.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
+import { readSpend, summarizeSpend } from "./voice/spend.js";
 import { exportScript, importAudio } from "./voice/import.js";
 import { APP, APP_TITLE, named, OUTPUT_ENV, PERFORM_TIMEOUT_ENV, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
@@ -153,7 +156,7 @@ Editing: segments take speedTo (ramp the speed) and transition {type: crossfade|
 To put another recording in the middle of a video without re-recording the rest: write a sequence.json {parts: [{storyboard, from?, to?, transition?}]} (sequence_schema, sequence_validate, sequence_render). Each part is a full storyboard; from/to are source seconds of that storyboard, so the same demo twice ({to: 42}, the feature, {from: 42}) inserts the feature at second 42. Give the storyboards a shared "extends" base so theme, voice and size match. Storyboards also take cards (chapter cards), overlays (logo/image/video), music.duck and segment volume/mute; render takes from/to (output seconds, review one window fast) and formats (e.g. ["16:9","9:16"]).
 Before the delivery render run storyboard_qa: it flags highlights that frame an empty area and views that show the desktop.
 Long renders: a full render takes about as long as the video (more at delivery). For a long video iterate with quality "draft" and from/to, use workers "max" when the user is away from the desktop. A render of 5 minutes or more is split into cached chunks at quiet points automatically, so after an edit only the chunks it touched render again (chunks: false turns it off). When a render is expected to take 2 minutes or more the log starts with "estimated ~<time>" (from past renders).
-Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, {a11y: {role, name}} for a control in a native app (a11y_tree lists them; Linux AT-SPI, Qt apps must be launched with QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1), or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). Free offline voices: voice.provider "local" with name voicetut:Sarah (Egyptian Arabic and English) or namaa (Egyptian Arabic); voices with provider "local" lists what is installed. If none is installed and the user wants one, tell them to run "screenpilot voice-setup voicetut" in a terminal (about 10 GB; do not start it yourself). Command voices (any program) are defined by the user in voices.json; you cannot add them in a storyboard. Cloud voices: provider "elevenlabs" (name = a voice id or the name of a voice on the user's account) and provider "gemini" (name like Kore) need the user's own key in ELEVENLABS_API_KEY / GEMINI_API_KEY or in secrets.json in the config folder (doctor shows whether it is set); never ask for the key in chat or write it anywhere yourself, and say the text is sent to that service. For a better voice than the built-in ones, the user can make the audio on a web text-to-speech site: script_export writes the script to paste, the user generates ONE audio file (blank line between lines) and gives it back, then audio_import cuts it per line and sets narration[].audio; render as usual. Warn that free plans have limits and may forbid commercial use. The camera frames the window in use by default. You can run the whole loop yourself: drive live, write the take, perform, render, check_output. If a person is present, ask them not to touch the mouse while you drive; moving it stops the action with a message, and resume carries on from where the pointer is. For unattended runs start the server with SCREENPILOT_INTERRUPT=off. Run doctor first on a new machine.`;
+Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, {a11y: {role, name}} for a control in a native app (a11y_tree lists them; Linux AT-SPI, Qt apps must be launched with QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1), or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). Free offline voices: voice.provider "local" with name voicetut:Sarah (Egyptian Arabic and English) or namaa (Egyptian Arabic); voices with provider "local" lists what is installed. If none is installed and the user wants one, tell them to run "screenpilot voice-setup voicetut" in a terminal (about 10 GB; do not start it yourself). Command voices (any program) are defined by the user in voices.json; you cannot add them in a storyboard. Cloud voices: provider "elevenlabs" (name = a voice id or the name of a voice on the user's account) and provider "gemini" (name like Kore) need the user's own key in ELEVENLABS_API_KEY / GEMINI_API_KEY or in secrets.json in the config folder (doctor shows whether it is set); never ask for the key in chat or write it anywhere yourself, and say the text is sent to that service. Paid voices cost money: before the first render with one, call render (or sequence_render) with dryRun: true to get the lines, characters and estimated USD with nothing sent, tell the user the estimate, and render only after they agree; every billed request is added to a spend ledger and the voices tool shows the running total. For a better voice than the built-in ones, the user can make the audio on a web text-to-speech site: script_export writes the script to paste, the user generates ONE audio file (blank line between lines) and gives it back, then audio_import cuts it per line and sets narration[].audio; render as usual. Warn that free plans have limits and may forbid commercial use. The camera frames the window in use by default. You can run the whole loop yourself: drive live, write the take, perform, render, check_output. If a person is present, ask them not to touch the mouse while you drive; moving it stops the action with a message, and resume carries on from where the pointer is. For unattended runs start the server with SCREENPILOT_INTERRUPT=off. Run doctor first on a new machine.`;
 
 const server = new McpServer({ name: APP, title: APP_TITLE, version: VERSION }, { instructions: INSTRUCTIONS });
 
@@ -451,7 +454,8 @@ server.registerTool(
   {
     description:
       "List voices. provider edge (default, needs network): filter by locale prefix, e.g. ar-EG (Egyptian Arabic: ar-EG-SalmaNeural, ar-EG-ShakirNeural) or en-US. " +
-      "provider local: speech models installed on this computer (voicetut:<voice>, namaa). provider command: voices the user defined in voices.json. provider elevenlabs (needs ELEVENLABS_API_KEY) and provider gemini (needs GEMINI_API_KEY): cloud voices, listed from the service.",
+      "provider local: speech models installed on this computer (voicetut:<voice>, namaa). provider command: voices the user defined in voices.json. provider elevenlabs (needs ELEVENLABS_API_KEY) and provider gemini (needs GEMINI_API_KEY): cloud voices, listed from the service. " +
+      "A second text block {spend: {requests, chars, credits, usd, byProvider}} is the running total of what the cloud voices have cost so far (the spend ledger, estimates).",
     inputSchema: {
       lang: z.string().optional().describe("Locale prefix, e.g. ar or en-US"),
       provider: z.enum(["edge", "local", "command", "elevenlabs", "gemini"]).optional().describe("Default edge"),
@@ -460,7 +464,10 @@ server.registerTool(
   safe(async ({ lang, provider: id }) => {
     const provider = getProvider(id ?? "edge");
     try {
-      return text((await provider.listVoices()).filter((v) => voiceMatchesLang(v, lang)));
+      const list = (await provider.listVoices()).filter((v) => voiceMatchesLang(v, lang));
+      // Second block, so the list itself keeps its shape: what the cloud voices have cost so far.
+      const { requests, chars, credits, usd, byProvider } = summarizeSpend(await readSpend());
+      return { content: [...text(list).content, ...text({ spend: { requests, chars, credits, usd, byProvider } }).content] };
     } finally {
       await provider.close?.();
     }
@@ -495,6 +502,7 @@ server.registerTool(
       'Pass formats (e.g. ["16:9","9:16","1:1"] or ["1280x720"]) to render one file per format: <storyboard>.<format>.mp4 (16x9, 9x16, 1x1), narration synthesized once. ' +
       'Pass subtitles (["srt","vtt"]) to also write caption files from the narration next to the video, and also (["gif","webm","poster"]) for an animated GIF, a WebM or a poster PNG made from the finished video (poster_at sets its time). The result lists them under files. ' +
       "A video (or from/to window) of 5 minutes or more renders in chunks of about 3 minutes cut where nothing is moving or speaking, each cached: after an edit only the chunks it touched render again, then all are joined. chunks: false renders in one piece; chunk_seconds sets the chunk length. " +
+      "dryRun=true sends nothing and writes nothing: it returns the lines, characters and estimated USD the voice would cost (cached lines are free), so check it before the first render with a paid voice. " +
       "Slow (minutes). Follow with check_output to review the result.",
     inputSchema: {
       storyboard: z.string().describe("Path to storyboard.json"),
@@ -510,9 +518,11 @@ server.registerTool(
       workers: workersField,
       chunks: z.boolean().optional().describe("false: render in one piece even when the video is 5 minutes or longer (default: cached chunks from 5 minutes)"),
       chunk_seconds: z.number().min(10).optional().describe("Chunk length in seconds for a long render (default 180)"),
+      dryRun: z.boolean().optional().describe("Only estimate the voice cost (lines, characters, USD): no request, no file, no cache entry"),
     },
   },
-  safe(async ({ storyboard, output, quality, from, to, formats, subtitles, also, poster_at, style, workers, chunks, chunk_seconds }) => {
+  safe(async ({ storyboard, output, quality, from, to, formats, subtitles, also, poster_at, style, workers, chunks, chunk_seconds, dryRun }) => {
+    if (dryRun) return text(await estimateStoryboard(storyboard, { style: style ? await loadStyle(style) : undefined }));
     requireBrief("render");
     const window = parseWindow(from, to);
     const extra = {
@@ -565,6 +575,7 @@ server.registerTool(
       "Render a sequence.json: each part is rendered like a storyboard (unchanged parts are reused), all at one output size, " +
       "with the intro of the first part and the outro of the last, then joined into one MP4. " +
       "Pass style (a style file, JSON with only a theme) to render the same sequence with another look: its theme is merged over every storyboard part (not over finished video parts), the file is named <sequence>.<style>.mp4 and each style keeps its own build folder and cache. " +
+      "dryRun=true sends nothing and writes nothing (no build folder): it returns the lines, characters and estimated USD the voices would cost, part by part. " +
       "Slow (minutes). Follow with check_output.",
     inputSchema: {
       sequence: z.string().describe("Path to sequence.json"),
@@ -572,9 +583,11 @@ server.registerTool(
       quality: z.enum(["draft", "looks", "delivery"]).optional().describe("Default looks"),
       style: z.string().optional().describe('Path to a style file: { "theme": {...} } only; merged over the theme of every storyboard part'),
       workers: workersField,
+      dryRun: z.boolean().optional().describe("Only estimate the voice cost (lines, characters, USD) part by part: no request, no file, no build folder"),
     },
   },
-  safe(async ({ sequence, output, quality, style, workers }) => {
+  safe(async ({ sequence, output, quality, style, workers, dryRun }) => {
+    if (dryRun) return text(await estimateSequence(sequence, { style: style ? await loadStyle(style) : undefined }));
     requireBrief("sequence_render");
     return text(await renderSequence(sequence, { output, quality, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(workers), log }));
   }),

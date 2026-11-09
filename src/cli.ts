@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { analyze } from "./analyze/index.js";
 import { doctor } from "./doctor.js";
 import { evenTimes, grabFrames } from "./frames.js";
@@ -28,10 +28,13 @@ import { parseWorkers } from "./render/workers.js";
 import { lintStoryboard, loadStoryboard, loadStyle, StoryboardError } from "./storyboard/load.js";
 import { qaStoryboard } from "./storyboard/qa.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
+import { estimateSequence } from "./sequence/estimate.js";
 import { renderSequence, validateSequence } from "./sequence/index.js";
 import { sequenceJsonSchema } from "./sequence/schema.js";
 import { probeVideo } from "./util/media.js";
+import { describeEstimate, estimateStoryboard } from "./voice/estimate.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
+import { formatSpend, parseSince, readSpend, summarizeSpend } from "./voice/spend.js";
 import { removeSecret, type SecretName, secretSource, secretsFile, setSecret } from "./voice/secrets.js";
 import { exportScript, importAudio } from "./voice/import.js";
 import { detectBriefEnv } from "./brief/detect.js";
@@ -451,6 +454,19 @@ secret
   });
 
 program
+  .command("spend")
+  .description("What the cloud voices cost so far: totals of the spend ledger (spend.jsonl in the config folder), by provider. Estimates from your price per credit")
+  .option("--since <date>", "Only requests from this day on (YYYY-MM-DD) or time (ISO)")
+  .option("--json", "Print the totals and rows as JSON")
+  .action(async (o: { since?: string; json?: boolean }) => {
+    const since = o.since ? parseSince(o.since) : undefined;
+    const rows = await readSpend({ since });
+    const summary = summarizeSpend(rows);
+    if (o.json) print({ since: since?.toISOString(), ...summary, rows });
+    else print(formatSpend(summary, since));
+  });
+
+program
   .command("update")
   .description("Update the app files to the latest release without downloading the whole package")
   .option("--check", "Only say whether a newer version exists; change nothing")
@@ -536,8 +552,16 @@ program
   .option("--no-chunks", "Render in one piece. By default a video (or --from/--to window) of 5 minutes or more renders in cached chunks cut at quiet points, so after an edit only the touched chunks render again")
   .option("--chunk-seconds <n>", "Length of those chunks (default 180, at least 10)", Number)
   .option("--build-dir <dir>")
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; subtitles?: string; also?: string; posterAt?: number; chunks: boolean; chunkSeconds?: number }) => {
-    const { subtitles, also, posterAt, style, chunks, ...rest } = o;
+  .option("--dry-run", "Print the lines, characters and estimated USD the voice would cost, then stop: no request, no file, no cache entry")
+  .addOption(new Option("--dry").hideHelp())
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; subtitles?: string; also?: string; posterAt?: number; chunks: boolean; chunkSeconds?: number; dryRun?: boolean; dry?: boolean }) => {
+    if (o.dryRun || o.dry) {
+      const e = await estimateStoryboard(path, { style: o.style ? await loadStyle(o.style) : undefined });
+      log(describeEstimate(e));
+      print(e);
+      return;
+    }
+    const { subtitles, also, posterAt, style, chunks, dryRun: _dryRun, dry: _dry, ...rest } = o;
     // Commander sets chunks: true unless --no-chunks; only an explicit "off" is passed on.
     const opts = { ...rest, chunks: chunks ? undefined : false, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt, log };
     if (o.formats) {
@@ -561,8 +585,16 @@ program
   .option("--timings", "Log how long each stage takes and show HyperFrames phase timings")
   .option("--style <file>", "Style file ({ \"theme\": {...} }) merged over the theme of every part; writes <sequence>.<style>.mp4 and keeps its own build folder")
   .option("--build-dir <dir>")
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string }) => {
-    const { style, ...rest } = o;
+  .option("--dry-run", "Print the lines, characters and estimated USD the voices would cost, part by part, then stop: no request, no file, no build folder")
+  .addOption(new Option("--dry").hideHelp())
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string; dryRun?: boolean; dry?: boolean }) => {
+    if (o.dryRun || o.dry) {
+      const e = await estimateSequence(path, { style: o.style ? await loadStyle(o.style) : undefined });
+      log(describeEstimate(e, " (all parts)"));
+      print(e);
+      return;
+    }
+    const { style, dryRun: _dryRun, dry: _dry, ...rest } = o;
     print(await renderSequence(path, { ...rest, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), log }));
   });
 
