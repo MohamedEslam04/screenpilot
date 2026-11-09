@@ -1107,6 +1107,8 @@ component ProviderCard inherits Card {
 // ---------------------------------------------------------------------------------------------
 
 export component MainWindow inherits Window {
+    // The ScreenPilot logo in the title bar, task bar and Alt+Tab (the Dock icon on macOS comes from the app bundle).
+    icon: @image-url("../assets/icon.png");
     title: "ScreenPilot";
     min-width: 440px;
     min-height: 360px;
@@ -1257,21 +1259,15 @@ export component MainWindow inherits Window {
                     spacing: 8px;
                     HorizontalLayout {
                         spacing: 8px;
+                        // The ScreenPilot logo (the same image as the application icon).
                         Rectangle {
-                            width: 16px;
-                            Rectangle {
-                                width: 14px;
-                                height: 14px;
-                                y: (parent.height - 14px) / 2;
-                                border-radius: 7px;
-                                border-width: 2px;
-                                border-color: Theme.k-record;
-                                Rectangle {
-                                    width: 6px;
-                                    height: 6px;
-                                    border-radius: 3px;
-                                    background: Theme.k-record;
-                                }
+                            width: 24px;
+                            Image {
+                                source: @image-url("../assets/icon.png");
+                                width: 24px;
+                                height: 24px;
+                                y: (parent.height - 24px) / 2;
+                                image-fit: contain;
                             }
                         }
                         if !root.narrow: Text {

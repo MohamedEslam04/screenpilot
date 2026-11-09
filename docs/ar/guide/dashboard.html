@@ -29,32 +29,48 @@
 <main id="main"><div class="wrap docs">
   <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html">سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html">مرجع الـ storyboard</a><a href="voices.html">الأصوات</a><a href="dashboard.html" aria-current=page>لوحة التحكم</a><a href="sequence.html">دمج التسجيلات</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html">الأسئلة الشائعة وحل المشكلات</a></details></nav>
   <article class="doc"><h1>لوحة التحكم</h1><p class="summary">نافذة أصلية صغيرة لتسجيلاتك وتصييراتك والأعمال الجارية وأصواتك. ما تعرضه، وما تفعله، وكيف تشغّلها، وكيف تبنيها حاليًا.</p><p>لوحة التحكم (dashboard) برنامج سطح مكتب صغير ومنفصل. تعرض كل ما سجّله ScreenPilot وصيّره، وعمليات التصيير الجارية الآن، ومزوّدي الأصوات عندك، وبعض الأرقام عن تصييراتك. تعمل على جهازك فقط ولا تحتاج إلى حساب. هي برنامج أصلي (native) مكتوب بـ Rust مع Slint ومصيِّر البرمجيات (software renderer). ولا تستخدم web view.</p>
-<div class="warn">لوحة التحكم جديدة. تبنيها الآن من المستودع: فهي ليست جزءًا من التنزيل الرئيسي بعد. تحقّقنا منها على جهاز واحد فقط: Linux مع Wayland. أما Windows وmacOS فلم تُجرَّب. توقّع بعض الخشونة. الخطوات في <a href="../../ar/guide/dashboard.html#build">بناء اللوحة</a>.</div>
+<div class="warn">لوحة التحكم جديدة. الإصدارات الأحدث من 0.10.0 تتضمنها. إذا كان عندك 0.10.0 أو إصدار أقدم فعليك بناؤها من المستودع: انظر <a href="../../ar/guide/dashboard.html#build">البناء من المصدر</a>. تُفحص نسختا Windows وmacOS تلقائيًا على مشغّلات GitHub (CI)، لكن المطوّر لم يشغّلهما على أجهزة سطح مكتب حقيقية. أما Linux مع Wayland فقد شُغّلت عليه. توقّع بعض الخشونة.</div>
 
 <h2 id="start">تشغيل لوحة التحكم<a class="a" href="#start" aria-label="رابط إلى هذا القسم">#</a></h2>
-<p>نفّذ هذا الأمر في الطرفية:</p>
+<p>كل حزمة إصدار تتضمن لوحة التحكم، في مجلد <code>dashboard</code> بجوار <code>dist</code>: مثبّت Windows وملف zip، وملف tar.gz لنظام Linux، وملفا zip لنظام macOS (Apple Silicon وIntel). أما ملفات <code>.mcpb</code> الخاصة بـ Claude Desktop فلا تتضمنها. يعمل <code>screenpilot setup</code> عند التثبيت، فيضيف اللوحة إلى الأماكن التي يبحث فيها نظامك عن التطبيقات. انظر <a href="../../ar/guide/dashboard.html#app-entry">عنصر التطبيق في كل نظام</a>. والأمر <code>screenpilot update</code> يستبدل لوحة التحكم مع بقية التطبيق.</p>
+<p>لتشغيلها من الطرفية نفّذ:</p>
 <pre><code class="language-sh">screenpilot dashboard</code></pre>
-<p>يشغّل البرنامج ويعود فورًا. لوحة التحكم برنامج مستقل بنافذته الخاصة.</p>
+<p>يشغّل البرنامج ويعود فورًا. لوحة التحكم برنامج مستقل بنافذته الخاصة. وتعرض النافذة وشريط Dock أو شريط المهام شعار ScreenPilot.</p>
 <p>يبحث ScreenPilot عن البرنامج بهذا الترتيب:</p>
 <ol>
 <li>المسار الموجود في متغير البيئة <code>SCREENPILOT_DASHBOARD_BIN</code> إذا ضبطته.</li>
-<li>الملف <code>screenpilot-dashboard</code> (وعلى Windows <code>screenpilot-dashboard.exe</code>) في مجلد لوحة التحكم. هذا المجلد بجوار مجلد التطبيق، باسمه مع إضافة <code>-dashboard</code>، لأن <code>setup</code> يستبدل مجلد التطبيق في كل مرة يعمل فيها.</li>
+<li>المجلد <code>dashboard</code> في التطبيق المثبّت.</li>
+<li>المجلد <code>dashboard</code> في المجلد الذي شغّلت منه setup.</li>
+<li>مجلد لوحة التحكم لبناءٍ من المصدر: مجلد التطبيق مع إضافة <code>-dashboard</code> إلى اسمه، بجواره.</li>
 </ol>
+<p>اسم البرنامج <code>screenpilot-dashboard</code> (وعلى Windows <code>screenpilot-dashboard.exe</code>). ومجلد البناء من المصدر هو:</p>
 <ul>
 <li>Linux: <code>~/.local/share/screenpilot-dashboard</code></li>
 <li>Windows: <code>%LOCALAPPDATA%\ScreenPilot-dashboard</code></li>
 <li>macOS: <code>~/Library/Application Support/ScreenPilot-dashboard</code></li>
 </ul>
-<p>إذا لم يكن البرنامج هناك، يقول <code>screenpilot dashboard</code> إنه غير مثبّت ويذكر المجلد الذي بحث فيه.</p>
-<p>على Linux، يضيف <code>screenpilot setup</code> عنصر ScreenPilot إلى قائمة التطبيقات إذا كان برنامج لوحة التحكم موجودًا في ذلك المجلد. والأمر <code>screenpilot setup --remove</code> يزيل العنصر.</p>
+<p>إذا لم يُعثر على البرنامج، يقول <code>screenpilot dashboard</code> إنه غير مثبّت.</p>
 
-<h2 id="build">بناء اللوحة<a class="a" href="#build" aria-label="رابط إلى هذا القسم">#</a></h2>
-<p>تحتاج إلى Rust. وعلى Linux تحتاج أيضًا إلى حزم التطوير لـ fontconfig وfreetype وxkbcommon وWayland وX11. على Fedora:</p>
+<h2 id="app-entry">عنصر التطبيق في كل نظام<a class="a" href="#app-entry" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>يضيف <code>screenpilot setup</code> لوحة التحكم حيث يبحث كل نظام عن التطبيقات، مع شعار ScreenPilot. يشغّله المثبّت و<code>install.sh</code> و<strong>Install ScreenPilot.command</strong> جميعًا.</p>
+<table>
+<thead><tr><th>النظام</th><th>أين تظهر</th></tr></thead>
+<tbody>
+<tr><td>Windows</td><td>اختصار في قائمة Start باسم <strong>ScreenPilot Dashboard</strong>. الشعار داخل البرنامج نفسه، وهو لا يحتاج إلى Visual C++ redistributable ولا يفتح نافذة console.</td></tr>
+<tr><td>macOS</td><td>التطبيق <code>~/Applications/ScreenPilot Dashboard.app</code>، في Finder وLaunchpad. أيقونته تُصنع من الشعار بأداتَي النظام <code>sips</code> و<code>iconutil</code>.</td></tr>
+<tr><td>Linux</td><td>عنصر في قائمة التطبيقات، الملف <code>~/.local/share/applications/screenpilot-dashboard.desktop</code>. ويُنسخ الشعار إلى <code>~/.local/share/icons/hicolor/512x512/apps/</code>.</td></tr>
+</tbody>
+</table>
+<p>الأمر <code>screenpilot setup --remove</code> ومزيلات التثبيت (uninstallers) تزيل العنصر.</p>
+<div class="note">على macOS التنزيل غير موقَّع ولا موثَّق (notarized)، مثل بقية ScreenPilot. الملف <strong>Install ScreenPilot.command</strong> يمسح علامة الحجر (quarantine) عن المجلد كله، فتفتح لوحة التحكم. وإذا ما زال macOS يسأل، افتح <strong>System Settings</strong> ثم <strong>Privacy &amp; Security</strong> واضغط <strong>Open Anyway</strong>.</div>
+
+<h2 id="build">البناء من المصدر<a class="a" href="#build" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>لا تحتاج هذا إلا مع 0.10.0 أو إصدار أقدم، أو إذا أردت العمل على لوحة التحكم. تحتاج إلى Rust. وعلى Linux تحتاج أيضًا إلى حزم التطوير لـ fontconfig وfreetype وxkbcommon وWayland وX11. على Fedora:</p>
 <pre><code class="language-sh">sudo dnf install fontconfig-devel freetype-devel libxkbcommon-devel wayland-devel libX11-devel libxcb-devel</code></pre>
 <p>ثم ابنِ البرنامج من المستودع:</p>
 <pre><code class="language-sh">cd dashboard
 cargo build --release -p screenpilot-dashboard</code></pre>
-<p>ضع البرنامج الذي يبنيه (<code>screenpilot-dashboard</code>، في <code>target/release</code>) في مجلد لوحة التحكم المذكور أعلاه، أو وجّه <code>SCREENPILOT_DASHBOARD_BIN</code> إليه.</p>
+<p>ضع البرنامج الذي يبنيه (<code>screenpilot-dashboard</code>، في <code>target/release</code>) في مجلد البناء من المصدر المذكور في <a href="../../ar/guide/dashboard.html#start">تشغيل لوحة التحكم</a>، أو وجّه <code>SCREENPILOT_DASHBOARD_BIN</code> إليه.</p>
 
 <h2 id="tabs">ما تعرضه اللوحة<a class="a" href="#tabs" aria-label="رابط إلى هذا القسم">#</a></h2>
 <p>في النافذة أربع تبويبات: Library وLive وVoices وStats.</p>
@@ -137,7 +153,7 @@ cargo build --release -p screenpilot-dashboard</code></pre>
 <p>نافذة لوحة التحكم لا ترسل أي طلب شبكة. تقرأ ملفات على جهازك وتشغّل الأمر <code>screenpilot</code> لبدء التصيير وتخزين المفاتيح.</p>
 <div class="note">مزيد من الأوامر في صفحة <a href="../../ar/guide/cli.html">سطر الأوامر</a>: <a href="../../ar/guide/cli.html#history">history</a> و<a href="../../ar/guide/cli.html#library">library</a> و<a href="../../ar/guide/cli.html#secret">secret</a>.</div>
 <nav class="pager" aria-label="Pager"><a href="voices.html" rel="prev"><small>السابق</small>الأصوات</a><a href="sequence.html" rel="next"><small>التالي</small>دمج التسجيلات</a></nav></article>
-  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#start">تشغيل لوحة التحكم</a><a href="#build">بناء اللوحة</a><a href="#tabs">ما تعرضه اللوحة</a><a href="#actions">ما تستطيع فعله</a><a href="#keyboard">لوحة المفاتيح</a><a href="#look">المظهر واللغة</a><a href="#old-work">أعمال سابقة للسجل</a><a href="#keys">كيف تُخزَّن المفاتيح</a><a href="#light">لماذا تبقى خفيفة</a><a href="#privacy">محلية فقط</a></aside>
+  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#start">تشغيل لوحة التحكم</a><a href="#app-entry">عنصر التطبيق في كل نظام</a><a href="#build">البناء من المصدر</a><a href="#tabs">ما تعرضه اللوحة</a><a href="#actions">ما تستطيع فعله</a><a href="#keyboard">لوحة المفاتيح</a><a href="#look">المظهر واللغة</a><a href="#old-work">أعمال سابقة للسجل</a><a href="#keys">كيف تُخزَّن المفاتيح</a><a href="#light">لماذا تبقى خفيفة</a><a href="#privacy">محلية فقط</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../../ar/index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot مفتوح المصدر برخصة MIT.</small><small>أسماء المنتجات ملك لأصحابها. ScreenPilot مشروع مستقل.</small></div>

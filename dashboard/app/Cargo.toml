@@ -27,6 +27,10 @@ jpeg-decoder = { version = "0.3", default-features = false }
 [build-dependencies]
 slint-build = "1.18"
 
+# Windows: put the logo inside the .exe (Explorer, the task bar and the Start Menu shortcut show it).
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
 [dev-dependencies]
 # Headless screenshots (examples/screenshot.rs).
 png = "0.17"

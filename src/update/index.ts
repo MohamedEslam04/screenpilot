@@ -19,7 +19,7 @@ import { compareVersions } from "./version.js";
 // half way puts the old files back.
 
 /** What an update replaces. Everything else in the install (bin, node_modules, ...) stays. */
-export const APP_ITEMS = ["dist", "skill", "python", "package.json", "README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "icon.png", "runtime.json"];
+export const APP_ITEMS = ["dist", "skill", "python", "dashboard", "package.json", "README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "icon.png", "runtime.json"];
 
 export const FULL_DOWNLOAD = `https://github.com/${REPO}/releases/latest`;
 const LATEST_BASE = `${FULL_DOWNLOAD}/download`;

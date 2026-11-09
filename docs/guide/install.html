@@ -53,6 +53,7 @@
   <li>The last page lists the AI apps ScreenPilot was added to. Click <strong>Finish</strong>.</li>
   <li><strong>Restart your AI app.</strong> Quit it completely, then open it again. For Claude Desktop, right-click its icon next to the clock and choose Quit.</li>
 </ol>
+<p>Windows also adds a <strong>ScreenPilot Dashboard</strong> shortcut to your Start Menu. See <a href="../guide/dashboard.html#app-entry">Dashboard</a>.</p>
 <p>If your antivirus asks about ScreenPilot, allow it. ScreenPilot watches mouse clicks while it records, so it can zoom in on them.</p>
 <h3 id="windows-other">Other ways to install on Windows<a class="a" href="#windows-other" aria-label="Link to this section">#</a></h3>
 <ul>
@@ -68,6 +69,7 @@
   <li>A Terminal window shows what was installed. Press <kbd>Enter</kbd> to close it. You can delete the downloaded folder now.</li>
   <li><strong>Restart your AI app</strong> (<kbd>Cmd</kbd>+<kbd>Q</kbd>, then open it again).</li>
 </ol>
+<p>The installer also adds <strong>ScreenPilot Dashboard</strong> to <code>~/Applications</code>, so it shows in Finder and Launchpad. See <a href="../guide/dashboard.html#app-entry">Dashboard</a>.</p>
 <h3 id="macos-permissions">macOS permissions<a class="a" href="#macos-permissions" aria-label="Link to this section">#</a></h3>
 <p>The first time you ask for a recording, macOS asks you to allow your <strong>AI app</strong> (Claude, Cursor, Terminal), not ScreenPilot itself. Open <strong>System Settings</strong>, then <strong>Privacy &amp; Security</strong>, and turn your AI app on in these lists:</p>
 <ul>
@@ -87,6 +89,7 @@
   <li>The first time you record, or let the AI use your desktop, your desktop asks once to allow screen sharing or remote control. Allow it.</li>
 </ol>
 <div class="warn">Do not run the installer with <code>sudo</code>. It installs for your user only and needs no admin rights. With <code>sudo</code> it stops and tells you to run it again as yourself.</div>
+<p>The installer also adds ScreenPilot Dashboard to your application menu. See <a href="../guide/dashboard.html#app-entry">Dashboard</a>.</p>
 <p>What works depends on your desktop. See <a href="../guide/platforms.html#support">Platform support</a> for the full table.</p>
 
 <h2 id="verify">Check that it works<a class="a" href="#verify" aria-label="Link to this section">#</a></h2>
@@ -103,6 +106,7 @@
   <li>Copies ScreenPilot to your user folder: <code>%LOCALAPPDATA%\ScreenPilot</code> on Windows, <code>~/Library/Application Support/ScreenPilot</code> on macOS, and <code>~/.local/share/screenpilot</code> on Linux.</li>
   <li>Creates the output folder for your videos, inside your Videos folder.</li>
   <li>Adds ScreenPilot to each AI app it finds, and backs up each settings file first. Your other entries and comments stay as they were.</li>
+  <li>Adds the dashboard to your Start Menu, <code>~/Applications</code> or application menu, when the package includes it (releases newer than 0.10.0).</li>
   <li>Downloads and tests the video renderer, the first time only.</li>
 </ul>
 
@@ -143,7 +147,7 @@
   <li><strong>macOS:</strong> double-click <strong>Uninstall ScreenPilot.command</strong> in the downloaded folder. Download it again if you deleted it.</li>
   <li><strong>Linux:</strong> run <code>./uninstall.sh</code> in the downloaded folder.</li>
 </ul>
-<p>Uninstalling removes ScreenPilot from your AI apps. Your videos stay where they are.</p>
+<p>Uninstalling removes ScreenPilot from your AI apps and takes the dashboard entry away. Your videos stay where they are.</p>
 
 <h2 id="troubleshooting">If something goes wrong<a class="a" href="#troubleshooting" aria-label="Link to this section">#</a></h2>
 <ul>

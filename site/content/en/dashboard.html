@@ -3,32 +3,48 @@ title: Dashboard
 summary: A small native window for your recordings, renders, running jobs and voices. What it shows, what it does, how to start it, and how to build it for now.
 -->
 <p>The dashboard is a separate small desktop program. It shows everything ScreenPilot recorded and rendered, the renders running now, your voice providers and some numbers about your renders. It runs on your computer only and does not need an account. It is a native program written in Rust with Slint and the software renderer. It has no web view.</p>
-<div class="warn">The dashboard is new. For now you build it from the repository: it is not part of the main download yet. It has been verified on one machine only: Linux with Wayland. Windows and macOS are untested. Expect rough edges. The steps are in <a href="@guide/dashboard.html#build">Build it</a>.</div>
+<div class="warn">The dashboard is new. Releases newer than 0.10.0 include it. If you have 0.10.0 or an older release, you have to build it from the repository: see <a href="@guide/dashboard.html#build">Build it from source</a>. The Windows and macOS builds are checked automatically on GitHub's runners (CI), but the maintainer has not run them on real desktops. It has been run on Linux with Wayland. Expect rough edges.</div>
 
 <h2 id="start">Start the dashboard</h2>
-<p>Run this in a terminal:</p>
+<p>Every release package includes the dashboard, in a <code>dashboard</code> folder next to <code>dist</code>: the Windows installer and zip, the Linux tar.gz and both macOS zips (Apple Silicon and Intel). The Claude Desktop <code>.mcpb</code> files do not contain it. <code>screenpilot setup</code> runs when you install, and it adds the dashboard to the places where your system looks for apps. See <a href="@guide/dashboard.html#app-entry">The app entry on each system</a>. <code>screenpilot update</code> replaces the dashboard along with the rest of the app.</p>
+<p>To start it from a terminal, run:</p>
 <pre><code class="language-sh">screenpilot dashboard</code></pre>
-<p>It starts the program and returns at once. The dashboard is its own program with its own window.</p>
+<p>It starts the program and returns at once. The dashboard is its own program with its own window. The window and the Dock or task bar show the ScreenPilot logo.</p>
 <p>ScreenPilot looks for the program in this order:</p>
 <ol>
 <li>The path in the <code>SCREENPILOT_DASHBOARD_BIN</code> environment variable, if you set it.</li>
-<li>The file <code>screenpilot-dashboard</code> (<code>screenpilot-dashboard.exe</code> on Windows) in the dashboard folder. This folder sits next to the app folder, with <code>-dashboard</code> added to its name, because <code>setup</code> replaces the app folder every time it runs.</li>
+<li>The <code>dashboard</code> folder in the installed app.</li>
+<li>The <code>dashboard</code> folder in the folder you ran setup from.</li>
+<li>The dashboard folder of a build from source: the app folder with <code>-dashboard</code> added to its name, next to it.</li>
 </ol>
+<p>The program is named <code>screenpilot-dashboard</code> (<code>screenpilot-dashboard.exe</code> on Windows). The folder of a build from source is:</p>
 <ul>
 <li>Linux: <code>~/.local/share/screenpilot-dashboard</code></li>
 <li>Windows: <code>%LOCALAPPDATA%\ScreenPilot-dashboard</code></li>
 <li>macOS: <code>~/Library/Application Support/ScreenPilot-dashboard</code></li>
 </ul>
-<p>If the program is not there, <code>screenpilot dashboard</code> says it is not installed and names the folder it looked in.</p>
-<p>On Linux, <code>screenpilot setup</code> adds a ScreenPilot entry to your application menu when the dashboard program is already in that folder. <code>screenpilot setup --remove</code> removes the entry.</p>
+<p>If the program is not found, <code>screenpilot dashboard</code> says it is not installed.</p>
 
-<h2 id="build">Build it</h2>
-<p>You need Rust. On Linux you also need the development packages for fontconfig, freetype, xkbcommon, Wayland and X11. On Fedora:</p>
+<h2 id="app-entry">The app entry on each system</h2>
+<p><code>screenpilot setup</code> adds the dashboard where each system looks for apps, with the ScreenPilot logo. The installer, <code>install.sh</code> and <strong>Install ScreenPilot.command</strong> all run it.</p>
+<table>
+<thead><tr><th>System</th><th>Where it appears</th></tr></thead>
+<tbody>
+<tr><td>Windows</td><td>A Start Menu shortcut named <strong>ScreenPilot Dashboard</strong>. The logo is inside the program, which needs no Visual C++ redistributable and opens no console window.</td></tr>
+<tr><td>macOS</td><td>The app <code>~/Applications/ScreenPilot Dashboard.app</code>, in Finder and Launchpad. Its icon is made from the logo with the system tools <code>sips</code> and <code>iconutil</code>.</td></tr>
+<tr><td>Linux</td><td>An application menu entry, <code>~/.local/share/applications/screenpilot-dashboard.desktop</code>. The logo is copied to <code>~/.local/share/icons/hicolor/512x512/apps/</code>.</td></tr>
+</tbody>
+</table>
+<p><code>screenpilot setup --remove</code> and the uninstallers take the entry away.</p>
+<div class="note">On macOS the download is not signed or notarized, like the rest of ScreenPilot. <strong>Install ScreenPilot.command</strong> clears the quarantine flag of the whole folder, so the dashboard opens. If macOS still asks, open <strong>System Settings</strong>, then <strong>Privacy &amp; Security</strong>, and click <strong>Open Anyway</strong>.</div>
+
+<h2 id="build">Build it from source</h2>
+<p>You only need this for 0.10.0 or an older release, or to work on the dashboard. You need Rust. On Linux you also need the development packages for fontconfig, freetype, xkbcommon, Wayland and X11. On Fedora:</p>
 <pre><code class="language-sh">sudo dnf install fontconfig-devel freetype-devel libxkbcommon-devel wayland-devel libX11-devel libxcb-devel</code></pre>
 <p>Then build the program from the repository:</p>
 <pre><code class="language-sh">cd dashboard
 cargo build --release -p screenpilot-dashboard</code></pre>
-<p>Put the program it builds (<code>screenpilot-dashboard</code>, in <code>target/release</code>) in the dashboard folder above, or point <code>SCREENPILOT_DASHBOARD_BIN</code> at it.</p>
+<p>Put the program it builds (<code>screenpilot-dashboard</code>, in <code>target/release</code>) in the folder listed under <a href="@guide/dashboard.html#start">Start the dashboard</a> for a build from source, or point <code>SCREENPILOT_DASHBOARD_BIN</code> at it.</p>
 
 <h2 id="tabs">What it shows</h2>
 <p>The window has four tabs: Library, Live, Voices and Stats.</p>

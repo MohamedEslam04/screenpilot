@@ -51,13 +51,24 @@ jobs:
           if (-not $iscc) { throw 'Inno Setup 6 not found' }
           Write-Host "Using $iscc"
           "ISCC=$iscc" >> $env:GITHUB_ENV
+      # The dashboard: a native program (Rust, Slint) that goes in every package as dashboard/. Rust is preinstalled on the runners.
+      - name: Dashboard build packages (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev libfreetype-dev libxkbcommon-dev libwayland-dev libx11-dev libxcb1-dev
+      - name: Build the dashboard
+        shell: bash
+        working-directory: dashboard
+        env:
+          # Windows: link the C runtime into the program so it needs no Visual C++ redistributable.
+          RUSTFLAGS: ${{ runner.os == 'Windows' && '-C target-feature=+crt-static' || '' }}
+        run: cargo build --release -p screenpilot-dashboard
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: pnpm package --ffmpeg-dir (Split-Path (Get-Command ffmpeg).Source)
+        run: pnpm package --ffmpeg-dir (Split-Path (Get-Command ffmpeg).Source) --dashboard-bin dashboard/target/release/screenpilot-dashboard.exe
       - name: Package (Linux, macOS)
         if: runner.os != 'Windows'
-        run: pnpm package --ffmpeg-dir "$(dirname "$(command -v ffmpeg)")"
+        run: pnpm package --ffmpeg-dir "$(dirname "$(command -v ffmpeg)")" --dashboard-bin dashboard/target/release/screenpilot-dashboard
       # The packaged server must start on its bundled Node and see its bundled tools.
       - name: Check the package
         shell: bash
@@ -65,6 +76,21 @@ jobs:
           stage=$(ls -d release/stage-*/ScreenPilot)
           "$stage/bin/node" "$stage/dist/cli.js" doctor > doctor.json || true
           node -e "const d=require('./doctor.json');console.log(d.summary);const f=d.checks.filter(c=>['ffmpeg','ffprobe','node'].includes(c.name)&&!c.ok);if(f.length){console.error(f);process.exit(1)}"
+      # The dashboard in the package must start. Windows and macOS runners have a desktop session, so the window really opens
+      # (it closes itself after a few seconds); the Linux runner has no display, so there its libraries must at least all resolve.
+      - name: Check the dashboard in the package
+        shell: bash
+        run: |
+          stage=$(ls -d release/stage-*/ScreenPilot)
+          bin="$stage/dashboard/screenpilot-dashboard"; [ -f "$bin.exe" ] && bin="$bin.exe"
+          ls -l "$bin"
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            ldd "$bin" | tee ldd.txt; ! grep -q "not found" ldd.txt
+          else
+            cfg="$RUNNER_TEMP/dashcfg"; mkdir -p "$cfg"
+            XDG_CONFIG_HOME="$cfg" XDG_CACHE_HOME="$cfg/cache" APPDATA="$cfg" LOCALAPPDATA="$cfg" "$bin" --exit-after 5
+            echo "the dashboard window opened and closed (exit $?)"
+          fi
       # What "ScreenPilot Setup.cmd" / install.sh do, against a throwaway home folder.
       - name: Check setup
         shell: bash
@@ -76,6 +102,19 @@ jobs:
             XDG_DATA_HOME="$home/.local/share" XDG_CONFIG_HOME="$home/.config" \
             "$stage/bin/node" "$stage/dist/cli.js" setup --clients codex,opencode > setup.json
           node -e "const r=require('./setup.json');console.log(r.appDir,r.rows);const fs=require('fs'),p=require('path');if(r.rows.some(x=>x.status!=='added')||!r.renderer?.ok||!fs.existsSync(p.join(r.appDir,'dist','mcp.js')))process.exit(1)"
+          # setup also puts the dashboard in the application menu / ~/Applications / the Start Menu, with the logo, pointing at the installed copy.
+          node -e "
+            const r=require('./setup.json'),fs=require('fs'),p=require('path'),os=require('os');
+            const row=r.rows.find(x=>x.client.startsWith('Dashboard'));
+            if(!row||row.status!=='added'){console.error('no dashboard entry',r.rows);process.exit(1)}
+            console.log('dashboard entry:',row.detail);
+            const need=[row.detail];
+            if(process.platform==='darwin')need.push(p.join(row.detail,'Contents','Info.plist'),p.join(row.detail,'Contents','MacOS','ScreenPilot Dashboard'),p.join(row.detail,'Contents','Resources','AppIcon.icns'));
+            if(process.platform==='linux')need.push(p.join(process.env.XDG_DATA_HOME,'icons','hicolor','512x512','apps','screenpilot-dashboard.png'));
+            const bad=need.filter(f=>!fs.existsSync(f));
+            if(bad.length){console.error('missing',bad);process.exit(1)}
+            if(process.platform==='linux'){const t=fs.readFileSync(row.detail,'utf8');console.log(t);if(!t.includes(r.appDir)||!/^Icon=/m.test(t)){console.error('entry must point at the installed copy and have an icon');process.exit(1)}}
+          "
       # Explorer's zip extractor (and plenty of tools) fail on paths past ~260 characters.
       - name: Check path lengths (Windows)
         if: runner.os == 'Windows'

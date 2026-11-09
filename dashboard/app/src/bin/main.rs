@@ -1,3 +1,6 @@
+// A release build on Windows is a window program: no console window next to it.
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+
 use screenpilot_dashboard::app;
 use screenpilot_dashboard_core::{cli::Cli, Paths};
 use std::time::Duration;

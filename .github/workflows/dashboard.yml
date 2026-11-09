@@ -59,6 +59,17 @@ jobs:
       - run: cargo build -p screenpilot-dashboard
       # The model tests are pure; the headless test needs a POSIX shell for its stand-in CLI.
       - run: cargo test -p screenpilot-dashboard --lib
+      # The logo must be inside the .exe (Explorer, the task bar and the Start Menu shortcut show it): ask Windows for the
+      # program's icon and look at a pixel. The logo is a dark navy square; the default program icon is white and grey.
+      - name: The logo is inside the program
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          $exe = (Resolve-Path target/debug/screenpilot-dashboard.exe).Path
+          $bmp = [System.Drawing.Icon]::ExtractAssociatedIcon($exe).ToBitmap()
+          $px = $bmp.GetPixel(4, [int]($bmp.Height / 2))
+          Write-Host "icon $($bmp.Width)x$($bmp.Height), pixel R=$($px.R) G=$($px.G) B=$($px.B) A=$($px.A)"
+          if ($px.A -lt 250 -or $px.R -gt 60 -or $px.G -gt 70 -or $px.B -lt 20 -or $px.B -gt 110) { throw "the program does not carry the ScreenPilot logo" }
 
   app-macos:
     runs-on: macos-latest
