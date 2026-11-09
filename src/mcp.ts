@@ -42,8 +42,9 @@ import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { estimateSequence } from "./sequence/estimate.js";
 import { renderSequence, validateSequence } from "./sequence/index.js";
 import { resumePaused } from "./sequence/resume.js";
+import { expandJoins, renderJoins } from "./sequence/joins.js";
 import { pauseRenders, RenderPaused } from "./render/pause.js";
-import { sequenceJsonSchema } from "./sequence/schema.js";
+import { sequenceJsonSchema, TRANSITIONS } from "./sequence/schema.js";
 import { type PerformResult, performTake, resolveTarget, TakeError } from "./take/perform.js";
 import { A11yQuerySchema, TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
@@ -163,7 +164,7 @@ const INSTRUCTIONS = `${APP_TITLE} makes screen videos. FIRST, for every new vid
 Design every video for its purpose; there is no house style. Before rendering, decide who it's for and where it will be shown, then set the storyboard to match: output size (1920x1080 for YouTube/README/slides, 1080x1920 for Reels/TikTok/Shorts, 1080x1080 for feeds), theme (background, padding, radius, accent, font, caption colors), theme.fonts (any Google Fonts), theme.css (your own CSS for captions, cards, highlights; storyboard_schema lists the classes) and text motion (theme.motion.captions / .cards, or motion per caption: in/out presets fade, rise, drop, slide-left, slide-right, pop, zoom, blur, wipe, words, lines, none; duration, any GSAP ease, stagger). Match the product's brand when you can see it (colors and type from its site or app). Pace and wording follow the audience: short punchy captions for social, calm explanatory ones for tutorials, bilingual lines ("English\nعربي") when asked. Defaults are only a fallback.
 Choose the shot the same way: which monitors to record (record_start screens / take "screens": one, several or "all") and what the camera shows: "window" follows the app in use (clean product demos), "screen" the whole monitor (OS-level how-tos, context matters), "all" every monitor side by side (work that spans screens, e.g. code on one and the app on the other). Switch per moment with view steps / storyboard views, and zoom only where detail matters.
 Editing: segments take speedTo (ramp the speed) and transition {type: crossfade|fade-black|fade-white|wipe-left|wipe-right|slide-left|slide-right, dur} (blends in, overlapping the previous segment, so the video gets dur shorter); theme.grade {brightness, contrast, saturation, gamma} grades the recording. Annotations: annotations [{type: arrow|box|blur, at, dur, ...}] draw on the recording (0..1 of the recording, they follow zooms); blur with mode solid hides secrets completely. Sound: sfx [{at, src}] plays a sound at a source time and sounds {clicks, typing, cards, volume} adds them automatically from the recorded clicks (needs events), the typing [{at, dur, text?}] spans (keys are never recorded; a performed take marks its own) and the title cards; src is a file or builtin:click|key|whoosh|pop|ding. music takes fadeIn/fadeOut, loop, offset and from/to; audio {loudness: {}} normalizes the final video to -16 LUFS and audio {denoise: true} cleans the recording's sound.
-To put another recording in the middle of a video without re-recording the rest: write a sequence.json {parts: [{storyboard, from?, to?, transition?}]} (sequence_schema, sequence_validate, sequence_render). Each part is a full storyboard; from/to are source seconds of that storyboard, so the same demo twice ({to: 42}, the feature, {from: 42}) inserts the feature at second 42. Give the storyboards a shared "extends" base so theme, voice and size match. Storyboards also take cards (chapter cards), overlays (logo/image/video, or {kind: "card", template: list|flow|number|quote, data, at, dur} to draw a card from JSON at render time; Arabic lays out right to left by itself), music.duck and segment volume/mute; render takes from/to (output seconds, review one window fast) and formats (e.g. ["16:9","9:16"]). A render's mp4 appears only when complete (<name>.partial.mp4 until then), and abort stops a running render with its whole process tree (HyperFrames, Chrome, ffmpeg).
+To put another recording in the middle of a video without re-recording the rest: write a sequence.json {parts: [{storyboard, from?, to?, transition?}]} (sequence_schema, sequence_validate, sequence_render). Each part is a full storyboard; from/to are source seconds of that storyboard, so the same demo twice ({to: 42}, the feature, {from: 42}) inserts the feature at second 42. A part can also be {sequence: "group.json"} (a long video rendered in groups and joined in one call). For several videos from the same groups (e.g. setup, operations and full = setup + operations) give sequence_render joins {name: [group files or names]} with join {transition, dur} instead of sequence: every group renders once, each video is <out_dir>/<name>.mp4 with its timeline.json, and pause/resume take <out_dir>/joins. Give the storyboards a shared "extends" base so theme, voice and size match. Storyboards also take cards (chapter cards), overlays (logo/image/video, or {kind: "card", template: list|flow|number|quote, data, at, dur} to draw a card from JSON at render time; Arabic lays out right to left by itself), music.duck and segment volume/mute; render takes from/to (output seconds, review one window fast) and formats (e.g. ["16:9","9:16"]). A render's mp4 appears only when complete (<name>.partial.mp4 until then), and abort stops a running render with its whole process tree (HyperFrames, Chrome, ffmpeg).
 To make the same recording with another script or voice (a dialect, a language): write variants/<name>.json next to the storyboard ({voice?, narration?: {"<line id or position>": "text"} or ["text", ...], overlays?: {"<position>": {src}}}; it only rewrites lines, so a different number of lines fails) and pass variant to render, or variant (and variant_dir) to sequence_render, which looks for <part folder>/variants/<name>.json in each part. Output is <name>.<variant>.mp4 and rendering variants in turn reuses each one's cache. Narration lines have a slot (their at to the next line's at, minus voice.gap): render returns fit [{id, raw, slot, needed}] and warns above the cap (default 1.18x); fit: true speeds overrunning clips up to the cap (cached, never twice), strict_fit: true fails instead, sequence_validate fit: true checks cached clips for free.
 Subtitles: render and sequence_render take subtitles (["srt","vtt"]) and languages ({code: "auto" | translation.json}) to write <video>.<code>.srt|vtt next to the video from its timeline.json (a translation is {"<id or index>": "line"}, or {"<chapter>": ["line", ...]} for a sequence, chapter = the part's storyboard folder; no machine translation: the user or you write it); for a video that is already rendered call subs (no render), with join for a video joined by hand and mux for soft tracks in <video>.subs.mp4. check_output also checks that the captions land on the audio.
 Before the delivery render run storyboard_qa: it flags highlights that frame an empty area and views that show the desktop.
@@ -631,9 +632,19 @@ server.registerTool(
       "pause (tool) makes it finish the part (or chunk of a long part) in progress and stop with {paused, parts}; resume with sequence carries on, reusing every finished part and chunk. " +
       "Before each part or chunk it waits for min_free_mem (MB) up to mem_timeout, then fails with the numbers; the result has peakRssMB. " +
       "subtitles (srt, vtt) and languages ({code: translation file or \"auto\"}) also write caption files for the joined video from its timeline (<video>.<code>.srt|vtt); a translation is {\"<chapter>\": [\"line\", ...]} (chapter = the part's storyboard folder name) or {\"<id>\": \"line\"}. " +
+      "Several videos in one call (instead of sequence): joins {name: [sequence files or other names]} with join {transition, dur}, e.g. joins {setup: [g1.json, g2.json], operations: [g3.json], full: [\"setup\", \"operations\"]}: every group (a sequence) is rendered once and reused by every video that has it, each video is <out_dir>/<name>.mp4 with its own timeline.json (and caption files), and its length is the sum of its groups minus one dur per join. pause and resume take sequence <out_dir>/joins. " +
       "Slow (minutes). The video only appears once complete (written as <name>.partial.mp4, then renamed); abort (or cancelling this call) kills the whole render tree. Follow with check_output.",
     inputSchema: {
-      sequence: z.string().describe("Path to sequence.json"),
+      sequence: z.string().optional().describe("Path to sequence.json (or give joins instead)"),
+      joins: z
+        .record(z.string().regex(/^[A-Za-z0-9_-]+$/), z.array(z.string()).min(1))
+        .optional()
+        .describe("Several joined videos in one call: {name: [sequence.json files (groups) or names of other joined videos]}, in order; each group is rendered once and reused. Writes <out_dir>/<name>.mp4 (+ .timeline.json)"),
+      join: z
+        .object({ transition: z.enum(TRANSITIONS).describe("How each group enters from the one before"), dur: z.number().positive().default(0.5).describe("Seconds two groups overlap; at most half of either") })
+        .optional()
+        .describe("With joins: the transition between groups (default cut)"),
+      out_dir: z.string().optional().describe("With joins: folder of the joined videos (default: the folder holding all the groups)"),
       output: z.string().optional().describe("Output mp4. Default: <sequence>.mp4"),
       quality: z.enum(["draft", "looks", "delivery"]).optional().describe("Default looks"),
       style: z.string().optional().describe('Path to a style file: { "theme": {...} } only; merged over the theme of every storyboard part'),
@@ -651,27 +662,29 @@ server.registerTool(
       mem_timeout: memTimeoutField,
     },
   },
-  safe(async ({ sequence, output, quality, style, variant, variant_dir, fit, strict_fit, fit_max, workers, subtitles, languages, subtitle_chars, dryRun, min_free_mem, mem_timeout }, ctx) => {
-    if (dryRun) return text(await estimateSequence(sequence, { style: style ? await loadStyle(style) : undefined, variant, variantDir: variant_dir }));
+  safe(async ({ sequence, joins, join: joinWith, out_dir, output, quality, style, variant, variant_dir, fit, strict_fit, fit_max, workers, subtitles, languages, subtitle_chars, dryRun, min_free_mem, mem_timeout }, ctx) => {
+    if (!sequence === !joins) throw new Error("Give sequence or joins, not both (and not neither).");
+    if (joins && output) throw new Error("output does not go with joins: each joined video is <out_dir>/<name>.mp4.");
+    if (!joins && (joinWith || out_dir)) throw new Error("join and out_dir only go with joins.");
+    if (dryRun) return text(await estimateSequence(joins ? [...new Set(Object.values(expandJoins(joins, process.cwd())).flat())] : sequence!, { style: style ? await loadStyle(style) : undefined, variant, variantDir: variant_dir }));
     requireBrief("sequence_render");
-    return text(
-      await renderSequence(sequence, {
-        output,
-        quality,
-        style: style ? await loadStyle(style) : undefined,
-        variant,
-        variantDir: variant_dir,
-        fit: fit || strict_fit || fit_max !== undefined ? { auto: fit, strict: strict_fit, max: fit_max } : undefined,
-        workers: parseWorkers(workers),
-        subtitles: parseSubtitleFormats(subtitles),
-        subtitleLanguages: parseSubtitleLanguages(languages),
-        subtitleRules: subtitle_chars !== undefined ? { maxChars: subtitle_chars } : undefined,
-        minFreeMemMB: min_free_mem,
-        memTimeoutS: mem_timeout,
-        log,
-        signal: ctx?.signal,
-      }),
-    );
+    const opts = {
+      quality,
+      style: style ? await loadStyle(style) : undefined,
+      variant,
+      variantDir: variant_dir,
+      fit: fit || strict_fit || fit_max !== undefined ? { auto: fit, strict: strict_fit, max: fit_max } : undefined,
+      workers: parseWorkers(workers),
+      subtitles: parseSubtitleFormats(subtitles),
+      subtitleLanguages: parseSubtitleLanguages(languages),
+      subtitleRules: subtitle_chars !== undefined ? { maxChars: subtitle_chars } : undefined,
+      minFreeMemMB: min_free_mem,
+      memTimeoutS: mem_timeout,
+      log,
+      signal: ctx?.signal,
+    };
+    if (joins) return text(await renderJoins({ joins, transition: joinWith && { type: joinWith.transition, dur: joinWith.dur } }, { ...opts, outputDir: out_dir }));
+    return text(await renderSequence(sequence!, { ...opts, output }));
   }),
 );
 
@@ -1131,7 +1144,7 @@ server.registerTool(
       "Two uses. (1) Without arguments: carry on driving after a click/move/type stopped because the pointer was moved by someone else. Adopts the pointer where it is now; keeps the driver open (no new approval dialog). Take a screenshot afterwards: the screen may have changed. " +
       "(2) With sequence (or storyboard): carry on a render that was paused with the pause tool, with the options it was started with; every finished part and chunk is reused, so only the rest renders. Slow (minutes), returns what sequence_render (or render) returns, and can be paused again.",
     inputSchema: {
-      sequence: z.string().optional().describe("Path to a paused sequence.json: resume that render"),
+      sequence: z.string().optional().describe("Path to a paused sequence.json (or <out_dir>/joins for a sequence_render with joins): resume that render"),
       storyboard: z.string().optional().describe("Path to a paused storyboard.json (a single long render): resume that render"),
       build_dir: z.string().optional().describe("Build folder of the paused render, when it is not the default one"),
       workers: workersField,
@@ -1139,10 +1152,10 @@ server.registerTool(
       mem_timeout: memTimeoutField,
     },
   },
-  safe(async ({ sequence, storyboard, build_dir, workers, min_free_mem, mem_timeout }) => {
+  safe(async ({ sequence, storyboard, build_dir, workers, min_free_mem, mem_timeout }, ctx) => {
     if (sequence && storyboard) throw new Error("Give sequence or storyboard, not both.");
     const path = sequence ?? storyboard;
-    if (path) return text(await resumePaused(path, { buildDir: build_dir, workers: parseWorkers(workers, {}), minFreeMemMB: min_free_mem, memTimeoutS: mem_timeout, log }));
+    if (path) return text(await resumePaused(path, { buildDir: build_dir, workers: parseWorkers(workers, {}), minFreeMemMB: min_free_mem, memTimeoutS: mem_timeout, log, signal: ctx?.signal }));
     if (!driver) return text({ resumed: false, reason: "no live driver; the next drive tool opens one" });
     driver.resume();
     return text({ resumed: true });

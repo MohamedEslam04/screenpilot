@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { copyFile, mkdtemp, readFile, utimes, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -165,6 +165,48 @@ describe.skipIf(!hasFfmpeg)("pause and resume", { timeout: 600_000 }, () => {
     const r = await renderSequence(seq, { quality: "draft" });
     expect(fake.calls).toHaveLength(2);
     expect(existsSync(r.output)).toBe(true);
+  });
+
+  it("a variant + fit sequence resumes into the same output with the same cache keys", async () => {
+    const dir = await project({ a: 6, b: 6 });
+    const seq = await sequence(dir, ["a", "b"]);
+    await mkdir(join(dir, "variants"), { recursive: true });
+    await writeFile(join(dir, "variants", "saudi.json"), JSON.stringify({ voice: { rate: "+5%" } }));
+    const opts = { quality: "draft" as const, variant: "saudi", fit: { auto: true, max: 1.1 } };
+    const keyFile = (i: number) => join(dir, "seq.build", `part-${i}.saudi`, "part.key");
+    pauseDuring(1, seq);
+    const err = await paused(renderSequence(seq, opts));
+    expect(err.info.partsDone).toBe(1);
+    const firstKey = await readFile(keyFile(0), "utf8");
+
+    fake.calls = [];
+    fake.onRender = undefined;
+    const lines: string[] = [];
+    const r = (await resumePaused(seq, { log: (m) => lines.push(m) })) as { output: string };
+    expect(r.output).toBe(join(dir, "seq.saudi.mp4"));
+    expect(fake.calls).toHaveLength(1);
+    expect(lines).toContain(`part 1/2: unchanged, reusing ${join(dir, "seq.build", "part-0.saudi", "part.mp4")}`);
+    expect(await readFile(keyFile(0), "utf8")).toBe(firstKey);
+
+    // The keys the resume wrote are the ones a fresh render with the same options computes: nothing renders again.
+    fake.calls = [];
+    const fresh = await renderSequence(seq, opts);
+    expect(fake.calls).toEqual([]);
+    expect(fresh.output).toBe(r.output);
+    expect(fresh.parts.every((p) => p.cached)).toBe(true);
+  });
+
+  it("a cancelled request aborts a resumed render (the MCP resume passes its signal)", async () => {
+    const dir = await project({ a: 6, b: 6 });
+    const seq = await sequence(dir, ["a", "b"]);
+    pauseDuring(1, seq);
+    await paused(renderSequence(seq, { quality: "draft" }));
+    fake.calls = [];
+    fake.onRender = undefined;
+    const ctl = new AbortController();
+    ctl.abort();
+    await expect(resumePaused(seq, { signal: ctl.signal })).rejects.toThrow(/aborted/);
+    expect(fake.calls).toEqual([]);
   });
 
   it("says when nothing is paused", async () => {
