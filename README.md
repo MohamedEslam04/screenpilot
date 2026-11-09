@@ -177,4 +177,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 70cace2 ("fix(test,docs): the 0600 file mode is POSIX only; Windows relies on the profile folder", 2026-11-09).
+Docs synced to commit 0df228b ("fix: the test suite no longer writes into the developer's own history (SCREENPILOT_NO_HISTORY)", 2026-11-09).
