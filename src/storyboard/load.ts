@@ -46,6 +46,13 @@ export function lintStoryboard(sb: Storyboard, sourceDuration?: number): string[
       if (Timeline.segmentIndexOf(kept, c.at) < 0) warnings.push(`cards[${i}] at ${c.at}s is in a cut region and will be dropped`);
     });
   }
+  const ids = new Map<string, number>();
+  sb.narration.forEach((n, i) => {
+    if (n.id === undefined) return;
+    const first = ids.get(n.id);
+    if (first === undefined) ids.set(n.id, i);
+    else warnings.push(`narration[${i}] repeats the id "${n.id}" of narration[${first}]; translations and timeline.json cannot tell them apart`);
+  });
   const names = new Set(sb.screens.map((s) => s.name));
   sb.views.forEach((v, i) => {
     if (v.screen && v.screen !== "all" && !names.has(v.screen)) warnings.push(`views[${i}] names unknown screen "${v.screen}"`);

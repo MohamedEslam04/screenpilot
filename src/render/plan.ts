@@ -52,6 +52,8 @@ export type AnnotationItem = { start: number; end: number } & (
 
 /** One narration line as a subtitle cue (output seconds), whether or not it is burned into the picture. */
 export interface SubtitleItem {
+  /** The narration line's id (see timeline.json); set by renders, absent in plans built without one. */
+  id?: string;
   start: number;
   end: number;
   text: string;
@@ -157,7 +159,7 @@ export interface PlanInput {
   editedSrc: string;
   editedHasAudio: boolean;
   source: { width: number; height: number };
-  narration: (VoiceClip & { at: number; caption: boolean; src: string })[];
+  narration: (VoiceClip & { at: number; caption: boolean; src: string; id?: string })[];
   clicks: ClickEvent[];
   musicSrc?: string;
   /** Output seconds the prepared music track (music.ts) plays; its fades are already in the file. Without it the music spans the video. */
@@ -258,7 +260,7 @@ export function buildPlan(input: PlanInput): RenderPlan {
   for (const n of input.narration) {
     const start = tl.toOutput(n.at);
     if (start === null) continue;
-    subtitles.push({ start: round(start), end: round(start + n.duration), text: n.text });
+    subtitles.push({ ...(n.id !== undefined ? { id: n.id } : {}), start: round(start), end: round(start + n.duration), text: n.text });
     audio.push({ src: n.src, start: round(start), duration: round(n.duration), volume: sb.voice.volume });
     if (n.caption) {
       texts.push({ start, end: start + n.duration, text: n.text, position: "bottom", style: "subtitle" });
