@@ -68,6 +68,11 @@ export function busySpans(plan: RenderPlan): Span[] {
       add(Math.max(o.start, o.end - MOTION_MAX), o.end);
     }
   }
+  for (const d of plan.dataCards ?? []) {
+    // Like a still image: only its entrance (the items come in one after another) and its exit move.
+    add(d.start, Math.min(d.end, d.start + MOTION_MAX));
+    add(Math.max(d.start, d.end - MOTION_MAX), d.end);
+  }
   for (const list of [plan.texts, plan.highlights, plan.annotations, plan.keys]) for (const x of list) add(x.start, x.end);
   for (const r of plan.ripples) add(r.t, r.t + RIPPLE);
   return merge(spans).map((s) => ({ start: round(s.start), end: round(s.end) }));

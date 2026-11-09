@@ -287,7 +287,7 @@ async function prepare(path: string, opts: { buildDir?: string; style?: LoadedSt
       source: abs(baseDir, original.source),
       events: original.events === undefined ? undefined : abs(baseDir, original.events),
       music: original.music && { ...original.music, src: abs(baseDir, original.music.src) },
-      overlays: original.overlays.map((o) => ({ ...o, src: abs(baseDir, o.src) })),
+      overlays: original.overlays.map((o) => (o.kind === "card" ? o : { ...o, src: abs(baseDir, o.src) })),
       narration: original.narration.map((n) => (n.audio === undefined ? n : { ...n, audio: abs(baseDir, n.audio) })),
       sfx: original.sfx.map((x) => ({ ...x, src: soundFile(baseDir, x.src) })),
       sounds: original.sounds && {
@@ -305,7 +305,7 @@ async function prepare(path: string, opts: { buildDir?: string; style?: LoadedSt
     await writeFile(storyboard, text);
     const sounds = [sb.sounds?.clicks, sb.sounds?.typing, sb.sounds?.cards].filter((x): x is string => typeof x === "string");
     const stamps = await Promise.all(
-      [sb.source, sb.events, sb.music?.src, ...sb.overlays.map((o) => o.src), ...sb.narration.map((n) => n.audio), ...sb.sfx.map((x) => x.src), ...sounds].map(fileStamp),
+      [sb.source, sb.events, sb.music?.src, ...sb.overlays.map((o) => (o.kind === "card" ? undefined : o.src)), ...sb.narration.map((n) => n.audio), ...sb.sfx.map((x) => x.src), ...sounds].map(fileStamp),
     );
     const key = sha1(`${text}|${stamps.join("|")}${lp.variant ? `|${variantKey(lp.variant)}` : ""}${fitKey(opts.fit)}`);
     parts.push({ ...base, kind: "storyboard", storyboard, output: join(dir, "part.mp4"), cacheDir: join(baseDir, CACHE_DIR), key, sb, warnings: lp.warnings });

@@ -49,6 +49,13 @@ export function lintStoryboard(sb: Storyboard, sourceDuration?: number): string[
     if (first === undefined) ids.set(n.id, i);
     else warnings.push(`narration[${i}] repeats the id "${n.id}" of narration[${first}]; translations and timeline.json cannot tell them apart`);
   });
+  const cardIds = new Map<string, number>();
+  sb.overlays.forEach((o, i) => {
+    if (o.kind !== "card" || o.id === undefined) return;
+    const first = cardIds.get(o.id);
+    if (first === undefined) cardIds.set(o.id, i);
+    else warnings.push(`overlays[${i}] repeats the card id "${o.id}" of overlays[${first}]; a variant cannot tell them apart`);
+  });
   const names = new Set(sb.screens.map((s) => s.name));
   sb.views.forEach((v, i) => {
     if (v.screen && v.screen !== "all" && !names.has(v.screen)) warnings.push(`views[${i}] names unknown screen "${v.screen}"`);
