@@ -1,6 +1,7 @@
 import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { cacheHome } from "../brand.js";
+import { NO_HISTORY_ENV } from "./index.js";
 
 /** What a running render tells the dashboard (one small file per job, gone when it ends). */
 export interface JobInfo {
@@ -28,7 +29,9 @@ export interface Job {
 const noop: Job = { update() {}, end() {} };
 
 /** Announce a running job. Never throws, and writes are synchronous so `end` also works from an exit handler. */
-export function startJob(info: Pick<JobInfo, "kind" | "path" | "quality">, dir = jobsDir()): Job {
+export function startJob(info: Pick<JobInfo, "kind" | "path" | "quality">, dir?: string): Job {
+  if (!dir && process.env[NO_HISTORY_ENV]) return noop;
+  dir ??= jobsDir();
   try {
     mkdirSync(dir, { recursive: true });
   } catch {

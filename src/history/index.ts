@@ -2,6 +2,9 @@ import { appendFile, mkdir, open } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { configDir } from "../brand.js";
 
+/** Set to anything: renders and recordings leave no history line and no live-job file in the default folders. */
+export const NO_HISTORY_ENV = "SCREENPILOT_NO_HISTORY";
+
 export type HistoryKind = "record" | "take" | "render" | "sequence";
 
 /** One finished piece of work, one line of history.jsonl. */
@@ -33,7 +36,10 @@ export function historyFile(): string {
 }
 
 /** Add one line to the history. Never throws: history is a convenience and must not fail a render. */
-export async function recordEvent(event: Omit<HistoryEvent, "v" | "at"> & { at?: string }, file = historyFile()): Promise<void> {
+export async function recordEvent(event: Omit<HistoryEvent, "v" | "at"> & { at?: string }, file?: string): Promise<void> {
+  // SCREENPILOT_NO_HISTORY=1 keeps the user's own history clean (the test suite sets it); an explicit file is always written.
+  if (!file && process.env[NO_HISTORY_ENV]) return;
+  file ??= historyFile();
   try {
     const line: HistoryEvent = { v: 1, ...event, at: event.at ?? new Date().toISOString() };
     await mkdir(dirname(file), { recursive: true });

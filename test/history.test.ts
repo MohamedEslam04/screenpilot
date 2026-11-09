@@ -1,7 +1,8 @@
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { importLibrary } from "../src/history/import.js";
 import { readHistory, recordEvent } from "../src/history/index.js";
 import { listJobs, startJob } from "../src/history/jobs.js";
@@ -38,6 +39,28 @@ describe("history file", () => {
   it("is empty for a missing file and never throws when it cannot write", async () => {
     expect(await readHistory({ file: join(dir, "none.jsonl") })).toEqual([]);
     await expect(recordEvent(ev(1), join(file, "nested", "x.jsonl"))).resolves.toBeUndefined();
+  });
+});
+
+describe("SCREENPILOT_NO_HISTORY", () => {
+  const saved = { off: process.env.SCREENPILOT_NO_HISTORY, xdg: process.env.XDG_CONFIG_HOME, cache: process.env.XDG_CACHE_HOME };
+  afterEach(() => {
+    for (const [k, v] of [["SCREENPILOT_NO_HISTORY", saved.off], ["XDG_CONFIG_HOME", saved.xdg], ["XDG_CACHE_HOME", saved.cache]] as const) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+
+  it("leaves the default history and job folders alone, but an explicit file still works", async () => {
+    process.env.SCREENPILOT_NO_HISTORY = "1";
+    process.env.XDG_CONFIG_HOME = join(dir, "cfg");
+    process.env.XDG_CACHE_HOME = join(dir, "cache");
+    await recordEvent(ev(1));
+    startJob({ kind: "render", path: "/x.json" }).end();
+    expect(existsSync(join(dir, "cfg"))).toBe(false);
+    expect(existsSync(join(dir, "cache"))).toBe(false);
+    await recordEvent(ev(2), file);
+    expect(await readHistory({ file })).toHaveLength(1);
   });
 });
 
