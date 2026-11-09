@@ -26,6 +26,7 @@ import { parseSubtitleFormats } from "./render/subtitles.js";
 import { parseWindow } from "./render/window.js";
 import { parseWorkers } from "./render/workers.js";
 import { lintStoryboard, loadStoryboard, loadStyle, StoryboardError } from "./storyboard/load.js";
+import { loadVariant } from "./storyboard/variant.js";
 import { qaStoryboard } from "./storyboard/qa.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { estimateSequence } from "./sequence/estimate.js";
@@ -546,6 +547,7 @@ program
   .option("--to <s>", "Render only up to this OUTPUT second", Number)
   .option("--formats <list>", "Render once per format, e.g. 16:9,9:16,1:1 or 1280x720 (writes <storyboard>.<format>.mp4)")
   .option("--style <file>", "Style file ({ \"theme\": {...} }) merged over the storyboard's theme; writes <storyboard>.<style>.mp4 and keeps its own build folder")
+  .option("--variant <file|name>", "Variant file (new narration text, voice, overlay files) over the storyboard; a name is looked up as variants/<name>.json next to it. Writes <storyboard>.<variant>.mp4 and keeps its own build folder")
   .option("--subtitles <list>", "Also write subtitle files from the narration: srt, vtt or srt,vtt (next to the video)")
   .option("--also <list>", "Also make files from the finished video: gif, webm, poster (a PNG frame), or a comma list")
   .option("--poster-at <s>", "Time of the poster frame, in OUTPUT seconds (default: a quarter of the way in)", Number)
@@ -554,16 +556,16 @@ program
   .option("--build-dir <dir>")
   .option("--dry-run", "Print the lines, characters and estimated USD the voice would cost, then stop: no request, no file, no cache entry")
   .addOption(new Option("--dry").hideHelp())
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; subtitles?: string; also?: string; posterAt?: number; chunks: boolean; chunkSeconds?: number; dryRun?: boolean; dry?: boolean }) => {
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; variant?: string; subtitles?: string; also?: string; posterAt?: number; chunks: boolean; chunkSeconds?: number; dryRun?: boolean; dry?: boolean }) => {
     if (o.dryRun || o.dry) {
-      const e = await estimateStoryboard(path, { style: o.style ? await loadStyle(o.style) : undefined });
+      const e = await estimateStoryboard(path, { style: o.style ? await loadStyle(o.style) : undefined, variant: o.variant ? await loadVariant(o.variant, path) : undefined });
       log(describeEstimate(e));
       print(e);
       return;
     }
-    const { subtitles, also, posterAt, style, chunks, dryRun: _dryRun, dry: _dry, ...rest } = o;
+    const { subtitles, also, posterAt, style, variant, chunks, dryRun: _dryRun, dry: _dry, ...rest } = o;
     // Commander sets chunks: true unless --no-chunks; only an explicit "off" is passed on.
-    const opts = { ...rest, chunks: chunks ? undefined : false, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt, log };
+    const opts = { ...rest, chunks: chunks ? undefined : false, style: style ? await loadStyle(style) : undefined, variant: variant ? await loadVariant(variant, path) : undefined, workers: parseWorkers(o.workers), window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt, log };
     if (o.formats) {
       if (o.buildDir) throw new Error("--build-dir cannot be combined with --formats (each format gets its own <name>.<format>.build)");
       const rs = await renderFormats(path, parseFormats(o.formats), opts);

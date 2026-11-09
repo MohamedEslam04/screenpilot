@@ -8,6 +8,7 @@ import { lintTimeline } from "../storyboard/lint.js";
 import { lintStoryboard, type LoadedStyle, loadStoryboard } from "../storyboard/load.js";
 import type { Storyboard } from "../storyboard/schema.js";
 import { buildTimeline, planNarrationHolds, type Timeline } from "../storyboard/timeline.js";
+import { type LoadedVariant, variantSuffix } from "../storyboard/variant.js";
 import { run } from "../util/exec.js";
 import { makeTimer } from "../util/timing.js";
 import { ffmpegFilterScriptFlag, probeVideo, type VideoInfo } from "../util/media.js";
@@ -58,6 +59,8 @@ export interface PrepareOptions {
   draft?: boolean;
   /** A style file (see loadStyle): its theme is merged over the storyboard's. Names the default build dir and output. */
   style?: LoadedStyle;
+  /** A variant file (see loadVariant): its narration text, voice and overlay files replace the storyboard's. Names the default build dir and output (`<name>.<variant>`, before the style). */
+  variant?: LoadedVariant;
 }
 
 export interface Prepared {
@@ -85,14 +88,14 @@ async function fileStamp(file: string): Promise<string> {
 export async function prepareBuild(storyboardPath: string, opts: PrepareOptions = {}): Promise<Prepared> {
   const log = opts.log ?? (() => {});
   const time = makeTimer(opts.timings, log);
-  const { sb, baseDir, path } = await loadStoryboard(storyboardPath, { style: opts.style });
+  const { sb, baseDir, path } = await loadStoryboard(storyboardPath, { style: opts.style, variant: opts.variant });
   if (opts.size) sb.output = { ...sb.output, ...opts.size };
   const sourcePath = resolve(baseDir, sb.source);
   if (!existsSync(sourcePath)) throw new Error(`Source video not found: ${sourcePath}`);
   const source = await time("probe", () => probeVideo(sourcePath));
   const warnings = lintStoryboard(sb, source.duration);
 
-  const buildDir = resolve(opts.buildDir ?? join(baseDir, `${basename(path, extname(path))}${styleSuffix(opts.style)}${opts.window ? partSuffix(opts.window) : ""}.build`));
+  const buildDir = resolve(opts.buildDir ?? join(baseDir, `${basename(path, extname(path))}${nameSuffix(opts)}${opts.window ? partSuffix(opts.window) : ""}.build`));
   await mkdir(join(buildDir, "voice"), { recursive: true });
 
   // 1. Voice: real durations decide the pacing.
@@ -258,6 +261,8 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
 
 /** ".<style>" in default build dir and output names, so styles never overwrite each other; nothing without a style. */
 const styleSuffix = (style?: LoadedStyle) => (style ? `.${style.name}` : "");
+/** `.<variant>.<style>` in default build dir and output names; either part only when given. */
+const nameSuffix = (o: { style?: LoadedStyle; variant?: LoadedVariant }) => `${variantSuffix(o.variant)}${styleSuffix(o.style)}`;
 
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
@@ -390,7 +395,7 @@ async function renderStoryboardNow(storyboardPath: string, opts: RenderOptions):
   const prepared = await prepareBuild(storyboardPath, { ...opts, draft });
   const output = resolve(
     opts.output ??
-      join(dirname(resolve(storyboardPath)), `${basename(storyboardPath, extname(storyboardPath))}${styleSuffix(opts.style)}${opts.window ? partSuffix(opts.window) : ""}.mp4`),
+      join(dirname(resolve(storyboardPath)), `${basename(storyboardPath, extname(storyboardPath))}${nameSuffix(opts)}${opts.window ? partSuffix(opts.window) : ""}.mp4`),
   );
   await mkdir(dirname(output), { recursive: true });
   const workers = opts.workers ?? autoWorkers();
@@ -561,8 +566,8 @@ export async function renderFormats(
 ): Promise<FormatRenderResult[]> {
   const results: FormatRenderResult[] = [];
   for (const f of formats) {
-    // Name order: <name>.<style>.<format>.part-A-B
-    const { buildDir, output } = formatPaths(storyboardPath, { ...f, label: `${opts.style ? `${opts.style.name}.` : ""}${f.label}` }, opts.window, opts.output);
+    // Name order: <name>.<variant>.<style>.<format>.part-A-B
+    const { buildDir, output } = formatPaths(storyboardPath, { ...f, label: `${nameSuffix(opts).slice(1)}${nameSuffix(opts) ? "." : ""}${f.label}` }, opts.window, opts.output);
     opts.log?.(`format ${f.label} (${f.width}x${f.height})`);
     const r = await renderStoryboard(storyboardPath, { ...opts, output, buildDir, size: { width: f.width, height: f.height } });
     results.push({ ...r, format: f.label });

@@ -32,6 +32,7 @@ import { parseSubtitleFormats } from "./render/subtitles.js";
 import { parseWindow } from "./render/window.js";
 import { parseWorkers } from "./render/workers.js";
 import { lintStoryboard, loadStoryboard, loadStyle, StoryboardError } from "./storyboard/load.js";
+import { loadVariant } from "./storyboard/variant.js";
 import { qaStoryboard } from "./storyboard/qa.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
 import { estimateSequence } from "./sequence/estimate.js";
@@ -499,6 +500,7 @@ server.registerTool(
       'Use quality "draft" while iterating (fast), "looks" for a normal render, "delivery" only for the final file. ' +
       "Pass from/to (OUTPUT seconds) to re-render only that window for a fast review; the file is named <storyboard>.part-<from>-<to>.mp4. " +
       "Pass style (a style file, JSON with only a theme) to render the same video with another look: its theme is merged over the storyboard's, the file is named <storyboard>.<style>.mp4 and each style keeps its own build folder. " +
+      "Pass variant (a file, or a name looked up as variants/<name>.json next to the storyboard) to render the same recording with another script: it rewrites narration text (by line id or position), the voice and overlay files, never the number of lines; the file is named <storyboard>.<variant>.mp4 (with a style: <storyboard>.<variant>.<style>.mp4), each variant keeps its own build folder, and voice clips are cached by text so switching back is free. " +
       'Pass formats (e.g. ["16:9","9:16","1:1"] or ["1280x720"]) to render one file per format: <storyboard>.<format>.mp4 (16x9, 9x16, 1x1), narration synthesized once. ' +
       'Pass subtitles (["srt","vtt"]) to also write caption files from the narration next to the video, and also (["gif","webm","poster"]) for an animated GIF, a WebM or a poster PNG made from the finished video (poster_at sets its time). The result lists them under files. ' +
       "A video (or from/to window) of 5 minutes or more renders in chunks of about 3 minutes cut where nothing is moving or speaking, each cached: after an edit only the chunks it touched render again, then all are joined. chunks: false renders in one piece; chunk_seconds sets the chunk length. " +
@@ -515,14 +517,15 @@ server.registerTool(
       also: z.array(z.enum(["gif", "webm", "poster"])).optional().describe("Also make these from the finished video: an animated GIF, a WebM, a poster PNG"),
       poster_at: z.number().min(0).optional().describe("Poster frame time in OUTPUT seconds (default: a quarter of the way in)"),
       style: z.string().optional().describe('Path to a style file: { "theme": {...} } only; merged over the storyboard\'s theme (css and fonts replace, motion and grade merge key by key)'),
+      variant: z.string().optional().describe('Variant file ({ voice?, narration?: { "<line id or position>": "text" } | ["text", ...], overlays?: { "<position>": { src } } }) or its name (variants/<name>.json next to the storyboard): another script and voice for the same recording'),
       workers: workersField,
       chunks: z.boolean().optional().describe("false: render in one piece even when the video is 5 minutes or longer (default: cached chunks from 5 minutes)"),
       chunk_seconds: z.number().min(10).optional().describe("Chunk length in seconds for a long render (default 180)"),
       dryRun: z.boolean().optional().describe("Only estimate the voice cost (lines, characters, USD): no request, no file, no cache entry"),
     },
   },
-  safe(async ({ storyboard, output, quality, from, to, formats, subtitles, also, poster_at, style, workers, chunks, chunk_seconds, dryRun }) => {
-    if (dryRun) return text(await estimateStoryboard(storyboard, { style: style ? await loadStyle(style) : undefined }));
+  safe(async ({ storyboard, output, quality, from, to, formats, subtitles, also, poster_at, style, variant, workers, chunks, chunk_seconds, dryRun }) => {
+    if (dryRun) return text(await estimateStoryboard(storyboard, { style: style ? await loadStyle(style) : undefined, variant: variant ? await loadVariant(variant, storyboard) : undefined }));
     requireBrief("render");
     const window = parseWindow(from, to);
     const extra = {
@@ -530,6 +533,7 @@ server.registerTool(
       also: parseExtras(also),
       posterAt: poster_at,
       style: style ? await loadStyle(style) : undefined,
+      variant: variant ? await loadVariant(variant, storyboard) : undefined,
       workers: parseWorkers(workers),
       chunks,
       chunkSeconds: chunk_seconds,
