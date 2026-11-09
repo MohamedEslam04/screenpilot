@@ -1,8 +1,8 @@
 name: Dashboard
 
-# Only the Rust logic of the dashboard (dashboard/core: serde and std, no GUI libraries), and only
-# when the dashboard changes, because Actions minutes are limited. The Slint app (dashboard/app)
-# needs fontconfig, freetype, xkbcommon, wayland and X11 development packages and is built by hand.
+# Only when the dashboard changes, because Actions minutes are limited (Windows counts double).
+# `core` is the Rust logic (serde and std, no GUI libraries). `app-*` build the Slint app (software
+# renderer, fonts embedded) on each OS and run its tests; the window itself is only run by hand.
 on:
   push:
     branches: [main]
@@ -33,3 +33,40 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy -p screenpilot-dashboard-core --all-targets -- -D warnings
       - run: cargo test -p screenpilot-dashboard-core
+
+  app-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v7
+      - name: Development packages Slint links against
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev libfreetype-dev libxkbcommon-dev libwayland-dev libx11-dev libxcb1-dev
+      - run: cargo build -p screenpilot-dashboard
+      - run: cargo test --workspace
+
+  # The Windows and macOS builds have never been run outside this job: it is the check they compile.
+  app-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v7
+      - run: cargo build -p screenpilot-dashboard
+      # The model tests are pure; the headless test needs a POSIX shell for its stand-in CLI.
+      - run: cargo test -p screenpilot-dashboard --lib
+
+  app-macos:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v7
+      - run: cargo build -p screenpilot-dashboard
+      - run: cargo test -p screenpilot-dashboard
