@@ -1,0 +1,35 @@
+name: Dashboard
+
+# Only the Rust logic of the dashboard (dashboard/core: serde and std, no GUI libraries), and only
+# when the dashboard changes, because Actions minutes are limited. The Tauri shell needs GTK and
+# WebKit and is built by hand from dashboard/src-tauri (see its README).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "dashboard/**"
+      - ".github/workflows/dashboard.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "dashboard/**"
+      - ".github/workflows/dashboard.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: dashboard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup component add clippy rustfmt
+      - run: cargo fmt --all --check
+      - run: cargo clippy -p screenpilot-dashboard-core --all-targets -- -D warnings
+      - run: cargo test -p screenpilot-dashboard-core
