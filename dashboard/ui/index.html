@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>ScreenPilot</title>
+<link rel="icon" href="data:,">
+<script src="theme.js"></script>
+<link rel="stylesheet" href="style.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="mark" aria-hidden="true"></span>ScreenPilot</div>
+  <div class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="t-library" aria-controls="p-library" aria-selected="true" data-tab="library">Library</button>
+    <button role="tab" id="t-live" aria-controls="p-live" aria-selected="false" tabindex="-1" data-tab="live">Live<span class="badge" id="live-badge" hidden>0</span></button>
+    <button role="tab" id="t-voices" aria-controls="p-voices" aria-selected="false" tabindex="-1" data-tab="voices">Voices</button>
+    <button role="tab" id="t-stats" aria-controls="p-stats" aria-selected="false" tabindex="-1" data-tab="stats">Stats</button>
+  </div>
+  <button class="icon-btn" id="theme" type="button" aria-label="Switch color theme" title="Switch color theme"><span class="half" aria-hidden="true"></span></button>
+</header>
+
+<main>
+  <section id="p-library" class="lib" role="tabpanel" aria-labelledby="t-library">
+    <div class="lib-main">
+      <div class="bar">
+        <input id="q" type="search" placeholder="Search loaded rows ( / )" aria-label="Search loaded rows" autocomplete="off" spellcheck="false">
+        <div class="chips" id="chips" role="group" aria-label="Filter by kind">
+          <button type="button" class="chip-btn" data-kind="record" aria-pressed="false">Records</button>
+          <button type="button" class="chip-btn" data-kind="take" aria-pressed="false">Takes</button>
+          <button type="button" class="chip-btn" data-kind="render" aria-pressed="false">Renders</button>
+          <button type="button" class="chip-btn" data-kind="sequence" aria-pressed="false">Sequences</button>
+          <button type="button" class="chip-btn" data-failed aria-pressed="false">Failed</button>
+        </div>
+      </div>
+      <div id="list" role="listbox" tabindex="0" aria-label="History" aria-activedescendant="">
+        <div id="sp"></div>
+      </div>
+      <div id="empty" class="empty" hidden></div>
+      <div class="foot"><span id="count" aria-live="polite"></span><button type="button" id="more" class="link" hidden>Load older</button></div>
+    </div>
+    <aside id="detail" hidden aria-label="Details"></aside>
+  </section>
+
+  <section id="p-live" class="pane" role="tabpanel" aria-labelledby="t-live" hidden></section>
+  <section id="p-voices" class="pane" role="tabpanel" aria-labelledby="t-voices" hidden></section>
+  <section id="p-stats" class="pane" role="tabpanel" aria-labelledby="t-stats" hidden></section>
+</main>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="debug" hidden></div>
+</body>
+</html>
