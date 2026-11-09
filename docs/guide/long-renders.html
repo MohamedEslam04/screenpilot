@@ -49,6 +49,10 @@ screenpilot resume all.json    # later: carries on with the same options</code><
 <li>A pause request that is older than the render's start is ignored, so an old <code>.pause</code> file cannot stop a new render.</li>
 </ul>
 <p>Over MCP, the <code>pause</code> tool takes <code>sequence</code> or <code>storyboard</code> (or neither, to pause every render running now) and <code>build_dir</code>. The <code>resume</code> tool takes <code>sequence</code> or <code>storyboard</code> plus <code>workers</code>, <code>min_free_mem</code> and <code>mem_timeout</code>. Without arguments, <code>resume</code> keeps its older job: carrying on after someone moved the mouse while the agent drove the desktop.</p>
+<h3 id="pause-joins">Pause a joins render<a class="a" href="#pause-joins" aria-label="Link to this section">#</a></h3>
+<p>A render made with <code>screenpilot sequence --joins ...</code> (MCP <code>sequence_render</code> with <code>joins</code>) has no sequence file to name. Give <code>pause</code> and <code>resume</code> the path <code>&lt;out-dir&gt;/joins</code>, where <code>&lt;out-dir&gt;</code> is the <code>--out-dir</code> (or <code>out_dir</code>) you used, or the default folder that holds all the groups. That path is only a name, there is no such file. The render stops at the next part or chunk boundary, <code>resume</code> carries on with the same list, transition and options, and every finished group is reused. The build folder is <code>&lt;out-dir&gt;/joins.build</code>.</p>
+<pre><code class="language-sh">screenpilot pause videos/joins
+screenpilot resume videos/joins</code></pre>
 <div class="note">A pause stops at a boundary, not instantly. A single long part with no chunks finishes completely first. Parts, or chunks inside a video of 5 minutes or more, are what give a render its pause points.</div>
 
 <h2 id="memory">The memory guard<a class="a" href="#memory" aria-label="Link to this section">#</a></h2>

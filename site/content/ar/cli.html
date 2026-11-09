@@ -333,7 +333,7 @@ screenpilot secret status</code></pre>
 <p>تجمع هذه الأوامر عدة storyboards، لكل منها تسجيله، في فيديو واحد. الاستخدام الشائع هو إدخال مقطع ميزة جديدة في منتصف عرض موجود دون إعادة تسجيله. صفحة <a href="@guide/sequence.html">دمج التسجيلات</a> تشرح صيغة الملف والمدى والانتقالات بمثال كامل.</p>
 
 <h3 id="sequence">sequence</h3>
-<p>الأمر <code>screenpilot sequence &lt;sequence.json&gt;</code> يصيّر كل جزء ثم يجمعها في ملف MP4 واحد. الأجزاء التي لم تتغير يُعاد استخدامها من التشغيل السابق. يطبع مسار الملف والمدة وطريقة جمع الأجزاء وكل جزء وملف <code>timeline</code> للفيديو المجموع. يُكتب الفيديو باسم <code>&lt;name&gt;.partial.mp4</code> ويُعاد تسميته عند اكتماله.</p>
+<p>الأمر <code>screenpilot sequence &lt;sequence.json&gt;</code> (أو <code>screenpilot sequence --joins ...</code>، انظر أدناه) يصيّر كل جزء ثم يجمعها في ملف MP4 واحد. الأجزاء التي لم تتغير يُعاد استخدامها من التشغيل السابق. يطبع مسار الملف والمدة وطريقة جمع الأجزاء وكل جزء وملف <code>timeline</code> للفيديو المجموع. يُكتب الفيديو باسم <code>&lt;name&gt;.partial.mp4</code> ويُعاد تسميته عند اكتماله.</p>
 <table>
 <thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
 <tbody>
@@ -350,7 +350,10 @@ screenpilot secret status</code></pre>
 <tr><td><code>--subtitle-lang &lt;list&gt;</code>, <code>--subtitle-chars &lt;n&gt;</code></td><td>ملف ترجمة لكل لغة، كما في <a href="@guide/cli.html#render">render</a>. ملف الترجمة <code>{"&lt;chapter&gt;": ["line", ...]}</code> أو <code>{"&lt;id&gt;": "line"}</code>، والفصل هو اسم مجلد storyboard الجزء.</td></tr>
 <tr><td><code>--dry-run</code></td><td>يطبع عدد الأسطر والأحرف والكلفة التقديرية بالدولار التي ستكلّفها الأصوات، جزءًا جزءًا، ثم يتوقف: بلا طلب ولا ملف ولا مجلد بناء.</td></tr>
 <tr><td><code>--min-free-mem &lt;MB&gt;</code>, <code>--mem-timeout &lt;s&gt;</code></td><td>حارس الذاكرة قبل كل جزء أو chunk. انظر <a href="@guide/long-renders.html#memory">التصيير الطويل</a>.</td></tr>
-<tr><td><code>--build-dir &lt;dir&gt;</code></td><td>المجلد الذي تُبنى فيه الأجزاء. الافتراضي <code>&lt;sequence&gt;.build</code>.</td></tr>
+<tr><td><code>--build-dir &lt;dir&gt;</code></td><td>المجلد الذي تُبنى فيه الأجزاء. الافتراضي <code>&lt;sequence&gt;.build</code> (ومع <code>--joins</code>: <code>&lt;out-dir&gt;/joins.build</code>).</td></tr>
+<tr><td><code>--joins &lt;list&gt;</code></td><td>عدة فيديوهات مجموعة في استدعاء واحد، بدل <code>sequence.json</code>: <code>setup=g1.json+g2.json,operations=g3.json,full=setup+operations</code>. كل مدخل اسم ثم ملفات sequence (مجموعات) أو أسماء مداخل أخرى، مفصولة بعلامة <code>+</code>. تُصيَّر كل مجموعة مرة واحدة وتعيد استخدامها كل فيديو يضمها. يكتب <code>&lt;out-dir&gt;/&lt;name&gt;.mp4</code> و<code>&lt;name&gt;.timeline.json</code> (وملفات الترجمة مع <code>--subtitles</code> أو <code>--subtitle-lang</code>). ويُرفض <code>-o</code>. انظر <a href="@guide/sequence.html#joins">عدة فيديوهات من المجموعات نفسها</a>.</td></tr>
+<tr><td><code>--join-transition &lt;type[:s]&gt;</code></td><td>مع <code>--joins</code>: كيف تدخل كل مجموعة بعد التي قبلها: <code>cut</code> (الافتراضي) أو <code>crossfade</code> أو <code>fade-black</code> أو <code>wipe-left</code> أو <code>wipe-right</code> أو <code>slide-left</code> أو <code>slide-right</code>. الثواني الافتراضية 0.5 وبحد أقصى نصف أي من المجموعتين. مثال: <code>fade-black:0.6</code>.</td></tr>
+<tr><td><code>--out-dir &lt;dir&gt;</code></td><td>مع <code>--joins</code>: مجلد الفيديوهات المجموعة. الافتراضي: المجلد الذي يضم كل المجموعات. الأمران <code>screenpilot pause</code> و<code>resume</code> يأخذان <code>&lt;out-dir&gt;/joins</code> لهذا التصيير.</td></tr>
 </tbody>
 </table>
 

@@ -49,6 +49,10 @@ screenpilot resume all.json    # لاحقًا: يتابع بالخيارات ن�
 <li>طلب إيقاف أقدم من بدء التصيير يُتجاهل، فلا يستطيع ملف <code>.pause</code> قديم إيقاف تصيير جديد.</li>
 </ul>
 <p>عبر MCP تقبل أداة <code>pause</code> الحقل <code>sequence</code> أو <code>storyboard</code> (أو لا شيء منهما لإيقاف كل تصيير جارٍ الآن) و<code>build_dir</code>. وتقبل أداة <code>resume</code> الحقل <code>sequence</code> أو <code>storyboard</code> مع <code>workers</code> و<code>min_free_mem</code> و<code>mem_timeout</code>. وبلا مدخلات تبقى <code>resume</code> على عملها الأقدم: المتابعة بعد أن حرّك أحدهم الفأرة أثناء قيادة الوكيل لسطح المكتب.</p>
+<h3 id="pause-joins">إيقاف تصيير joins مؤقتًا<a class="a" href="#pause-joins" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>التصيير الذي بدأ بـ <code>screenpilot sequence --joins ...</code> (أو أداة MCP باسم <code>sequence_render</code> مع <code>joins</code>) ليس له ملف sequence تذكره. أعطِ <code>pause</code> و<code>resume</code> المسار <code>&lt;out-dir&gt;/joins</code>، حيث <code>&lt;out-dir&gt;</code> هو قيمة <code>--out-dir</code> (أو <code>out_dir</code>) التي استخدمتها، أو المجلد الافتراضي الذي يضم كل المجموعات. هذا المسار مجرد اسم، ولا يوجد ملف بهذا الاسم. يتوقف التصيير عند حد الجزء أو الـ chunk التالي، ويتابع <code>resume</code> بالقائمة والانتقال والخيارات نفسها، وتُعاد كل مجموعة انتهت. ومجلد البناء هو <code>&lt;out-dir&gt;/joins.build</code>.</p>
+<pre><code class="language-sh">screenpilot pause videos/joins
+screenpilot resume videos/joins</code></pre>
 <div class="note">الإيقاف المؤقت يتوقف عند حد، لا لحظيًا. الجزء الطويل الواحد بلا chunks يكتمل كله أولًا. والأجزاء، أو الـ chunks داخل فيديو مدته 5 دقائق أو أكثر، هي التي تعطي التصيير نقاط إيقافه.</div>
 
 <h2 id="memory">حارس الذاكرة<a class="a" href="#memory" aria-label="رابط إلى هذا القسم">#</a></h2>
