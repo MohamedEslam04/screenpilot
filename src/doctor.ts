@@ -20,6 +20,7 @@ import { run } from "./util/exec.js";
 import { loadVoiceConfig } from "./voice/config.js";
 import { getProvider } from "./voice/index.js";
 import { defaultLaunch, LOCAL_PYTHON_ENV, LocalWorker } from "./voice/local.js";
+import { findSecret, secretsFile } from "./voice/secrets.js";
 
 // Environment self-check: every check is isolated and never throws.
 
@@ -287,6 +288,10 @@ export async function doctor(opts: { input?: boolean } = {}): Promise<DoctorRepo
     const voices = await withTimeout(getProvider("edge").listVoices(), 10_000, "Edge TTS");
     return { ok: voices.length > 0, detail: `${voices.length} voices` };
   });
+  // Optional cloud voices: only whether a key is stored, never a request (and never the key itself).
+  for (const [label, name] of [["elevenlabs voice", "ELEVENLABS_API_KEY"], ["gemini voice", "GEMINI_API_KEY"]] as const) {
+    await add(label, async () => (findSecret(name) ? { ok: true, detail: `${name} is set` } : skip(`optional, ${name} not set (env var or ${secretsFile()})`)));
+  }
   await add("local voice", async () => {
     if (!process.env[LOCAL_PYTHON_ENV] && !loadVoiceConfig().local.python) return skip(`optional, not set up: run "${APP} voice-setup voicetut"`);
     const worker = new LocalWorker(defaultLaunch());
