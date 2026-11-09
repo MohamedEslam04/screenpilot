@@ -526,10 +526,10 @@ server.registerTool(
     };
     if (formats?.length) {
       const rs = await renderFormats(storyboard, parseFormats(formats.join(",")), { output, quality, window, log, ...extra });
-      return text(rs.map((r) => ({ format: r.format, output: r.output, files: r.files, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings })));
+      return text(rs.map((r) => ({ format: r.format, output: r.output, files: r.files, timeline: r.timelineFile, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings })));
     }
     const r = await renderStoryboard(storyboard, { output, quality, window, log, ...extra });
-    return text({ output: r.output, files: r.files, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
+    return text({ output: r.output, files: r.files, timeline: r.timelineFile, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
   }),
 );
 
