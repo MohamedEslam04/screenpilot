@@ -19,7 +19,7 @@ const LANGS = {
 };
 const GROUPS = [
   { id: "start", pages: ["getting-started", "install"] },
-  { id: "use", pages: ["cli", "tools", "storyboard", "voices", "dashboard", "sequence", "agent-drive"] },
+  { id: "use", pages: ["cli", "tools", "storyboard", "voices", "dashboard", "sequence", "subtitles", "variants", "long-renders", "agent-drive"] },
   { id: "ref", pages: ["safety", "platforms", "faq"] },
 ];
 const UI = {

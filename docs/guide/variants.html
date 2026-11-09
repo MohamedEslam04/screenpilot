@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-copy="Copy" data-copied="Copied">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Script variants and slot-fit · ScreenPilot</title>
+<meta name="description" content="Make the same recording with another script or voice (a dialect, a language) from a variants file, and check that every narration line fits the room it has.">
+<link rel="canonical" href="https://mohamedeslam04.github.io/screenpilot/guide/variants.html">
+<link rel="alternate" hreflang="en" href="https://mohamedeslam04.github.io/screenpilot/guide/variants.html">
+<link rel="alternate" hreflang="ar" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/variants.html">
+<link rel="alternate" hreflang="x-default" href="https://mohamedeslam04.github.io/screenpilot/guide/variants.html">
+<meta property="og:type" content="article"><meta property="og:title" content="Script variants and slot-fit · ScreenPilot"><meta property="og:description" content="Make the same recording with another script or voice (a dialect, a language) from a variants file, and check that every narration line fits the room it has.">
+<meta property="og:url" content="https://mohamedeslam04.github.io/screenpilot/guide/variants.html"><meta property="og:image" content="https://mohamedeslam04.github.io/screenpilot/assets/og.png"><meta property="og:site_name" content="ScreenPilot"><meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b132b">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("sp-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+  <a class="brand" href="../index.html" aria-label="ScreenPilot"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a>
+  <nav class="nav" aria-label="Main"><a href="../guide/index.html" aria-current=page>Docs</a><a href="../guide/install.html" class="hide-s">Install</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../ar/guide/variants.html" lang="ar" hreflang="ar">العربية</a><button class="theme" type="button" aria-label="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
+</div></header>
+<main id="main"><div class="wrap docs">
+  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="voices.html">Voices</a><a href="dashboard.html">Dashboard</a><a href="sequence.html">Combine recordings</a><a href="subtitles.html">Subtitles and timeline</a><a href="variants.html" aria-current=page>Script variants and slot-fit</a><a href="long-renders.html">Long renders</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
+  <article class="doc"><h1>Script variants and slot-fit</h1><p class="summary">Make the same recording with another script or voice (a dialect, a language) from a variants file, and check that every narration line fits the room it has.</p><p>Sometimes one recording needs several scripts: a Saudi and an Egyptian version, English and Arabic, a short and a long wording. A <strong>variant</strong> is a small file that rewrites the narration (and the voice) of a storyboard without touching anything else. This page also covers <strong>slot-fit</strong>, which tells you when a line is too long for the time it has. For another <em>look</em> (colours, fonts) instead of another script, see <a href="../guide/storyboard.html#variants">Variants: the same video with another look</a>.</p>
+
+<h2 id="variant-file">The variant file<a class="a" href="#variant-file" aria-label="Link to this section">#</a></h2>
+<p>Put <code>variants/&lt;name&gt;.json</code> next to the storyboard:</p>
+<pre><code class="language-json">{
+  "voice": { "name": "ar-SA-HamedNeural" },
+  "narration": { "open": "هلا، نفتح الإعدادات.", "save": "ونحفظ." },
+  "overlays": { "0": { "src": "assets/logo-sa.png" } }
+}</code></pre>
+<table>
+<thead><tr><th>Field</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>voice</code></td><td>Voice settings to replace (<code>provider</code>, <code>name</code>, <code>rate</code>, <code>gap</code>, <code>subtitles</code>, <code>volume</code>, <code>fit</code>). It is merged key by key: what you leave out stays as the storyboard says.</td></tr>
+<tr><td><code>narration</code></td><td>New text. Either an object <code>{ "&lt;line id&gt;": "text" }</code> that names only the lines it changes, or an array with the text of every line in order. A line's id is its <code>id</code>, else its position counted from 0.</td></tr>
+<tr><td><code>overlays</code></td><td>Swaps the file of an overlay, keyed by its position in <code>overlays</code> counted from 0: <code>{ "0": { "src": "file" } }</code>. Everything else about the overlay stays.</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>A variant only rewrites.</strong> Lines are timed to the recording, so a variant cannot add or remove one. If it names a line that does not exist, or an array has a different number of lines than the storyboard, loading fails and the error shows both counts.</li>
+<li>Any other key in the file is an error. Every other field of the storyboard stays exactly as it was, and a storyboard rendered without a variant is unchanged.</li>
+<li>Cards drawn from data cannot be changed by a variant yet.</li>
+<li>Paths in the file are relative to the storyboard, as everywhere else.</li>
+</ul>
+
+<h2 id="render-variant">Render a variant<a class="a" href="#render-variant" aria-label="Link to this section">#</a></h2>
+<pre><code class="language-sh">screenpilot render storyboard.json --variant saudi
+screenpilot render storyboard.json --variant variants/saudi.json -q draft</code></pre>
+<p><code>--variant</code> takes a name (looked up as <code>variants/&lt;name&gt;.json</code> next to the storyboard) or a file path (a value with a folder or <code>.json</code> is a file). Over MCP, pass <code>variant</code> to <code>render</code>.</p>
+<ul>
+<li>The output is <code>&lt;name&gt;.&lt;variant&gt;.mp4</code> (the variant name is the file name reduced to <code>a-z0-9-</code>), built in <code>&lt;name&gt;.&lt;variant&gt;.build</code>. With <code>--style</code> it is <code>&lt;name&gt;.&lt;variant&gt;.&lt;style&gt;.mp4</code>; then comes the format (<code>.9x16</code>) and the window (<code>.part-12-20</code>).</li>
+<li>The voice cache is shared and keyed by text and voice. Rendering variant A, then B, then A again, renders A from the cache.</li>
+<li><code>--dry-run</code> prices the variant's text. See <a href="../guide/voices.html#cost">What cloud voices cost</a>.</li>
+</ul>
+
+<h2 id="sequence-variant">Variants in a sequence<a class="a" href="#sequence-variant" aria-label="Link to this section">#</a></h2>
+<pre><code class="language-sh">screenpilot sequence all.json --variant saudi
+screenpilot sequence all.json --variant saudi --variant-dir shared-variants
+screenpilot sequence-validate all.json --variant saudi</code></pre>
+<p>Each storyboard part takes its own <code>&lt;part folder&gt;/variants/saudi.json</code>. A part that has none falls back to <code>&lt;variant-dir&gt;/saudi.json</code>. A part with neither renders as written, and the result warns about it. A variant that no part has fails. Over MCP: <code>variant</code> and <code>variant_dir</code> on <code>sequence_render</code> and <code>sequence_validate</code>.</p>
+<ul>
+<li>The output is <code>&lt;sequence&gt;.&lt;variant&gt;.mp4</code>.</li>
+<li>A part that has the variant gets its own folder and cache key for it (the name and the hash of the file). Parts without it, and finished <code>{video}</code> parts, are shared between variants, so a second variant renders only the parts that differ.</li>
+<li><code>sequence-validate --variant</code> checks the sequence with the variant applied, so a wrong line count shows before a render.</li>
+</ul>
+
+<h2 id="slot-fit">Slot-fit: does each line fit its slot?<a class="a" href="#slot-fit" aria-label="Link to this section">#</a></h2>
+<p>The <strong>slot</strong> of a narration line is the time from its <code>at</code> to the next line's <code>at</code>, minus <code>voice.gap</code>. The last line has no slot. When the voice clip is longer than the slot, the render freezes the video to make room. That works, but a freeze in the middle of an action looks odd. Slot-fit tells you which lines cause it.</p>
+<p>Once the voice clips exist, a render reports them in <code>fit</code>: one entry <code>{id, raw, slot, needed}</code> for every line whose clip is longer than its slot. <code>raw</code> is the clip's length in seconds, <code>slot</code> is the room in seconds, and <code>needed</code> is the speed-up that would make it fit (1.25 means 25% faster). A line above the cap also gives a <code>[narration-fit]</code> warning.</p>
+<table>
+<thead><tr><th>Flag</th><th>MCP input</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--fit-max &lt;x&gt;</code></td><td><code>fit_max</code></td><td>The cap, as a speed-up factor. Default <code>voice.fit.max</code>, else 1.18, the fastest that still sounds natural.</td></tr>
+<tr><td><code>--fit</code></td><td><code>fit</code></td><td>Speed up clips that overrun, up to the cap (ffmpeg <code>atempo</code>). The sped-up clip is cached next to the raw one (<code>&lt;clip&gt;.x1.180.mp3</code>) and is always made from the raw clip, so a re-render never stretches twice. Also set by <code>voice.fit.auto</code> in the storyboard.</td></tr>
+<tr><td><code>--strict-fit</code></td><td><code>strict_fit</code></td><td>Fail instead of freezing when a line needs more than the cap.</td></tr>
+</tbody>
+</table>
+<p>The flags work on <code>render</code> and <code>sequence</code>. Ready-made audio (<code>narration[].audio</code>) is reported but never stretched. If a line still overruns after the speed-up, the warning says so, and the fix is shorter text.</p>
+<pre><code class="language-json">"voice": { "name": "en-US-AndrewNeural", "fit": { "max": 1.15, "auto": true } }</code></pre>
+<p><code>screenpilot sequence-validate --fit</code> (MCP <code>sequence_validate</code> <code>fit: true</code>, <code>fit_max</code>) checks the clips that are already in the voice cache without making any, and counts the lines that have none. Turn the warning off with <code>lint.off: ["narration-fit"]</code>.</p>
+<div class="note">Variants and slot-fit work together: a longer wording in another language is the usual reason a line stops fitting. Render the variant with <code>--fit</code> or read the <code>fit</code> list and shorten the text.</div>
+<nav class="pager" aria-label="Pager"><a href="subtitles.html" rel="prev"><small>Previous</small>Subtitles and timeline</a><a href="long-renders.html" rel="next"><small>Next</small>Long renders</a></nav></article>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#variant-file">The variant file</a><a href="#render-variant">Render a variant</a><a href="#sequence-variant">Variants in a sequence</a><a href="#slot-fit">Slot-fit: does each line fit its slot?</a></aside>
+</div></main>
+<footer class="foot"><div class="wrap">
+  <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>
+  <div><h3>Learn</h3><ul><li><a href="../guide/getting-started.html">Getting started</a></li><li><a href="../guide/tools.html">MCP tools</a></li><li><a href="../guide/storyboard.html">Storyboard reference</a></li><li><a href="../guide/faq.html">FAQ and troubleshooting</a></li></ul></div>
+  <div><h3>Project</h3><ul><li><a href="https://github.com/MohamedEslam04/screenpilot">GitHub</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/releases">Releases</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/issues">Report an issue</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/CONTRIBUTING.md">Contributing</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/SECURITY.md">Security</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/LICENSE">License</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/THIRD_PARTY_NOTICES.md">Third-party notices</a></li></ul></div>
+</div></footer>
+<script src="../assets/app.js" defer></script>
+</body></html>

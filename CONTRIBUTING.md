@@ -157,11 +157,21 @@ More render options:
 screenpilot render sessions/<ts>/storyboard.json -q draft --from 12 --to 20   # review only OUTPUT seconds 12-20 (writes storyboard.part-12-20.mp4)
 screenpilot render sessions/<ts>/storyboard.json --formats 16:9,9:16,1:1      # one file per format: storyboard.16x9.mp4, .9x16.mp4, .1x1.mp4
 screenpilot sequence sequence.json                                            # join several storyboards into one video (see Combine recordings)
+screenpilot sequence --joins setup=g1.json+g2.json,full=setup+g3.json --join-transition fade-black:0.6 --out-dir videos   # several joined videos from shared groups, each group rendered once (pause/resume take videos/joins)
 screenpilot render sessions/<ts>/storyboard.json --style dark.json            # same video, another look: a style file with only a theme (also on sequence); writes storyboard.dark.mp4 with its own build folder
 screenpilot render sessions/<ts>/storyboard.json --workers max                # all cores but two (idle desktop); SCREENPILOT_WORKERS=auto|max|N sets the default
+screenpilot render sessions/<ts>/storyboard.json --variant saudi              # same recording, another script: variants/saudi.json (see Script variants); writes storyboard.saudi.mp4
+screenpilot render sessions/<ts>/storyboard.json --fit                        # speed up narration clips that overrun their slot (--strict-fit fails instead, --fit-max sets the cap, default 1.18)
+screenpilot render sessions/<ts>/storyboard.json --dry-run                    # lines, characters and estimated USD of the voice; nothing sent or written
+screenpilot render sessions/<ts>/storyboard.json --subtitle-lang ar,en=en.json  # one caption file per language: storyboard.ar.srt|vtt ...
+screenpilot subs storyboard.mp4 --lang ar,en=en.json --mux                    # captions (and soft tracks) for a rendered video from its timeline.json, no render
+screenpilot pause sequence.json                                               # a running render stops after the part (or chunk) in progress; screenpilot resume sequence.json carries on
+screenpilot spend --since 2026-11-01                                          # what the cloud voices cost so far (spend.jsonl in the config folder)
 ```
 
 A video (or `--from/--to` window) of 5 minutes or more renders in cached chunks of about 3 minutes, cut where nothing is in progress, so an edit re-renders only the chunks it touched; `--no-chunks` turns it off and `--chunk-seconds <n>` sets the length.
+
+Every render writes `<video>.timeline.json` (when each narration line and card is on screen, output seconds) and the video appears as `<name>.partial.mp4` until complete. Abort (Ctrl+C, MCP `abort`) kills the whole render tree. `pause` / `resume` stop and carry on at a part or chunk boundary (`.pause` and `.paused.json` in the build folder), and before each part or chunk a render waits for `--min-free-mem` MB (default 1500, `0` = off; `SCREENPILOT_MIN_FREE_MEM`) up to `--mem-timeout` s (default 300); results carry `peakRssMB`.
 
 `--formats` takes `16:9`, `9:16`, `1:1` or any `WxH` (even sizes), comma separated; `-o` then sets the base name and `--build-dir` is not allowed. Narration is synthesized once for all formats. A portrait or square export crops window-framed views from a landscape recording (they fill the frame); monitor views show the whole monitor.
 
@@ -213,19 +223,21 @@ Copy or symlink `skill/` to `~/.claude/skills/screenpilot` to give Claude Code t
 | `storyboard_schema` | JSON Schema of the storyboard |
 | `storyboard_init` | Starter storyboard for a session or video (`suggest` pre-fills cuts and zooms; `voice` and `provider` set the voice) |
 | `storyboard_validate` | Schema errors and lint warnings |
-| `voices` | List voices (`provider`: `edge` default, `local`, `command`; `lang` filters) |
+| `voices` | List voices (`provider`: `edge` default, `local`, `command`, `elevenlabs`, `gemini`; `lang` filters). A second block has the running cloud-voice spend total |
 | `build` | Voice + cut + HyperFrames project, no render |
-| `render` | Render to MP4 (`draft` / `looks` / `delivery`); `from`/`to` (OUTPUT seconds) render only that window for a fast review; `formats` (`["16:9","9:16"]`, `"WxH"`) writes one file per format |
+| `render` | Render to MP4 (`draft` / `looks` / `delivery`); `from`/`to` (OUTPUT seconds) render only that window for a fast review; `formats` (`["16:9","9:16"]`, `"WxH"`) writes one file per format; `variant` (script variant), `fit` / `strict_fit` / `fit_max` (slot-fit), `subtitles` / `languages` / `subtitle_chars` (caption files), `dryRun` (voice cost estimate), `min_free_mem` / `mem_timeout`; the result has `timeline`, `fit` and `peakRssMB` |
 | `preview` | Open HyperFrames Studio |
-| `sequence_schema`, `sequence_validate`, `sequence_render` | Join several storyboards (each with its own recording) into one video: schema of `sequence.json`, check it and every storyboard it uses, render it |
-| `check_output` | Frames of the rendered video for review |
+| `sequence_schema`, `sequence_validate`, `sequence_render` | Join several storyboards (each with its own recording) into one video: schema of `sequence.json`, check it (`variant`, `variant_dir`, `fit`) and every storyboard it uses, render it (also takes `variant`, `variant_dir`, `fit`, `subtitles`, `languages`, `dryRun`, `min_free_mem`, ...; `joins`, `join` and `out_dir` instead of `sequence` write several joined videos from shared groups) |
+| `check_output` | Frames of the rendered video for review; also the subtitle sync check when `<video>.timeline.json` exists (`sync: false` skips it) |
+| `subs` | Caption files (`languages`, `formats`, `subtitle_chars`, `join`, `transition`) and optional soft tracks (`mux`) for a rendered video, from its `timeline.json`, no render |
+| `pause` | Pause a running `render` / `sequence_render` (`sequence` or `storyboard`, or neither for every render running now) after the part or chunk in progress |
 | `screenshot`, `windows` | See the desktop: per-monitor images (optional 0..1 grid) and the KWin window list |
 | `focus_window`, `pointer_move`, `click`, `drag`, `scroll`, `key`, `type_text` | Drive the real mouse and keyboard (coordinates normalized 0..1 per monitor) |
 | `browser_open`, `web_locate` | Clean demo browser; find an element's screen rectangle by selector |
 | `a11y_tree`, `a11y_find` | Read a native app's UI through the accessibility tree (role, name, states, rectangle); find controls by role and name for `{a11y}` targets |
 | `wait_for`, `page_text` | Check an action worked: wait for a window, a browser element or a native control (`a11y`); read the demo browser's URL, title and visible text |
-| `take_schema`, `perform`, `abort` | Schema of `take.json`; perform a take (`dryRun` to rehearse); stop driving |
-| `resume` | Carry on after someone moved the pointer and stopped the action (the driver stays open) |
+| `take_schema`, `perform`, `abort` | Schema of `take.json`; perform a take (`dryRun` to rehearse); stop driving and any running render with its whole process tree |
+| `resume` | Without arguments: carry on after someone moved the pointer and stopped the action (the driver stays open). With `sequence` or `storyboard`: carry on a render paused with `pause`, reusing every finished part and chunk |
 
 `record_start` also takes `screens` (`"all"` or monitor names) and `map` (OBS source name to monitor name). Drive tools open one remote-control session on first use and keep it for the life of the server.
 
@@ -344,7 +356,9 @@ screenpilot sequence sequence.json -q draft   # writes sequence.mp4 (-o to chang
 - `intro` plays only on the first part and `outro` only on the last; the others are ignored.
 - Each part is rendered like a storyboard and cached in `sequence.build/`; unchanged parts are reused on the next run. The join is a stream copy when all parts are cut together with the same encoding, otherwise a re-encode.
 
-`screenpilot sequence-schema` (MCP `sequence_schema`) prints the JSON Schema; `sequence_validate` and `sequence_render` are the MCP equivalents of the two commands above (`sequence_render` takes `sequence`, `output`, `quality`).
+`screenpilot sequence-schema` (MCP `sequence_schema`) prints the JSON Schema; `sequence_validate` and `sequence_render` are the MCP equivalents of the two commands above (`sequence_render` takes `sequence`, `output`, `quality`, `style`, `variant`, `variant_dir`, `fit`, `subtitles`, `languages`, `dryRun`, `workers`, `min_free_mem`, `mem_timeout` and more).
+
+`sequence --variant <name> [--variant-dir <dir>]` gives each storyboard part its own `<part folder>/variants/<name>.json` (falling back to `<dir>/<name>.json`; a part with neither renders as written and warns) and writes `<sequence>.<name>.mp4`; parts without the variant and `{video}` parts are shared between variants. `sequence --joins name=a.json+b.json,full=name+c.json [--join-transition type[:s]] [--out-dir dir]` (MCP `sequence_render` with `joins`, `join: {transition, dur}`, `out_dir`; code in `src/sequence/joins.ts`) renders every group (a sequence file) once and joins them into several videos `<out-dir>/<name>[.<variant>][.<style>].mp4`, each with its own timeline and caption files; `-o` is refused, the build folder is `<out-dir>/joins.build`, and `pause`/`resume` take `<out-dir>/joins`. A sequence also writes `<sequence>.timeline.json` for the joined video (each part keeps `part.timeline.json`), `--subtitle-lang` / `--subtitles` write caption files from it, and `--dry-run` prices the voices part by part.
 
 ## Storyboard reference
 
@@ -367,7 +381,7 @@ Top level
 | `narration` | Narration[] | [] | |
 | `intro`, `outro` | Card | | Title cards |
 | `cards` | ChapterCard[] | [] | Chapter cards in the middle of the video |
-| `overlays` | Overlay[] | [] | Images, video or logos on top of the output frame |
+| `overlays` | Overlay[] | [] | Images, video or logos on top of the output frame, or `kind: "card"` cards drawn from data |
 | `music` | Music | | Background music |
 | `output`, `theme`, `voice` | objects | defaults | |
 
@@ -380,18 +394,29 @@ Items
 | Zoom | `at` (fully in), `dur`, `x`, `y`, `scale` 1..4 (1.8) |
 | Caption | `at`, `dur` (3), `text`, `position` bottom/top/center (bottom), `style` pill/title/callout (pill), `x`,`y` (callout anchor) |
 | Highlight | `at`, `dur` (2), `x`, `y`, `w`, `h`, `label?` |
-| Narration | `at`, `text`, `voice?`, `caption?` |
+| Narration | `id?` (unique; default its position from 0; used by `timeline.json`, translations and variants), `at`, `text`, `voice?`, `caption?` |
 | Card | `title`, `subtitle?`, `dur` (3) |
 | ChapterCard | `at` (source time; the video freezes there), `dur` (2.5), `title`, `subtitle?`. A full card with fades; dropped with a warning if `at` is in a cut region |
+| Card overlay | `kind: "card"`, `template` list / flow / number / quote, `data` (list: `kicker?`, `title?`, `items` 1-12 of `{heading, text?}`, `footer?`; flow: `steps` 2-8 of `{label, text?}`; number: `value`, `label?`; quote: `text`, `author?`, `role?`; unknown keys fail), `at`, `dur`, `id?`, `lang?`, `motion?`. Drawn at render time over the whole frame (the video keeps playing); right to left comes from the text (`src/render/cards/`). Not in `timeline.json`; not variant-able yet |
 | Overlay | `src` (image or video), `x`, `y`, `w`, `h` (0..1 of the OUTPUT frame), `at?`, `dur?` (source time; omit both for the whole video, `at` alone = until the end), `fit` contain/cover (contain), `opacity` 0..1 (1), `radius?` (output px), `shadow?`, `motion?` (default fade), `mute` (true), `loop` (false) |
 | Music | `src`, `volume` 0..1 (0.12), `duck?` (`amount` 0..1 (0.6), `attack` 0..5 s (0.2), `release` 0..5 s (0.5)) lowers the music under narration |
 | output | `width` 1920, `height` 1080, `fps` 30 |
-| voice | `provider` edge (or `local`, `command`), `name` en-US-AndrewNeural (`voicetut`, `voicetut:Sarah`, `namaa`, or a `voices.json` key), `rate` +0%, `subtitles` true, `gap` 0.3, `volume` 1 |
+| voice | `provider` edge (or `local`, `command`, `elevenlabs`, `gemini`), `name` en-US-AndrewNeural (`voicetut`, `voicetut:Sarah`, `namaa`, a `voices.json` key, an ElevenLabs voice or a Gemini voice), `rate` +0%, `subtitles` true, `gap` 0.3, `volume` 1, `fit` (`max` 1.18, `auto`: slot-fit) |
 | theme | `background`, `padding` 0.05, `radius` 16, `shadow`, `accent`, `font`, `captionColor`, `captionBackground`, `clickRipples` true, `fonts` (extra Google Fonts), `css` (your own CSS; classes listed in `storyboard_schema`) |
 
 When a narration line is longer than its slot, the render freezes the video automatically so lines never overlap.
 
-`validate` also warns about style problems (it never blocks a render): narration over 12 words or too fast to speak, captions over 6 words, captions or zooms that overlap, zoom scale outside 1.4-2.5, a zoom, highlight and callout stacked on one point, segment speed over 8x, an output shorter than 15 s or longer than 90 s, and cards in cut regions.
+`validate` also warns about style problems (it never blocks a render): narration over 12 words or too fast to speak, captions over 6 words, captions or zooms that overlap, zoom scale outside 1.4-2.5, a zoom, highlight and callout stacked on one point, segment speed over 8x, an output shorter than 15 s or longer than 90 s, and cards in cut regions. Once the voice clips exist, a render (and `sequence-validate --fit`) also reports `[narration-fit]` for lines that need more than the cap to fit their slot.
+
+## Subtitles, script variants, cards and cost
+
+[AGENTS.md](AGENTS.md) is the behaviour reference for these; the code is where to start when you change them:
+
+- **Timeline and subtitles:** `src/render/timeline.ts` (`<video>.timeline.json`, joined for sequences, stale check at 0.25 s), `subtitles.ts` (writers and `shapeCues`, the one cue-rules function), `subtitle-langs.ts`, `subs-cli.ts` (`screenpilot subs`, `--join`), `mux-subs.ts`, `sync-check.ts` (the `check` sync warning). They read `timeline.json` only, never plans.
+- **Script variants and slot-fit:** `src/storyboard/variant.ts` (loads and applies `variants/<name>.json`; `VariantSchema` is in `schema.ts`), `src/sequence/index.ts` (per-part variants and cache keys), `fitLines` / `fitWarnings` in `src/storyboard/lint.ts`, `src/voice/index.ts` (the `atempo` clip next to the raw one).
+- **Cards from data:** `src/render/cards/` (one file per template, `common.ts` direction and sizes); `test/card-layout.test.ts` measures them in a real headless Chrome and is skipped without one (`CARD_SHOTS=<dir>` writes PNGs).
+- **Cost:** `src/voice/spend.ts` (ledger, `usdPerCredit` from `voices.json`) and the dry-run estimates `src/voice/estimate.ts` and `src/sequence/estimate.ts`. Tests set `SCREENPILOT_NO_SPEND=1` so they never write your own ledger.
+- **Process control:** `src/util/proc.ts` (process scopes that kill a whole tree; spawn render children only through `run` in `src/util/exec.ts`), `src/util/partial.ts` (`<name>.partial.mp4`, then rename), `src/render/pause.ts` and `src/sequence/resume.ts` (pause/resume), `src/util/mem.ts` (memory guard and RSS sampler; tests inject memory, vitest sets `SCREENPILOT_MIN_FREE_MEM=0`).
 
 ## Voice providers
 
@@ -402,6 +427,7 @@ When a narration line is longer than its slot, the render freezes the video auto
 | `edge` | An Edge voice, e.g. `en-US-AndrewNeural` | Needs the internet; unofficial service, may change |
 | `local` | `voicetut`, `voicetut:<Voice>` or `namaa` | Speech models on this computer; installed by `screenpilot voice-setup` |
 | `command` | A key of `commands` in `voices.json` | Any program that writes audio to `{out}`; defined by the user, never in a storyboard |
+| `elevenlabs`, `gemini` | A voice id or name of the account, or a prebuilt Gemini voice such as `Kore` | Cloud voices, optional; keys through `screenpilot secret set` or `ELEVENLABS_API_KEY` / `GEMINI_API_KEY`; billed requests are logged to `spend.jsonl` (`screenpilot spend`) |
 
 A narration line's own `voice` overrides `name` within the same provider. For `local`, the language of each line is detected (Arabic letters mean Arabic, otherwise English); `rate` becomes a speed factor for VoiceTut and NAMAA ignores it.
 

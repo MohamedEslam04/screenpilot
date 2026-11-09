@@ -4,15 +4,18 @@ import { copyFile, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 
 import { createRequire } from "node:module";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { clicksOf, readEvents } from "../record/events.js";
-import { lintTimeline } from "../storyboard/lint.js";
+import { DEFAULT_FIT_MAX, type FitEntry, fitLines, fitWarnings, lintTimeline } from "../storyboard/lint.js";
 import { lintStoryboard, type LoadedStyle, loadStoryboard } from "../storyboard/load.js";
 import type { Storyboard } from "../storyboard/schema.js";
 import { buildTimeline, planNarrationHolds, type Timeline } from "../storyboard/timeline.js";
+import { type LoadedVariant, variantSuffix } from "../storyboard/variant.js";
 import { run } from "../util/exec.js";
+import { writeAtomically } from "../util/partial.js";
+import { withProcessScope } from "../util/proc.js";
 import { makeTimer } from "../util/timing.js";
 import { ffmpegFilterScriptFlag, probeVideo, type VideoInfo } from "../util/media.js";
 import { externalClip } from "../voice/external.js";
-import { synthesizeLines, type VoiceClip } from "../voice/index.js";
+import { fitClip, synthesizeLines, type VoiceClip } from "../voice/index.js";
 import { buildCutArgs, buildCutFilter } from "./cut.js";
 import { draftFps } from "./draft.js";
 import { renderHtml } from "./html.js";
@@ -24,7 +27,9 @@ import { planMusicRange, prepareMusic } from "./music.js";
 import { mixSfx, planSfx, sfxInput } from "./sfx.js";
 import { type ChunkSources, chunkKey, planChunks, type Span, timelineBusy } from "./chunks.js";
 import { joinChunks } from "./join.js";
-import { type SubtitleFormat, writeSubtitles } from "./subtitles.js";
+import { checkTranslations, type SubtitleLanguage, writeTimelineSubtitles } from "./subtitle-langs.js";
+import { type CueRules, type SubtitleFormat, writeSubtitles } from "./subtitles.js";
+import { buildOutputTimeline, timelinePath, writeTimeline } from "./timeline.js";
 import { buildPlan, type OverlayAsset, type RenderPlan } from "./plan.js";
 import { partSuffix, type Window, windowPlan } from "./window.js";
 import { estimateSeconds, formatDuration, recordSpeed, speedFile } from "./speed.js";
@@ -33,6 +38,8 @@ import { CACHE_DIR, cacheHome } from "../brand.js";
 import { pruneCache, renderCacheLimit } from "./cache.js";
 import { recordEvent } from "../history/index.js";
 import { startJob } from "../history/jobs.js";
+import { type MemGuardOptions, memGuardSettings, startRssSampler, waitForMemory } from "../util/mem.js";
+import { clearPause, pauseRequested, RenderPaused, type ResumeOptions, resumeCommand, writePausedState } from "./pause.js";
 
 const require = createRequire(import.meta.url);
 
@@ -57,6 +64,16 @@ export interface PrepareOptions {
   draft?: boolean;
   /** A style file (see loadStyle): its theme is merged over the storyboard's. Names the default build dir and output. */
   style?: LoadedStyle;
+  /** A variant file (see loadVariant): its narration text, voice and overlay files replace the storyboard's. Names the default build dir and output (`<name>.<variant>`, before the style). */
+  variant?: LoadedVariant;
+  /** Slot-fit of narration lines (see fitLines): `auto` speeds overrunning clips up to the cap, `strict` fails above it, `max` sets the cap (default voice.fit.max, else 1.18). */
+  fit?: FitOptions;
+}
+
+export interface FitOptions {
+  auto?: boolean;
+  strict?: boolean;
+  max?: number;
 }
 
 export interface Prepared {
@@ -65,11 +82,15 @@ export interface Prepared {
   timeline: Timeline;
   source: VideoInfo;
   warnings: string[];
+  /** One entry per narration line that has a next line: the clip's seconds, its slot and the speed-up it needs (see fitLines). */
+  fit: FitEntry[];
   autoHolds: { at: number; dur: number }[];
   /** Normalize the finished video to this loudness (storyboard audio.loudness). */
   loudness?: LoudnessTarget;
   /** What the build-dir files of the plan contain, for the chunk cache keys. */
   sources: ChunkSources;
+  /** The storyboard's outro card, so timeline.json can tell it from the other cards. */
+  outro?: { title: string; subtitle?: string };
 }
 
 /** Identity of a file's content for the chunk cache: name, size and modification time (as the sequence part keys). */
@@ -82,14 +103,14 @@ async function fileStamp(file: string): Promise<string> {
 export async function prepareBuild(storyboardPath: string, opts: PrepareOptions = {}): Promise<Prepared> {
   const log = opts.log ?? (() => {});
   const time = makeTimer(opts.timings, log);
-  const { sb, baseDir, path } = await loadStoryboard(storyboardPath, { style: opts.style });
+  const { sb, baseDir, path } = await loadStoryboard(storyboardPath, { style: opts.style, variant: opts.variant });
   if (opts.size) sb.output = { ...sb.output, ...opts.size };
   const sourcePath = resolve(baseDir, sb.source);
   if (!existsSync(sourcePath)) throw new Error(`Source video not found: ${sourcePath}`);
   const source = await time("probe", () => probeVideo(sourcePath));
   const warnings = lintStoryboard(sb, source.duration);
 
-  const buildDir = resolve(opts.buildDir ?? join(baseDir, `${basename(path, extname(path))}${styleSuffix(opts.style)}${opts.window ? partSuffix(opts.window) : ""}.build`));
+  const buildDir = resolve(opts.buildDir ?? join(baseDir, `${basename(path, extname(path))}${nameSuffix(opts)}${opts.window ? partSuffix(opts.window) : ""}.build`));
   await mkdir(join(buildDir, "voice"), { recursive: true });
 
   // 1. Voice: real durations decide the pacing.
@@ -104,6 +125,23 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     for (const [i, l] of sb.narration.entries()) if (l.audio) all[i] = await externalClip(lines[i]!, resolve(baseDir, l.audio), i);
     return all;
   });
+  // 1b. Slot-fit: does every clip fit the room before the next line? Strict stops here, auto speeds clips up (from the raw clip, cached).
+  const fitMax = opts.fit?.max ?? sb.voice.fit?.max ?? DEFAULT_FIT_MAX;
+  const fit = fitLines(sb.narration.map((l, i) => ({ id: l.id ?? String(i), index: i, at: l.at, duration: clips[i]!.duration })), sb.voice.gap);
+  const tooLong = fit.filter((e) => e.needed > fitMax);
+  if (opts.fit?.strict && tooLong.length) {
+    throw new Error(`Narration does not fit its slots (cap ${+fitMax.toFixed(2)}x, --strict-fit):\n${fitWarnings(tooLong, fitMax).map((w) => `  - ${w}`).join("\n")}`);
+  }
+  if (opts.fit?.auto ?? sb.voice.fit?.auto) {
+    for (const e of fit) {
+      // Ready-made audio is a recording of someone: it is reported, never stretched.
+      if (e.needed <= 1 || sb.narration[e.index]!.audio) continue;
+      const factor = Math.ceil(Math.min(e.needed, fitMax) * 1000) / 1000;
+      clips[e.index] = await fitClip(clips[e.index]!, factor);
+      e.applied = factor;
+    }
+  }
+  if (!sb.lint?.off?.includes("narration-fit")) warnings.push(...fitWarnings(fit, fitMax));
   // Build-dir copies get a new time on every build, so the chunk cache keys them by their originals.
   const files: Record<string, string> = {};
   const narration = await Promise.all(
@@ -113,7 +151,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
       const src = l.audio ? `voice/ext-${i}${extname(clip.file).toLowerCase()}` : `voice/${basename(clip.file)}`;
       await copyFile(clip.file, join(buildDir, src));
       files[src] = await fileStamp(clip.file);
-      return { ...clip, at: l.at, caption: l.caption ?? sb.voice.subtitles, src };
+      return { ...clip, at: l.at, caption: l.caption ?? sb.voice.subtitles, src, id: l.id ?? String(i) };
     }),
   );
 
@@ -196,6 +234,11 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   await mkdir(join(buildDir, "overlays"), { recursive: true });
   const overlays: (OverlayAsset | undefined)[] = [];
   for (const [i, o] of sb.overlays.entries()) {
+    if (o.kind === "card") {
+      // Drawn from its data by the page: no file. The slot keeps overlays[] aligned with sb.overlays.
+      overlays.push(undefined);
+      continue;
+    }
     const file = resolve(baseDir, o.src);
     const kind = overlayKind(o.src);
     if (!kind) warnings.push(`overlays[${i}] "${o.src}" is not a known image or video type and was skipped`);
@@ -249,11 +292,14 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     sources.sfx = { src: sfxMix.file, hits: await Promise.all(sfxPlan.hits.map(async (h) => ({ at: h.at, volume: h.volume, sound: await sound(h.src) }))) };
   }
 
-  return { buildDir, plan, timeline, source, warnings, autoHolds, loudness: sb.audio?.loudness, sources };
+  const outro = sb.outro && { title: sb.outro.title, ...(sb.outro.subtitle !== undefined ? { subtitle: sb.outro.subtitle } : {}) };
+  return { buildDir, plan, timeline, source, warnings, fit, autoHolds, loudness: sb.audio?.loudness, sources, ...(outro ? { outro } : {}) };
 }
 
 /** ".<style>" in default build dir and output names, so styles never overwrite each other; nothing without a style. */
 const styleSuffix = (style?: LoadedStyle) => (style ? `.${style.name}` : "");
+/** `.<variant>.<style>` in default build dir and output names; either part only when given. */
+const nameSuffix = (o: { style?: LoadedStyle; variant?: LoadedVariant }) => `${variantSuffix(o.variant)}${styleSuffix(o.style)}`;
 
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
@@ -286,6 +332,8 @@ async function cutVideo(
   log(`cut: ${timeline.pieces.length} piece(s) -> ${timeline.videoDuration.toFixed(2)}s`);
   const filterPath = join(buildDir, "cut.filter");
   await writeFile(filterPath, filter);
+  // An aborted cut leaves a half-written edited.mp4: no key may vouch for it.
+  await rm(keyFile, { force: true });
   await run(
     "ffmpeg",
     buildCutArgs(
@@ -297,7 +345,7 @@ async function cutVideo(
   await writeFile(keyFile, key);
 }
 
-export interface RenderOptions extends PrepareOptions {
+export interface RenderOptions extends PrepareOptions, MemGuardOptions {
   output?: string;
   quality?: "draft" | "looks" | "delivery";
   /** Lossless frame extraction; sharper UI text, slower. */
@@ -306,6 +354,10 @@ export interface RenderOptions extends PrepareOptions {
   workers?: number;
   /** Write subtitle files (from the narration) next to the video. */
   subtitles?: SubtitleFormat[];
+  /** One caption file per language, `<output>.<code>.srt|vtt` (formats from `subtitles`, default srt and vtt), made from the timeline; instead of the plain `<output>.srt`. */
+  subtitleLanguages?: SubtitleLanguage[];
+  /** Cue rules (lines, width, shortest cue) for the per-language files. */
+  subtitleRules?: Partial<CueRules>;
   /** Also make a GIF, a WebM or a poster frame from the finished video. */
   also?: ExtraFormat[];
   /** Poster frame time, in OUTPUT seconds (default: a quarter of the way in). */
@@ -318,6 +370,12 @@ export interface RenderOptions extends PrepareOptions {
   history?: boolean;
   /** Told which chunk is rendering, for the live-job file. */
   onProgress?: (step: { label: string; index: number; total: number }) => void;
+  /** Internal: a sequence passes its own pause check (its build folder); a render on its own watches `<buildDir>/.pause`. */
+  pauseCheck?: () => boolean;
+  /** Internal: what this render is inside a sequence ("part 2/8"), for memory guard messages. */
+  stepLabel?: string;
+  /** Aborts the render (an MCP request cancelled): its whole process tree is killed. abortAll does the same for every render. */
+  signal?: AbortSignal;
 }
 
 /** Outputs (or --from/--to windows) shorter than this render in one piece, exactly as before chunks existed. */
@@ -328,6 +386,10 @@ export interface RenderResult extends Prepared {
   output: string;
   /** Subtitle and extra files that were written next to the video. */
   files: string[];
+  /** `<output>.timeline.json`: when each narration line and card is on screen in the finished video. */
+  timelineFile: string;
+  /** Highest memory of the render's child processes (HyperFrames, Chrome, ffmpeg) in MB, sampled; undefined where it cannot be measured. */
+  peakRssMB?: number;
 }
 
 export function hyperframesBin(): string {
@@ -367,6 +429,8 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
     await recordEvent({ kind: "render", status: "ok", path, output: r.output, durationSec: r.plan.duration, quality, wallSeconds: round3((performance.now() - started) / 1000) });
     return r;
   } catch (err) {
+    // A pause is not a failure; the resumed render leaves the history line.
+    if (err instanceof RenderPaused) throw err;
     await recordEvent({ kind: "render", status: "failed", path, quality, wallSeconds: round3((performance.now() - started) / 1000), error: (err as Error).message.slice(0, 500) });
     throw err;
   } finally {
@@ -374,17 +438,25 @@ export async function renderStoryboard(storyboardPath: string, opts: RenderOptio
   }
 }
 
-async function renderStoryboardNow(storyboardPath: string, opts: RenderOptions): Promise<RenderResult> {
+function renderStoryboardNow(storyboardPath: string, opts: RenderOptions): Promise<RenderResult> {
+  // Every child (HyperFrames, its Chrome, ffmpeg) is tracked: abortAll, opts.signal or our own exit kills the whole tree.
+  return withProcessScope(() => renderTracked(storyboardPath, opts), { signal: opts.signal });
+}
+
+async function renderTracked(storyboardPath: string, opts: RenderOptions): Promise<RenderResult> {
   const log = opts.log ?? (() => {});
   const draft = opts.quality === "draft";
+  const started = Date.now();
+  const guard = memGuardSettings(opts);
   checkPosterAt(opts.posterAt);
+  await checkTranslations(opts.subtitleLanguages);
   if (opts.chunkSeconds !== undefined && !(opts.chunkSeconds >= MIN_CHUNK_SECONDS)) {
     throw new Error(`--chunk-seconds must be at least ${MIN_CHUNK_SECONDS} (got ${opts.chunkSeconds})`);
   }
   const prepared = await prepareBuild(storyboardPath, { ...opts, draft });
   const output = resolve(
     opts.output ??
-      join(dirname(resolve(storyboardPath)), `${basename(storyboardPath, extname(storyboardPath))}${styleSuffix(opts.style)}${opts.window ? partSuffix(opts.window) : ""}.mp4`),
+      join(dirname(resolve(storyboardPath)), `${basename(storyboardPath, extname(storyboardPath))}${nameSuffix(opts)}${opts.window ? partSuffix(opts.window) : ""}.mp4`),
   );
   await mkdir(dirname(output), { recursive: true });
   const workers = opts.workers ?? autoWorkers();
@@ -429,33 +501,106 @@ async function renderStoryboardNow(storyboardPath: string, opts: RenderOptions):
     log(`estimated ~${formatDuration(estimate)} (from your last ${quality} renders). Faster: -q draft, --workers max, --from/--to for a window`);
   }
   const renderStart = performance.now();
-  await time("render", async () => {
-    if (chunks) await renderChunks(prepared, chunks, output, hyperframes, log, opts.onProgress);
-    else await hyperframes(output);
-  });
-  if (prepared.loudness) {
-    const target = prepared.loudness;
-    await time("loudness", async () => {
-      const r = await normalizeLoudness(output, target);
-      if (r.applied) log(`loudness: ${r.measured!.input_i} LUFS -> ${target.target} LUFS`);
-      else prepared.warnings.push(`audio.loudness was not applied: ${r.reason}`);
+  // Before each chunk (or the one piece): wait for memory, and stop there if a pause was asked for
+  // (the pause flag of this render's process scope; `.pause` in the build folder sets it from another process).
+  const control: ChunkControl = {
+    shouldPause: opts.pauseCheck ?? (() => pauseRequested(prepared.buildDir, started)),
+    waitForMemory: (label) =>
+      waitForMemory({ ...guard, label: opts.stepLabel ? (label === "render" ? opts.stepLabel : `${opts.stepLabel} ${label}`) : label, read: opts.memReader, pollMs: opts.memPollMs, log }),
+  };
+  // Inside a sequence the sequence samples the whole run.
+  const sampler = opts.pauseCheck ? undefined : startRssSampler();
+  let peakRssMB: number | undefined;
+  try {
+    // Written as <name>.partial.mp4 and renamed when complete: whoever watches the folder sees a playable file or none.
+    await writeAtomically(output, async (partial) => {
+      await time("render", async () => {
+        if (chunks) await renderChunks(prepared, chunks, partial, hyperframes, log, opts.onProgress, control);
+        else {
+          await control.waitForMemory("render");
+          await hyperframes(partial);
+        }
+      });
+      if (prepared.loudness) {
+        const target = prepared.loudness;
+        await time("loudness", async () => {
+          const r = await normalizeLoudness(partial, target);
+          if (r.applied) log(`loudness: ${r.measured!.input_i} LUFS -> ${target.target} LUFS`);
+          else prepared.warnings.push(`audio.loudness was not applied: ${r.reason}`);
+        });
+      }
     });
+  } catch (err) {
+    // On its own, a paused render saves how to carry on; inside a sequence the sequence does.
+    if (err instanceof RenderPaused && !opts.pauseCheck) {
+      const stateFile = await writePausedState({ version: 1, kind: "render", path: resolve(storyboardPath), buildDir: prepared.buildDir, pausedAt: new Date().toISOString(), options: resumeOptions(opts, output, prepared.buildDir) });
+      log(`paused after ${err.info.chunks?.done ?? 0}/${err.info.chunks?.total ?? 0} chunks; carry on with: ${resumeCommand(resolve(storyboardPath))}`);
+      throw new RenderPaused({ ...err.info, path: resolve(storyboardPath), buildDir: prepared.buildDir, stateFile, resume: resumeCommand(resolve(storyboardPath)) });
+    }
+    throw err;
+  } finally {
+    peakRssMB = await sampler?.stop();
   }
+  if (!opts.pauseCheck) await clearPause(prepared.buildDir);
   // Only a render that finished: a failed or aborted one threw above and never gets here.
   // Very short clips (the setup warm-up, tiny windows) are dominated by browser start-up and would skew the estimate.
   if (renderSeconds >= MIN_RECORDED_SECONDS) {
     await recordSpeed(speedFile(), { quality, workers, outSeconds: round3(renderSeconds), wallSeconds: (performance.now() - renderStart) / 1000 }).catch(() => {});
   }
   const files: string[] = [];
-  if (opts.subtitles?.length) files.push(...(await writeSubtitles(prepared.plan.subtitles, output, opts.subtitles)));
+  if (opts.subtitles?.length && !opts.subtitleLanguages?.length) files.push(...(await writeSubtitles(prepared.plan.subtitles, output, opts.subtitles)));
   if (opts.also?.length) files.push(...(await time("extras", () => exportExtras(output, opts.also!, { posterAt: opts.posterAt }))));
   for (const f of files) log(`wrote ${f}`);
-  return { ...prepared, output, files };
+  // The length the file really has (a short file next to a longer plan is what a stale timeline looks like later).
+  const length = await probeVideo(output).then((v) => v.duration, () => prepared.plan.duration);
+  const timelineFile = timelinePath(output);
+  const timeline = { ...buildOutputTimeline(prepared.plan, { outro: prepared.outro }), duration: round3(length) };
+  await writeTimeline(timelineFile, timeline);
+  log(`wrote ${timelineFile}`);
+  if (opts.subtitleLanguages?.length) {
+    const subs = await writeTimelineSubtitles(timeline, output, { languages: opts.subtitleLanguages, formats: opts.subtitles?.length ? opts.subtitles : ["srt", "vtt"], rules: opts.subtitleRules });
+    for (const f of subs.files) log(`wrote ${f}`);
+    files.push(...subs.files);
+    prepared.warnings.push(...subs.warnings);
+  }
+  return { ...prepared, output, files, timelineFile, peakRssMB };
+}
+
+/** What a render on its own saves for resume: the same options, with the paths it used. */
+function resumeOptions(opts: RenderOptions, output: string, buildDir: string): ResumeOptions {
+  return {
+    output,
+    buildDir,
+    quality: opts.quality,
+    style: opts.style?.path,
+    variant: opts.variant?.path,
+    fit: opts.fit,
+    workers: opts.workers,
+    pngFrames: opts.pngFrames,
+    timings: opts.timings,
+    window: opts.window,
+    size: opts.size,
+    chunks: opts.chunks,
+    chunkSeconds: opts.chunkSeconds,
+    subtitles: opts.subtitles,
+    subtitleLanguages: opts.subtitleLanguages,
+    subtitleRules: opts.subtitleRules,
+    also: opts.also,
+    posterAt: opts.posterAt,
+    minFreeMemMB: opts.minFreeMemMB,
+    memTimeoutS: opts.memTimeoutS,
+  };
 }
 
 interface RenderChunk extends Span {
   file: string;
   cached: boolean;
+}
+
+/** Called before a chunk is rendered: stop there on a pause, wait for memory. */
+interface ChunkControl {
+  shouldPause: () => boolean;
+  waitForMemory: (label: string) => Promise<unknown>;
 }
 
 /** Where the chunks of one quality live: draft and delivery never evict each other. */
@@ -496,6 +641,7 @@ async function renderChunks(
   hyperframes: (out: string) => Promise<unknown>,
   log: (msg: string) => void,
   onProgress?: RenderOptions["onProgress"],
+  control?: ChunkControl,
 ): Promise<void> {
   const index = join(prepared.buildDir, "index.html");
   const dir = dirname(chunks[0]!.file);
@@ -509,6 +655,12 @@ async function renderChunks(
         log(`${label} (${range(c)}): unchanged, reusing`);
         continue;
       }
+      if (control?.shouldPause()) {
+        const done = chunks.filter((x) => existsSync(x.file)).length;
+        log(`${label}: pause requested, stopping before it`);
+        throw new RenderPaused({ paused: true, kind: "render", path: "", buildDir: prepared.buildDir, chunks: { done, total: chunks.length }, resume: "" });
+      }
+      await control?.waitForMemory(label);
       log(`${label} (${range(c)}): rendering`);
       await writeFile(index, renderHtml(windowPlan(prepared.plan, { from: c.start, to: c.end }), { gsapSrc: "gsap.min.js" }));
       const partial = c.file.replace(/\.mp4$/, ".partial.mp4");
@@ -550,8 +702,8 @@ export async function renderFormats(
 ): Promise<FormatRenderResult[]> {
   const results: FormatRenderResult[] = [];
   for (const f of formats) {
-    // Name order: <name>.<style>.<format>.part-A-B
-    const { buildDir, output } = formatPaths(storyboardPath, { ...f, label: `${opts.style ? `${opts.style.name}.` : ""}${f.label}` }, opts.window, opts.output);
+    // Name order: <name>.<variant>.<style>.<format>.part-A-B
+    const { buildDir, output } = formatPaths(storyboardPath, { ...f, label: `${nameSuffix(opts).slice(1)}${nameSuffix(opts) ? "." : ""}${f.label}` }, opts.window, opts.output);
     opts.log?.(`format ${f.label} (${f.width}x${f.height})`);
     const r = await renderStoryboard(storyboardPath, { ...opts, output, buildDir, size: { width: f.width, height: f.height } });
     results.push({ ...r, format: f.label });

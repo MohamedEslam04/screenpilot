@@ -98,11 +98,11 @@ screenpilot sequence sequence.json -q delivery -o demo-with-feature.mp4</code></
 <thead><tr><th>Command</th><th>What it does</th></tr></thead>
 <tbody>
 <tr><td><code>screenpilot sequence-validate &lt;sequence&gt;</code></td><td>Checks the sequence and every storyboard it uses. It fails with the schema issues, or prints <code>valid: true</code> with the warnings of each part.</td></tr>
-<tr><td><code>screenpilot sequence &lt;sequence&gt;</code></td><td>Renders every part and joins them. Flags: <code>-o, --output</code> (default <code>&lt;sequence&gt;.mp4</code>), <code>-q, --quality</code> (<code>draft</code>, <code>looks</code>, <code>delivery</code>), <code>--png-frames</code>, <code>--workers</code> (<code>auto</code>, <code>max</code> or a number), <code>--style</code>, <code>--build-dir</code>.</td></tr>
+<tr><td><code>screenpilot sequence &lt;sequence&gt;</code></td><td>Renders every part and joins them. Flags: <code>-o, --output</code> (default <code>&lt;sequence&gt;.mp4</code>), <code>-q, --quality</code> (<code>draft</code>, <code>looks</code>, <code>delivery</code>), <code>--png-frames</code>, <code>--workers</code> (<code>auto</code>, <code>max</code> or a number), <code>--style</code>, <code>--variant</code>, <code>--variant-dir</code>, <code>--fit</code>, <code>--strict-fit</code>, <code>--fit-max</code>, <code>--subtitles</code>, <code>--subtitle-lang</code>, <code>--subtitle-chars</code>, <code>--dry-run</code>, <code>--min-free-mem</code>, <code>--mem-timeout</code>, <code>--build-dir</code>. See <a href="@guide/cli.html#sequence">the command line page</a> for what each does.</td></tr>
 <tr><td><code>screenpilot sequence-schema</code></td><td>Prints the JSON Schema of <code>sequence.json</code>.</td></tr>
 </tbody>
 </table>
-<p>The same steps are the tools <code>sequence_validate</code>, <code>sequence_render</code> (inputs <code>sequence</code>, <code>output</code>, <code>quality</code>, <code>style</code>, <code>workers</code>) and <code>sequence_schema</code>. See <a href="@guide/tools.html#sequence">MCP tools</a>.</p>
+<p>The same steps are the tools <code>sequence_validate</code>, <code>sequence_render</code> (inputs <code>sequence</code>, <code>output</code>, <code>quality</code>, <code>style</code>, <code>variant</code>, <code>variant_dir</code>, <code>workers</code> and more, see <a href="@guide/tools.html#sequence">MCP tools</a>) and <code>sequence_schema</code>. See <a href="@guide/tools.html#sequence">MCP tools</a>.</p>
 <ul>
 <li><strong>Unchanged parts are reused.</strong> Each part is rendered like a storyboard into <code>&lt;sequence&gt;.build/part-N/</code>. On the next run, a part whose storyboard, recording, events, music, overlays and quality are the same is not rendered again. Editing the feature clip does not re-render the demo.</li>
 <li><strong>The join.</strong> When every part is cut to the next and they are encoded the same way, the parts are joined by stream copy, with no quality loss. With a transition, or when the encodings differ, the video is re-encoded. The result tells you which one happened in <code>join</code> (<code>copy</code> or <code>encode</code>).</li>
@@ -114,9 +114,38 @@ screenpilot sequence sequence.json -q delivery -o demo-with-feature.mp4</code></
 <li>The output is <code>&lt;sequence&gt;.&lt;style&gt;.mp4</code> and the build folder is <code>&lt;sequence&gt;.&lt;style&gt;.build</code>, so styles never overwrite each other, and returning to a style reuses its cache.</li>
 <li>A <code>{video}</code> part is a finished file. It is used as it is, not styled, and a warning says so.</li>
 </ul>
+<h3 id="script-variants">Render with another script</h3>
+<p><code>screenpilot sequence sequence.json --variant saudi</code> renders the same recordings with another narration and voice. Each storyboard part takes its own <code>variants/saudi.json</code> (or one from <code>--variant-dir</code>), and the output is <code>&lt;sequence&gt;.saudi.mp4</code>. Parts without the variant are shared between variants, so a second variant renders only what differs. See <a href="@guide/variants.html#sequence-variant">Script variants and slot-fit</a>.</p>
+<h3 id="sequence-timeline">Timeline and caption files</h3>
+<p>A sequence writes <code>&lt;sequence&gt;.timeline.json</code> for the joined video: when each narration line and card is on screen, with the part and the chapter (the part's storyboard folder name) of each item. Each part keeps its own next to its <code>part.mp4</code>. Caption files in several languages come from it with <code>--subtitle-lang</code> or <code>screenpilot subs</code>, with no render. See <a href="@guide/subtitles.html">Subtitles and timeline</a>.</p>
+<h3 id="sequence-long">Cost, pause and memory</h3>
+<ul>
+<li><code>--dry-run</code> prints the voice cost part by part and writes nothing. See <a href="@guide/voices.html#cost">What cloud voices cost</a>.</li>
+<li><code>screenpilot pause sequence.json</code> stops after the part in progress, and <code>screenpilot resume sequence.json</code> carries on from the finished parts. A part of 5 minutes or more pauses at a chunk. See <a href="@guide/long-renders.html">Long renders</a>.</li>
+<li>Before each part or chunk the render waits for <code>--min-free-mem</code> MB (default 1500), up to <code>--mem-timeout</code> seconds (default 300).</li>
+<li>The joined video is written as <code>&lt;name&gt;.partial.mp4</code> and renamed when complete.</li>
+</ul>
 <h3 id="long-parts">Long parts</h3>
 <p>Each part is rendered like a storyboard, so a part of 5 minutes or more is split into cached chunks like any other render (see <a href="@guide/cli.html#long-renders">Long renders</a>). <code>sequence</code> has no <code>--no-chunks</code> or <code>--chunk-seconds</code>. To keep a long video fast to edit, split it into parts: only the parts you changed render again.</p>
 <div class="note">Review with <code>-q draft</code> first, then look at frames with <code>screenpilot check</code> around each join. Use <code>-q delivery</code> only for the final file.</div>
+
+<h2 id="joins">Several videos from the same groups</h2>
+<p>Say you need three videos: a setup video, an operations video, and a full video that plays both. Rendering three sequences would render the shared parts three times. <code>--joins</code> renders each group once and joins them into every video you name. A <strong>group</strong> is a sequence file (<code>g1.json</code>, <code>g2.json</code>, <code>g3.json</code>, each written as in <a href="@guide/sequence.html#sequence-file">The sequence file</a>).</p>
+<pre><code class="language-sh">screenpilot sequence \
+  --joins setup=g1.json+g2.json,operations=g3.json,full=setup+operations \
+  --join-transition fade-black:0.6 \
+  --out-dir videos -q draft</code></pre>
+<p>This writes three videos: <code>videos/setup.mp4</code> (g1, then g2), <code>videos/operations.mp4</code> (g3) and <code>videos/full.mp4</code> (g1, g2, g3). Each is made like this.</p>
+<ul>
+<li><strong>The list.</strong> <code>name=a+b</code> names a video and lists what it plays, in order, joined with <code>+</code>. Each item is a sequence file (relative to the current folder) or the name of another video in the list, which stands for its groups. A name may use letters, digits, <code>-</code> and <code>_</code>. A name that includes itself, directly or not, fails with the chain.</li>
+<li><strong>Each group renders once.</strong> A group that several videos use is rendered by the first one and reused by the rest. Run the command again after an edit and only the groups you changed render again.</li>
+<li><strong>The transition.</strong> <code>--join-transition type[:seconds]</code> sets how each group enters from the one before it: <code>cut</code> (default), <code>crossfade</code>, <code>fade-black</code>, <code>wipe-left</code>, <code>wipe-right</code>, <code>slide-left</code> or <code>slide-right</code>. The seconds default to 0.5 and are limited to half of either group. Every join in every video uses it.</li>
+<li><strong>Where the files go.</strong> <code>--out-dir</code> is the folder of the videos. It defaults to the deepest folder that holds all the groups. A video is <code>&lt;out-dir&gt;/&lt;name&gt;.mp4</code>; with <code>--variant</code> or <code>--style</code> it is <code>&lt;name&gt;.&lt;variant&gt;.mp4</code>, <code>&lt;name&gt;.&lt;style&gt;.mp4</code> or both. The groups are built in <code>&lt;out-dir&gt;/joins.build</code>.</li>
+<li><strong>Timeline and captions.</strong> Each video has its own <code>&lt;name&gt;.timeline.json</code>. <code>--subtitles</code> and <code>--subtitle-lang</code> write caption files for each video from it.</li>
+<li><strong>The command line.</strong> With <code>--joins</code> you give no <code>sequence.json</code>, and <code>-o, --output</code> is refused, because there is more than one video. <code>--join-transition</code> and <code>--out-dir</code> only go with <code>--joins</code>. The other flags (<code>-q</code>, <code>--style</code>, <code>--variant</code>, <code>--workers</code>, <code>--dry-run</code> and the rest) work as on a single sequence.</li>
+</ul>
+<p>Over MCP, <code>sequence_render</code> takes <code>joins</code> (an object <code>{name: [files or names]}</code>), <code>join</code> (<code>{transition, dur}</code>) and <code>out_dir</code> instead of <code>sequence</code>. See <a href="@guide/tools.html#sequence">MCP tools</a>.</p>
+<div class="note">To pause a joins render, give <code>pause</code> and <code>resume</code> the path <code>&lt;out-dir&gt;/joins</code>. No file has that name: it only identifies the render. See <a href="@guide/long-renders.html#pause-joins">Long renders</a>.</div>
 
 <h2 id="limits">Limits</h2>
 <ul>

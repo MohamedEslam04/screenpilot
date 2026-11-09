@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { readFile, rm, stat, writeFile } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 import { isBuiltinSfx, SFX_BUILTINS, type Storyboard } from "../storyboard/schema.js";
 import type { Timeline } from "../storyboard/timeline.js";
@@ -216,6 +216,7 @@ export async function mixSfx(hits: SfxHit[], opts: { baseDir: string; buildDir: 
   opts.log?.(`sfx: mixing ${mix.length} sound(s)`);
   const script = join(opts.buildDir, "sfx.filter");
   await writeFile(script, filter);
+  await rm(keyFile, { force: true }); // an aborted run leaves a half-written file
   await run("ffmpeg", ["-y", "-loglevel", "error", ...inputs, await ffmpegFilterScriptFlag(), script, "-map", "[out]", "-c:a", "pcm_s16le", "-ar", String(SAMPLE_RATE), "-ac", "2", out]);
   await writeFile(keyFile, key);
   return { file: "sfx.wav", warnings };

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-copy="Copy" data-copied="Copied">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Long renders · ScreenPilot</title>
+<meta name="description" content="Render a long video without blocking your machine: stop cleanly with abort, pause and resume at a part or chunk, the memory guard, and why the output file is always playable.">
+<link rel="canonical" href="https://mohamedeslam04.github.io/screenpilot/guide/long-renders.html">
+<link rel="alternate" hreflang="en" href="https://mohamedeslam04.github.io/screenpilot/guide/long-renders.html">
+<link rel="alternate" hreflang="ar" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/long-renders.html">
+<link rel="alternate" hreflang="x-default" href="https://mohamedeslam04.github.io/screenpilot/guide/long-renders.html">
+<meta property="og:type" content="article"><meta property="og:title" content="Long renders · ScreenPilot"><meta property="og:description" content="Render a long video without blocking your machine: stop cleanly with abort, pause and resume at a part or chunk, the memory guard, and why the output file is always playable.">
+<meta property="og:url" content="https://mohamedeslam04.github.io/screenpilot/guide/long-renders.html"><meta property="og:image" content="https://mohamedeslam04.github.io/screenpilot/assets/og.png"><meta property="og:site_name" content="ScreenPilot"><meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b132b">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("sp-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+  <a class="brand" href="../index.html" aria-label="ScreenPilot"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a>
+  <nav class="nav" aria-label="Main"><a href="../guide/index.html" aria-current=page>Docs</a><a href="../guide/install.html" class="hide-s">Install</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../ar/guide/long-renders.html" lang="ar" hreflang="ar">العربية</a><button class="theme" type="button" aria-label="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
+</div></header>
+<main id="main"><div class="wrap docs">
+  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html">Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="voices.html">Voices</a><a href="dashboard.html">Dashboard</a><a href="sequence.html">Combine recordings</a><a href="subtitles.html">Subtitles and timeline</a><a href="variants.html">Script variants and slot-fit</a><a href="long-renders.html" aria-current=page>Long renders</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
+  <article class="doc"><h1>Long renders</h1><p class="summary">Render a long video without blocking your machine: stop cleanly with abort, pause and resume at a part or chunk, the memory guard, and why the output file is always playable.</p><p>A render takes about as long as the video, and longer at <code>delivery</code>. This page is about living with that: stopping a render, pausing it when you need the computer, and keeping a render from running the machine out of memory. How chunks and caching speed up a re-render after an edit is on <a href="../guide/cli.html#long-renders">the command line page</a>.</p>
+
+<h2 id="partial-file">The output is written as a partial file<a class="a" href="#partial-file" aria-label="Link to this section">#</a></h2>
+<p>A render writes <code>&lt;name&gt;.partial.mp4</code> and renames it to <code>&lt;name&gt;.mp4</code> only when the video is complete. So a file with the final name is always playable, and a half-written file is never mistaken for a result. This applies to the joined video of a sequence too.</p>
+
+<h2 id="abort">Stop a render<a class="a" href="#abort" aria-label="Link to this section">#</a></h2>
+<p>Ctrl+C in the terminal, the <code>abort</code> tool, or cancelling the call in your AI app stops the render <strong>and everything it started</strong>: HyperFrames, Chrome and ffmpeg. They get a termination signal, and a kill after 5 seconds if they do not stop. On Windows the whole process tree is ended. The partial file is removed. Chunks and parts that already finished stay in the cache, so the next render carries on from them.</p>
+<p>Quitting the AI app, which closes the ScreenPilot server, stops its renders too.</p>
+
+<h2 id="pause">Pause and resume<a class="a" href="#pause" aria-label="Link to this section">#</a></h2>
+<p>If you need the machine in the middle of a render (a meeting, a game), pause it instead of stopping it. The render finishes the part in progress (for a part or video of 5 minutes or more: the chunk in progress), saves where it stopped, and exits cleanly. Nothing is lost.</p>
+<pre><code class="language-sh">screenpilot pause all.json     # the sequence or storyboard being rendered
+screenpilot pause              # no path: every render running now
+screenpilot resume all.json    # later: carries on with the same options</code></pre>
+<ul>
+<li><code>pause</code> drops a <code>.pause</code> file into the render's build folder. The render sees it at the next part or chunk boundary, writes <code>.paused.json</code> and stops. The render's own call (or command) then returns <code>{paused: true, partsDone, parts, resume}</code> and the command exits with code 0. <code>parts</code> lists each part as <code>done</code>, <code>in progress</code> or <code>waiting</code> (with chunk counts when it is chunked), and <code>resume</code> is the command to run.</li>
+<li><code>resume &lt;path&gt;</code> renders again with the options the render started with. Every finished part and chunk is a cache hit, so only the rest renders. You may change <code>--workers</code>, <code>--min-free-mem</code> and <code>--mem-timeout</code> for the rest.</li>
+<li>Both take <code>--build-dir &lt;dir&gt;</code> when the build folder is not the default one.</li>
+<li>A pause request that is older than the render's start is ignored, so an old <code>.pause</code> file cannot stop a new render.</li>
+</ul>
+<p>Over MCP, the <code>pause</code> tool takes <code>sequence</code> or <code>storyboard</code> (or neither, to pause every render running now) and <code>build_dir</code>. The <code>resume</code> tool takes <code>sequence</code> or <code>storyboard</code> plus <code>workers</code>, <code>min_free_mem</code> and <code>mem_timeout</code>. Without arguments, <code>resume</code> keeps its older job: carrying on after someone moved the mouse while the agent drove the desktop.</p>
+<h3 id="pause-joins">Pause a joins render<a class="a" href="#pause-joins" aria-label="Link to this section">#</a></h3>
+<p>A render made with <code>screenpilot sequence --joins ...</code> (MCP <code>sequence_render</code> with <code>joins</code>) has no sequence file to name. Give <code>pause</code> and <code>resume</code> the path <code>&lt;out-dir&gt;/joins</code>, where <code>&lt;out-dir&gt;</code> is the <code>--out-dir</code> (or <code>out_dir</code>) you used, or the default folder that holds all the groups. That path is only a name, there is no such file. The render stops at the next part or chunk boundary, <code>resume</code> carries on with the same list, transition and options, and every finished group is reused. The build folder is <code>&lt;out-dir&gt;/joins.build</code>.</p>
+<pre><code class="language-sh">screenpilot pause videos/joins
+screenpilot resume videos/joins</code></pre>
+<div class="note">A pause stops at a boundary, not instantly. A single long part with no chunks finishes completely first. Parts, or chunks inside a video of 5 minutes or more, are what give a render its pause points.</div>
+
+<h2 id="memory">The memory guard<a class="a" href="#memory" aria-label="Link to this section">#</a></h2>
+<p>Each render worker is a headless Chrome, and several can run at once. Before it starts each part or chunk, a render waits until enough memory is free. If memory does not come back in time, it fails with the measured numbers, and the finished parts and chunks stay cached.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--min-free-mem &lt;MB&gt;</code></td><td>Memory that must be available before each part or chunk. Default 1500. <code>0</code> turns the guard off. <code>SCREENPILOT_MIN_FREE_MEM</code> sets the default; the flag wins.</td></tr>
+<tr><td><code>--mem-timeout &lt;s&gt;</code></td><td>The longest wait for that memory, then the render fails with the numbers. Default 300.</td></tr>
+</tbody>
+</table>
+<p>Both flags are on <code>render</code>, <code>sequence</code> and <code>resume</code>; over MCP they are <code>min_free_mem</code> and <code>mem_timeout</code>. On Linux the guard reads <code>MemAvailable</code>; on other systems it uses what the operating system reports as free.</p>
+<p>The result of a render has <code>peakRssMB</code>: the highest memory used by the render's child processes, sampled while it ran. It is useful for choosing <code>--workers</code>. It is not reported on Windows.</p>
+
+<h2 id="before-you-pay">Before a long render with a paid voice<a class="a" href="#before-you-pay" aria-label="Link to this section">#</a></h2>
+<p>A render with a cloud voice can cost money. Run it with <code>--dry-run</code> first to see the number: <a href="../guide/voices.html#cost">What cloud voices cost</a>.</p>
+<nav class="pager" aria-label="Pager"><a href="variants.html" rel="prev"><small>Previous</small>Script variants and slot-fit</a><a href="agent-drive.html" rel="next"><small>Next</small>Let the agent drive</a></nav></article>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#partial-file">The output is written as a partial file</a><a href="#abort">Stop a render</a><a href="#pause">Pause and resume</a><a href="#memory">The memory guard</a><a href="#before-you-pay">Before a long render with a paid voice</a></aside>
+</div></main>
+<footer class="foot"><div class="wrap">
+  <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>
+  <div><h3>Learn</h3><ul><li><a href="../guide/getting-started.html">Getting started</a></li><li><a href="../guide/tools.html">MCP tools</a></li><li><a href="../guide/storyboard.html">Storyboard reference</a></li><li><a href="../guide/faq.html">FAQ and troubleshooting</a></li></ul></div>
+  <div><h3>Project</h3><ul><li><a href="https://github.com/MohamedEslam04/screenpilot">GitHub</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/releases">Releases</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/issues">Report an issue</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/CONTRIBUTING.md">Contributing</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/SECURITY.md">Security</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/LICENSE">License</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/THIRD_PARTY_NOTICES.md">Third-party notices</a></li></ul></div>
+</div></footer>
+<script src="../assets/app.js" defer></script>
+</body></html>

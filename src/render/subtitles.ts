@@ -64,3 +64,83 @@ export async function writeSubtitles(cues: SubtitleCue[], videoPath: string, for
   }
   return files;
 }
+
+// Cue rules: what a caption file needs to read well on a platform player. Only the per-language
+// files use them (render --subtitle-lang, sequence, subs); `render --subtitles` keeps its cues as they are.
+
+export interface CueRules {
+  /** Lines in one cue. */
+  maxLines: number;
+  /** Characters (code points) in one line; a word longer than this stays whole. */
+  maxChars: number;
+  /** Shortest a cue may be (s), as far as the next cue leaves room. */
+  minDuration: number;
+}
+
+export const DEFAULT_CUE_RULES: CueRules = { maxLines: 2, maxChars: 42, minDuration: 0.7 };
+
+const len = (s: string) => [...s].length;
+
+/** Greedy wrap on spaces. No word is ever cut, and nothing is added to or removed from the words (no bidi marks, no reordering). */
+function wrapGreedy(words: string[], width: number): string[] {
+  const lines: string[] = [];
+  let line = "";
+  for (const w of words) {
+    if (!line) line = w;
+    else if (len(line) + 1 + len(w) <= width) line += ` ${w}`;
+    else {
+      lines.push(line);
+      line = w;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/** The fewest lines that fit, then as even as possible (so a 2-line cue is not one long and one short line). */
+function wrapText(text: string, maxChars: number): string[] {
+  const words = text.split(/[ \t]+/).filter(Boolean);
+  const lines = wrapGreedy(words, maxChars);
+  if (lines.length < 2) return lines;
+  // Narrowest width that still gives the same number of lines.
+  const longest = Math.max(...words.map(len));
+  for (let w = Math.max(Math.ceil(len(words.join(" ")) / lines.length), longest); w < maxChars; w++) {
+    const even = wrapGreedy(words, w);
+    if (even.length === lines.length) return even;
+  }
+  return lines;
+}
+
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+/**
+ * Cues that follow the rules: at most `maxLines` lines of about `maxChars` characters (a longer text becomes
+ * several cues that share the time of the original in proportion to their length), no cue runs into the next
+ * one, and none is shorter than `minDuration` when the next cue leaves room.
+ */
+export function shapeCues(cues: SubtitleCue[], rules: Partial<CueRules> = {}): SubtitleCue[] {
+  const { maxLines, maxChars, minDuration } = { ...DEFAULT_CUE_RULES, ...rules };
+  if (!(maxLines >= 1) || !(maxChars >= 1)) throw new Error("subtitle rules need at least 1 line and 1 character per line");
+  const sorted = clean(cues);
+  const out: SubtitleCue[] = [];
+  for (const [i, c] of sorted.entries()) {
+    const next = sorted[i + 1]?.start ?? Infinity;
+    const room = Math.max(next - c.start, MIN_CUE);
+    // At least minDuration, at most what the next cue leaves; never longer than what the line was given, unless it was too short.
+    const span = Math.min(Math.max(c.end - c.start, minDuration), room);
+    const lines = c.text.split("\n").flatMap((l) => wrapText(l, maxChars));
+    const pages: string[][] = [];
+    for (let k = 0; k < lines.length; k += maxLines) pages.push(lines.slice(k, k + maxLines));
+    const weights = pages.map((p) => Math.max(1, len(p.join(" "))));
+    const total = weights.reduce((a, b) => a + b, 0);
+    const spare = span - pages.length * minDuration;
+    const durations = weights.map((w) => (spare >= 0 ? minDuration + (spare * w) / total : (span * w) / total));
+    let t = c.start;
+    for (const [k, p] of pages.entries()) {
+      const end = k === pages.length - 1 ? c.start + span : t + durations[k]!;
+      out.push({ start: round3(t), end: round3(end), text: p.join("\n") });
+      t = end;
+    }
+  }
+  return out;
+}

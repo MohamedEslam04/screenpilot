@@ -73,7 +73,8 @@ export function clipStoryboard(sb: Storyboard, range: { from?: number; to?: numb
     captions: clipSpan(sb.captions),
     highlights: clipSpan(sb.highlights),
     annotations: clipSpan(sb.annotations),
-    narration: sb.narration.filter((n) => inRange(n.at)),
+    // A line keeps the id it would have had in the whole storyboard (its position), so translations still match the slice.
+    narration: sb.narration.flatMap((n, i) => (inRange(n.at) ? [{ ...n, id: n.id ?? String(i) }] : [])),
     sfx: sb.sfx.filter((x) => inRange(x.at)),
     typing: sb.typing.filter((t) => inRange(t.at)),
     views: kept,

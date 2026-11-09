@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { analyze } from "./analyze/index.js";
 import { doctor } from "./doctor.js";
 import { evenTimes, grabFrames } from "./frames.js";
@@ -22,16 +22,27 @@ import { takeJsonSchema } from "./take/schema.js";
 import { parseExtras } from "./render/export.js";
 import { parseFormats } from "./render/formats.js";
 import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
+import { muxSubtitles } from "./render/mux-subs.js";
+import { makeSubtitles, parseTransitionType } from "./render/subs-cli.js";
+import { parseSubtitleLanguages } from "./render/subtitle-langs.js";
+import { subtitleSyncReport } from "./render/sync-check.js";
 import { parseSubtitleFormats } from "./render/subtitles.js";
 import { parseWindow } from "./render/window.js";
 import { parseWorkers } from "./render/workers.js";
 import { lintStoryboard, loadStoryboard, loadStyle, StoryboardError } from "./storyboard/load.js";
+import { loadVariant } from "./storyboard/variant.js";
 import { qaStoryboard } from "./storyboard/qa.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
+import { estimateSequence } from "./sequence/estimate.js";
 import { renderSequence, validateSequence } from "./sequence/index.js";
+import { expandJoins, parseJoins, parseJoinTransition, renderJoins } from "./sequence/joins.js";
+import { resumePaused } from "./sequence/resume.js";
+import { pauseRenders, RenderPaused } from "./render/pause.js";
 import { sequenceJsonSchema } from "./sequence/schema.js";
 import { probeVideo } from "./util/media.js";
+import { describeEstimate, estimateStoryboard } from "./voice/estimate.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
+import { formatSpend, parseSince, readSpend, summarizeSpend } from "./voice/spend.js";
 import { removeSecret, type SecretName, secretSource, secretsFile, setSecret } from "./voice/secrets.js";
 import { exportScript, importAudio } from "./voice/import.js";
 import { detectBriefEnv } from "./brief/detect.js";
@@ -451,6 +462,19 @@ secret
   });
 
 program
+  .command("spend")
+  .description("What the cloud voices cost so far: totals of the spend ledger (spend.jsonl in the config folder), by provider. Estimates from your price per credit")
+  .option("--since <date>", "Only requests from this day on (YYYY-MM-DD) or time (ISO)")
+  .option("--json", "Print the totals and rows as JSON")
+  .action(async (o: { since?: string; json?: boolean }) => {
+    const since = o.since ? parseSince(o.since) : undefined;
+    const rows = await readSpend({ since });
+    const summary = summarizeSpend(rows);
+    if (o.json) print({ since: since?.toISOString(), ...summary, rows });
+    else print(formatSpend(summary, since));
+  });
+
+program
   .command("update")
   .description("Update the app files to the latest release without downloading the whole package")
   .option("--check", "Only say whether a newer version exists; change nothing")
@@ -517,6 +541,11 @@ program
     print({ buildDir: r.buildDir, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
   });
 
+/** `--fit`, `--strict-fit` and `--fit-max` as the render option (undefined when none is given). */
+function fitFlags(auto?: boolean, strict?: boolean, max?: number) {
+  return auto || strict || max !== undefined ? { auto, strict, max } : undefined;
+}
+
 program
   .command("render")
   .description("Render a storyboard to MP4")
@@ -530,48 +559,118 @@ program
   .option("--to <s>", "Render only up to this OUTPUT second", Number)
   .option("--formats <list>", "Render once per format, e.g. 16:9,9:16,1:1 or 1280x720 (writes <storyboard>.<format>.mp4)")
   .option("--style <file>", "Style file ({ \"theme\": {...} }) merged over the storyboard's theme; writes <storyboard>.<style>.mp4 and keeps its own build folder")
+  .option("--variant <file|name>", "Variant file (new narration text, voice, overlay files) over the storyboard; a name is looked up as variants/<name>.json next to it. Writes <storyboard>.<variant>.mp4 and keeps its own build folder")
+  .option("--fit", "Speed narration clips that overrun their slot (the time to the next line, minus voice.gap) up to the cap so they fit; the sped-up clip is cached, never stretched twice")
+  .option("--strict-fit", "Fail when a narration clip needs more than the cap to fit its slot (instead of freezing the video)")
+  .option("--fit-max <x>", "The cap of --fit and --strict-fit as a speed-up factor (default voice.fit.max, else 1.18)", Number)
   .option("--subtitles <list>", "Also write subtitle files from the narration: srt, vtt or srt,vtt (next to the video)")
+  .option("--subtitle-lang <list>", "One caption file per language: ar,en=en.json,es=es.json (code = the video's own lines, code=file = a translation: {\"<id or index>\": \"line\"}). Writes <video>.<code>.srt|vtt instead of the plain file (formats from --subtitles, default srt,vtt)")
+  .option("--subtitle-chars <n>", "Characters per caption line for --subtitle-lang (default 42; at most 2 lines per cue)", Number)
   .option("--also <list>", "Also make files from the finished video: gif, webm, poster (a PNG frame), or a comma list")
   .option("--poster-at <s>", "Time of the poster frame, in OUTPUT seconds (default: a quarter of the way in)", Number)
   .option("--no-chunks", "Render in one piece. By default a video (or --from/--to window) of 5 minutes or more renders in cached chunks cut at quiet points, so after an edit only the touched chunks render again")
   .option("--chunk-seconds <n>", "Length of those chunks (default 180, at least 10)", Number)
+  .option("--min-free-mem <MB>", "Before each part or chunk, wait until this much memory is available (default 1500, 0 = off; SCREENPILOT_MIN_FREE_MEM sets the default)", Number)
+  .option("--mem-timeout <s>", "Longest wait for that memory, then fail with the numbers (default 300)", Number)
   .option("--build-dir <dir>")
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; subtitles?: string; also?: string; posterAt?: number; chunks: boolean; chunkSeconds?: number }) => {
-    const { subtitles, also, posterAt, style, chunks, ...rest } = o;
+  .option("--dry-run", "Print the lines, characters and estimated USD the voice would cost, then stop: no request, no file, no cache entry")
+  .addOption(new Option("--dry").hideHelp())
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; variant?: string; fit?: boolean; strictFit?: boolean; fitMax?: number; subtitles?: string; subtitleLang?: string; subtitleChars?: number; also?: string; posterAt?: number; chunks: boolean; chunkSeconds?: number; minFreeMem?: number; memTimeout?: number; dryRun?: boolean; dry?: boolean }) => {
+    if (o.dryRun || o.dry) {
+      const e = await estimateStoryboard(path, { style: o.style ? await loadStyle(o.style) : undefined, variant: o.variant ? await loadVariant(o.variant, path) : undefined });
+      log(describeEstimate(e));
+      print(e);
+      return;
+    }
+    const { subtitles, subtitleLang, subtitleChars, also, posterAt, style, variant, fit, strictFit, fitMax, chunks, minFreeMem, memTimeout, dryRun: _dryRun, dry: _dry, ...rest } = o;
     // Commander sets chunks: true unless --no-chunks; only an explicit "off" is passed on.
-    const opts = { ...rest, chunks: chunks ? undefined : false, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt, log };
+    const opts = { ...rest, minFreeMemMB: minFreeMem, memTimeoutS: memTimeout, chunks: chunks ? undefined : false, style: style ? await loadStyle(style) : undefined, variant: variant ? await loadVariant(variant, path) : undefined, fit: fitFlags(fit, strictFit, fitMax), workers: parseWorkers(o.workers), window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), subtitleLanguages: parseSubtitleLanguages(subtitleLang), subtitleRules: subtitleChars !== undefined ? { maxChars: subtitleChars } : undefined, also: parseExtras(also), posterAt, log };
     if (o.formats) {
       if (o.buildDir) throw new Error("--build-dir cannot be combined with --formats (each format gets its own <name>.<format>.build)");
       const rs = await renderFormats(path, parseFormats(o.formats), opts);
-      print(rs.map((r) => ({ format: r.format, output: r.output, files: r.files, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings })));
+      print(rs.map((r) => ({ format: r.format, output: r.output, files: r.files, timeline: r.timelineFile, duration: r.plan.duration, autoHolds: r.autoHolds, fit: r.fit.filter((e) => e.needed > 1), warnings: r.warnings })));
       return;
     }
     const r = await renderStoryboard(path, opts);
-    print({ output: r.output, files: r.files, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
+    print({ output: r.output, files: r.files, timeline: r.timelineFile, duration: r.plan.duration, autoHolds: r.autoHolds, fit: r.fit.filter((e) => e.needed > 1), warnings: r.warnings });
   });
 
 program
   .command("sequence")
-  .description("Render several storyboards (each with its own recording) and join them into one MP4")
-  .argument("<sequence>", "sequence.json")
+  .description("Render several storyboards (each with its own recording) and join them into one MP4; with --joins, several joined videos from shared groups in one call")
+  .argument("[sequence]", "sequence.json (or none with --joins)")
   .option("-o, --output <file>", "Output video (default: <sequence>.mp4)")
+  .option("--joins <list>", "Several joined videos in one call: setup=g1.json+g2.json,operations=g3.json,full=setup+operations (a name, then sequence files or other names joined with +). Each group is rendered once and reused by every video; writes <out-dir>/<name>.mp4 and <name>.timeline.json")
+  .option("--join-transition <type[:s]>", "With --joins: how each group enters from the one before (cut, crossfade, fade-black, wipe-left, wipe-right, slide-left, slide-right; seconds default 0.5, at most half of either group), e.g. fade-black:0.6. Default cut")
+  .option("--out-dir <dir>", "With --joins: folder of the joined videos (default: the folder holding all the groups); the build folder is <out-dir>/joins.build and pause/resume take <out-dir>/joins")
   .option("-q, --quality <q>", "draft | looks | delivery", "looks")
   .option("--png-frames", "Lossless source frames: sharper UI text, slower")
   .option("--workers <n>", "Parallel renderers, each a headless Chrome: auto (default: half the cores, from free memory), max (idle desktop: all cores but two) or a number. SCREENPILOT_WORKERS sets the default")
   .option("--timings", "Log how long each stage takes and show HyperFrames phase timings")
   .option("--style <file>", "Style file ({ \"theme\": {...} }) merged over the theme of every part; writes <sequence>.<style>.mp4 and keeps its own build folder")
+  .option("--variant <name>", "Variant name: each part takes <its folder>/variants/<name>.json (a part without one renders as written, with a warning). Writes <sequence>.<variant>.mp4; parts that do not use the variant are reused between variants")
+  .option("--variant-dir <dir>", "Folder with <name>.json variants for the parts that have no variants/<name>.json of their own")
+  .option("--subtitles <list>", "Also write caption files for the joined video from its timeline: srt, vtt or srt,vtt (next to the video)")
+  .option("--subtitle-lang <list>", "One caption file per language: ar,en=en.json (translation = {\"<chapter>\": [\"line\", ...]} or {\"<id>\": \"line\"}, chapter = the part's storyboard folder). Writes <video>.<code>.srt|vtt")
+  .option("--subtitle-chars <n>", "Characters per caption line (default 42; at most 2 lines per cue)", Number)
+  .option("--fit", "Speed narration clips that overrun their slot (the time to the next line, minus voice.gap) up to the cap so they fit; the sped-up clip is cached, never stretched twice")
+  .option("--strict-fit", "Fail when a narration clip needs more than the cap to fit its slot (instead of freezing the video)")
+  .option("--fit-max <x>", "The cap of --fit and --strict-fit as a speed-up factor (default voice.fit.max, else 1.18)", Number)
+  .option("--min-free-mem <MB>", "Before each part or chunk, wait until this much memory is available (default 1500, 0 = off; SCREENPILOT_MIN_FREE_MEM sets the default)", Number)
+  .option("--mem-timeout <s>", "Longest wait for that memory, then fail with the numbers (default 300)", Number)
   .option("--build-dir <dir>")
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string }) => {
-    const { style, ...rest } = o;
-    print(await renderSequence(path, { ...rest, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), log }));
+  .option("--dry-run", "Print the lines, characters and estimated USD the voices would cost, part by part, then stop: no request, no file, no build folder")
+  .addOption(new Option("--dry").hideHelp())
+  .action(async (path: string | undefined, o: { output?: string; joins?: string; joinTransition?: string; outDir?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string; variant?: string; variantDir?: string; fit?: boolean; strictFit?: boolean; fitMax?: number; subtitles?: string; subtitleLang?: string; subtitleChars?: number; minFreeMem?: number; memTimeout?: number; dryRun?: boolean; dry?: boolean }) => {
+    if (!path === !o.joins) throw new Error("Give a sequence.json or --joins, not both (and not neither)");
+    if (!o.joins && (o.joinTransition || o.outDir)) throw new Error("--join-transition and --out-dir only go with --joins");
+    if (o.joins && o.output) throw new Error("--output does not go with --joins: each joined video is <out-dir>/<name>.mp4");
+    const joins = o.joins ? parseJoins(o.joins) : undefined;
+    if (o.dryRun || o.dry) {
+      const e = await estimateSequence(joins ? [...new Set(Object.values(expandJoins(joins, process.cwd())).flat())] : path!, { style: o.style ? await loadStyle(o.style) : undefined, variant: o.variant, variantDir: o.variantDir });
+      log(describeEstimate(e, " (all parts)"));
+      print(e);
+      return;
+    }
+    const { style, fit, strictFit, fitMax, subtitles, subtitleLang, subtitleChars, minFreeMem, memTimeout, dryRun: _dryRun, dry: _dry, joins: _joins, joinTransition, outDir, ...rest } = o;
+    const opts = { ...rest, fit: fitFlags(fit, strictFit, fitMax), minFreeMemMB: minFreeMem, memTimeoutS: memTimeout, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), subtitles: parseSubtitleFormats(subtitles), subtitleLanguages: parseSubtitleLanguages(subtitleLang), subtitleRules: subtitleChars !== undefined ? { maxChars: subtitleChars } : undefined, log };
+    if (joins) print(await renderJoins({ joins, transition: joinTransition ? parseJoinTransition(joinTransition) : undefined }, { ...opts, outputDir: outDir }));
+    else print(await renderSequence(path!, opts));
+  });
+
+program
+  .command("pause")
+  .description("Pause a running render or sequence: it finishes the part (or chunk) in progress, then stops and prints which parts are done. Without a path: every render running now")
+  .argument("[path]", "The storyboard or sequence being rendered (<out-dir>/joins for sequence --joins)")
+  .option("--build-dir <dir>", "Its build folder, when it is not the default one")
+  .action(async (path: string | undefined, o: { buildDir?: string }) => {
+    const r = await pauseRenders({ path, buildDir: o.buildDir });
+    print(r);
+    log("the render stops after the part or chunk in progress; carry on with: screenpilot resume <storyboard or sequence>");
+  });
+
+program
+  .command("resume")
+  .description("Carry on a paused render or sequence with the options it was started with: finished parts and chunks are reused")
+  .argument("<path>", "The storyboard or sequence that was paused (<out-dir>/joins for sequence --joins)")
+  .option("--build-dir <dir>", "Its build folder, when it is not the default one")
+  .option("--workers <n>", "Change the parallel renderers for the rest: auto, max or a number")
+  .option("--min-free-mem <MB>", "Before each part or chunk, wait until this much memory is available (default 1500, 0 = off; SCREENPILOT_MIN_FREE_MEM sets the default)", Number)
+  .option("--mem-timeout <s>", "Longest wait for that memory, then fail with the numbers (default 300)", Number)
+  .action(async (path: string, o: { buildDir?: string; workers?: string; minFreeMem?: number; memTimeout?: number }) => {
+    print(await resumePaused(path, { buildDir: o.buildDir, workers: parseWorkers(o.workers, {}), minFreeMemMB: o.minFreeMem, memTimeoutS: o.memTimeout, log }));
   });
 
 program
   .command("sequence-validate")
   .description("Check a sequence.json and every storyboard it uses")
   .argument("<sequence>")
-  .action(async (path: string) => {
-    print(await validateSequence(path));
+  .option("--variant <name>", "Check the sequence with this variant applied to each part (see sequence --variant)")
+  .option("--variant-dir <dir>", "Folder with <name>.json variants for parts without their own")
+  .option("--fit", "Also check that narration lines fit their slots, using the clips already in the voice cache (nothing is synthesized)")
+  .option("--fit-max <x>", "The cap of the fit check as a speed-up factor (default voice.fit.max, else 1.18)", Number)
+  .action(async (path: string, o: { variant?: string; variantDir?: string; fit?: boolean; fitMax?: number }) => {
+    print(await validateSequence(path, o));
   });
 
 program
@@ -591,18 +690,46 @@ program
   });
 
 program
+  .command("subs")
+  .description("Caption files (and optionally soft subtitle tracks) for a video that is already rendered, from its timeline.json: no render")
+  .argument("<video>", "The rendered video; its <video>.timeline.json is read")
+  .option("--lang <list>", "Languages: ar,en=en.json,es=es.json (code = the video's own lines, code=file = a translation: {\"<id or index>\": \"line\"} or {\"<chapter>\": [\"line\", ...]}). Writes <video>.<code>.srt|vtt; without it one plain <video>.srt|vtt")
+  .option("--formats <list>", "srt, vtt or srt,vtt", "srt,vtt")
+  .option("--chars <n>", "Characters per caption line (default 42; at most 2 lines per cue)", Number)
+  .option("--join <list>", "For a video joined outside ScreenPilot: the timelines of its parts, in order (a.timeline.json,b.timeline.json), instead of <video>.timeline.json")
+  .option("--transition <s>", "With --join: seconds each part overlaps the one before it (the transition the video was joined with; default 0 = cuts)", Number)
+  .option("--transition-type <type>", "With --join and --transition: crossfade (default), fade-black, wipe-left ... (the overlap is the same for all of them)")
+  .option("--mux", "Also add the files to the video as soft subtitle tracks with language metadata, into <video>.subs.<ext> (copy, no re-encode; the original is untouched)")
+  .action(async (video: string, o: { lang?: string; formats: string; chars?: number; join?: string; transition?: number; transitionType?: string; mux?: boolean }) => {
+    const r = await makeSubtitles(resolve(video), {
+      languages: parseSubtitleLanguages(o.lang),
+      formats: parseSubtitleFormats(o.formats),
+      rules: o.chars !== undefined ? { maxChars: o.chars } : undefined,
+      join: o.join?.split(",").map((f) => resolve(f.trim())).filter(Boolean),
+      transition: o.transition,
+      transitionType: o.transitionType ? parseTransitionType(o.transitionType) : undefined,
+    });
+    for (const f of r.files) log(`wrote ${f}`);
+    const muxed = o.mux ? await muxSubtitles(resolve(video), r.tracks) : undefined;
+    if (muxed) log(`wrote ${muxed}`);
+    print({ files: r.files, ...(muxed ? { muxed } : {}), timeline: r.timeline, duration: r.duration, warnings: r.warnings });
+  });
+
+program
   .command("check")
-  .description("Pull frames from a rendered video to review the result")
+  .description("Pull frames from a rendered video to review the result; also checks that the subtitle times land on the audio when <video>.timeline.json exists")
   .argument("<video>")
   .option("--at <times>", "Comma-separated output seconds")
   .option("--every <n>", "Evenly spaced frames", "8")
   .option("-o, --out <dir>", "Output directory")
-  .action(async (video: string, o: { at?: string; every: string; out?: string }) => {
+  .option("--no-sync", "Skip the subtitle sync check")
+  .action(async (video: string, o: { at?: string; every: string; out?: string; sync: boolean }) => {
     const info = await probeVideo(video);
     const times = o.at ? parseTimes(o.at) : evenTimes(info.duration, Number(o.every));
     const outDir = o.out ?? join(dirname(resolve(video)), `${basename(video)}.check`);
     const frames = await grabFrames(video, times, { outDir, width: 960, prefix: "out" });
-    print({ duration: info.duration, hasAudio: info.hasAudio, frames });
+    const sync = o.sync ? await subtitleSyncReport(resolve(video)) : undefined;
+    print({ duration: info.duration, hasAudio: info.hasAudio, frames, ...(sync ? { sync } : {}) });
   });
 
 program
@@ -644,6 +771,12 @@ program
     if (hookPinned()) process.exit(process.exitCode ?? 0);
   })
   .catch((err: unknown) => {
+    // A pause is a clean stop: print where it stopped, exit 0.
+    if (err instanceof RenderPaused) {
+      print(err.info);
+      log(`paused; carry on with: ${err.info.resume}`);
+      process.exit(0);
+    }
     if (err instanceof StoryboardError) log(err.message);
     else log(err instanceof Error ? err.message : String(err));
     process.exit(1);

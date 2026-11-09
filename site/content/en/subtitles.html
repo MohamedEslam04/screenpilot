@@ -1,0 +1,94 @@
+<!--
+title: Subtitles and timeline
+summary: Write caption files in several languages from the timeline file of a rendered video, without rendering again, add them as soft tracks, and check that the captions land on the sound.
+-->
+<p>Platforms such as YouTube, LinkedIn and Vimeo take caption files, and a video for several countries needs one file per language. ScreenPilot makes them from the <strong>timeline file</strong> that every render writes, so a new language never needs a new render. It does not translate anything: you (or your AI app) write the translations, and ScreenPilot places them at the right times.</p>
+
+<h2 id="timeline">The timeline file</h2>
+<p>Every <code>render</code> and every <code>sequence</code> writes <code>&lt;video&gt;.timeline.json</code> next to the video. It lists when each narration line and each title card is on screen, in <strong>output</strong> seconds.</p>
+<pre><code class="language-json">{
+  "version": 1,
+  "duration": 74.2,
+  "items": [
+    { "kind": "narration", "id": "open", "start": 1.2, "end": 4.9, "text": "We open the settings." },
+    { "kind": "card", "start": 12, "end": 14.5, "text": "Step two\nThe settings page" }
+  ]
+}</code></pre>
+<ul>
+<li><code>kind</code> is <code>narration</code> (a spoken line), <code>card</code> (the intro or a chapter card; <code>text</code> is its title, then its subtitle on a second line) or <code>outro</code>. Cards drawn from data (<a href="@guide/storyboard.html#data-cards">Cards from data</a>) are not listed.</li>
+<li><code>id</code> of a narration item is the line's <code>id</code> from the storyboard. Without an <code>id</code> it is the line's position, counted from 0.</li>
+<li>A <code>sequence</code> writes one timeline for the joined video. Each part also keeps its own next to its <code>part.mp4</code>, so parts reused from the cache still count. In a sequence, an item also has <code>part</code> (the index of the part) and <code>chapter</code> (the name of the part's storyboard folder).</li>
+<li>The result of a render or sequence lists the file under <code>timeline</code>.</li>
+</ul>
+<div class="warn">A timeline whose duration differs from its video by more than 0.25 seconds is stale, for example after you trimmed the video by hand. Every command that reads it stops with an error that names the file.</div>
+
+<h2 id="ids">Name your narration lines</h2>
+<p>A translation is matched to a line by its <code>id</code>. Give each narration line a short, unique <code>id</code>. Lines without one are matched by position from 0, which breaks when you insert a line.</p>
+<pre><code class="language-json">"narration": [
+  { "id": "open", "at": 1, "text": "We open the settings." },
+  { "id": "save", "at": 6, "text": "Then we save." }
+]</code></pre>
+<p>A repeated <code>id</code> makes the match ambiguous, so keep them unique.</p>
+
+<h2 id="translations">Translation files</h2>
+<p>A translation file is plain JSON that you write. For one storyboard it maps an id (or position) to the translated line:</p>
+<pre><code class="language-json">{ "open": "Abrimos los ajustes.", "save": "Guardamos." }</code></pre>
+<p>For a sequence, the keys are chapters, which are the folder names of the part storyboards. A chapter holds either an array with exactly one line per narration line of that chapter, or an object keyed by id:</p>
+<pre><code class="language-json">{ "setup": ["Abrimos los ajustes.", "Guardamos."], "ops": { "done": "Listo." } }</code></pre>
+<ul>
+<li>A line that has no translation is an error that names its id.</li>
+<li>An array with the wrong number of lines is an error that names the chapter and both counts.</li>
+<li>A key that matches nothing is only a warning.</li>
+</ul>
+<p>The paths of translation files are read from the folder you run the command in.</p>
+
+<h2 id="at-render">Caption files at render time</h2>
+<p>Add <code>--subtitle-lang</code> to <code>render</code> or <code>sequence</code>. It takes a comma list. A plain code (<code>ar</code>) uses the video's own lines. <code>code=file</code> (<code>en=en.json</code>) uses a translation file.</p>
+<pre><code class="language-sh">screenpilot render demo.json --subtitle-lang ar,en=en.json,es=es.json
+screenpilot sequence all.json -q delivery --subtitle-lang ar,en=en.json,es=es.json --subtitles srt,vtt</code></pre>
+<ul>
+<li>The files are <code>&lt;video&gt;.&lt;code&gt;.srt</code> and <code>&lt;video&gt;.&lt;code&gt;.vtt</code>, for example <code>all.ar.srt</code>. <code>--subtitles</code> picks the formats (<code>srt</code>, <code>vtt</code> or both). With <code>--subtitle-lang</code> and no <code>--subtitles</code>, both are written.</li>
+<li><code>--subtitle-chars &lt;n&gt;</code> sets the characters per caption line. Default 42.</li>
+<li>Without <code>--subtitle-lang</code>, <code>render --subtitles</code> writes the plain <code>&lt;video&gt;.srt</code> and <code>.vtt</code> exactly as before.</li>
+<li>Over MCP, <code>render</code> and <code>sequence_render</code> take <code>languages</code> (<code>{"ar": "auto", "en": "en.json"}</code>, where <code>auto</code> means the video's own lines), <code>subtitles</code> and <code>subtitle_chars</code>.</li>
+</ul>
+<p>Translation files are read and checked before the render starts, so a typo fails in seconds, not after a long render.</p>
+
+<h2 id="subs-command">Captions for a video that is already rendered</h2>
+<p><code>screenpilot subs &lt;video&gt;</code> reads <code>&lt;video&gt;.timeline.json</code> and writes the caption files. It renders nothing, so adding a language later takes a second.</p>
+<pre><code class="language-sh">screenpilot subs demo.mp4 --lang ar,en=en.json --formats srt,vtt</code></pre>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--lang &lt;list&gt;</code></td><td>Languages, as for <code>--subtitle-lang</code>. Without it, one plain <code>&lt;video&gt;.srt</code> and <code>.vtt</code>.</td></tr>
+<tr><td><code>--formats &lt;list&gt;</code></td><td><code>srt</code>, <code>vtt</code> or <code>srt,vtt</code>. Default <code>srt,vtt</code>.</td></tr>
+<tr><td><code>--chars &lt;n&gt;</code></td><td>Characters per caption line. Default 42.</td></tr>
+<tr><td><code>--join &lt;list&gt;</code></td><td>For a video you joined outside ScreenPilot: the timelines of its parts, in order (<code>a.timeline.json,b.timeline.json</code>), instead of <code>&lt;video&gt;.timeline.json</code>.</td></tr>
+<tr><td><code>--transition &lt;s&gt;</code></td><td>With <code>--join</code>: how many seconds each part overlaps the one before it. Default 0, which means cuts.</td></tr>
+<tr><td><code>--transition-type &lt;type&gt;</code></td><td>With <code>--join</code> and <code>--transition</code>: <code>crossfade</code> (default), <code>fade-black</code>, <code>wipe-left</code> and so on. The overlap is the same for all of them.</td></tr>
+<tr><td><code>--mux</code></td><td>Also add the files to the video as soft tracks. See below.</td></tr>
+</tbody>
+</table>
+<p>The MCP tool is <code>subs</code> (inputs <code>video</code>, <code>languages</code>, <code>formats</code>, <code>subtitle_chars</code>, <code>join</code>, <code>transition</code>, <code>transition_type</code>, <code>mux</code>). With <code>--join</code>, the parts are composed with the same arithmetic as <code>sequence</code>: the overlap of a transition is limited to half of either part.</p>
+
+<h2 id="mux">Soft subtitle tracks</h2>
+<p><code>--mux</code> (MCP <code>mux: true</code>) adds the caption files to a copy of the video, with the language set on each track, so a player can offer a language menu. The copy is <code>&lt;video&gt;.subs.mp4</code> (the same extension as the video). Nothing is re-encoded and your original is untouched. The track format is <code>mov_text</code> for mp4 and mov, and <code>webvtt</code> for mkv and webm.</p>
+<pre><code class="language-sh">screenpilot subs all.mp4 --lang ar,en=en.json,es=es.json --mux
+# writes all.ar.srt, all.en.srt, all.es.srt (and .vtt) and all.subs.mp4 with 3 language tracks</code></pre>
+
+<h2 id="cue-rules">How captions are cut</h2>
+<p>All caption files follow one set of rules:</p>
+<ul>
+<li>At most 2 lines per caption, about 42 characters each. Lines break on spaces only, so a long word stays whole.</li>
+<li>A narration line that is longer becomes several captions.</li>
+<li>No caption overlaps the next one, and each lasts at least 0.7 seconds when there is room.</li>
+<li>Right-to-left text (Arabic, Hebrew) is never reordered and no direction marks are added.</li>
+</ul>
+
+<h2 id="sync-check">Check that captions land on the sound</h2>
+<p>When <code>&lt;video&gt;.timeline.json</code> exists, <code>screenpilot check &lt;video&gt;</code> (MCP <code>check_output</code>) also compares the time of each narration line with the first sound after it. It warns about every line where they are more than 0.4 seconds apart. <code>--no-sync</code> (MCP <code>sync: false</code>) skips the check.</p>
+<div class="note">Background music keeps a video from ever being silent, so the check cannot see a problem in a video that has music.</div>
+<p>A complete example, from a sequence with two chapters to three languages:</p>
+<pre><code class="language-sh">screenpilot sequence all.json -q delivery --subtitle-lang ar,en=en.json,es=es.json --subtitles srt,vtt
+screenpilot check all.mp4 --every 8
+screenpilot subs all.mp4 --lang ar,en=en.json,es=es.json --mux</code></pre>

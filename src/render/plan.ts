@@ -1,4 +1,5 @@
-import { MUSIC_FADE_IN, MUSIC_FADE_OUT, type Motion, type Overlay, type Storyboard, type Theme, type View } from "../storyboard/schema.js";
+import { type CardContent, MUSIC_FADE_IN, MUSIC_FADE_OUT, type MediaOverlay, type Motion, type Storyboard, type Theme, type View } from "../storyboard/schema.js";
+import { cardDirection, cardTexts } from "./cards/index.js";
 import type { Timeline } from "../storyboard/timeline.js";
 import type { VoiceClip } from "../voice/index.js";
 import { type DuckTween, planDuck } from "./duck.js";
@@ -52,6 +53,8 @@ export type AnnotationItem = { start: number; end: number } & (
 
 /** One narration line as a subtitle cue (output seconds), whether or not it is burned into the picture. */
 export interface SubtitleItem {
+  /** The narration line's id (see timeline.json); set by renders, absent in plans built without one. */
+  id?: string;
   start: number;
   end: number;
   text: string;
@@ -104,7 +107,7 @@ export interface OverlayItem {
   y: number;
   w: number;
   h: number;
-  fit: Overlay["fit"];
+  fit: MediaOverlay["fit"];
   opacity: number;
   radius?: number;
   shadow?: boolean;
@@ -112,6 +115,17 @@ export interface OverlayItem {
   /** Timed media elements: one for an image or a video that plays once, repeats when looping. */
   clips: { start: number; duration: number; /** Seconds to skip in the file (partial renders). */ mediaStart?: number }[];
 }
+
+/** A card overlay (kind "card") placed on the output timeline: drawn from its data by html.ts, no file involved. */
+export type DataCardItem = CardContent & {
+  id?: string;
+  start: number;
+  end: number;
+  /** Reading direction and language, found from the card's text (cardDirection). */
+  dir: "ltr" | "rtl";
+  lang?: string;
+  motion?: Motion;
+};
 
 /** An overlay file copied into the build dir. */
 export interface OverlayAsset {
@@ -143,6 +157,8 @@ export interface RenderPlan {
   audio: AudioItem[];
   cards: CardItem[];
   overlays: OverlayItem[];
+  /** Card overlays drawn from data (buildPlan always sets it; a plan written by hand may leave it out). */
+  dataCards?: DataCardItem[];
 }
 
 export interface ClickEvent {
@@ -157,7 +173,7 @@ export interface PlanInput {
   editedSrc: string;
   editedHasAudio: boolean;
   source: { width: number; height: number };
-  narration: (VoiceClip & { at: number; caption: boolean; src: string })[];
+  narration: (VoiceClip & { at: number; caption: boolean; src: string; id?: string })[];
   clicks: ClickEvent[];
   musicSrc?: string;
   /** Output seconds the prepared music track (music.ts) plays; its fades are already in the file. Without it the music spans the video. */
@@ -166,6 +182,14 @@ export interface PlanInput {
   overlays?: (OverlayAsset | undefined)[];
   /** The mixed sound effects track (sfx.ts), as long as the video. */
   sfxSrc?: string;
+}
+
+/** Language of a voice name such as "ar-EG-SalmaNeural"; the local Egyptian Arabic voice "namaa" is Arabic too. */
+function languageOfVoice(name: string | undefined): string | undefined {
+  if (!name) return undefined;
+  const m = /^([a-z]{2,3})-[A-Za-z0-9]+/.exec(name);
+  if (m) return m[1];
+  return /^namaa/i.test(name) ? "ar" : undefined;
 }
 
 /** Seconds the outro cross-fades in over the end of the video. */
@@ -258,7 +282,7 @@ export function buildPlan(input: PlanInput): RenderPlan {
   for (const n of input.narration) {
     const start = tl.toOutput(n.at);
     if (start === null) continue;
-    subtitles.push({ start: round(start), end: round(start + n.duration), text: n.text });
+    subtitles.push({ ...(n.id !== undefined ? { id: n.id } : {}), start: round(start), end: round(start + n.duration), text: n.text });
     audio.push({ src: n.src, start: round(start), duration: round(n.duration), volume: sb.voice.volume });
     if (n.caption) {
       texts.push({ start, end: start + n.duration, text: n.text, position: "bottom", style: "subtitle" });
@@ -278,8 +302,27 @@ export function buildPlan(input: PlanInput): RenderPlan {
   if (input.sfxSrc) audio.push({ src: input.sfxSrc, start: 0, duration, volume: 1 });
 
   const overlays: OverlayItem[] = [];
+  const dataCards: DataCardItem[] = [];
+  const voiceLang = languageOfVoice(sb.voice.name);
   const firstIn = tl.pieces.find((p) => p.kind === "play")?.in ?? 0;
   sb.overlays.forEach((o, i) => {
+    if (o.kind === "card") {
+      const m = tl.mapSpan(o.at, o.dur);
+      if (!m) return;
+      const start = round(m.start);
+      const end = round(m.end);
+      if (end <= start) return;
+      const content = { template: o.template, data: o.data } as CardContent;
+      dataCards.push({
+        ...content,
+        ...(o.id !== undefined ? { id: o.id } : {}),
+        start,
+        end,
+        ...cardDirection(cardTexts(content), { lang: o.lang, voiceLang }),
+        ...(o.motion ? { motion: o.motion } : {}),
+      });
+      return;
+    }
     const asset = input.overlays?.[i];
     if (!asset) return;
     let start: number;
@@ -412,6 +455,7 @@ export function buildPlan(input: PlanInput): RenderPlan {
     audio,
     cards,
     overlays,
+    dataCards,
   };
 }
 

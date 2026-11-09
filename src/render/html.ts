@@ -1,4 +1,5 @@
 import type { Motion } from "../storyboard/schema.js";
+import { cardCss, renderCard, sequenceSelector } from "./cards/index.js";
 import type { RenderPlan, TextItem } from "./plan.js";
 
 // Pure: RenderPlan -> HyperFrames index.html. Overlays that must track the
@@ -76,6 +77,19 @@ export function renderHtml(plan: RenderPlan, opts: { gsapSrc: string }): string 
     if (m.in === "words" || m.in === "lines" || m.in === "wipe") m.in = "fade";
     if (m.out === "words" || m.out === "lines" || m.out === "wipe") m.out = "fade";
     js.push(...motionJs(`#ov${i}`, m, o.start, o.end, "text", ""));
+  });
+
+  // Data cards (overlay kind "card"): drawn from JSON, full frame, above the recording and below the captions.
+  const dataCards = plan.dataCards ?? [];
+  dataCards.forEach((c, i) => {
+    overlayEls.push(renderCard(c, i, { width: W, height: H }, timed(c.start, c.end)));
+    const m = { in: "fade", out: "fade", ...c.motion } as Motion;
+    if (m.in === "words" || m.in === "lines" || m.in === "wipe") m.in = "fade";
+    if (m.out === "words" || m.out === "lines" || m.out === "wipe") m.out = "fade";
+    js.push(...motionJs(`#dc${i}`, m, c.start, c.end, "text", ""));
+    // The items of a list and the steps of a flow come in one after another (not when a partial render cut the entrance off).
+    const seq = sequenceSelector(c, i);
+    if (seq && m.in !== "none") js.push(`tl.fromTo("${seq}", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out", stagger: 0.12 }, ${n(c.start + 0.25)});`);
   });
 
   // Ripples
@@ -285,7 +299,7 @@ html, body { width: ${W}px; height: ${H}px; overflow: hidden; background: #000; 
 .card h1 { font-size: 104px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
 .card p { margin-top: 28px; font-size: 44px; font-weight: 500; }
 </style>
-${theme.css.trim() ? `<style id="theme-css">\n${theme.css.replace(/<\/style/gi, "<\\/style")}\n</style>` : ""}
+${dataCards.length > 0 ? `<style id="card-css">${cardCss(theme, { width: W, height: H })}</style>\n` : ""}${theme.css.trim() ? `<style id="theme-css">\n${theme.css.replace(/<\/style/gi, "<\\/style")}\n</style>` : ""}
 </head>
 <body>
 <div id="root" data-composition-id="${COMPOSITION_ID}" data-start="0" data-duration="${n(plan.duration)}" data-width="${W}" data-height="${H}" data-fps="${plan.fps}">

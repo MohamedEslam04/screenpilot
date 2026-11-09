@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import { fetchWithRetry } from "./http.js";
 import type { VoiceInfo, VoiceProvider } from "./index.js";
 import { getSecret } from "./secrets.js";
+import { countChars, recordSpend } from "./spend.js";
 import { rateToSpeed } from "./text.js";
 
 // ElevenLabs text to speech (https://elevenlabs.io/docs/api-reference/text-to-speech/convert).
@@ -11,6 +12,7 @@ import { rateToSpeed } from "./text.js";
 const BASE = "https://api.elevenlabs.io";
 const DEFAULT_MODEL = "eleven_multilingual_v2";
 const OUTPUT_FORMAT = "mp3_44100_128";
+const MP3_BITS_PER_SECOND = 128_000;
 // A voice id is 20 letters and digits; anything else is looked up by name.
 const VOICE_ID = /^[A-Za-z0-9]{20}$/;
 
@@ -71,6 +73,8 @@ export const elevenLabsProvider: VoiceProvider = {
     });
     const audio = Buffer.from(await res.arrayBuffer());
     if (!audio.length) throw new Error(`ElevenLabs sent no audio for voice "${voice}".`);
+    // The request is billed from here on; the clip is mp3_44100_128, so its length follows from its size.
+    await recordSpend({ provider: "elevenlabs", model: model(), voice, chars: countChars(text), audio_s: (audio.length * 8) / MP3_BITS_PER_SECOND });
     await mkdir(dirname(outFile), { recursive: true });
     const tmp = `${outFile}.part`;
     await writeFile(tmp, audio);

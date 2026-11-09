@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { extname, join, resolve } from "node:path";
+import { run } from "../util/exec.js";
+import { type FitEntry, fitLines } from "../storyboard/lint.js";
 import { probeDuration } from "../util/media.js";
 import { mapLimit } from "../util/pool.js";
 import { commandProvider } from "./command.js";
@@ -81,15 +83,20 @@ export async function clipDuration(file: string): Promise<number> {
   return duration;
 }
 
+/** The cache file of a line: named from the provider, voice, settings, rate and text, so a changed line gets a new clip. */
+export function clipFile(provider: VoiceProvider, line: VoiceLine, dir: string): string {
+  const key = `${provider.id}|${line.voice}|${provider.cacheKey?.(line.voice) ?? ""}|${line.rate}|${line.text}`;
+  const hash = createHash("sha1").update(key).digest("hex");
+  return join(dir, `${hash.slice(0, 16)}.${provider.ext?.(line.voice) ?? "mp3"}`);
+}
+
 /** Synthesize lines into `dir`, reusing files whose text/voice/rate did not change. */
 export async function synthesizeLines(providerId: string, lines: VoiceLine[], dir: string): Promise<VoiceClip[]> {
   const provider = getProvider(providerId);
   await mkdir(dir, { recursive: true });
   try {
     return await mapLimit(lines, provider.concurrency ?? 1, async (line) => {
-      const key = `${provider.id}|${line.voice}|${provider.cacheKey?.(line.voice) ?? ""}|${line.rate}|${line.text}`;
-      const hash = createHash("sha1").update(key).digest("hex");
-      const file = join(dir, `${hash.slice(0, 16)}.${provider.ext?.(line.voice) ?? "mp3"}`);
+      const file = clipFile(provider, line, dir);
       if (!existsSync(file)) await provider.synthesize(line.text, line.voice, line.rate, file);
       return { ...line, file, duration: await clipDuration(file) };
     });
@@ -110,4 +117,48 @@ export function estimateLineSeconds(text: string): number {
 export async function lineDurations(providerId: string, lines: VoiceLine[], dir: string, dryRun = false): Promise<number[]> {
   if (dryRun) return lines.map((l) => estimateLineSeconds(l.text));
   return (await synthesizeLines(providerId, lines, dir)).map((c) => c.duration);
+}
+
+/**
+ * A clip sped up by `factor` (ffmpeg atempo, pitch kept), next to the raw one in the voice cache as
+ * `<raw name>.x<factor>.<ext>`. It is always made from the raw clip and reused when it exists, so a
+ * re-render never stretches a clip twice.
+ */
+export async function fitClip(clip: VoiceClip, factor: number): Promise<VoiceClip> {
+  const ext = extname(clip.file);
+  const stem = clip.file.slice(0, clip.file.length - ext.length);
+  const file = `${stem}.x${factor.toFixed(3)}${ext}`;
+  if (!existsSync(file)) {
+    // Written under a temporary name (ffmpeg picks the format from the extension), so a failed run leaves no half clip.
+    const partial = `${stem}.x${factor.toFixed(3)}.partial${ext}`;
+    await run("ffmpeg", ["-y", "-loglevel", "error", "-i", clip.file, "-vn", "-filter:a", `atempo=${factor}`, partial]);
+    await rename(partial, file);
+  }
+  return { ...clip, file, duration: await clipDuration(file) };
+}
+
+/**
+ * The fit of the lines whose clip is already in the voice cache (or ready-made audio): nothing is synthesized, so
+ * it costs nothing. `unmeasured` counts the lines that have no clip yet.
+ */
+export async function cachedFit(
+  sb: { narration: { id?: string; at: number; text: string; voice?: string; audio?: string }[]; voice: { provider: string; name: string; rate: string; gap: number } },
+  baseDir: string,
+  cacheDir: string,
+): Promise<{ entries: FitEntry[]; unmeasured: number }> {
+  const provider = getProvider(sb.voice.provider);
+  const lines: { id: string; index: number; at: number; duration: number }[] = [];
+  let unmeasured = 0;
+  const known = new Map<number, number>();
+  for (const [i, l] of sb.narration.entries()) {
+    const file = l.audio ? resolve(baseDir, l.audio) : clipFile(provider, { text: l.text, voice: l.voice ?? sb.voice.name, rate: sb.voice.rate }, cacheDir);
+    if (!existsSync(file)) {
+      unmeasured++;
+      continue;
+    }
+    known.set(i, l.audio ? await probeDuration(file) : await clipDuration(file));
+  }
+  for (const [i, l] of sb.narration.entries()) lines.push({ id: l.id ?? String(i), index: i, at: l.at, duration: known.get(i) ?? 0 });
+  const entries = fitLines(lines, sb.voice.gap).filter((e) => known.has(e.index));
+  return { entries, unmeasured };
 }

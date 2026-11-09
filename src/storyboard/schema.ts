@@ -88,6 +88,11 @@ export const CaptionSchema = z.object({
 });
 
 export const NarrationSchema = z.object({
+  id: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("Stable name of the line (unique in the storyboard), used in timeline.json and by translation files; default: its position in `narration`, counted from 0"),
   at: time.describe("Source time the line starts"),
   text: z.string().min(1),
   voice: z.string().optional().describe("Override voice, e.g. ar-EG-ShakirNeural"),
@@ -149,7 +154,8 @@ export const CardSchema = z.object({
   dur: z.number().positive().default(3),
 });
 
-export const OverlaySchema = z.object({
+export const MediaOverlaySchema = z.object({
+  kind: z.literal("media").optional().describe('Omit for an image or video overlay; "card" draws a card from data (see the card overlay)'),
   src: z.string().min(1).describe("Image or video, relative to the storyboard file"),
   at: time.optional().describe("Source time it appears. Omit both at and dur for the whole video (watermark, logo)"),
   dur: z.number().positive().optional().describe("How long it stays (s of source time); omitted with at set = until the end"),
@@ -164,6 +170,86 @@ export const OverlaySchema = z.object({
   motion: MotionSchema.optional().describe("Entrance and exit (default fade); words/lines/wipe fall back to fade"),
   mute: z.boolean().default(true).describe("Video only: false plays its sound too"),
   loop: z.boolean().default(false).describe("Video only: repeat until the overlay ends"),
+});
+
+const cardText = z.string().min(1);
+const cardNote = cardText.optional();
+
+export const CARD_TEMPLATES = ["list", "flow", "number", "quote"] as const;
+
+export const ListCardDataSchema = z
+  .object({
+    kicker: cardNote.describe("Small line above the title"),
+    title: cardNote,
+    items: z
+      .array(z.object({ heading: cardText, text: cardNote.describe("Longer text under the heading; it wraps inside its box") }).strict())
+      .min(1)
+      .max(12),
+    footer: cardNote,
+  })
+  .strict();
+
+export const FlowCardDataSchema = z
+  .object({
+    kicker: cardNote,
+    title: cardNote,
+    steps: z.array(z.object({ label: cardText, text: cardNote }).strict()).min(2).max(8).describe("Steps in reading order; arrows point from one to the next"),
+    footer: cardNote,
+  })
+  .strict();
+
+export const NumberCardDataSchema = z
+  .object({
+    kicker: cardNote,
+    value: z.union([cardText, z.number()]).describe("The big figure, e.g. 42, \"98%\" or \"٤٢\""),
+    label: cardNote.describe("What the figure counts"),
+    footer: cardNote,
+  })
+  .strict();
+
+export const QuoteCardDataSchema = z
+  .object({
+    kicker: cardNote,
+    text: cardText,
+    author: cardNote,
+    role: cardNote,
+  })
+  .strict();
+
+const cardFields = {
+  kind: z.literal("card"),
+  id: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("Stable name of the card (unique in the storyboard) so a variant or translation can replace its data without touching anything else"),
+  at: time.describe("Source time the card appears (it covers the whole output frame; the video keeps playing under it, unlike a chapter card)"),
+  dur: z.number().positive().describe("How long it stays (s of source time)"),
+  lang: z
+    .string()
+    .min(1)
+    .optional()
+    .describe('Language of the text (e.g. "ar", "he", "en"). Default: found from the text itself, then from the voice language, so Arabic and Hebrew cards lay out right to left by themselves'),
+  motion: MotionSchema.optional().describe("Entrance and exit (default fade); words/lines/wipe fall back to fade. The items of a list or flow also rise one after another"),
+};
+
+/**
+ * A card drawn from JSON data when the video is rendered, so changing its wording needs no image.
+ * list: kicker, title, items (heading + text), footer. flow: steps with arrows. number: one big figure and its label. quote: a quotation and who said it.
+ */
+export const CardOverlaySchema = z.discriminatedUnion("template", [
+  z.object({ ...cardFields, template: z.literal("list"), data: ListCardDataSchema }),
+  z.object({ ...cardFields, template: z.literal("flow"), data: FlowCardDataSchema }),
+  z.object({ ...cardFields, template: z.literal("number"), data: NumberCardDataSchema }),
+  z.object({ ...cardFields, template: z.literal("quote"), data: QuoteCardDataSchema }),
+]);
+
+/** Either an image/video overlay (no kind, or "media") or a data card (kind "card"). */
+export const OverlaySchema = z.discriminatedUnion("kind", [MediaOverlaySchema, CardOverlaySchema], {
+  error: (iss) =>
+    iss.code === "invalid_union" && "note" in iss && iss.note === "No matching discriminator"
+      ? 'kind must be "card" (a card drawn from data) or left out (an image or video overlay with src)'
+      : undefined,
 });
 
 export const ChapterCardSchema = z.object({
@@ -223,6 +309,13 @@ export const VoiceSchema = z.object({
   subtitles: z.boolean().default(true).describe("Show narration lines as subtitles"),
   gap: z.number().min(0).default(0.3).describe("Min silence between lines; video freezes to make room"),
   volume: z.number().min(0).max(4).default(1),
+  fit: z
+    .object({
+      max: z.number().min(1).optional().describe("Slowest a line may be sped up to fit its slot, e.g. 1.18 (default). Over it the line is reported (and `--strict-fit` fails)"),
+      auto: z.boolean().optional().describe("Speed lines that overrun their slot up (atempo) to fit it, at most `max`; the sped-up clip is cached, so a re-render never stretches twice"),
+    })
+    .optional()
+    .describe("Slot-fit of narration lines: a line's slot is the time from its `at` to the next line's `at`, minus `gap`"),
 });
 
 export const OutputSchema = z.object({
@@ -299,7 +392,7 @@ export const SoundsSchema = z
   .describe("Automatic sound effects from recorded events and cards");
 
 /** Ids of the style-lint rules; every lint warning starts with `[id]`. */
-export const LINT_RULES = ["narration-length", "narration-speed", "caption-length", "duration", "zoom-scale", "stack", "transition"] as const;
+export const LINT_RULES = ["narration-length", "narration-speed", "caption-length", "duration", "zoom-scale", "stack", "transition", "narration-fit"] as const;
 
 export const LintSchema = z
   .object({
@@ -347,7 +440,12 @@ export const StoryboardSchema = z.object({
   narration: z.array(NarrationSchema).default([]),
   intro: CardSchema.optional(),
   outro: CardSchema.optional(),
-  overlays: z.array(OverlaySchema).default([]).describe("Images or videos placed on top of the output frame (logos, picture-in-picture)"),
+  overlays: z
+    .array(OverlaySchema)
+    .default([])
+    .describe(
+      "Placed on top of the output frame: images or videos (logos, picture-in-picture), or {kind: \"card\", template: list|flow|number|quote, data, at, dur} cards drawn from data (id optional, so a variant can replace data)",
+    ),
   cards: z.array(ChapterCardSchema).default([]).describe("Chapter cards in the middle of the video; each freezes the picture for dur seconds"),
   music: MusicSchema.optional(),
   typing: z
@@ -374,12 +472,40 @@ export type View = z.output<typeof ViewSchema>;
  */
 export const StyleSchema = z.object({ theme: ThemeSchema.partial().strict() }).strict();
 
+/**
+ * A variant file for `render --variant` / `sequence --variant`: the same recording with another script.
+ * It rewrites narration text (by line id, or by position when a line has no id; an array covers every line in order),
+ * merges `voice` key by key, and swaps overlay files by position. It never adds or drops lines (they are timed to the
+ * recording) and never touches anything else. Paths in it are relative to the storyboard, like everywhere else.
+ */
+export const VariantSchema = z
+  .object({
+    voice: VoiceSchema.partial().strict().optional().describe("Voice settings to replace (provider, name, rate, gap, subtitles, volume, fit); the rest stay as the storyboard says"),
+    narration: z
+      .union([z.array(z.string().min(1)), z.record(z.string(), z.string().min(1))])
+      .optional()
+      .describe(
+        "New text of narration lines: { \"<line id>\": \"text\" } (the id of a line is its `id`, else its position counted from 0; lines not named keep their text), " +
+          "or an array with one text per line in order. It cannot add or remove lines: a different number of lines fails",
+      ),
+    overlays: z
+      .record(z.string(), z.object({ src: z.string().min(1).describe("Replacement image or video, relative to the storyboard file") }).strict())
+      .optional()
+      .describe("Swap the file of overlays, keyed by their position in `overlays` counted from 0 (everything else about the overlay stays)"),
+  })
+  .strict();
+
+export type Variant = z.output<typeof VariantSchema>;
+
 export type Caption = z.output<typeof CaptionSchema>;
 export type Motion = z.output<typeof MotionSchema>;
 export type Narration = z.output<typeof NarrationSchema>;
 export type Highlight = z.output<typeof HighlightSchema>;
 export type Annotation = z.output<typeof AnnotationSchema>;
+export type MediaOverlay = z.output<typeof MediaOverlaySchema>;
+export type CardOverlay = z.output<typeof CardOverlaySchema>;
 export type Overlay = z.output<typeof OverlaySchema>;
+export type CardTemplate = (typeof CARD_TEMPLATES)[number];
 export type Sfx = z.output<typeof SfxSchema>;
 export type Typing = z.output<typeof TypingSchema>;
 export type Theme = z.output<typeof ThemeSchema>;
@@ -387,3 +513,10 @@ export type Theme = z.output<typeof ThemeSchema>;
 export function storyboardJsonSchema(): unknown {
   return z.toJSONSchema(StoryboardSchema, { io: "input" });
 }
+
+/** What a data card shows: the template and its (already validated) data. */
+export type CardContent =
+  | { template: "list"; data: z.output<typeof ListCardDataSchema> }
+  | { template: "flow"; data: z.output<typeof FlowCardDataSchema> }
+  | { template: "number"; data: z.output<typeof NumberCardDataSchema> }
+  | { template: "quote"; data: z.output<typeof QuoteCardDataSchema> };

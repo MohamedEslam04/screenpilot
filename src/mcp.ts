@@ -28,18 +28,30 @@ import { remapSession } from "./record/remap.js";
 import { parseExtras } from "./render/export.js";
 import { parseFormats } from "./render/formats.js";
 import { prepareBuild, renderFormats, renderStoryboard, startPreview } from "./render/index.js";
+import { muxSubtitles } from "./render/mux-subs.js";
+import { makeSubtitles, parseTransitionType } from "./render/subs-cli.js";
+import { parseSubtitleLanguages } from "./render/subtitle-langs.js";
+import { subtitleSyncReport } from "./render/sync-check.js";
 import { parseSubtitleFormats } from "./render/subtitles.js";
 import { parseWindow } from "./render/window.js";
 import { parseWorkers } from "./render/workers.js";
 import { lintStoryboard, loadStoryboard, loadStyle, StoryboardError } from "./storyboard/load.js";
+import { loadVariant } from "./storyboard/variant.js";
 import { qaStoryboard } from "./storyboard/qa.js";
 import { storyboardJsonSchema } from "./storyboard/schema.js";
+import { estimateSequence } from "./sequence/estimate.js";
 import { renderSequence, validateSequence } from "./sequence/index.js";
-import { sequenceJsonSchema } from "./sequence/schema.js";
+import { resumePaused } from "./sequence/resume.js";
+import { expandJoins, renderJoins } from "./sequence/joins.js";
+import { pauseRenders, RenderPaused } from "./render/pause.js";
+import { sequenceJsonSchema, TRANSITIONS } from "./sequence/schema.js";
 import { type PerformResult, performTake, resolveTarget, TakeError } from "./take/perform.js";
 import { A11yQuerySchema, TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
+import { estimateStoryboard } from "./voice/estimate.js";
+import { abortAll, pauseAll } from "./util/proc.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
+import { readSpend, summarizeSpend } from "./voice/spend.js";
 import { exportScript, importAudio } from "./voice/import.js";
 import { APP, APP_TITLE, named, OUTPUT_ENV, PERFORM_TIMEOUT_ENV, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
@@ -72,13 +84,15 @@ const image = async (file: string): Promise<Content> => ({
   mimeType: "image/jpeg",
 });
 
-/** Wrap a handler so thrown errors become tool errors instead of protocol errors. */
+/** Wrap a handler so thrown errors become tool errors instead of protocol errors. `extra.signal` fires when the client cancels the call. */
 const safe =
-  <A>(fn: (args: A) => Promise<Result>) =>
-  async (args: A): Promise<Result> => {
+  <A>(fn: (args: A, extra?: { signal?: AbortSignal }) => Promise<Result>) =>
+  async (args: A, extra?: { signal?: AbortSignal }): Promise<Result> => {
     try {
-      return await fn(args);
+      return await fn(args, extra);
     } catch (err) {
+      // A paused render or sequence stopped cleanly: its result says which parts are done and how to resume.
+      if (err instanceof RenderPaused) return text(err.info);
       log(err instanceof Error ? (err.stack ?? err.message) : String(err));
       return fail(err);
     }
@@ -150,10 +164,12 @@ const INSTRUCTIONS = `${APP_TITLE} makes screen videos. FIRST, for every new vid
 Design every video for its purpose; there is no house style. Before rendering, decide who it's for and where it will be shown, then set the storyboard to match: output size (1920x1080 for YouTube/README/slides, 1080x1920 for Reels/TikTok/Shorts, 1080x1080 for feeds), theme (background, padding, radius, accent, font, caption colors), theme.fonts (any Google Fonts), theme.css (your own CSS for captions, cards, highlights; storyboard_schema lists the classes) and text motion (theme.motion.captions / .cards, or motion per caption: in/out presets fade, rise, drop, slide-left, slide-right, pop, zoom, blur, wipe, words, lines, none; duration, any GSAP ease, stagger). Match the product's brand when you can see it (colors and type from its site or app). Pace and wording follow the audience: short punchy captions for social, calm explanatory ones for tutorials, bilingual lines ("English\nعربي") when asked. Defaults are only a fallback.
 Choose the shot the same way: which monitors to record (record_start screens / take "screens": one, several or "all") and what the camera shows: "window" follows the app in use (clean product demos), "screen" the whole monitor (OS-level how-tos, context matters), "all" every monitor side by side (work that spans screens, e.g. code on one and the app on the other). Switch per moment with view steps / storyboard views, and zoom only where detail matters.
 Editing: segments take speedTo (ramp the speed) and transition {type: crossfade|fade-black|fade-white|wipe-left|wipe-right|slide-left|slide-right, dur} (blends in, overlapping the previous segment, so the video gets dur shorter); theme.grade {brightness, contrast, saturation, gamma} grades the recording. Annotations: annotations [{type: arrow|box|blur, at, dur, ...}] draw on the recording (0..1 of the recording, they follow zooms); blur with mode solid hides secrets completely. Sound: sfx [{at, src}] plays a sound at a source time and sounds {clicks, typing, cards, volume} adds them automatically from the recorded clicks (needs events), the typing [{at, dur, text?}] spans (keys are never recorded; a performed take marks its own) and the title cards; src is a file or builtin:click|key|whoosh|pop|ding. music takes fadeIn/fadeOut, loop, offset and from/to; audio {loudness: {}} normalizes the final video to -16 LUFS and audio {denoise: true} cleans the recording's sound.
-To put another recording in the middle of a video without re-recording the rest: write a sequence.json {parts: [{storyboard, from?, to?, transition?}]} (sequence_schema, sequence_validate, sequence_render). Each part is a full storyboard; from/to are source seconds of that storyboard, so the same demo twice ({to: 42}, the feature, {from: 42}) inserts the feature at second 42. Give the storyboards a shared "extends" base so theme, voice and size match. Storyboards also take cards (chapter cards), overlays (logo/image/video), music.duck and segment volume/mute; render takes from/to (output seconds, review one window fast) and formats (e.g. ["16:9","9:16"]).
+To put another recording in the middle of a video without re-recording the rest: write a sequence.json {parts: [{storyboard, from?, to?, transition?}]} (sequence_schema, sequence_validate, sequence_render). Each part is a full storyboard; from/to are source seconds of that storyboard, so the same demo twice ({to: 42}, the feature, {from: 42}) inserts the feature at second 42. A part can also be {sequence: "group.json"} (a long video rendered in groups and joined in one call). For several videos from the same groups (e.g. setup, operations and full = setup + operations) give sequence_render joins {name: [group files or names]} with join {transition, dur} instead of sequence: every group renders once, each video is <out_dir>/<name>.mp4 with its timeline.json, and pause/resume take <out_dir>/joins. Give the storyboards a shared "extends" base so theme, voice and size match. Storyboards also take cards (chapter cards), overlays (logo/image/video, or {kind: "card", template: list|flow|number|quote, data, at, dur} to draw a card from JSON at render time; Arabic lays out right to left by itself), music.duck and segment volume/mute; render takes from/to (output seconds, review one window fast) and formats (e.g. ["16:9","9:16"]). A render's mp4 appears only when complete (<name>.partial.mp4 until then), and abort stops a running render with its whole process tree (HyperFrames, Chrome, ffmpeg).
+To make the same recording with another script or voice (a dialect, a language): write variants/<name>.json next to the storyboard ({voice?, narration?: {"<line id or position>": "text"} or ["text", ...], overlays?: {"<position>": {src}}}; it only rewrites lines, so a different number of lines fails) and pass variant to render, or variant (and variant_dir) to sequence_render, which looks for <part folder>/variants/<name>.json in each part. Output is <name>.<variant>.mp4 and rendering variants in turn reuses each one's cache. Narration lines have a slot (their at to the next line's at, minus voice.gap): render returns fit [{id, raw, slot, needed}] and warns above the cap (default 1.18x); fit: true speeds overrunning clips up to the cap (cached, never twice), strict_fit: true fails instead, sequence_validate fit: true checks cached clips for free.
+Subtitles: render and sequence_render take subtitles (["srt","vtt"]) and languages ({code: "auto" | translation.json}) to write <video>.<code>.srt|vtt next to the video from its timeline.json (a translation is {"<id or index>": "line"}, or {"<chapter>": ["line", ...]} for a sequence, chapter = the part's storyboard folder; no machine translation: the user or you write it); for a video that is already rendered call subs (no render), with join for a video joined by hand and mux for soft tracks in <video>.subs.mp4. check_output also checks that the captions land on the audio.
 Before the delivery render run storyboard_qa: it flags highlights that frame an empty area and views that show the desktop.
-Long renders: a full render takes about as long as the video (more at delivery). For a long video iterate with quality "draft" and from/to, use workers "max" when the user is away from the desktop. A render of 5 minutes or more is split into cached chunks at quiet points automatically, so after an edit only the chunks it touched render again (chunks: false turns it off). When a render is expected to take 2 minutes or more the log starts with "estimated ~<time>" (from past renders).
-Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, {a11y: {role, name}} for a control in a native app (a11y_tree lists them; Linux AT-SPI, Qt apps must be launched with QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1), or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). Free offline voices: voice.provider "local" with name voicetut:Sarah (Egyptian Arabic and English) or namaa (Egyptian Arabic); voices with provider "local" lists what is installed. If none is installed and the user wants one, tell them to run "screenpilot voice-setup voicetut" in a terminal (about 10 GB; do not start it yourself). Command voices (any program) are defined by the user in voices.json; you cannot add them in a storyboard. Cloud voices: provider "elevenlabs" (name = a voice id or the name of a voice on the user's account) and provider "gemini" (name like Kore) need the user's own key in ELEVENLABS_API_KEY / GEMINI_API_KEY or in secrets.json in the config folder (doctor shows whether it is set); never ask for the key in chat or write it anywhere yourself, and say the text is sent to that service. For a better voice than the built-in ones, the user can make the audio on a web text-to-speech site: script_export writes the script to paste, the user generates ONE audio file (blank line between lines) and gives it back, then audio_import cuts it per line and sets narration[].audio; render as usual. Warn that free plans have limits and may forbid commercial use. The camera frames the window in use by default. You can run the whole loop yourself: drive live, write the take, perform, render, check_output. If a person is present, ask them not to touch the mouse while you drive; moving it stops the action with a message, and resume carries on from where the pointer is. For unattended runs start the server with SCREENPILOT_INTERRUPT=off. Run doctor first on a new machine.`;
+Long renders: a full render takes about as long as the video (more at delivery). For a long video iterate with quality "draft" and from/to, use workers "max" when the user is away from the desktop. A render of 5 minutes or more is split into cached chunks at quiet points automatically, so after an edit only the chunks it touched render again (chunks: false turns it off). When a render is expected to take 2 minutes or more the log starts with "estimated ~<time>" (from past renders). If the user needs the machine (a meeting), call pause with the sequence (or storyboard): the render finishes the part or chunk in progress and its call returns {paused: true, parts}; later resume with the same path carries on, reusing every finished part and chunk. Before each part or chunk a render waits for min_free_mem MB (default 1500) up to mem_timeout seconds, then fails with the numbers; results carry peakRssMB.
+Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, {a11y: {role, name}} for a control in a native app (a11y_tree lists them; Linux AT-SPI, Qt apps must be launched with QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1), or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). Free offline voices: voice.provider "local" with name voicetut:Sarah (Egyptian Arabic and English) or namaa (Egyptian Arabic); voices with provider "local" lists what is installed. If none is installed and the user wants one, tell them to run "screenpilot voice-setup voicetut" in a terminal (about 10 GB; do not start it yourself). Command voices (any program) are defined by the user in voices.json; you cannot add them in a storyboard. Cloud voices: provider "elevenlabs" (name = a voice id or the name of a voice on the user's account) and provider "gemini" (name like Kore) need the user's own key in ELEVENLABS_API_KEY / GEMINI_API_KEY or in secrets.json in the config folder (doctor shows whether it is set); never ask for the key in chat or write it anywhere yourself, and say the text is sent to that service. Paid voices cost money: before the first render with one, call render (or sequence_render) with dryRun: true to get the lines, characters and estimated USD with nothing sent, tell the user the estimate, and render only after they agree; every billed request is added to a spend ledger and the voices tool shows the running total. For a better voice than the built-in ones, the user can make the audio on a web text-to-speech site: script_export writes the script to paste, the user generates ONE audio file (blank line between lines) and gives it back, then audio_import cuts it per line and sets narration[].audio; render as usual. Warn that free plans have limits and may forbid commercial use. The camera frames the window in use by default. You can run the whole loop yourself: drive live, write the take, perform, render, check_output. If a person is present, ask them not to touch the mouse while you drive; moving it stops the action with a message, and resume carries on from where the pointer is. For unattended runs start the server with SCREENPILOT_INTERRUPT=off. Run doctor first on a new machine.`;
 
 const server = new McpServer({ name: APP, title: APP_TITLE, version: VERSION }, { instructions: INSTRUCTIONS });
 
@@ -451,7 +467,8 @@ server.registerTool(
   {
     description:
       "List voices. provider edge (default, needs network): filter by locale prefix, e.g. ar-EG (Egyptian Arabic: ar-EG-SalmaNeural, ar-EG-ShakirNeural) or en-US. " +
-      "provider local: speech models installed on this computer (voicetut:<voice>, namaa). provider command: voices the user defined in voices.json. provider elevenlabs (needs ELEVENLABS_API_KEY) and provider gemini (needs GEMINI_API_KEY): cloud voices, listed from the service.",
+      "provider local: speech models installed on this computer (voicetut:<voice>, namaa). provider command: voices the user defined in voices.json. provider elevenlabs (needs ELEVENLABS_API_KEY) and provider gemini (needs GEMINI_API_KEY): cloud voices, listed from the service. " +
+      "A second text block {spend: {requests, chars, credits, usd, byProvider}} is the running total of what the cloud voices have cost so far (the spend ledger, estimates).",
     inputSchema: {
       lang: z.string().optional().describe("Locale prefix, e.g. ar or en-US"),
       provider: z.enum(["edge", "local", "command", "elevenlabs", "gemini"]).optional().describe("Default edge"),
@@ -460,7 +477,10 @@ server.registerTool(
   safe(async ({ lang, provider: id }) => {
     const provider = getProvider(id ?? "edge");
     try {
-      return text((await provider.listVoices()).filter((v) => voiceMatchesLang(v, lang)));
+      const list = (await provider.listVoices()).filter((v) => voiceMatchesLang(v, lang));
+      // Second block, so the list itself keeps its shape: what the cloud voices have cost so far.
+      const { requests, chars, credits, usd, byProvider } = summarizeSpend(await readSpend());
+      return { content: [...text(list).content, ...text({ spend: { requests, chars, credits, usd, byProvider } }).content] };
     } finally {
       await provider.close?.();
     }
@@ -479,10 +499,23 @@ server.registerTool(
   }),
 );
 
+const minFreeMemField = z
+  .number()
+  .min(0)
+  .optional()
+  .describe("Before each part or chunk, wait until this much memory (MB) is available (default 1500, 0 = off; SCREENPILOT_MIN_FREE_MEM sets the default). Waits up to mem_timeout, then fails with the measured numbers");
+const memTimeoutField = z.number().min(0).optional().describe("Longest wait for min_free_mem, in seconds (default 300)");
+
 const workersField = z
   .union([z.enum(["auto", "max"]), z.number().int().min(1)])
   .optional()
   .describe('Parallel renderers: "auto" (default, half the cores), "max" (all cores but two: faster, but the desktop gets sluggish, so use it when the user is away) or a number. SCREENPILOT_WORKERS sets the default.');
+
+const languagesField = z
+  .record(z.string(), z.string())
+  .optional()
+  .describe('Caption files per language: { "ar": "auto", "en": "en.json" }. "auto" = the video\'s own narration lines; a path = a translation JSON ({ "<id or index>": "line" }, or { "<chapter>": ["line", ...] } for a sequence). Writes <video>.<code>.srt|vtt instead of the plain file.');
+const subtitleCharsField = z.number().int().min(10).optional().describe("Characters per caption line for languages (default 42; at most 2 lines per cue)");
 
 server.registerTool(
   "render",
@@ -492,10 +525,15 @@ server.registerTool(
       'Use quality "draft" while iterating (fast), "looks" for a normal render, "delivery" only for the final file. ' +
       "Pass from/to (OUTPUT seconds) to re-render only that window for a fast review; the file is named <storyboard>.part-<from>-<to>.mp4. " +
       "Pass style (a style file, JSON with only a theme) to render the same video with another look: its theme is merged over the storyboard's, the file is named <storyboard>.<style>.mp4 and each style keeps its own build folder. " +
+      "Pass variant (a file, or a name looked up as variants/<name>.json next to the storyboard) to render the same recording with another script: it rewrites narration text (by line id or position), the voice and overlay files, never the number of lines; the file is named <storyboard>.<variant>.mp4 (with a style: <storyboard>.<variant>.<style>.mp4), each variant keeps its own build folder, and voice clips are cached by text so switching back is free. " +
+      "Slot-fit: every narration line has a slot (from its `at` to the next line's `at`, minus voice.gap); the result's `fit` lists lines whose clip is longer than the slot as {id, raw (clip seconds), slot, needed (speed-up factor)}, and warnings flag those above the cap (default 1.18x, voice.fit.max). " +
+      "Pass fit: true to speed such clips up (atempo) to fit, at most the cap (the sped-up clip is cached, never stretched twice), strict_fit: true to fail instead when a line needs more than the cap, fit_max to set the cap. " +
       'Pass formats (e.g. ["16:9","9:16","1:1"] or ["1280x720"]) to render one file per format: <storyboard>.<format>.mp4 (16x9, 9x16, 1x1), narration synthesized once. ' +
-      'Pass subtitles (["srt","vtt"]) to also write caption files from the narration next to the video, and also (["gif","webm","poster"]) for an animated GIF, a WebM or a poster PNG made from the finished video (poster_at sets its time). The result lists them under files. ' +
+      'Pass subtitles (["srt","vtt"]) to also write caption files from the narration next to the video; with languages ({code: translation file or "auto"}) one file per language, <video>.<code>.srt|vtt, from the video\'s own lines ("auto") or a JSON translation ({"<id or index>": "line"}), and also (["gif","webm","poster"]) for an animated GIF, a WebM or a poster PNG made from the finished video (poster_at sets its time). The result lists them under files. ' +
       "A video (or from/to window) of 5 minutes or more renders in chunks of about 3 minutes cut where nothing is moving or speaking, each cached: after an edit only the chunks it touched render again, then all are joined. chunks: false renders in one piece; chunk_seconds sets the chunk length. " +
-      "Slow (minutes). Follow with check_output to review the result.",
+      "dryRun=true sends nothing and writes nothing: it returns the lines, characters and estimated USD the voice would cost (cached lines are free), so check it before the first render with a paid voice. " +
+      "A long render can be paused (pause tool) between chunks and resumed (resume with storyboard). Before each chunk it waits for min_free_mem; the result has peakRssMB (memory of the render's processes). " +
+      "Slow (minutes). The video is written as <name>.partial.mp4 and renamed when complete, so the output file only appears finished; abort (or cancelling this call) kills the whole render (HyperFrames, Chrome, ffmpeg) and removes the partial file. Follow with check_output to review the result.",
     inputSchema: {
       storyboard: z.string().describe("Path to storyboard.json"),
       output: z.string().optional().describe("Output mp4. Default: <storyboard>.mp4"),
@@ -504,32 +542,49 @@ server.registerTool(
       to: z.number().min(0).optional().describe("Partial render: end, in OUTPUT seconds"),
       formats: z.array(z.string()).optional().describe('Output formats, each "16:9", "9:16", "1:1" or "WxH". One file per format; output becomes the base name.'),
       subtitles: z.array(z.enum(["srt", "vtt"])).optional().describe("Also write subtitle files from the narration lines, next to the video"),
+      languages: languagesField,
+      subtitle_chars: subtitleCharsField,
       also: z.array(z.enum(["gif", "webm", "poster"])).optional().describe("Also make these from the finished video: an animated GIF, a WebM, a poster PNG"),
       poster_at: z.number().min(0).optional().describe("Poster frame time in OUTPUT seconds (default: a quarter of the way in)"),
       style: z.string().optional().describe('Path to a style file: { "theme": {...} } only; merged over the storyboard\'s theme (css and fonts replace, motion and grade merge key by key)'),
+      variant: z.string().optional().describe('Variant file ({ voice?, narration?: { "<line id or position>": "text" } | ["text", ...], overlays?: { "<position>": { src } } }) or its name (variants/<name>.json next to the storyboard): another script and voice for the same recording'),
+      fit: z.boolean().optional().describe("Speed narration clips that overrun their slot up to fit it (at most the cap); cached, never stretched twice"),
+      strict_fit: z.boolean().optional().describe("Fail when a narration clip needs more than the cap to fit its slot"),
+      fit_max: z.number().min(1).optional().describe("Cap of fit / strict_fit as a speed-up factor (default voice.fit.max, else 1.18)"),
       workers: workersField,
       chunks: z.boolean().optional().describe("false: render in one piece even when the video is 5 minutes or longer (default: cached chunks from 5 minutes)"),
       chunk_seconds: z.number().min(10).optional().describe("Chunk length in seconds for a long render (default 180)"),
+      dryRun: z.boolean().optional().describe("Only estimate the voice cost (lines, characters, USD): no request, no file, no cache entry"),
+      min_free_mem: minFreeMemField,
+      mem_timeout: memTimeoutField,
     },
   },
-  safe(async ({ storyboard, output, quality, from, to, formats, subtitles, also, poster_at, style, workers, chunks, chunk_seconds }) => {
+  safe(async ({ storyboard, output, quality, from, to, formats, subtitles, languages, subtitle_chars, also, poster_at, style, variant, fit, strict_fit, fit_max, workers, chunks, chunk_seconds, dryRun, min_free_mem, mem_timeout }, ctx) => {
+    if (dryRun) return text(await estimateStoryboard(storyboard, { style: style ? await loadStyle(style) : undefined, variant: variant ? await loadVariant(variant, storyboard) : undefined }));
     requireBrief("render");
     const window = parseWindow(from, to);
     const extra = {
       subtitles: parseSubtitleFormats(subtitles),
+      subtitleLanguages: parseSubtitleLanguages(languages),
+      subtitleRules: subtitle_chars !== undefined ? { maxChars: subtitle_chars } : undefined,
       also: parseExtras(also),
       posterAt: poster_at,
       style: style ? await loadStyle(style) : undefined,
+      variant: variant ? await loadVariant(variant, storyboard) : undefined,
+      fit: fit || strict_fit || fit_max !== undefined ? { auto: fit, strict: strict_fit, max: fit_max } : undefined,
       workers: parseWorkers(workers),
       chunks,
       chunkSeconds: chunk_seconds,
+      minFreeMemMB: min_free_mem,
+      memTimeoutS: mem_timeout,
+      signal: ctx?.signal,
     };
     if (formats?.length) {
       const rs = await renderFormats(storyboard, parseFormats(formats.join(",")), { output, quality, window, log, ...extra });
-      return text(rs.map((r) => ({ format: r.format, output: r.output, files: r.files, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings })));
+      return text(rs.map((r) => ({ format: r.format, output: r.output, files: r.files, timeline: r.timelineFile, duration: r.plan.duration, autoHolds: r.autoHolds, fit: r.fit.filter((e) => e.needed > 1), warnings: r.warnings })));
     }
     const r = await renderStoryboard(storyboard, { output, quality, window, log, ...extra });
-    return text({ output: r.output, files: r.files, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
+    return text({ output: r.output, files: r.files, timeline: r.timelineFile, duration: r.plan.duration, autoHolds: r.autoHolds, fit: r.fit.filter((e) => e.needed > 1), warnings: r.warnings, peakRssMB: r.peakRssMB });
   }),
 );
 
@@ -545,12 +600,18 @@ server.registerTool(
 server.registerTool(
   "sequence_validate",
   {
-    description: "Validate a sequence.json and every storyboard it uses. Returns schema errors and lint warnings as text (never throws).",
-    inputSchema: { path: z.string().describe("Path to sequence.json") },
+    description: "Validate a sequence.json and every storyboard it uses. Returns schema errors and lint warnings as text (never throws). Pass variant (and variant_dir) to check it with a variant applied. Pass fit: true to also check that narration lines fit their slots (from the clips already in the voice cache: nothing is synthesized, lines without a clip are counted as unchecked); fit_max sets the cap (default 1.18x).",
+    inputSchema: {
+      path: z.string().describe("Path to sequence.json"),
+      variant: z.string().optional().describe("Variant name: each part takes <its folder>/variants/<name>.json"),
+      variant_dir: z.string().optional().describe("Folder with <name>.json variants for parts that have none of their own"),
+      fit: z.boolean().optional().describe("Also check narration slot-fit from the cached clips (no synthesis)"),
+      fit_max: z.number().min(1).optional().describe("Cap of the fit check as a speed-up factor (default 1.18)"),
+    },
   },
-  safe(async ({ path }) => {
+  safe(async ({ path, variant, variant_dir, fit, fit_max }) => {
     try {
-      return text(await validateSequence(path));
+      return text(await validateSequence(path, { variant, variantDir: variant_dir, fit, fitMax: fit_max }));
     } catch (err) {
       if (err instanceof StoryboardError) return text({ valid: false, issues: err.issues });
       throw err;
@@ -565,18 +626,90 @@ server.registerTool(
       "Render a sequence.json: each part is rendered like a storyboard (unchanged parts are reused), all at one output size, " +
       "with the intro of the first part and the outro of the last, then joined into one MP4. " +
       "Pass style (a style file, JSON with only a theme) to render the same sequence with another look: its theme is merged over every storyboard part (not over finished video parts), the file is named <sequence>.<style>.mp4 and each style keeps its own build folder and cache. " +
-      "Slow (minutes). Follow with check_output.",
+      "Pass variant (a name) to render the same sequence with another script: each part takes <its folder>/variants/<name>.json (else <variant_dir>/<name>.json; a part with none renders as written and the result warns), the file is named <sequence>.<variant>.mp4 (with a style: <sequence>.<variant>.<style>.mp4), and parts that do not use the variant are reused between variants. " +
+      "fit / strict_fit / fit_max work as in render (slot-fit of narration lines, per part). " +
+      "dryRun=true sends nothing and writes nothing (no build folder): it returns the lines, characters and estimated USD the voices would cost, part by part. " +
+      "pause (tool) makes it finish the part (or chunk of a long part) in progress and stop with {paused, parts}; resume with sequence carries on, reusing every finished part and chunk. " +
+      "Before each part or chunk it waits for min_free_mem (MB) up to mem_timeout, then fails with the numbers; the result has peakRssMB. " +
+      "subtitles (srt, vtt) and languages ({code: translation file or \"auto\"}) also write caption files for the joined video from its timeline (<video>.<code>.srt|vtt); a translation is {\"<chapter>\": [\"line\", ...]} (chapter = the part's storyboard folder name) or {\"<id>\": \"line\"}. " +
+      "Several videos in one call (instead of sequence): joins {name: [sequence files or other names]} with join {transition, dur}, e.g. joins {setup: [g1.json, g2.json], operations: [g3.json], full: [\"setup\", \"operations\"]}: every group (a sequence) is rendered once and reused by every video that has it, each video is <out_dir>/<name>.mp4 with its own timeline.json (and caption files), and its length is the sum of its groups minus one dur per join. pause and resume take sequence <out_dir>/joins. " +
+      "Slow (minutes). The video only appears once complete (written as <name>.partial.mp4, then renamed); abort (or cancelling this call) kills the whole render tree. Follow with check_output.",
     inputSchema: {
-      sequence: z.string().describe("Path to sequence.json"),
+      sequence: z.string().optional().describe("Path to sequence.json (or give joins instead)"),
+      joins: z
+        .record(z.string().regex(/^[A-Za-z0-9_-]+$/), z.array(z.string()).min(1))
+        .optional()
+        .describe("Several joined videos in one call: {name: [sequence.json files (groups) or names of other joined videos]}, in order; each group is rendered once and reused. Writes <out_dir>/<name>.mp4 (+ .timeline.json)"),
+      join: z
+        .object({ transition: z.enum(TRANSITIONS).describe("How each group enters from the one before"), dur: z.number().positive().default(0.5).describe("Seconds two groups overlap; at most half of either") })
+        .optional()
+        .describe("With joins: the transition between groups (default cut)"),
+      out_dir: z.string().optional().describe("With joins: folder of the joined videos (default: the folder holding all the groups)"),
       output: z.string().optional().describe("Output mp4. Default: <sequence>.mp4"),
       quality: z.enum(["draft", "looks", "delivery"]).optional().describe("Default looks"),
       style: z.string().optional().describe('Path to a style file: { "theme": {...} } only; merged over the theme of every storyboard part'),
+      variant: z.string().optional().describe("Variant name: each part takes <its folder>/variants/<name>.json (another script, voice and overlay files for the same recordings)"),
+      variant_dir: z.string().optional().describe("Folder with <name>.json variants for parts that have no variants/<name>.json of their own"),
+      fit: z.boolean().optional().describe("Speed narration clips that overrun their slot up to fit it (at most the cap); cached, never stretched twice"),
+      strict_fit: z.boolean().optional().describe("Fail when a narration clip needs more than the cap to fit its slot"),
+      fit_max: z.number().min(1).optional().describe("Cap of fit / strict_fit as a speed-up factor (default voice.fit.max, else 1.18)"),
       workers: workersField,
+      subtitles: z.array(z.enum(["srt", "vtt"])).optional().describe("Also write caption files for the joined video, from its timeline.json (default formats srt and vtt when languages is given)"),
+      languages: languagesField,
+      subtitle_chars: subtitleCharsField,
+      dryRun: z.boolean().optional().describe("Only estimate the voice cost (lines, characters, USD) part by part: no request, no file, no build folder"),
+      min_free_mem: minFreeMemField,
+      mem_timeout: memTimeoutField,
     },
   },
-  safe(async ({ sequence, output, quality, style, workers }) => {
+  safe(async ({ sequence, joins, join: joinWith, out_dir, output, quality, style, variant, variant_dir, fit, strict_fit, fit_max, workers, subtitles, languages, subtitle_chars, dryRun, min_free_mem, mem_timeout }, ctx) => {
+    if (!sequence === !joins) throw new Error("Give sequence or joins, not both (and not neither).");
+    if (joins && output) throw new Error("output does not go with joins: each joined video is <out_dir>/<name>.mp4.");
+    if (!joins && (joinWith || out_dir)) throw new Error("join and out_dir only go with joins.");
+    if (dryRun) return text(await estimateSequence(joins ? [...new Set(Object.values(expandJoins(joins, process.cwd())).flat())] : sequence!, { style: style ? await loadStyle(style) : undefined, variant, variantDir: variant_dir }));
     requireBrief("sequence_render");
-    return text(await renderSequence(sequence, { output, quality, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(workers), log }));
+    const opts = {
+      quality,
+      style: style ? await loadStyle(style) : undefined,
+      variant,
+      variantDir: variant_dir,
+      fit: fit || strict_fit || fit_max !== undefined ? { auto: fit, strict: strict_fit, max: fit_max } : undefined,
+      workers: parseWorkers(workers),
+      subtitles: parseSubtitleFormats(subtitles),
+      subtitleLanguages: parseSubtitleLanguages(languages),
+      subtitleRules: subtitle_chars !== undefined ? { maxChars: subtitle_chars } : undefined,
+      minFreeMemMB: min_free_mem,
+      memTimeoutS: mem_timeout,
+      log,
+      signal: ctx?.signal,
+    };
+    if (joins) return text(await renderJoins({ joins, transition: joinWith && { type: joinWith.transition, dur: joinWith.dur } }, { ...opts, outputDir: out_dir }));
+    return text(await renderSequence(sequence!, { ...opts, output }));
+  }),
+);
+
+server.registerTool(
+  "pause",
+  {
+    description:
+      "Pause a running sequence_render or render (e.g. the user needs the machine for a meeting): it finishes the part in progress (or the chunk, for a part or render of 5 minutes or more), then stops; that call returns {paused: true, parts: [{part, status: done|in progress|waiting}], resume}. " +
+      "Give the sequence or storyboard being rendered; with neither, every render running now is paused. Carry on later with resume (same path): finished parts and chunks are reused.",
+    inputSchema: {
+      sequence: z.string().optional().describe("Path to the sequence.json being rendered"),
+      storyboard: z.string().optional().describe("Path to the storyboard.json being rendered (a single render)"),
+      build_dir: z.string().optional().describe("Its build folder, when it is not the default one"),
+    },
+  },
+  safe(async ({ sequence, storyboard, build_dir }) => {
+    if (sequence && storyboard) throw new Error("Give sequence or storyboard, not both.");
+    const target = { path: sequence ?? storyboard, buildDir: build_dir };
+    // No path: set the pause flag of every render running in this server (its process scope, next to abort), and ask other processes through their `.pause` files.
+    const inProcess = target.path || target.buildDir ? 0 : pauseAll();
+    const r = await pauseRenders(target).catch((err: unknown) => {
+      if (inProcess) return { requested: [] as string[], running: [] };
+      throw err;
+    });
+    return text({ ...r, inProcess, note: "The render stops after the part or chunk in progress; its own call then returns {paused: true}. Carry on with resume and the same path." });
   }),
 );
 
@@ -593,22 +726,60 @@ server.registerTool(
 );
 
 server.registerTool(
+  "subs",
+  {
+    description:
+      "Caption files for a video that is ALREADY rendered, from its <video>.timeline.json (no render): <video>.<code>.srt|vtt per language, or <video>.srt|vtt without languages. " +
+      'languages is {code: "auto" | translation file}: "auto" = the video\'s own narration lines; a translation is a JSON file {"<id or index>": "line"}, or {"<chapter>": ["line", ...]} for a sequence (chapter = the part\'s storyboard folder name; the array must have one line per narration line of the chapter). No machine translation: the user or you write the file. ' +
+      "A video joined outside ScreenPilot has no timeline: pass join (the part timelines in order) and transition (seconds each part overlaps the previous one). " +
+      "mux=true also adds the files as soft subtitle tracks with language metadata into <video>.subs.mp4 (copy, no re-encode, original untouched). A timeline that does not match the video's length is an error naming the file. At most 2 lines per cue.",
+    inputSchema: {
+      video: z.string().describe("The rendered video"),
+      languages: languagesField,
+      formats: z.array(z.enum(["srt", "vtt"])).optional().describe("Default srt and vtt"),
+      subtitle_chars: subtitleCharsField,
+      join: z.array(z.string()).optional().describe("Timelines of the parts of a video joined outside ScreenPilot, in order"),
+      transition: z.number().min(0).optional().describe("With join: seconds each part overlaps the one before it (default 0 = cuts)"),
+      transition_type: z.string().optional().describe("With join and transition: crossfade (default), fade-black, wipe-left ..."),
+      mux: z.boolean().optional().describe("Also add the files as soft subtitle tracks into <video>.subs.<ext>"),
+    },
+  },
+  safe(async ({ video, languages, formats, subtitle_chars, join: joinList, transition, transition_type, mux }) => {
+    const v = resolve(video);
+    const r = await makeSubtitles(v, {
+      languages: parseSubtitleLanguages(languages),
+      formats: parseSubtitleFormats(formats),
+      rules: subtitle_chars !== undefined ? { maxChars: subtitle_chars } : undefined,
+      join: joinList?.map((f) => resolve(f)),
+      transition,
+      transitionType: transition_type ? parseTransitionType(transition_type) : undefined,
+    });
+    const muxed = mux ? await muxSubtitles(v, r.tracks) : undefined;
+    return text({ files: r.files, ...(muxed ? { muxed } : {}), timeline: r.timeline, duration: r.duration, warnings: r.warnings });
+  }),
+);
+
+server.registerTool(
   "check_output",
   {
     description:
       `Review a RENDERED video: returns frames as images (max ${MAX_IMAGES} per call). Times here are OUTPUT seconds (not source). ` +
-      "Omit times to get 8 evenly spaced frames. Look for clipped captions, zooms on the wrong spot and awkward freezes, then edit the storyboard and re-render.",
+      "Omit times to get 8 evenly spaced frames. Look for clipped captions, zooms on the wrong spot and awkward freezes, then edit the storyboard and re-render. " +
+      "When <video>.timeline.json exists it also checks that each narration line's sound starts within 0.4 s of its caption time and lists the lines that do not as warnings (sync: false skips it).",
     inputSchema: {
       video: z.string().describe("Rendered mp4"),
       times: z.array(z.number().min(0)).optional().describe("Output seconds. Default: 8 evenly spaced"),
+      sync: z.boolean().optional().describe("false: skip the subtitle sync check (default: run it when the video has a timeline.json)"),
     },
   },
-  safe(async ({ video, times }) => {
+  safe(async ({ video, times, sync }) => {
     const v = resolve(video);
     const info = await probeVideo(v);
     const t = times?.length ? times : evenTimes(info.duration, 8);
     const r = await framesResult(v, t, { outDir: join(dirname(v), `${basename(v)}.check`), width: 960, prefix: "out" });
     r.content.unshift({ type: "text", text: `duration=${info.duration.toFixed(2)}s hasAudio=${info.hasAudio}` });
+    const report = sync === false ? undefined : await subtitleSyncReport(v);
+    if (report) r.content.splice(1, 0, { type: "text", text: report.warnings.length ? report.warnings.join("\n") : `subtitle sync ok (${report.checked} lines checked)` });
     return r;
   }),
 );
@@ -970,9 +1141,21 @@ server.registerTool(
   "resume",
   {
     description:
-      "Carry on driving after a click/move/type stopped because the pointer was moved by someone else. Adopts the pointer where it is now; keeps the driver open (no new approval dialog). Take a screenshot afterwards: the screen may have changed.",
+      "Two uses. (1) Without arguments: carry on driving after a click/move/type stopped because the pointer was moved by someone else. Adopts the pointer where it is now; keeps the driver open (no new approval dialog). Take a screenshot afterwards: the screen may have changed. " +
+      "(2) With sequence (or storyboard): carry on a render that was paused with the pause tool, with the options it was started with; every finished part and chunk is reused, so only the rest renders. Slow (minutes), returns what sequence_render (or render) returns, and can be paused again.",
+    inputSchema: {
+      sequence: z.string().optional().describe("Path to a paused sequence.json (or <out_dir>/joins for a sequence_render with joins): resume that render"),
+      storyboard: z.string().optional().describe("Path to a paused storyboard.json (a single long render): resume that render"),
+      build_dir: z.string().optional().describe("Build folder of the paused render, when it is not the default one"),
+      workers: workersField,
+      min_free_mem: minFreeMemField,
+      mem_timeout: memTimeoutField,
+    },
   },
-  safe(async () => {
+  safe(async ({ sequence, storyboard, build_dir, workers, min_free_mem, mem_timeout }, ctx) => {
+    if (sequence && storyboard) throw new Error("Give sequence or storyboard, not both.");
+    const path = sequence ?? storyboard;
+    if (path) return text(await resumePaused(path, { buildDir: build_dir, workers: parseWorkers(workers, {}), minFreeMemMB: min_free_mem, memTimeoutS: mem_timeout, log, signal: ctx?.signal }));
     if (!driver) return text({ resumed: false, reason: "no live driver; the next drive tool opens one" });
     driver.resume();
     return text({ resumed: true });
@@ -982,7 +1165,7 @@ server.registerTool(
 server.registerTool(
   "abort",
   {
-    description: "Stop whatever the agent is driving right now: the live driver and a running perform. Safe to call any time. It closes the driver; the next drive tool reopens it. To carry on after the pointer was moved by someone else, use resume instead.",
+    description: "Stop whatever the agent is driving right now: the live driver, a running perform, and any running render or sequence_render (its whole process tree: HyperFrames, Chrome and ffmpeg get SIGTERM, then SIGKILL after 5 s; on Windows taskkill /T /F; the partial video is removed, finished chunks and parts stay cached for the next render). Safe to call any time. It closes the driver; the next drive tool reopens it. To carry on after the pointer was moved by someone else, use resume instead.",
   },
   safe(async () => {
     const stopped: string[] = [];
@@ -995,6 +1178,7 @@ server.registerTool(
       stopped.push("driver");
       await closeDriver(); // abort is sticky; the next drive tool reopens a fresh driver
     }
+    if ((await abortAll("stopped by the abort tool")) > 0) stopped.push("render");
     return text({ aborted: stopped });
   }),
 );
@@ -1020,6 +1204,7 @@ async function shutdown(): Promise<never> {
   }
   performing?.abort();
   await closeDriver();
+  await abortAll("the client closed"); // renders run in their own process groups: take them along
   process.exit(0);
 }
 process.on("SIGINT", () => void shutdown());

@@ -26,9 +26,10 @@ summary: What the agent can touch when it drives your desktop, how to stop it, h
 <h2 id="abort">Abort</h2>
 <p>Abort always works, on every desktop.</p>
 <ul>
-  <li><strong>From an AI app:</strong> the <code>abort</code> tool stops a running <code>perform</code> and closes the live driver. The agent has to call it, so if you need the agent to stop right now, also stop it in the AI app itself.</li>
-  <li><strong>From the command line:</strong> press Ctrl+C while <code>screenpilot perform</code> runs.</li>
-  <li><strong>Quitting the AI app</strong> closes the ScreenPilot server, which aborts a running take and releases the mouse.</li>
+  <li><strong>From an AI app:</strong> the <code>abort</code> tool stops a running <code>perform</code>, closes the live driver, and stops any running render with its whole process tree (HyperFrames, Chrome and ffmpeg). A half-written video is removed, and chunks and parts that finished stay cached. The agent has to call it, so if you need the agent to stop right now, also stop it in the AI app itself.</li>
+  <li><strong>From the command line:</strong> press Ctrl+C while <code>screenpilot perform</code> or a render runs.</li>
+  <li><strong>To free the machine without losing work:</strong> <code>screenpilot pause</code> (or the <code>pause</code> tool) lets a render finish its part or chunk and stop; <code>resume</code> carries on. See <a href="@guide/long-renders.html">Long renders</a>.</li>
+  <li><strong>Quitting the AI app</strong> closes the ScreenPilot server, which aborts a running take, stops its renders and releases the mouse.</li>
 </ul>
 <p>After an abort the next drive tool opens a fresh driver. Abort does not undo anything the agent already did.</p>
 

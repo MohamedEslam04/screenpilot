@@ -1,8 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
+import { StoryboardError } from "./errors.js";
+import { deepMerge, isObject, type Json } from "./json.js";
 import { lintStyle } from "./lint.js";
 import { INHERITED_KEYS, isBuiltinSfx, type Storyboard, StoryboardSchema, StyleSchema } from "./schema.js";
 import { normalizeSegments, Timeline } from "./timeline.js";
+import { applyVariant, type LoadedVariant } from "./variant.js";
 
 export interface LoadedStoryboard {
   sb: Storyboard;
@@ -10,14 +13,7 @@ export interface LoadedStoryboard {
   baseDir: string;
 }
 
-export class StoryboardError extends Error {
-  constructor(
-    message: string,
-    readonly issues: string[],
-  ) {
-    super(`${message}\n${issues.map((i) => `  - ${i}`).join("\n")}`);
-  }
-}
+export { StoryboardError };
 
 export function parseStoryboard(data: unknown): { ok: true; sb: Storyboard } | { ok: false; issues: string[] } {
   const r = StoryboardSchema.safeParse(data);
@@ -46,6 +42,20 @@ export function lintStoryboard(sb: Storyboard, sourceDuration?: number): string[
       if (Timeline.segmentIndexOf(kept, c.at) < 0) warnings.push(`cards[${i}] at ${c.at}s is in a cut region and will be dropped`);
     });
   }
+  const ids = new Map<string, number>();
+  sb.narration.forEach((n, i) => {
+    if (n.id === undefined) return;
+    const first = ids.get(n.id);
+    if (first === undefined) ids.set(n.id, i);
+    else warnings.push(`narration[${i}] repeats the id "${n.id}" of narration[${first}]; translations and timeline.json cannot tell them apart`);
+  });
+  const cardIds = new Map<string, number>();
+  sb.overlays.forEach((o, i) => {
+    if (o.kind !== "card" || o.id === undefined) return;
+    const first = cardIds.get(o.id);
+    if (first === undefined) cardIds.set(o.id, i);
+    else warnings.push(`overlays[${i}] repeats the card id "${o.id}" of overlays[${first}]; a variant cannot tell them apart`);
+  });
   const names = new Set(sb.screens.map((s) => s.name));
   sb.views.forEach((v, i) => {
     if (v.screen && v.screen !== "all" && !names.has(v.screen)) warnings.push(`views[${i}] names unknown screen "${v.screen}"`);
@@ -57,17 +67,6 @@ export function lintStoryboard(sb: Storyboard, sourceDuration?: number): string[
   });
   warnings.push(...lintStyle(sb));
   return warnings;
-}
-
-type Json = Record<string, unknown>;
-const isObject = (v: unknown): v is Json => typeof v === "object" && v !== null && !Array.isArray(v);
-
-/** Objects merge key by key; anything else (arrays too) is replaced by the child. */
-function deepMerge(base: unknown, child: unknown): unknown {
-  if (!isObject(base) || !isObject(child)) return child === undefined ? base : child;
-  const out: Json = { ...base };
-  for (const [k, v] of Object.entries(child)) out[k] = deepMerge(base[k], v);
-  return out;
 }
 
 async function readJson(abs: string, extendedBy?: string): Promise<unknown> {
@@ -135,10 +134,11 @@ export async function loadStyle(path: string): Promise<LoadedStyle> {
   return { path: abs, name, theme: (raw as { theme: Record<string, unknown> }).theme };
 }
 
-export async function loadStoryboard(path: string, opts: { style?: LoadedStyle } = {}): Promise<LoadedStoryboard> {
+export async function loadStoryboard(path: string, opts: { style?: LoadedStyle; variant?: LoadedVariant } = {}): Promise<LoadedStoryboard> {
   const abs = resolve(path);
   let raw = await resolveExtends(await readJson(abs), abs);
   if (opts.style && isObject(raw)) raw = deepMerge(raw, { theme: opts.style.theme });
+  if (opts.variant) raw = applyVariant(raw, opts.variant);
   const r = parseStoryboard(raw);
   if (!r.ok) throw new StoryboardError(`Invalid storyboard ${abs}`, r.issues);
   return { sb: r.sb, path: abs, baseDir: dirname(abs) };

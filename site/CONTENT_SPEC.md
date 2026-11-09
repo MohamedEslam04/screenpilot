@@ -11,12 +11,15 @@ The docs site is built from small HTML fragments by `site/build.mjs` (not part o
 |---|---|
 | getting-started | What ScreenPilot does, and your first video in three asks |
 | install | Install on Windows, macOS, Linux; add to other AI apps; uninstall; if something goes wrong |
-| cli | The command line: record, analyze, frames, init, validate, render (partial `--from`/`--to`, `--formats`), sequence, check, build, preview, voices, secret, history, library, doctor, setup |
+| cli | The command line: record, analyze, frames, init, validate, render (partial `--from`/`--to`, `--formats`, `--variant`, `--subtitle-lang`, `--dry-run`), sequence, subs, pause, resume, check, build, preview, voices, secret, spend, history, library, doctor, setup |
 | tools | The MCP tools an AI app gets, grouped by job |
-| storyboard | `storyboard.json` reference: segments, zooms, captions, highlights, narration, intro/outro, chapter cards, overlays, music (and ducking), extends, theme, style warnings |
-| voices | Narration voices: Edge, cloud voices (ElevenLabs, Gemini: keys, `secret`, models, rate), local models (`voice-setup`, VoiceTut, NAMAA), your own program in `voices.json`, mixing, limits, troubleshooting |
+| storyboard | `storyboard.json` reference: segments, zooms, captions, highlights, narration, intro/outro, chapter cards, overlays and cards from data (list, flow, number, quote), music (and ducking), extends, theme, style warnings |
+| voices | Narration voices: Edge, cloud voices (ElevenLabs, Gemini: keys, `secret`, models, rate, cost: `--dry-run`, `spend`, `usdPerCredit`), local models (`voice-setup`, VoiceTut, NAMAA), your own program in `voices.json`, mixing, limits, troubleshooting |
 | dashboard | The local desktop dashboard: library from history, live renders, voices and keys, stats, how to start and build it (new, built from the repository for now) |
-| sequence | `sequence.json`: join several storyboards into one video, insert a feature clip into an existing demo, `from`/`to` ranges, transitions |
+| sequence | `sequence.json`: join several storyboards into one video, insert a feature clip into an existing demo, `from`/`to` ranges, transitions, script variants, timeline, pause and memory flags |
+| subtitles | Caption files in several languages from `<video>.timeline.json` (`--subtitle-lang`, `screenpilot subs`, `--mux`), narration `id`, translation files, cue rules, the sync check in `check` |
+| long-renders | Long renders: the `.partial.mp4` output, abort kills the render tree, `pause`/`resume`, the memory guard (`--min-free-mem`, `--mem-timeout`, `peakRssMB`) |
+| variants | Script variants (`variants/<name>.json`, `--variant`, `--variant-dir`) and slot-fit (`--fit`, `--strict-fit`, `--fit-max`, `[narration-fit]`) |
 | agent-drive | Let the agent drive the desktop: takes (`take.json`), targets, steps, tips |
 | safety | What the agent can touch and how to limit it: abort/resume, env vars, audit log, `setup --allow-tools` |
 | platforms | Platform support table, requirements, per-OS notes, limitations |
@@ -55,7 +58,7 @@ Write natural Modern Standard Arabic that a developer in Egypt or the Gulf reads
 
 Every statement must be backed by the repository: `README.md`, `CONTRIBUTING.md` (developer reference: CLI, MCP tools, storyboard), `AGENTS.md`, `skill/SKILL.md`, `src/mcp.ts` (tool names and descriptions), `src/cli.ts` (commands and flags), `src/storyboard/schema.ts`, `src/sequence/schema.ts`, `src/storyboard/lint.ts`, `src/take/schema.ts`, `src/setup/`, `src/drive/guard.ts`. Read the source for the page you write. Do not invent flags, tools, defaults or platform support. If the README and the code disagree, trust the code and say nothing about the disagreement. Known facts that the README may lag on:
 
-- v0.10.0 (current release) has Windows, Linux and both Mac builds (Apple Silicon and Intel).
-- New MCP tools: `resume`, `wait_for`, `page_text`.
+- v0.11.0 (current release) has Windows, Linux and both Mac builds (Apple Silicon and Intel).
+- New MCP tools: `resume`, `wait_for`, `page_text`; since then also `subs` and `pause` (and `resume` takes `sequence` or `storyboard` to carry on a paused render).
 - New environment variables: `SCREENPILOT_INTERRUPT=off`, `SCREENPILOT_ALLOW_APPS`, `SCREENPILOT_ALLOW_ENV`, `SCREENPILOT_PERFORM_TIMEOUT`. Drive actions are logged to `audit.jsonl` in the config folder (typed text is never logged).
 - `screenpilot setup --allow-tools` adds `mcp__screenpilot` to Claude Code's `permissions.allow`.
