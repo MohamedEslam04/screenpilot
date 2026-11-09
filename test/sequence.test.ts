@@ -13,11 +13,14 @@ import { probeVideo } from "../src/util/media.js";
 import { makeVideo } from "./fixtures/video.js";
 
 // HyperFrames (a headless Chrome render) is faked: it writes a small real video to the file passed with -o. ffmpeg and ffprobe are real.
+// `written` collects the last argument of every ffmpeg call (its output file).
+const written = vi.hoisted(() => [] as string[]);
 vi.mock("../src/util/exec.js", async (importOriginal) => {
   const real = await importOriginal<typeof import("../src/util/exec.js")>();
   return {
     ...real,
     run: async (cmd: string, args: string[], opts?: Parameters<typeof real.run>[2]) => {
+      if (cmd === "ffmpeg") written.push(args.at(-1)!);
       if (cmd !== process.execPath) return real.run(cmd, args, opts);
       return real.run("ffmpeg", ["-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=s=320x180:d=1:r=10", "-pix_fmt", "yuv420p", args[args.indexOf("-o") + 1]!]);
     },
@@ -432,6 +435,22 @@ describe("parts that are sequences or finished videos", () => {
     expect(r.join).toBe("encode");
     expect(r.duration).toBeGreaterThan(3.0 - 0.05);
     expect(r.duration).toBeLessThan(3.0 + 0.05);
+  });
+
+  ffmpegIt("writes the trimmed part and the joined video as .partial.mp4 first, then renames them", async () => {
+    const dir = await tempDir();
+    makeVideo(join(dir, "a.mp4"), 4);
+    makeVideo(join(dir, "b.mp4"), 1);
+    await writeJson(join(dir, "seq.json"), { parts: [{ video: "a.mp4", from: 1, to: 3 }, { video: "b.mp4" }] });
+    written.length = 0;
+    const r = await renderSequence(join(dir, "seq.json"), { quality: "draft" });
+    expect(r.output).toBe(join(dir, "seq.mp4"));
+    expect(written).toContain(join(dir, "seq.partial.mp4"));
+    expect(written).toContain(join(dir, "seq.build", "part-0", "part.partial.mp4"));
+    expect(written).not.toContain(r.output);
+    expect(existsSync(r.output)).toBe(true);
+    expect(existsSync(join(dir, "seq.partial.mp4"))).toBe(false);
+    expect(existsSync(join(dir, "seq.build", "part-0", "part.mp4"))).toBe(true);
   });
 
   ffmpegIt("trims a video part with from/to in its own seconds", async () => {

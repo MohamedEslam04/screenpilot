@@ -10,6 +10,8 @@ import { lintStoryboard, type LoadedStyle, loadStoryboard, StoryboardError } fro
 import { clipStoryboard } from "../storyboard/clip.js";
 import { isBuiltinSfx, type Storyboard } from "../storyboard/schema.js";
 import { probeVideo } from "../util/media.js";
+import { writeAtomically } from "../util/partial.js";
+import { withProcessScope } from "../util/proc.js";
 import { makeTimer } from "../util/timing.js";
 import { concatParts, type OutputSize, probePart, type Quality, trimVideo } from "./concat.js";
 import { type Part, type Sequence, SequenceSchema, type Transition } from "./schema.js";
@@ -268,6 +270,8 @@ export interface SequenceRenderOptions {
   log?: (msg: string) => void;
   /** Told which part is rendering, for the live-job file. */
   onProgress?: (step: { label: string; index: number; total: number }) => void;
+  /** Aborts the render (an MCP request cancelled): its whole process tree is killed. abortAll does the same for every render. */
+  signal?: AbortSignal;
 }
 
 export interface SequenceResult {
@@ -278,8 +282,12 @@ export interface SequenceResult {
   parts: { kind: PreparedPart["kind"]; storyboard: string; output: string; duration: number; cached: boolean; warnings: string[] }[];
 }
 
-/** Render every part (reusing unchanged ones) and join them into one video. */
-export async function renderSequence(path: string, opts: SequenceRenderOptions = {}): Promise<SequenceResult> {
+/** Render every part (reusing unchanged ones) and join them into one video. Every child process is tracked, so abort kills the whole tree. */
+export function renderSequence(path: string, opts: SequenceRenderOptions = {}): Promise<SequenceResult> {
+  return withProcessScope(() => renderSequenceTracked(path, opts), { signal: opts.signal });
+}
+
+async function renderSequenceTracked(path: string, opts: SequenceRenderOptions): Promise<SequenceResult> {
   const prepared = await prepareSequence(path, opts);
   const quality = opts.quality ?? "looks";
   const job = startJob({ kind: "sequence", path: prepared.path, quality });
@@ -334,7 +342,7 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
         const r = await renderPrepared(part.sequence, { ...opts, output: part.output, buildDir: undefined, onProgress: undefined });
         warnings = r.parts.flatMap((p) => p.warnings);
       } else {
-        await trimVideo(part.file, part.output, { from: part.from, to: part.to }, quality);
+        await writeAtomically(part.output, (partial) => trimVideo(part.file, partial, { from: part.from, to: part.to }, quality));
       }
       await writeFile(keyFile, key);
     }
@@ -349,7 +357,8 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
   const output = resolve(opts.output ?? `${base}${prepared.style ? `.${prepared.style}` : ""}.mp4`);
   await mkdir(dirname(output), { recursive: true });
   const joined = await makeTimer(opts.timings, log)("join", () =>
-    concatParts(media, output, prepared.output, { workDir: prepared.buildDir, quality, log }),
+    // <name>.partial.mp4 until complete, so a poller sees a playable file or none.
+    writeAtomically(output, (partial) => concatParts(media, partial, prepared.output, { workDir: prepared.buildDir, quality, log })),
   );
   return { output, duration: (await probeVideo(output)).duration, join: joined.mode, parts: results };
 }

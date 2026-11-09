@@ -12,7 +12,7 @@ import { makeVideo } from "./fixtures/video.js";
 // composition in <buildDir>/index.html says, at its size and frame rate. ffmpeg (cut, join,
 // loudness, extras) is real. Every fake call records the length it rendered.
 // The fake chunks carry sound only where a test needs it (encoding audio is the slow part of the join).
-const fake = vi.hoisted(() => ({ calls: [] as number[], failOn: 0, cache: "", audio: false }));
+const fake = vi.hoisted(() => ({ calls: [] as number[], failOn: 0, cache: "", audio: false, outputs: [] as string[], finalSeen: [] as boolean[], final: "" }));
 vi.mock("../src/util/exec.js", async (importActual) => {
   const actual = await importActual<typeof import("../src/util/exec.js")>();
   const { readFile: read } = await import("node:fs/promises");
@@ -20,14 +20,22 @@ vi.mock("../src/util/exec.js", async (importActual) => {
   return {
     ...actual,
     run: async (cmd: string, args: string[], opts?: Parameters<typeof actual.run>[2]) => {
+      // Every file ffmpeg or HyperFrames writes, and whether the final video existed meanwhile.
+      fake.outputs.push(args.at(-1)!);
+      if (args.includes("-o")) fake.outputs.push(args[args.indexOf("-o") + 1]!);
+      if (fake.final) fake.finalSeen.push((await import("node:fs")).existsSync(fake.final));
       if (!args.some((a) => a.endsWith("hyperframes.mjs"))) return actual.run(cmd, args, opts);
       const html = await read(pjoin(args[args.indexOf("render") + 1]!, "index.html"), "utf8");
       const m = /id="root"[^>]*data-duration="([\d.]+)"[^>]*data-width="(\d+)"[^>]*data-height="(\d+)"[^>]*data-fps="(\d+)"/.exec(html)!;
       const [dur, w, h] = [Number(m[1]), m[2], m[3]];
       const fps = args.includes("--fps") ? args[args.indexOf("--fps") + 1] : m[4];
       fake.calls.push(dur);
-      if (fake.failOn === fake.calls.length) throw new Error("hyperframes failed");
       const out = args[args.indexOf("-o") + 1]!;
+      if (fake.failOn === fake.calls.length) {
+        // A real render that dies leaves a half-written file behind.
+        await (await import("node:fs/promises")).writeFile(out, "half");
+        throw new Error("hyperframes failed");
+      }
       await actual.run("ffmpeg", [
         "-y", "-loglevel", "error",
         "-f", "lavfi", "-i", `color=c=gray:s=${w}x${h}:r=${fps}:d=${dur}`,
@@ -84,6 +92,9 @@ beforeEach(() => {
   fake.calls = [];
   fake.failOn = 0;
   fake.audio = false;
+  fake.outputs = [];
+  fake.finalSeen = [];
+  fake.final = "";
 });
 
 // Several renders of a 400 s recording per test, with real ffmpeg cuts and joins: 28 to 55 s here, over 120 s on the macOS Intel runner.
@@ -230,5 +241,38 @@ describe.skipIf(!hasFfmpeg)("chunked render", { timeout: 600_000 }, () => {
     fake.calls = [];
     await renderStoryboard(sb, { quality: "draft", chunkSeconds: 100 });
     expect(fake.calls).toEqual([]);
+  });
+
+  // A poller (or a file manager) sees a complete, playable video or none.
+  it("writes the video as <name>.partial.mp4 and renames it when complete (one piece, with loudness)", async () => {
+    fake.audio = true;
+    const sb = await project(200, { audio: { loudness: {} } });
+    fake.final = sb.replace(/\.json$/, ".mp4");
+    const r = await renderStoryboard(sb, { quality: "draft" });
+    expect(r.output).toBe(fake.final);
+    expect(fake.outputs).toContain(sb.replace(/\.json$/, ".partial.mp4"));
+    expect(fake.outputs).not.toContain(fake.final);
+    expect(fake.finalSeen.every((seen) => !seen)).toBe(true);
+    expect(existsSync(r.output)).toBe(true);
+    expect((await readdir(join(r.output, ".."))).filter((f) => f.includes(".partial") || f.includes(".norm"))).toEqual([]);
+  });
+
+  it("joins chunks into <name>.partial.mp4 and renames it when complete", async () => {
+    const sb = await project();
+    fake.final = sb.replace(/\.json$/, ".mp4");
+    const r = await renderStoryboard(sb, { quality: "draft", chunkSeconds: 100 });
+    expect(fake.outputs).toContain(sb.replace(/\.json$/, ".partial.mp4"));
+    expect(fake.outputs).not.toContain(fake.final);
+    expect(fake.finalSeen.every((seen) => !seen)).toBe(true);
+    expect(probe(r.output).frames).toBe(2000);
+    expect(existsSync(sb.replace(/\.json$/, ".partial.mp4"))).toBe(false);
+  });
+
+  it("a failed render removes the partial file and leaves no output", async () => {
+    const sb = await project(200);
+    fake.failOn = 1;
+    await expect(renderStoryboard(sb, { quality: "draft" })).rejects.toThrow("hyperframes failed");
+    expect(existsSync(sb.replace(/\.json$/, ".partial.mp4"))).toBe(false);
+    expect(existsSync(sb.replace(/\.json$/, ".mp4"))).toBe(false);
   });
 });
