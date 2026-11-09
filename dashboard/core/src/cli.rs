@@ -26,7 +26,9 @@ pub struct Cli {
 }
 
 impl Cli {
-    /// `$SCREENPILOT_BIN`, else `<app home>/dist/cli.js` run with `node`, else `screenpilot` on PATH.
+    /// `$SCREENPILOT_BIN`, else `<app home>/dist/cli.js` run with the node that ships in the package
+    /// (`<app home>/bin/node`, `node.exe` on Windows; an app started from a menu has no shell PATH),
+    /// else `node` on PATH, else `screenpilot` on PATH.
     pub fn resolve(paths: &Paths, env: &dyn Fn(&str) -> Option<String>) -> Cli {
         if let Some(bin) = env("SCREENPILOT_BIN").filter(|b| !b.is_empty()) {
             return Cli {
@@ -36,8 +38,18 @@ impl Cli {
         }
         let cli_js = paths.app_home.join("dist").join("cli.js");
         if cli_js.is_file() {
+            let bundled = paths.app_home.join("bin").join(if cfg!(windows) {
+                "node.exe"
+            } else {
+                "node"
+            });
+            let program: OsString = if bundled.is_file() {
+                bundled.into_os_string()
+            } else {
+                "node".into()
+            };
             return Cli {
-                program: "node".into(),
+                program,
                 prefix: vec![cli_js.into_os_string()],
             };
         }
@@ -291,6 +303,23 @@ mod tests {
         assert_eq!(
             Cli::resolve(&p, &env_of(&[("SCREENPILOT_BIN", "/opt/sp")])).program,
             OsString::from("/opt/sp")
+        );
+    }
+
+    #[test]
+    fn prefers_the_node_that_ships_in_the_package() {
+        let d = TempDir::new();
+        let p = paths_in(d.path());
+        std::fs::create_dir_all(p.app_home.join("dist")).unwrap();
+        std::fs::write(p.app_home.join("dist/cli.js"), "").unwrap();
+        std::fs::create_dir_all(p.app_home.join("bin")).unwrap();
+        let name = if cfg!(windows) { "node.exe" } else { "node" };
+        std::fs::write(p.app_home.join("bin").join(name), "").unwrap();
+        let cli = Cli::resolve(&p, &env_of(&[]));
+        assert_eq!(cli.program, p.app_home.join("bin").join(name).into_os_string());
+        assert_eq!(
+            cli.prefix,
+            vec![p.app_home.join("dist/cli.js").into_os_string()]
         );
     }
 
