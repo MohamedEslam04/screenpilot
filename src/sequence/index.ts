@@ -6,6 +6,7 @@ import { CACHE_DIR } from "../brand.js";
 import { recordEvent } from "../history/index.js";
 import { startJob } from "../history/jobs.js";
 import { renderStoryboard } from "../render/index.js";
+import { assertTimelineFresh, joinTimelines, readTimeline, type Timeline, timelinePath, type TimelinePart, writeTimeline } from "../render/timeline.js";
 import { lintStoryboard, type LoadedStyle, loadStoryboard, StoryboardError } from "../storyboard/load.js";
 import { clipStoryboard } from "../storyboard/clip.js";
 import { isBuiltinSfx, type Storyboard } from "../storyboard/schema.js";
@@ -95,6 +96,8 @@ interface PreparedBase {
   key: string;
   /** How it enters from the previous part. */
   transition?: Transition;
+  /** Folder name of the part's storyboard, the chapter of its lines in timeline.json. */
+  chapter?: string;
 }
 
 export interface PreparedStoryboardPart extends PreparedBase {
@@ -205,7 +208,7 @@ async function prepare(path: string, opts: { buildDir?: string; style?: LoadedSt
     const part = loaded.seq.parts[index]!;
     const dir = join(buildDir, `part-${index}`);
     await mkdir(dir, { recursive: true });
-    const base = { index, dir, transition: part.transition };
+    const base = { index, dir, transition: part.transition, ...(part.storyboard !== undefined ? { chapter: basename(dirname(abs(loaded.baseDir, part.storyboard))) } : {}) };
     if (lp.kind === "sequence") {
       const sequence = nested.get(index)!;
       parts.push({ ...base, kind: "sequence", sequence, output: join(dir, "part.mp4"), key: sequence.key });
@@ -274,6 +277,8 @@ export interface SequenceResult {
   output: string;
   duration: number;
   join: "copy" | "encode";
+  /** `<output>.timeline.json`: when each narration line and card is on screen in the joined video. */
+  timeline: string;
   /** `storyboard` is the derived storyboard of a storyboard part, else the nested sequence or video file. `cached` is also true for a video used as is. */
   parts: { kind: PreparedPart["kind"]; storyboard: string; output: string; duration: number; cached: boolean; warnings: string[] }[];
 }
@@ -311,7 +316,9 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
     }
     const keyFile = join(part.dir, "part.key");
     const key = `${part.key}|${quality}|${opts.pngFrames ? "png" : "auto"}`;
-    const cached = existsSync(part.output) && existsSync(keyFile) && (await readFile(keyFile, "utf8")) === key;
+    // A part keeps its timeline next to its video (part.timeline.json), so a cached part still has one; without it (cached by an older version) it is rendered again.
+    const hasTimeline = part.kind === "video" || existsSync(timelinePath(part.output));
+    const cached = existsSync(part.output) && hasTimeline && existsSync(keyFile) && (await readFile(keyFile, "utf8")) === key;
     let warnings: string[] = part.kind === "video" ? part.warnings : [];
     opts.onProgress?.({ label: "part", index: part.index + 1, total: prepared.parts.length });
     if (cached) log(`${label}: unchanged, reusing ${part.output}`);
@@ -351,7 +358,33 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
   const joined = await makeTimer(opts.timings, log)("join", () =>
     concatParts(media, output, prepared.output, { workDir: prepared.buildDir, quality, log }),
   );
-  return { output, duration: (await probeVideo(output)).duration, join: joined.mode, parts: results };
+  const duration = (await probeVideo(output)).duration;
+  const timelines: TimelinePart[] = [];
+  for (const [i, part] of prepared.parts.entries()) {
+    timelines.push({ timeline: await partTimeline(part, media[i]!.duration), duration: media[i]!.duration, transition: part.transition, part: i, chapter: part.chapter });
+  }
+  const timelineFile = timelinePath(output);
+  await writeTimeline(timelineFile, { ...joinTimelines(timelines, prepared.output.fps), duration: Math.round(duration * 1000) / 1000 });
+  log(`wrote ${timelineFile}`);
+  return { output, timeline: timelineFile, duration, join: joined.mode, parts: results };
+}
+
+/**
+ * The timeline of a rendered part (see `part.timeline.json`, written by the render that made it), checked against the
+ * part's real length. A finished video brings its own `<video>.timeline.json` when it has one; trimmed, it has none.
+ */
+async function partTimeline(part: PreparedPart, videoDuration: number): Promise<Timeline> {
+  if (part.kind === "video") {
+    const file = timelinePath(part.file);
+    if (part.output !== part.file || !existsSync(file)) return { version: 1, duration: videoDuration, items: [] };
+    const timeline = await readTimeline(file);
+    assertTimelineFresh(file, timeline, videoDuration);
+    return timeline;
+  }
+  const file = timelinePath(part.output);
+  const timeline = await readTimeline(file);
+  assertTimelineFresh(file, timeline, videoDuration);
+  return timeline;
 }
 
 /** Schema problems throw (StoryboardError with issues); everything else is a warning. */
