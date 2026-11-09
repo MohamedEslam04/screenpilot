@@ -534,6 +534,11 @@ program
     print({ buildDir: r.buildDir, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
   });
 
+/** `--fit`, `--strict-fit` and `--fit-max` as the render option (undefined when none is given). */
+function fitFlags(auto?: boolean, strict?: boolean, max?: number) {
+  return auto || strict || max !== undefined ? { auto, strict, max } : undefined;
+}
+
 program
   .command("render")
   .description("Render a storyboard to MP4")
@@ -548,6 +553,9 @@ program
   .option("--formats <list>", "Render once per format, e.g. 16:9,9:16,1:1 or 1280x720 (writes <storyboard>.<format>.mp4)")
   .option("--style <file>", "Style file ({ \"theme\": {...} }) merged over the storyboard's theme; writes <storyboard>.<style>.mp4 and keeps its own build folder")
   .option("--variant <file|name>", "Variant file (new narration text, voice, overlay files) over the storyboard; a name is looked up as variants/<name>.json next to it. Writes <storyboard>.<variant>.mp4 and keeps its own build folder")
+  .option("--fit", "Speed narration clips that overrun their slot (the time to the next line, minus voice.gap) up to the cap so they fit; the sped-up clip is cached, never stretched twice")
+  .option("--strict-fit", "Fail when a narration clip needs more than the cap to fit its slot (instead of freezing the video)")
+  .option("--fit-max <x>", "The cap of --fit and --strict-fit as a speed-up factor (default voice.fit.max, else 1.18)", Number)
   .option("--subtitles <list>", "Also write subtitle files from the narration: srt, vtt or srt,vtt (next to the video)")
   .option("--also <list>", "Also make files from the finished video: gif, webm, poster (a PNG frame), or a comma list")
   .option("--poster-at <s>", "Time of the poster frame, in OUTPUT seconds (default: a quarter of the way in)", Number)
@@ -556,24 +564,24 @@ program
   .option("--build-dir <dir>")
   .option("--dry-run", "Print the lines, characters and estimated USD the voice would cost, then stop: no request, no file, no cache entry")
   .addOption(new Option("--dry").hideHelp())
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; variant?: string; subtitles?: string; also?: string; posterAt?: number; chunks: boolean; chunkSeconds?: number; dryRun?: boolean; dry?: boolean }) => {
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; from?: number; to?: number; formats?: string; style?: string; variant?: string; fit?: boolean; strictFit?: boolean; fitMax?: number; subtitles?: string; also?: string; posterAt?: number; chunks: boolean; chunkSeconds?: number; dryRun?: boolean; dry?: boolean }) => {
     if (o.dryRun || o.dry) {
       const e = await estimateStoryboard(path, { style: o.style ? await loadStyle(o.style) : undefined, variant: o.variant ? await loadVariant(o.variant, path) : undefined });
       log(describeEstimate(e));
       print(e);
       return;
     }
-    const { subtitles, also, posterAt, style, variant, chunks, dryRun: _dryRun, dry: _dry, ...rest } = o;
+    const { subtitles, also, posterAt, style, variant, fit, strictFit, fitMax, chunks, dryRun: _dryRun, dry: _dry, ...rest } = o;
     // Commander sets chunks: true unless --no-chunks; only an explicit "off" is passed on.
-    const opts = { ...rest, chunks: chunks ? undefined : false, style: style ? await loadStyle(style) : undefined, variant: variant ? await loadVariant(variant, path) : undefined, workers: parseWorkers(o.workers), window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt, log };
+    const opts = { ...rest, chunks: chunks ? undefined : false, style: style ? await loadStyle(style) : undefined, variant: variant ? await loadVariant(variant, path) : undefined, fit: fitFlags(fit, strictFit, fitMax), workers: parseWorkers(o.workers), window: parseWindow(o.from, o.to), subtitles: parseSubtitleFormats(subtitles), also: parseExtras(also), posterAt, log };
     if (o.formats) {
       if (o.buildDir) throw new Error("--build-dir cannot be combined with --formats (each format gets its own <name>.<format>.build)");
       const rs = await renderFormats(path, parseFormats(o.formats), opts);
-      print(rs.map((r) => ({ format: r.format, output: r.output, files: r.files, timeline: r.timelineFile, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings })));
+      print(rs.map((r) => ({ format: r.format, output: r.output, files: r.files, timeline: r.timelineFile, duration: r.plan.duration, autoHolds: r.autoHolds, fit: r.fit.filter((e) => e.needed > 1), warnings: r.warnings })));
       return;
     }
     const r = await renderStoryboard(path, opts);
-    print({ output: r.output, files: r.files, timeline: r.timelineFile, duration: r.plan.duration, autoHolds: r.autoHolds, warnings: r.warnings });
+    print({ output: r.output, files: r.files, timeline: r.timelineFile, duration: r.plan.duration, autoHolds: r.autoHolds, fit: r.fit.filter((e) => e.needed > 1), warnings: r.warnings });
   });
 
 program
@@ -588,18 +596,21 @@ program
   .option("--style <file>", "Style file ({ \"theme\": {...} }) merged over the theme of every part; writes <sequence>.<style>.mp4 and keeps its own build folder")
   .option("--variant <name>", "Variant name: each part takes <its folder>/variants/<name>.json (a part without one renders as written, with a warning). Writes <sequence>.<variant>.mp4; parts that do not use the variant are reused between variants")
   .option("--variant-dir <dir>", "Folder with <name>.json variants for the parts that have no variants/<name>.json of their own")
+  .option("--fit", "Speed narration clips that overrun their slot (the time to the next line, minus voice.gap) up to the cap so they fit; the sped-up clip is cached, never stretched twice")
+  .option("--strict-fit", "Fail when a narration clip needs more than the cap to fit its slot (instead of freezing the video)")
+  .option("--fit-max <x>", "The cap of --fit and --strict-fit as a speed-up factor (default voice.fit.max, else 1.18)", Number)
   .option("--build-dir <dir>")
   .option("--dry-run", "Print the lines, characters and estimated USD the voices would cost, part by part, then stop: no request, no file, no build folder")
   .addOption(new Option("--dry").hideHelp())
-  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string; variant?: string; variantDir?: string; dryRun?: boolean; dry?: boolean }) => {
+  .action(async (path: string, o: { output?: string; quality: "draft" | "looks" | "delivery"; pngFrames?: boolean; buildDir?: string; workers?: string; timings?: boolean; style?: string; variant?: string; variantDir?: string; fit?: boolean; strictFit?: boolean; fitMax?: number; dryRun?: boolean; dry?: boolean }) => {
     if (o.dryRun || o.dry) {
       const e = await estimateSequence(path, { style: o.style ? await loadStyle(o.style) : undefined, variant: o.variant, variantDir: o.variantDir });
       log(describeEstimate(e, " (all parts)"));
       print(e);
       return;
     }
-    const { style, dryRun: _dryRun, dry: _dry, ...rest } = o;
-    print(await renderSequence(path, { ...rest, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), log }));
+    const { style, fit, strictFit, fitMax, dryRun: _dryRun, dry: _dry, ...rest } = o;
+    print(await renderSequence(path, { ...rest, fit: fitFlags(fit, strictFit, fitMax), style: style ? await loadStyle(style) : undefined, workers: parseWorkers(o.workers), log }));
   });
 
 program
@@ -608,7 +619,9 @@ program
   .argument("<sequence>")
   .option("--variant <name>", "Check the sequence with this variant applied to each part (see sequence --variant)")
   .option("--variant-dir <dir>", "Folder with <name>.json variants for parts without their own")
-  .action(async (path: string, o: { variant?: string; variantDir?: string }) => {
+  .option("--fit", "Also check that narration lines fit their slots, using the clips already in the voice cache (nothing is synthesized)")
+  .option("--fit-max <x>", "The cap of the fit check as a speed-up factor (default voice.fit.max, else 1.18)", Number)
+  .action(async (path: string, o: { variant?: string; variantDir?: string; fit?: boolean; fitMax?: number }) => {
     print(await validateSequence(path, o));
   });
 

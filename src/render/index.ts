@@ -4,7 +4,7 @@ import { copyFile, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 
 import { createRequire } from "node:module";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { clicksOf, readEvents } from "../record/events.js";
-import { lintTimeline } from "../storyboard/lint.js";
+import { DEFAULT_FIT_MAX, type FitEntry, fitLines, fitWarnings, lintTimeline } from "../storyboard/lint.js";
 import { lintStoryboard, type LoadedStyle, loadStoryboard } from "../storyboard/load.js";
 import type { Storyboard } from "../storyboard/schema.js";
 import { buildTimeline, planNarrationHolds, type Timeline } from "../storyboard/timeline.js";
@@ -13,7 +13,7 @@ import { run } from "../util/exec.js";
 import { makeTimer } from "../util/timing.js";
 import { ffmpegFilterScriptFlag, probeVideo, type VideoInfo } from "../util/media.js";
 import { externalClip } from "../voice/external.js";
-import { synthesizeLines, type VoiceClip } from "../voice/index.js";
+import { fitClip, synthesizeLines, type VoiceClip } from "../voice/index.js";
 import { buildCutArgs, buildCutFilter } from "./cut.js";
 import { draftFps } from "./draft.js";
 import { renderHtml } from "./html.js";
@@ -61,6 +61,14 @@ export interface PrepareOptions {
   style?: LoadedStyle;
   /** A variant file (see loadVariant): its narration text, voice and overlay files replace the storyboard's. Names the default build dir and output (`<name>.<variant>`, before the style). */
   variant?: LoadedVariant;
+  /** Slot-fit of narration lines (see fitLines): `auto` speeds overrunning clips up to the cap, `strict` fails above it, `max` sets the cap (default voice.fit.max, else 1.18). */
+  fit?: FitOptions;
+}
+
+export interface FitOptions {
+  auto?: boolean;
+  strict?: boolean;
+  max?: number;
 }
 
 export interface Prepared {
@@ -69,6 +77,8 @@ export interface Prepared {
   timeline: Timeline;
   source: VideoInfo;
   warnings: string[];
+  /** One entry per narration line that has a next line: the clip's seconds, its slot and the speed-up it needs (see fitLines). */
+  fit: FitEntry[];
   autoHolds: { at: number; dur: number }[];
   /** Normalize the finished video to this loudness (storyboard audio.loudness). */
   loudness?: LoudnessTarget;
@@ -110,6 +120,23 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
     for (const [i, l] of sb.narration.entries()) if (l.audio) all[i] = await externalClip(lines[i]!, resolve(baseDir, l.audio), i);
     return all;
   });
+  // 1b. Slot-fit: does every clip fit the room before the next line? Strict stops here, auto speeds clips up (from the raw clip, cached).
+  const fitMax = opts.fit?.max ?? sb.voice.fit?.max ?? DEFAULT_FIT_MAX;
+  const fit = fitLines(sb.narration.map((l, i) => ({ id: l.id ?? String(i), index: i, at: l.at, duration: clips[i]!.duration })), sb.voice.gap);
+  const tooLong = fit.filter((e) => e.needed > fitMax);
+  if (opts.fit?.strict && tooLong.length) {
+    throw new Error(`Narration does not fit its slots (cap ${+fitMax.toFixed(2)}x, --strict-fit):\n${fitWarnings(tooLong, fitMax).map((w) => `  - ${w}`).join("\n")}`);
+  }
+  if (opts.fit?.auto ?? sb.voice.fit?.auto) {
+    for (const e of fit) {
+      // Ready-made audio is a recording of someone: it is reported, never stretched.
+      if (e.needed <= 1 || sb.narration[e.index]!.audio) continue;
+      const factor = Math.ceil(Math.min(e.needed, fitMax) * 1000) / 1000;
+      clips[e.index] = await fitClip(clips[e.index]!, factor);
+      e.applied = factor;
+    }
+  }
+  if (!sb.lint?.off?.includes("narration-fit")) warnings.push(...fitWarnings(fit, fitMax));
   // Build-dir copies get a new time on every build, so the chunk cache keys them by their originals.
   const files: Record<string, string> = {};
   const narration = await Promise.all(
@@ -256,7 +283,7 @@ export async function prepareBuild(storyboardPath: string, opts: PrepareOptions 
   }
 
   const outro = sb.outro && { title: sb.outro.title, ...(sb.outro.subtitle !== undefined ? { subtitle: sb.outro.subtitle } : {}) };
-  return { buildDir, plan, timeline, source, warnings, autoHolds, loudness: sb.audio?.loudness, sources, ...(outro ? { outro } : {}) };
+  return { buildDir, plan, timeline, source, warnings, fit, autoHolds, loudness: sb.audio?.loudness, sources, ...(outro ? { outro } : {}) };
 }
 
 /** ".<style>" in default build dir and output names, so styles never overwrite each other; nothing without a style. */

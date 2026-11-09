@@ -5,13 +5,15 @@ import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 
 import { CACHE_DIR } from "../brand.js";
 import { recordEvent } from "../history/index.js";
 import { startJob } from "../history/jobs.js";
-import { renderStoryboard } from "../render/index.js";
+import { type FitOptions, renderStoryboard } from "../render/index.js";
 import { assertTimelineFresh, joinTimelines, readTimeline, type Timeline, timelinePath, type TimelinePart, writeTimeline } from "../render/timeline.js";
+import { DEFAULT_FIT_MAX, type FitEntry, fitWarnings } from "../storyboard/lint.js";
 import { lintStoryboard, type LoadedStyle, loadStoryboard, StoryboardError } from "../storyboard/load.js";
 import { clipStoryboard } from "../storyboard/clip.js";
 import { isBuiltinSfx, type Storyboard } from "../storyboard/schema.js";
 import { type LoadedVariant, readVariant, variantFileIn, variantKey, variantName } from "../storyboard/variant.js";
 import { probeVideo } from "../util/media.js";
+import { cachedFit } from "../voice/index.js";
 import { makeTimer } from "../util/timing.js";
 import { concatParts, type OutputSize, probePart, type Quality, trimVideo } from "./concat.js";
 import { type Part, type Sequence, SequenceSchema, type Transition } from "./schema.js";
@@ -53,6 +55,9 @@ export interface VariantOptions {
   variant?: string;
   variantDir?: string;
 }
+
+/** Slot-fit options (see FitOptions); they change what a part renders, so they are part of its cache key. */
+const fitKey = (fit?: FitOptions) => (fit && (fit.auto || fit.strict || fit.max !== undefined) ? `|fit:${fit.auto ? "auto" : ""}:${fit.strict ? "strict" : ""}:${fit.max ?? ""}` : "");
 
 const sequenceVariant = (o: VariantOptions): SequenceVariant | undefined => (o.variant ? { name: o.variant, dir: o.variantDir ? resolve(o.variantDir) : undefined } : undefined);
 
@@ -209,11 +214,11 @@ const sha1 = (text: string) => createHash("sha1").update(text).digest("hex");
  * absolute. The user's files are never changed. Nested sequences are prepared
  * recursively (in their own build folder), videos are only probed.
  */
-export async function prepareSequence(path: string, opts: { buildDir?: string; style?: LoadedStyle } & VariantOptions = {}): Promise<PreparedSequence> {
+export async function prepareSequence(path: string, opts: { buildDir?: string; style?: LoadedStyle; fit?: FitOptions } & VariantOptions = {}): Promise<PreparedSequence> {
   return prepare(path, opts, []);
 }
 
-async function prepare(path: string, opts: { buildDir?: string; style?: LoadedStyle } & VariantOptions, ancestors: string[]): Promise<PreparedSequence> {
+async function prepare(path: string, opts: { buildDir?: string; style?: LoadedStyle; fit?: FitOptions } & VariantOptions, ancestors: string[]): Promise<PreparedSequence> {
   const { style } = opts;
   const variant = sequenceVariant(opts);
   const label = variant ? variantName(variant.name) : undefined;
@@ -229,7 +234,7 @@ async function prepare(path: string, opts: { buildDir?: string; style?: LoadedSt
   for (const [i, lp] of loadedParts.entries()) {
     const part = loaded.seq.parts[i]!;
     try {
-      if (lp.kind === "sequence") nested.set(i, await prepare(lp.file, { style, variant: opts.variant, variantDir: opts.variantDir }, chain));
+      if (lp.kind === "sequence") nested.set(i, await prepare(lp.file, { style, variant: opts.variant, variantDir: opts.variantDir, fit: opts.fit }, chain));
       else if (lp.kind === "video") {
         if (!existsSync(lp.file)) throw new StoryboardError("", [`video not found: ${lp.file}`]);
         videoInfo.set(i, await probeVideo(lp.file));
@@ -298,7 +303,7 @@ async function prepare(path: string, opts: { buildDir?: string; style?: LoadedSt
     const stamps = await Promise.all(
       [sb.source, sb.events, sb.music?.src, ...sb.overlays.map((o) => o.src), ...sb.narration.map((n) => n.audio), ...sb.sfx.map((x) => x.src), ...sounds].map(fileStamp),
     );
-    const key = sha1(`${text}|${stamps.join("|")}${lp.variant ? `|${variantKey(lp.variant)}` : ""}`);
+    const key = sha1(`${text}|${stamps.join("|")}${lp.variant ? `|${variantKey(lp.variant)}` : ""}${fitKey(opts.fit)}`);
     parts.push({ ...base, kind: "storyboard", storyboard, output: join(dir, "part.mp4"), cacheDir: join(baseDir, CACHE_DIR), key, sb, warnings: lp.warnings });
   }
   const key = sha1(JSON.stringify([output, parts.map((p) => [p.key, p.transition ?? null]), ...(style ? [style.name] : [])]));
@@ -308,6 +313,8 @@ async function prepare(path: string, opts: { buildDir?: string; style?: LoadedSt
 const sizeOf = (v: { width: number; height: number; fps: number }): OutputSize => ({ width: v.width, height: v.height, fps: Math.round(v.fps) });
 
 export interface SequenceRenderOptions extends VariantOptions {
+  /** Slot-fit of narration lines in every part (see FitOptions). */
+  fit?: FitOptions;
   /** A variant name (see SequenceVariant): each part takes its own variants/<name>.json; writes <sequence>.<variant>.mp4 (then .<style>). */
   /** A style file (see loadStyle) applied to every storyboard part; writes <sequence>.<style>.mp4. */
   style?: LoadedStyle;
@@ -380,6 +387,7 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
           cacheDir: part.cacheDir,
           output: part.output,
           quality,
+          fit: opts.fit,
           pngFrames: opts.pngFrames,
           workers: opts.workers,
           timings: opts.timings,
@@ -437,24 +445,41 @@ async function partTimeline(part: PreparedPart, videoDuration: number): Promise<
   return timeline;
 }
 
+export interface ValidateOptions extends VariantOptions {
+  /** Also check the slot-fit of narration lines whose clip is already in the voice cache (nothing is synthesized). */
+  fit?: boolean;
+  /** Cap of the fit check (default: each storyboard's voice.fit.max, else 1.18). */
+  fitMax?: number;
+}
+
+export interface ValidateResult {
+  valid: true;
+  warnings: string[];
+  /** With `fit`: the lines that need a speed-up, with the part they are in. */
+  fit?: (FitEntry & { part: string })[];
+}
+
 /** Schema problems throw (StoryboardError with issues); everything else is a warning. */
-export async function validateSequence(path: string, opts: VariantOptions = {}): Promise<{ valid: true; warnings: string[] }> {
+export async function validateSequence(path: string, opts: ValidateOptions = {}): Promise<ValidateResult> {
   return validate(path, [], opts);
 }
 
-async function validate(path: string, ancestors: string[], opts: VariantOptions): Promise<{ valid: true; warnings: string[] }> {
+async function validate(path: string, ancestors: string[], opts: ValidateOptions): Promise<ValidateResult> {
   const loaded = await loadSequence(path);
   const chain = [...ancestors, loaded.path];
   const variant = sequenceVariant(opts);
   const loadedParts = await loadParts(loaded, chain, undefined, variant);
   const warnings: string[] = [];
+  const fit: NonNullable<ValidateResult["fit"]> = [];
   const issues: string[] = [];
   for (const [i, lp] of loadedParts.entries()) {
     const part = loaded.seq.parts[i]!;
     const label = `parts[${i}] (${partRef(part)})`;
     if (lp.kind === "sequence") {
       try {
-        warnings.push(...(await validate(lp.file, chain, opts)).warnings.map((w) => `${label}: ${w}`));
+        const inner = await validate(lp.file, chain, opts);
+        warnings.push(...inner.warnings.map((w) => `${label}: ${w}`));
+        fit.push(...(inner.fit ?? []).map((e) => ({ ...e, part: `${label} > ${e.part}` })));
       } catch (err) {
         if (!(err instanceof StoryboardError)) throw err;
         issues.push(...partIssues(i, part, err));
@@ -477,12 +502,19 @@ async function validate(path: string, ancestors: string[], opts: VariantOptions)
     warnings.push(...lp.warnings.map((w) => `${label}: ${w}`));
     warnings.push(...lintStoryboard(lp.sb, duration).map((w) => `${label}: ${w}`));
     try {
-      await clipPart(loaded, i, lp.sb, lp.baseDir);
+      const clipped = await clipPart(loaded, i, lp.sb, lp.baseDir);
+      if (opts.fit) {
+        const max = opts.fitMax ?? clipped.voice.fit?.max ?? DEFAULT_FIT_MAX;
+        const { entries, unmeasured } = await cachedFit(clipped, lp.baseDir, join(lp.baseDir, CACHE_DIR, "voice"));
+        if (!clipped.lint?.off?.includes("narration-fit")) warnings.push(...fitWarnings(entries, max).map((w) => `${label}: ${w}`));
+        if (unmeasured) warnings.push(`${label}: [narration-fit] ${unmeasured} line(s) have no cached clip yet, so their fit was not checked (render once, or give them ready-made audio)`);
+        fit.push(...entries.filter((e) => e.needed > 1).map((e) => ({ ...e, part: label })));
+      }
     } catch (err) {
       if (!(err instanceof StoryboardError)) throw err;
       issues.push(...err.issues);
     }
   }
   if (issues.length) throw new StoryboardError(`Invalid sequence ${loaded.path}`, issues);
-  return { valid: true, warnings };
+  return { valid: true, warnings, ...(opts.fit ? { fit } : {}) };
 }
