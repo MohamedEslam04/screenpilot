@@ -177,4 +177,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit f254f06 ("fix(voice): Gemini default model gemini-3.8-flash-tts (current docs), 404 points at GEMINI_TTS_MODEL", 2026-11-09).
+Docs synced to commit 70cace2 ("fix(test,docs): the 0600 file mode is POSIX only; Windows relies on the profile folder", 2026-11-09).
