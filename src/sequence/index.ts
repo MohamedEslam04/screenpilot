@@ -3,6 +3,8 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { CACHE_DIR } from "../brand.js";
+import { recordEvent } from "../history/index.js";
+import { startJob } from "../history/jobs.js";
 import { renderStoryboard } from "../render/index.js";
 import { lintStoryboard, type LoadedStyle, loadStoryboard, StoryboardError } from "../storyboard/load.js";
 import { clipStoryboard } from "../storyboard/clip.js";
@@ -264,6 +266,8 @@ export interface SequenceRenderOptions {
   /** Log how long each stage takes. */
   timings?: boolean;
   log?: (msg: string) => void;
+  /** Told which part is rendering, for the live-job file. */
+  onProgress?: (step: { label: string; index: number; total: number }) => void;
 }
 
 export interface SequenceResult {
@@ -276,7 +280,21 @@ export interface SequenceResult {
 
 /** Render every part (reusing unchanged ones) and join them into one video. */
 export async function renderSequence(path: string, opts: SequenceRenderOptions = {}): Promise<SequenceResult> {
-  return renderPrepared(await prepareSequence(path, opts), opts);
+  const prepared = await prepareSequence(path, opts);
+  const quality = opts.quality ?? "looks";
+  const job = startJob({ kind: "sequence", path: prepared.path, quality });
+  const started = performance.now();
+  const wall = () => Math.round(((performance.now() - started) / 1000) * 1000) / 1000;
+  try {
+    const r = await renderPrepared(prepared, { ...opts, onProgress: (step) => job.update(step) });
+    await recordEvent({ kind: "sequence", status: "ok", path: prepared.path, output: r.output, durationSec: r.duration, quality, wallSeconds: wall() });
+    return r;
+  } catch (err) {
+    await recordEvent({ kind: "sequence", status: "failed", path: prepared.path, quality, wallSeconds: wall(), error: (err as Error).message.slice(0, 500) });
+    throw err;
+  } finally {
+    job.end();
+  }
 }
 
 async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOptions): Promise<SequenceResult> {
@@ -295,6 +313,7 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
     const key = `${part.key}|${quality}|${opts.pngFrames ? "png" : "auto"}`;
     const cached = existsSync(part.output) && existsSync(keyFile) && (await readFile(keyFile, "utf8")) === key;
     let warnings: string[] = part.kind === "video" ? part.warnings : [];
+    opts.onProgress?.({ label: "part", index: part.index + 1, total: prepared.parts.length });
     if (cached) log(`${label}: unchanged, reusing ${part.output}`);
     else {
       log(`${label}: rendering`);
@@ -308,10 +327,11 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
           workers: opts.workers,
           timings: opts.timings,
           log,
+          history: false,
         });
         warnings = r.warnings;
       } else if (part.kind === "sequence") {
-        const r = await renderPrepared(part.sequence, { ...opts, output: part.output, buildDir: undefined });
+        const r = await renderPrepared(part.sequence, { ...opts, output: part.output, buildDir: undefined, onProgress: undefined });
         warnings = r.parts.flatMap((p) => p.warnings);
       } else {
         await trimVideo(part.file, part.output, { from: part.from, to: part.to }, quality);
