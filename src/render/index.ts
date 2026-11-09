@@ -453,7 +453,8 @@ async function renderStoryboardNow(storyboardPath: string, opts: RenderOptions):
     waitForMemory: (label) =>
       waitForMemory({ ...guard, label: opts.stepLabel ? (label === "render" ? opts.stepLabel : `${opts.stepLabel} ${label}`) : label, read: opts.memReader, pollMs: opts.memPollMs, log }),
   };
-  const sampler = startRssSampler();
+  // Inside a sequence the sequence samples the whole run.
+  const sampler = opts.pauseCheck ? undefined : startRssSampler();
   let peakRssMB: number | undefined;
   try {
     await time("render", async () => {
@@ -472,7 +473,7 @@ async function renderStoryboardNow(storyboardPath: string, opts: RenderOptions):
     }
     throw err;
   } finally {
-    peakRssMB = await sampler.stop();
+    peakRssMB = await sampler?.stop();
   }
   if (!opts.pauseCheck) await clearPause(prepared.buildDir);
   if (prepared.loudness) {
