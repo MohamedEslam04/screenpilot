@@ -38,11 +38,11 @@ impl Cli {
         }
         let cli_js = paths.app_home.join("dist").join("cli.js");
         if cli_js.is_file() {
-            let bundled = paths.app_home.join("bin").join(if cfg!(windows) {
-                "node.exe"
-            } else {
-                "node"
-            });
+            let bundled =
+                paths
+                    .app_home
+                    .join("bin")
+                    .join(if cfg!(windows) { "node.exe" } else { "node" });
             let program: OsString = if bundled.is_file() {
                 bundled.into_os_string()
             } else {
@@ -316,7 +316,10 @@ mod tests {
         let name = if cfg!(windows) { "node.exe" } else { "node" };
         std::fs::write(p.app_home.join("bin").join(name), "").unwrap();
         let cli = Cli::resolve(&p, &env_of(&[]));
-        assert_eq!(cli.program, p.app_home.join("bin").join(name).into_os_string());
+        assert_eq!(
+            cli.program,
+            p.app_home.join("bin").join(name).into_os_string()
+        );
         assert_eq!(
             cli.prefix,
             vec![p.app_home.join("dist/cli.js").into_os_string()]
