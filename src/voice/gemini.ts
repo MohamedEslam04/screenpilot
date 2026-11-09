@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import { fetchWithRetry } from "./http.js";
 import type { VoiceInfo, VoiceProvider } from "./index.js";
 import { getSecret } from "./secrets.js";
+import { countChars, recordSpend } from "./spend.js";
 
 // Gemini API text to speech (https://ai.google.dev/gemini-api/docs/speech-generation).
 // Needs GEMINI_API_KEY. The voice name is one of the prebuilt voices below.
@@ -74,6 +75,8 @@ export const geminiProvider: VoiceProvider = {
     if (!audio.length) throw new Error(`Gemini sent no audio for voice "${voice}" (the text may have been blocked).`);
     // Newer models may already answer a WAV file; older ones answer raw PCM.
     const wav = audio.toString("ascii", 0, 4) === "RIFF" ? audio : pcmToWav(audio);
+    // The request is billed from here on; the WAV is 16-bit mono after a 44-byte header.
+    await recordSpend({ provider: "gemini", model: model(), voice, chars: countChars(text), audio_s: Math.max(0, wav.length - 44) / (SAMPLE_RATE * 2) });
     await mkdir(dirname(outFile), { recursive: true });
     const tmp = `${outFile}.part`;
     await writeFile(tmp, wav);

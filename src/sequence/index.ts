@@ -41,7 +41,7 @@ export async function loadSequence(path: string): Promise<LoadedSequence> {
 const abs = (baseDir: string, p: string) => (isAbsolute(p) ? p : resolve(baseDir, p));
 
 /** A part with what it needs loaded: a storyboard is parsed; a nested sequence or a video is only located. */
-type LoadedPart =
+export type LoadedPart =
   | { kind: "storyboard"; sb: Storyboard; baseDir: string }
   | { kind: "sequence"; file: string }
   | { kind: "video"; file: string };
@@ -58,7 +58,7 @@ const partIssues = (i: number, part: Part, err: StoryboardError) =>
  * leads back to one being loaded fails with the chain printed. `chain` is the
  * sequences being loaded, outermost first, this one included.
  */
-async function loadParts(loaded: LoadedSequence, chain: string[], style?: LoadedStyle): Promise<LoadedPart[]> {
+export async function loadParts(loaded: LoadedSequence, chain: string[], style?: LoadedStyle): Promise<LoadedPart[]> {
   const issues: string[] = [];
   const parts: LoadedPart[] = [];
   for (const [i, part] of loaded.seq.parts.entries()) {
@@ -136,7 +136,7 @@ export interface PreparedSequence {
 }
 
 /** The part's source range of its storyboard (the whole storyboard without from/to). */
-async function clipPart(loaded: LoadedSequence, index: number, sb: Storyboard, baseDir: string): Promise<Storyboard> {
+export async function clipPart(loaded: LoadedSequence, index: number, sb: Storyboard, baseDir: string): Promise<Storyboard> {
   const { from, to, storyboard } = loaded.seq.parts[index]!;
   if (from === undefined && to === undefined) return sb;
   const { duration } = await probeVideo(resolve(baseDir, sb.source));

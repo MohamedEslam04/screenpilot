@@ -81,15 +81,20 @@ export async function clipDuration(file: string): Promise<number> {
   return duration;
 }
 
+/** The cache file of a line: named from the provider, voice, settings, rate and text, so a changed line gets a new clip. */
+export function clipFile(provider: VoiceProvider, line: VoiceLine, dir: string): string {
+  const key = `${provider.id}|${line.voice}|${provider.cacheKey?.(line.voice) ?? ""}|${line.rate}|${line.text}`;
+  const hash = createHash("sha1").update(key).digest("hex");
+  return join(dir, `${hash.slice(0, 16)}.${provider.ext?.(line.voice) ?? "mp3"}`);
+}
+
 /** Synthesize lines into `dir`, reusing files whose text/voice/rate did not change. */
 export async function synthesizeLines(providerId: string, lines: VoiceLine[], dir: string): Promise<VoiceClip[]> {
   const provider = getProvider(providerId);
   await mkdir(dir, { recursive: true });
   try {
     return await mapLimit(lines, provider.concurrency ?? 1, async (line) => {
-      const key = `${provider.id}|${line.voice}|${provider.cacheKey?.(line.voice) ?? ""}|${line.rate}|${line.text}`;
-      const hash = createHash("sha1").update(key).digest("hex");
-      const file = join(dir, `${hash.slice(0, 16)}.${provider.ext?.(line.voice) ?? "mp3"}`);
+      const file = clipFile(provider, line, dir);
       if (!existsSync(file)) await provider.synthesize(line.text, line.voice, line.rate, file);
       return { ...line, file, duration: await clipDuration(file) };
     });

@@ -33,6 +33,15 @@ const VoiceConfigSchema = z
       })
       .strict()
       .prefault({}),
+    spend: z
+      .object({
+        usdPerCredit: z
+          .record(z.string(), z.number().nonnegative())
+          .prefault({})
+          .describe("USD per credit by provider, e.g. {\"elevenlabs\": 0.00022}. A credit is a character for elevenlabs and an audio token (25 per second) for gemini. Used for the spend ledger and render --dry-run; defaults: elevenlabs 0.0003, gemini 0.00001"),
+      })
+      .strict()
+      .prefault({}),
   })
   .strict();
 
