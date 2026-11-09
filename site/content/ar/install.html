@@ -27,6 +27,7 @@ summary: ثبّت ScreenPilot على Windows أو macOS أو Linux، وأضفه 
   <li>تعرض الصفحة الأخيرة تطبيقات الذكاء الاصطناعي التي أُضيف إليها ScreenPilot. انقر <strong>Finish</strong>.</li>
   <li><strong>أعد تشغيل تطبيق الذكاء الاصطناعي.</strong> أغلقه تمامًا ثم افتحه من جديد. في Claude Desktop انقر بزر الفأرة الأيمن على أيقونته قرب الساعة واختر Quit.</li>
 </ol>
+<p>يضيف المثبّت أيضًا اختصار <strong>ScreenPilot Dashboard</strong> إلى قائمة Start. انظر <a href="@guide/dashboard.html#app-entry">لوحة التحكم</a>.</p>
 <p>إذا سألك برنامج مكافحة الفيروسات عن ScreenPilot فاسمح له. يراقب ScreenPilot نقرات الفأرة أثناء التسجيل ليكبّر عليها.</p>
 <h3 id="windows-other">طرق أخرى للتثبيت على Windows</h3>
 <ul>
@@ -42,6 +43,7 @@ summary: ثبّت ScreenPilot على Windows أو macOS أو Linux، وأضفه 
   <li>تعرض نافذة Terminal ما جرى تثبيته. اضغط <kbd>Enter</kbd> لإغلاقها. يمكنك الآن حذف المجلد الذي نزّلته.</li>
   <li><strong>أعد تشغيل تطبيق الذكاء الاصطناعي</strong> (<kbd>Cmd</kbd>+<kbd>Q</kbd> ثم افتحه من جديد).</li>
 </ol>
+<p>يضيف المثبّت أيضًا <strong>ScreenPilot Dashboard</strong> إلى <code>~/Applications</code>، فيظهر في Finder وLaunchpad. انظر <a href="@guide/dashboard.html#app-entry">لوحة التحكم</a>.</p>
 <h3 id="macos-permissions">أذونات macOS</h3>
 <p>في أول مرة تطلب فيها تسجيلًا، يطلب منك macOS أن تسمح لـ<strong>تطبيق الذكاء الاصطناعي</strong> (Claude أو Cursor أو Terminal) وليس لـ ScreenPilot نفسه. افتح <strong>System Settings</strong> ثم <strong>Privacy &amp; Security</strong> وفعّل تطبيق الذكاء الاصطناعي في هذه القوائم:</p>
 <ul>
@@ -61,6 +63,7 @@ summary: ثبّت ScreenPilot على Windows أو macOS أو Linux، وأضفه 
   <li>في أول مرة تسجّل فيها، أو تدع الذكاء الاصطناعي يستخدم سطح مكتبك، يطلب سطح المكتب إذنًا مرة واحدة بمشاركة الشاشة أو التحكم عن بُعد. اسمح به.</li>
 </ol>
 <div class="warn">لا تشغّل المثبّت بـ <code>sudo</code>. يثبّت لمستخدمك فقط ولا يحتاج إلى صلاحيات المسؤول. إذا شغّلته بـ <code>sudo</code> يتوقف ويطلب منك إعادة تشغيله بحسابك العادي.</div>
+<p>يضيف المثبّت أيضًا ScreenPilot Dashboard إلى قائمة التطبيقات. انظر <a href="@guide/dashboard.html#app-entry">لوحة التحكم</a>.</p>
 <p>ما يعمل يعتمد على سطح المكتب. راجع <a href="@guide/platforms.html#support">دعم المنصات</a> للجدول الكامل.</p>
 
 <h2 id="verify">تأكد أنه يعمل</h2>
@@ -77,6 +80,7 @@ summary: ثبّت ScreenPilot على Windows أو macOS أو Linux، وأضفه 
   <li>ينسخ ScreenPilot إلى مجلد المستخدم: <code>%LOCALAPPDATA%\ScreenPilot</code> على Windows، و<code>~/Library/Application Support/ScreenPilot</code> على macOS، و<code>~/.local/share/screenpilot</code> على Linux.</li>
   <li>ينشئ مجلد الإخراج لفيديوهاتك داخل مجلد الفيديو.</li>
   <li>يضيف ScreenPilot إلى كل تطبيق ذكاء اصطناعي يجده، ويحفظ نسخة احتياطية من ملف إعداداته قبل التعديل. تبقى بقية الإدخالات والتعليقات كما هي.</li>
+  <li>يضيف لوحة التحكم إلى قائمة Start أو <code>~/Applications</code> أو قائمة التطبيقات، إذا كانت الحزمة تتضمنها (الإصدارات الأحدث من 0.10.0).</li>
   <li>ينزّل مُخرِج الفيديو ويختبره، في أول مرة فقط.</li>
 </ul>
 
@@ -117,7 +121,7 @@ summary: ثبّت ScreenPilot على Windows أو macOS أو Linux، وأضفه 
   <li><strong>macOS:</strong> انقر نقرًا مزدوجًا على <strong>Uninstall ScreenPilot.command</strong> في المجلد الذي نزّلته. نزّله من جديد إذا حذفته.</li>
   <li><strong>Linux:</strong> شغّل <code>./uninstall.sh</code> في المجلد الذي نزّلته.</li>
 </ul>
-<p>الإزالة تُخرج ScreenPilot من تطبيقات الذكاء الاصطناعي. تبقى فيديوهاتك في مكانها.</p>
+<p>الإزالة تُخرج ScreenPilot من تطبيقات الذكاء الاصطناعي وتزيل عنصر لوحة التحكم. تبقى فيديوهاتك في مكانها.</p>
 
 <h2 id="troubleshooting">إذا حدثت مشكلة</h2>
 <ul>

@@ -112,12 +112,12 @@ screenpilot render sessions/2026-10-27_14-02/storyboard.json -q delivery -o demo
 <p><code>screenpilot schema</code> prints the storyboard JSON Schema. It is the authority on every field.</p>
 
 <h3 id="voices">voices</h3>
-<p><code>screenpilot voices</code> lists the voices of one provider. With <code>edge</code> (the default) it needs a network connection. With <code>local</code> it lists the installed models and their voices. With <code>command</code> it lists the voices defined in <code>voices.json</code>. <a href="@guide/voices.html">Voices</a> explains the providers.</p>
+<p><code>screenpilot voices</code> lists the voices of one provider. With <code>edge</code> (the default) it needs a network connection. With <code>local</code> it lists the installed models and their voices. With <code>command</code> it lists the voices defined in <code>voices.json</code>. With <code>elevenlabs</code> it lists the voices on your account, and with <code>gemini</code> the prebuilt Gemini voices; both need a key (see <a href="@guide/cli.html#secret">secret</a>). <a href="@guide/voices.html">Voices</a> explains the providers.</p>
 <table>
 <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
 <tbody>
 <tr><td><code>--lang &lt;prefix&gt;</code></td><td>Filter by locale prefix, for example <code>ar</code>, <code>ar-EG</code> or <code>en-US</code>.</td></tr>
-<tr><td><code>--provider &lt;id&gt;</code></td><td>Voice provider: <code>edge</code> (default), <code>local</code> or <code>command</code>.</td></tr>
+<tr><td><code>--provider &lt;id&gt;</code></td><td>Voice provider: <code>edge</code> (default), <code>local</code>, <code>command</code>, <code>elevenlabs</code> or <code>gemini</code>.</td></tr>
 </tbody>
 </table>
 <pre><code class="language-sh">screenpilot voices --provider local
@@ -132,6 +132,20 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <tr><td><code>-y, --yes</code></td><td>Do not ask before downloading.</td></tr>
 </tbody>
 </table>
+
+<h3 id="secret">secret</h3>
+<p><code>screenpilot secret</code> manages the API keys of the cloud voices <code>elevenlabs</code> and <code>gemini</code>. Keys live in <code>secrets.json</code> in the config folder, with file mode 0600. An environment variable (<code>ELEVENLABS_API_KEY</code>, <code>GEMINI_API_KEY</code>) wins over the file. <a href="@guide/voices.html#cloud-voices">Voices</a> explains the providers.</p>
+<table>
+<thead><tr><th>Command</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>secret set &lt;provider&gt;</code></td><td>Stores the key. It is read from stdin, never from an argument, so it stays out of shell history and process lists. In a terminal it asks you to paste the key and press Enter.</td></tr>
+<tr><td><code>secret status</code></td><td>Prints, for each provider, <code>env</code>, <code>file</code> or <code>null</code> (not set). Never prints a key.</td></tr>
+<tr><td><code>secret remove &lt;provider&gt;</code></td><td>Deletes the stored key. An environment variable stays.</td></tr>
+</tbody>
+</table>
+<p><code>&lt;provider&gt;</code> is <code>elevenlabs</code> or <code>gemini</code>.</p>
+<pre><code class="language-sh">printf '%s' "$GEMINI_API_KEY" | screenpilot secret set gemini
+screenpilot secret status</code></pre>
 
 <h3 id="script">script</h3>
 <p><code>screenpilot script &lt;storyboard&gt;</code> writes the narration as a script to paste into a text-to-speech website: the text, a short prompt, and a table of the room each line has. Default output <code>&lt;storyboard&gt;.script.md</code>; change it with <code>-o, --out</code>. <a href="@guide/voices.html#external-audio">Voices</a> shows the whole flow.</p>
@@ -335,6 +349,53 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <h3 id="take-schema">take-schema</h3>
 <p><code>screenpilot take-schema</code> prints the JSON Schema of <code>take.json</code>.</p>
 
+<h2 id="history-group">History of your work</h2>
+<p>ScreenPilot keeps a list of what it recorded and rendered. It is one JSON line per finished job in <code>history.jsonl</code>, in the config folder. Recording (<code>record</code>), performing a take (<code>perform</code>), <code>render</code> and <code>sequence</code> add a line when they end. A failed render or sequence is recorded too, with its error. The parts of a sequence and the render during <code>setup</code> add nothing, so each video appears once.</p>
+
+<h3 id="history">history</h3>
+<p><code>screenpilot history</code> prints the newest events first, as a JSON list.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--limit &lt;n&gt;</code></td><td>How many events. Default 50.</td></tr>
+<tr><td><code>--before &lt;iso&gt;</code></td><td>Only events older than this time. Pass the <code>at</code> of the last event of the previous page to get the next page.</td></tr>
+<tr><td><code>--live</code></td><td>List the renders running now instead of the history.</td></tr>
+</tbody>
+</table>
+<p>Each event has these fields. Fields that do not apply are left out.</p>
+<table>
+<thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>v</code></td><td>Format version, always 1.</td></tr>
+<tr><td><code>at</code></td><td>ISO time the work finished.</td></tr>
+<tr><td><code>kind</code></td><td><code>record</code>, <code>take</code>, <code>render</code> or <code>sequence</code>.</td></tr>
+<tr><td><code>status</code></td><td><code>ok</code> or <code>failed</code>.</td></tr>
+<tr><td><code>path</code></td><td>The session folder (record, take), the storyboard (render) or the sequence file (sequence).</td></tr>
+<tr><td><code>storyboard</code></td><td>The storyboard a take wrote (take only).</td></tr>
+<tr><td><code>output</code></td><td>The video it made or recorded.</td></tr>
+<tr><td><code>durationSec</code></td><td>Length of that video in seconds.</td></tr>
+<tr><td><code>quality</code></td><td>Render quality (render, sequence).</td></tr>
+<tr><td><code>wallSeconds</code></td><td>How long the work took.</td></tr>
+<tr><td><code>error</code></td><td>The error message of a failed job, cut to 500 characters.</td></tr>
+<tr><td><code>imported</code></td><td><code>true</code> when <code>library import</code> found it on disk.</td></tr>
+</tbody>
+</table>
+<p>With <code>--live</code>, each running render or sequence has one small file in the <code>jobs</code> folder of the cache folder. The file is removed when the job ends. A file left by a process that crashed is removed the next time you list. A job has <code>id</code>, <code>pid</code>, <code>kind</code>, <code>path</code>, <code>quality</code>, <code>startedAt</code>, <code>updatedAt</code>, and <code>step</code> (<code>label</code>, <code>index</code>, <code>total</code>) when it knows its progress, such as chunk 3 of 12 or part 2 of 4.</p>
+<pre><code class="language-sh">screenpilot history --limit 10
+screenpilot history --live</code></pre>
+<div class="note">Writing the history never makes a job fail. If the file cannot be written, the job still finishes and the line is skipped.</div>
+
+<h3 id="library">library</h3>
+<p><code>screenpilot library import</code> adds work you made before the history existed: recordings (a folder with <code>meta.json</code>) and finished renders (a <code>storyboard.json</code> with <code>storyboard.mp4</code> next to it). It looks two folder levels deep under each root. What is already in the history is left alone, and added lines are marked <code>imported</code>. It prints how many it added and how many events the history now holds.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--root &lt;dir...&gt;</code></td><td>Folders to look in. Default: the sessions folder (<code>SCREENPILOT_OUTPUT</code>, else <code>./sessions</code>).</td></tr>
+</tbody>
+</table>
+<pre><code class="language-sh">screenpilot library import --root ~/Videos/ScreenPilot</code></pre>
+<div class="warn">The import rewrites <code>history.jsonl</code> in time order. Run it when no render is about to finish.</div>
+
 <h2 id="setup-and-checks">Set up and check this machine</h2>
 
 <h3 id="setup">setup</h3>
@@ -354,5 +415,5 @@ screenpilot voices --provider edge --lang ar</code></pre>
 </table>
 
 <h3 id="doctor">doctor</h3>
-<p><code>screenpilot doctor</code> checks this machine: ffmpeg, desktop, monitors, OBS, the demo browser and voices, including an "accessibility tree" check and a "local voice" check that is skipped when you have not set up a local voice (it is optional). It prints a JSON report and a one-line summary. The exit code is always 0, so read the report. Add <code>--input</code> to also test input injection; this moves the real pointer for a moment.</p>
+<p><code>screenpilot doctor</code> checks this machine: ffmpeg, desktop, monitors, OBS, the demo browser and voices, including an "accessibility tree" check, a "local voice" check that is skipped when you have not set up a local voice (it is optional), and "elevenlabs voice" and "gemini voice" checks that only say whether a key is set (also skipped when it is not; no request is made). It prints a JSON report and a one-line summary. The exit code is always 0, so read the report. Add <code>--input</code> to also test input injection; this moves the real pointer for a moment.</p>
 <div class="note">Run <code>screenpilot doctor</code> first on a new machine, and again whenever recording or driving fails.</div>

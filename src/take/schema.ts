@@ -156,7 +156,7 @@ export const TakeSchema = z.object({
   screens: z.union([z.literal("all"), z.array(z.string()).min(1)]).default("all"),
   voice: z
     .object({
-      provider: z.enum(["edge", "local", "command"]).default("edge"),
+      provider: z.enum(["edge", "local", "command", "elevenlabs", "gemini"]).default("edge"),
       name: z.string().default("en-US-AndrewNeural"),
       rate: z.string().default("+0%"),
       gap: z.number().min(0).default(0.35),

@@ -1,0 +1,83 @@
+name: Dashboard
+
+# Only when the dashboard changes, because Actions minutes are limited (Windows counts double).
+# `core` is the Rust logic (serde and std, no GUI libraries). `app-*` build the Slint app (software
+# renderer, fonts embedded) on each OS and run its tests; the window itself is only run by hand.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "dashboard/**"
+      - ".github/workflows/dashboard.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "dashboard/**"
+      - ".github/workflows/dashboard.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: dashboard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup component add clippy rustfmt
+      - run: cargo fmt --all --check
+      - run: cargo clippy -p screenpilot-dashboard-core --all-targets -- -D warnings
+      - run: cargo test -p screenpilot-dashboard-core
+
+  app-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v7
+      - name: Development packages Slint links against
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev libfreetype-dev libxkbcommon-dev libwayland-dev libx11-dev libxcb1-dev
+      - run: cargo build -p screenpilot-dashboard
+      - run: cargo test --workspace
+
+  # The Windows and macOS builds have never been run outside this job: it is the check they compile.
+  app-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v7
+      - run: cargo build -p screenpilot-dashboard
+      # The model tests are pure; the headless test needs a POSIX shell for its stand-in CLI.
+      - run: cargo test -p screenpilot-dashboard --lib
+      # The logo must be inside the .exe (Explorer, the task bar and the Start Menu shortcut show it): ask Windows for the
+      # program's icon and look at a pixel. The logo is a dark navy square; the default program icon is white and grey.
+      - name: The logo is inside the program
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          $exe = (Resolve-Path target/debug/screenpilot-dashboard.exe).Path
+          $bmp = [System.Drawing.Icon]::ExtractAssociatedIcon($exe).ToBitmap()
+          $px = $bmp.GetPixel(4, [int]($bmp.Height / 2))
+          Write-Host "icon $($bmp.Width)x$($bmp.Height), pixel R=$($px.R) G=$($px.G) B=$($px.B) A=$($px.A)"
+          if ($px.A -lt 250 -or $px.R -gt 60 -or $px.G -gt 70 -or $px.B -lt 20 -or $px.B -gt 110) { throw "the program does not carry the ScreenPilot logo" }
+
+  app-macos:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v7
+      - run: cargo build -p screenpilot-dashboard
+      - run: cargo test -p screenpilot-dashboard

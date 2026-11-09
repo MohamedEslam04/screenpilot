@@ -12,6 +12,12 @@ Ask your AI app for a screen video. ScreenPilot records your screen (or uses you
 
 ## What's new
 
+### Unreleased
+
+- **History:** every recording, take, render and sequence (failures too) is logged to `history.jsonl` in the config folder, and a running render leaves a small job file with its progress. `screenpilot history [--live]` shows them, and `screenpilot library import` adds work made before.
+- **Dashboard (new, built from source for now):** a small native desktop program (about 14 MB of memory, no web view) that lists everything ScreenPilot made, with a thumbnail, Open video, running renders, render speed and the voice setup. It has no background process: closing the window ends it. Open it with `screenpilot dashboard`. See [Dashboard](https://mohamedeslam04.github.io/screenpilot/guide/dashboard.html).
+- **Cloud voices (optional):** `elevenlabs` and `gemini` voice providers. Keys go in `ELEVENLABS_API_KEY` / `GEMINI_API_KEY` or in `secrets.json` (mode 0600 on Linux and macOS) through `screenpilot secret set <provider>` (key on stdin). They have been tested against mocked requests only. The default voice still needs no account.
+
 ### 0.10.0 ([release notes](https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.10.0))
 
 - **Style variants:** `--style <file>` on `render` and `sequence` (MCP `style`) renders the same video with another look; a style file carries only a `theme`, and each style has its own build folder and output name.
@@ -171,4 +177,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit dd72a8f ("Merge branch 'docs/post-0.9.0'", 2026-11-08).
+Docs synced to commit 8b7c3fa ("feat: the dashboard ships in every release package with the ScreenPilot logo (Linux menu, macOS app bundle, Windows Start Menu and exe icon); release job builds, checks and bundles it", 2026-11-09).

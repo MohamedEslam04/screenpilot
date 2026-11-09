@@ -6,13 +6,15 @@ import { probeDuration } from "../util/media.js";
 import { mapLimit } from "../util/pool.js";
 import { commandProvider } from "./command.js";
 import { edgeProvider } from "./edge.js";
+import { elevenLabsProvider } from "./elevenlabs.js";
+import { geminiProvider } from "./gemini.js";
 import { localProvider } from "./local.js";
 
 export interface VoiceInfo {
   name: string;
   locale: string;
   gender: string;
-  /** Languages the voice speaks when that is more than its locale (e.g. ["ar", "en"]). */
+  /** Languages the voice speaks when that is more than its locale (e.g. ["ar", "en"]); "*" = any language. */
   langs?: string[];
 }
 
@@ -30,7 +32,13 @@ export interface VoiceProvider {
   close?(): Promise<void>;
 }
 
-const providers: Record<string, VoiceProvider> = { edge: edgeProvider, local: localProvider, command: commandProvider };
+const providers: Record<string, VoiceProvider> = {
+  edge: edgeProvider,
+  local: localProvider,
+  command: commandProvider,
+  elevenlabs: elevenLabsProvider,
+  gemini: geminiProvider,
+};
 
 export function getProvider(id: string): VoiceProvider {
   const p = providers[id];
@@ -42,7 +50,7 @@ export function getProvider(id: string): VoiceProvider {
 export function voiceMatchesLang(v: VoiceInfo, prefix?: string): boolean {
   if (!prefix) return true;
   const p = prefix.toLowerCase();
-  return [v.locale, ...(v.langs ?? [])].some((l) => l.toLowerCase().startsWith(p));
+  return [v.locale, ...(v.langs ?? [])].some((l) => l === "*" || l.toLowerCase().startsWith(p));
 }
 
 export interface VoiceLine {

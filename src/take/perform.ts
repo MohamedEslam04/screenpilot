@@ -27,6 +27,7 @@ import { type Tracked, trackedHighlights, trackElement } from "./track.js";
 import { typingSpan } from "./typing.js";
 import { windowMatches } from "./windows.js";
 import { CACHE_DIR } from "../brand.js";
+import { recordEvent } from "../history/index.js";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -133,7 +134,7 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
       log("starting recording");
       const dir = opts.dir ? await prepareSessionDir(opts.dir, { overwrite: opts.overwrite }) : undefined;
       if (dir && dir !== resolve(opts.dir!)) log(`${opts.dir} is in use, recording to ${dir}`);
-      rec = await startRecording({ dir, screens: take.screens, input: "auto", log });
+      rec = await startRecording({ dir, screens: take.screens, input: "auto", history: false, log });
       t0 = rec.startedAt;
       ctx.recording = true;
     } else {
@@ -221,6 +222,7 @@ export async function performTake(takePath: string, opts: PerformOptions = {}): 
   }
   sb.voice = { name: take.voice.name, rate: take.voice.rate, gap: take.voice.gap };
   await writeFile(storyboard, `${JSON.stringify(sb, null, 2)}\n`);
+  await recordEvent({ kind: "take", status: "ok", path: recResult.dir, storyboard, output: recResult.video, durationSec: recResult.duration, wallSeconds: Math.round(now() * 10) / 10 });
   return { dir: recResult.dir, storyboard, recording: recResult, steps: timeline, warnings };
 }
 

@@ -1,19 +1,21 @@
 <!--
 title: Voices
-summary: Choose a narration voice: Edge voices over the internet, speech models on your own computer, or any program you define. Setup, limits and fixes.
+summary: Choose a narration voice: Edge, cloud voices with your own ElevenLabs or Gemini key, speech models on your computer, or any program you define. Setup and fixes.
 -->
-<p>ScreenPilot speaks each narration line with a voice provider. There are three. <code>edge</code> is the default and needs no setup. <code>local</code> runs speech models on your own computer. <code>command</code> runs any program you define that turns text into an audio file. Existing storyboards keep working: when a storyboard has no <code>provider</code>, it is <code>edge</code>.</p>
+<p>ScreenPilot speaks each narration line with a voice provider. There are five. <code>edge</code> is the default and needs no setup. <code>elevenlabs</code> and <code>gemini</code> are cloud voices that use your own account key. <code>local</code> runs speech models on your own computer. <code>command</code> runs any program you define that turns text into an audio file. Existing storyboards keep working: when a storyboard has no <code>provider</code>, it is <code>edge</code>.</p>
 
 <h2 id="choose">Choose a provider</h2>
 <table>
 <thead><tr><th>Provider</th><th>What it is</th><th>Internet</th><th>Cost</th><th>Quality note</th></tr></thead>
 <tbody>
 <tr><td><code>edge</code></td><td>Microsoft Edge voices, in many languages, including Egyptian Arabic.</td><td>Needed for every render of new lines.</td><td>None.</td><td>Works with no setup. It is an unofficial service and may change.</td></tr>
+<tr><td><code>elevenlabs</code></td><td>ElevenLabs cloud voices, with your own API key.</td><td>Needed for every render of new lines.</td><td>Depends on your ElevenLabs plan. Free plans have limits.</td><td>High quality. Your narration text is sent to ElevenLabs. Optional: needs an account.</td></tr>
+<tr><td><code>gemini</code></td><td>Gemini API cloud voices from Google, with your own API key.</td><td>Needed for every render of new lines.</td><td>Depends on your Google quota. Free tiers have limits.</td><td>Your narration text is sent to Google. Optional: needs an account.</td></tr>
 <tr><td><code>local</code></td><td>Speech models that run on your computer: VoiceTut and NAMAA.</td><td>Only for the setup download. Not needed after.</td><td>Free. Uses about 10 to 16 GB of disk.</td><td>Egyptian Arabic and English. Arabic is less accurate than English. Tested on Linux with an NVIDIA GPU only.</td></tr>
 <tr><td><code>command</code></td><td>A program you define in <code>voices.json</code>, for example Piper.</td><td>Depends on the program.</td><td>Depends on the program.</td><td>Whatever the program produces.</td></tr>
 </tbody>
 </table>
-<p>Pick <code>edge</code> if you want it to work now. Pick <code>local</code> if you want no internet at render time. Pick <code>command</code> if you already have a speech model of your own.</p>
+<p>Pick <code>edge</code> if you want it to work now. Pick <code>elevenlabs</code> or <code>gemini</code> if you already have an account and want a cloud voice. Pick <code>local</code> if you want no internet at render time. Pick <code>command</code> if you already have a speech model of your own.</p>
 <p>Set the provider once for the whole storyboard in <code>voice</code>. See <a href="@guide/storyboard.html#output">Output and voice</a> for every field.</p>
 
 <h2 id="edge">Edge voices</h2>
@@ -22,6 +24,57 @@ summary: Choose a narration voice: Edge voices over the internet, speech models 
 <p>List the voices, optionally for one language:</p>
 <pre><code class="language-sh">screenpilot voices --lang ar-EG</code></pre>
 <p>Examples: <code>ar-EG-SalmaNeural</code>, <code>ar-EG-ShakirNeural</code>, <code>en-US-AndrewNeural</code> (the default), <code>en-US-AriaNeural</code>.</p>
+
+<h2 id="cloud-voices">Cloud voices: ElevenLabs and Gemini</h2>
+<p>These two providers send each narration line to a cloud service and get audio back. They are optional. ScreenPilot still needs no account by default, and a storyboard without <code>elevenlabs</code> or <code>gemini</code> never contacts either service. You bring your own key.</p>
+<div class="warn">The narration text is sent to ElevenLabs or Google. Do not use these providers for text you cannot share with them. Free plans have limits and may forbid commercial use. Read the current terms of the service before you publish a video.</div>
+
+<h3 id="cloud-keys">Set your API key</h3>
+<p>Each provider reads one key. The environment variable wins over a stored key.</p>
+<table>
+<thead><tr><th>Provider</th><th>Environment variable</th></tr></thead>
+<tbody>
+<tr><td><code>elevenlabs</code></td><td><code>ELEVENLABS_API_KEY</code></td></tr>
+<tr><td><code>gemini</code></td><td><code>GEMINI_API_KEY</code></td></tr>
+</tbody>
+</table>
+<p>To store a key instead of exporting it, pipe it into <code>screenpilot secret set</code>. The key is read from standard input, never from an argument, so it stays out of your shell history and the process list. It is saved in <code>secrets.json</code> in the config folder, with file mode 0600 on Linux and macOS (only you can read it). Windows has no file modes, so there the file is protected only by the permissions of your user profile folder.</p>
+<pre><code class="language-sh">printf '%s' "$ELEVENLABS_API_KEY" | screenpilot secret set elevenlabs
+screenpilot secret status
+screenpilot secret remove elevenlabs</code></pre>
+<ul>
+<li><code>secret status</code> says for each provider whether the key comes from <code>env</code>, from <code>file</code>, or is not set. It never prints a key.</li>
+<li><code>secret remove</code> deletes the stored key. It cannot unset an environment variable.</li>
+<li>If you run <code>secret set</code> in a terminal without piping, it asks you to paste the key and press Enter.</li>
+</ul>
+<p>A key is never written to a log, a cache key or an error message. <code>screenpilot doctor</code> has an "elevenlabs voice" and a "gemini voice" line. Each only says whether a key is set. It is skipped when no key is set, because the providers are optional, and it makes no request.</p>
+
+<h3 id="cloud-elevenlabs">ElevenLabs</h3>
+<pre><code class="language-json">"voice": { "provider": "elevenlabs", "name": "Your Voice Name", "rate": "+0%" }</code></pre>
+<ul>
+<li><code>name</code> is a voice id (20 letters and digits) or the name of a voice on your account. A name is looked up in your account, ignoring case. The default <code>name</code> belongs to Edge, so always set it.</li>
+<li>The model is <code>eleven_multilingual_v2</code>. Set <code>ELEVENLABS_MODEL_ID</code> to use another one.</li>
+<li><code>rate</code> becomes the speed of the voice, limited to 0.7 to 1.2. For example <code>+10%</code> is 1.1. With <code>+0%</code> no speed is sent, so the settings stored for the voice apply.</li>
+<li>ScreenPilot asks for 2 lines at a time, because the free plan allows 2 requests at once.</li>
+</ul>
+<p>List the voices on your account:</p>
+<pre><code class="language-sh">screenpilot voices --provider elevenlabs</code></pre>
+
+<h3 id="cloud-gemini">Gemini</h3>
+<pre><code class="language-json">"voice": { "provider": "gemini", "name": "Kore" }</code></pre>
+<ul>
+<li><code>name</code> is one of the 30 prebuilt Gemini voices, for example <code>Kore</code>, <code>Puck</code>, <code>Charon</code>, <code>Zephyr</code> or <code>Fenrir</code>. <code>screenpilot voices --provider gemini</code> lists all of them. They speak every language the model supports, and the language is detected from the text.</li>
+<li>The model is <code>gemini-3.8-flash-tts</code>. Set <code>GEMINI_TTS_MODEL</code> to use another one.</li>
+<li><code>rate</code> is ignored: the Gemini API has no speed setting.</li>
+<li>If the service sends no audio, ScreenPilot says so. The text may have been blocked.</li>
+</ul>
+<pre><code class="language-sh">screenpilot voices --provider gemini</code></pre>
+
+<h3 id="cloud-behavior">Caching and retries</h3>
+<ul>
+<li>Generated clips are cached by provider, voice, model, rate and text. An unchanged line is not requested again, so a repeat render uses no quota. Changing the model makes the lines again.</li>
+<li>A request that fails because the network dropped, the service is busy (429) or has an error (5xx) is tried again, up to 3 tries in total. Any other error stops at once and the message names the service.</li>
+</ul>
 
 <h2 id="local-models">Local models</h2>
 <p>Local voices are speech models that run on your own computer. They are free and need no internet after setup. Install one with <code>screenpilot voice-setup</code>, then use it in a storyboard.</p>
@@ -212,6 +265,10 @@ screenpilot doctor</code></pre>
 <tr><td>The voice engine stopped, followed by its last lines of output.</td><td>Read those lines: they are what the engine printed before it stopped. Run <code>screenpilot doctor</code> and read the "local voice" check.</td></tr>
 <tr><td><code>voice-setup</code> says it needs <code>uv</code>.</td><td>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> and run the command again.</td></tr>
 <tr><td><code>voice-setup</code> says there is not enough disk space.</td><td>Free space, or pass <code>--dir</code> to use another drive.</td></tr>
+<tr><td><code>ELEVENLABS_API_KEY</code> or <code>GEMINI_API_KEY</code> is not set.</td><td>Export the variable, or run <code>screenpilot secret set elevenlabs</code> or <code>screenpilot secret set gemini</code> and paste the key. Check with <code>screenpilot secret status</code>.</td></tr>
+<tr><td>A cloud voice answered 401 or 403.</td><td>The key is wrong or has no access. Set it again. An environment variable wins over a stored key, so check <code>secret status</code>.</td></tr>
+<tr><td>A cloud voice answered 429.</td><td>You hit the limit of your plan. ScreenPilot tries 3 times, then stops. Wait, or change plan or provider. Lines already made are cached.</td></tr>
+<tr><td>ElevenLabs has no voice with that name on this account.</td><td>Use a voice id, or one of the names the message lists. Run <code>screenpilot voices --provider elevenlabs</code>.</td></tr>
 </tbody>
 </table>
 <div class="note">More answers are on the <a href="@guide/faq.html">FAQ</a>. The command line is in <a href="@guide/cli.html#voice-setup">voice-setup</a> and <a href="@guide/cli.html#voices">voices</a>.</div>

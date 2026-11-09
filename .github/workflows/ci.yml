@@ -7,12 +7,14 @@ on:
       - "**.md"
       - "docs/**"
       - "site/**"
+      - "dashboard/**"
   pull_request:
     branches: [main]
     paths-ignore:
       - "**.md"
       - "docs/**"
       - "site/**"
+      - "dashboard/**"
 
 concurrency:
   group: ci-${{ github.ref }}

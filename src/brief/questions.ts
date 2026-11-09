@@ -162,6 +162,8 @@ export function buildBrief(env: BriefEnv): Brief {
             : "Not set up yet: you must run `screenpilot voice-setup voicetut` in a terminal (about 10 GB). I never run it myself.",
           { available: env.localVoice },
         ),
+        opt("elevenlabs", "ElevenLabs API", "High-quality cloud voice from your own ELEVENLABS_API_KEY (env var or secrets.json). The text is sent to ElevenLabs; its plan limits apply."),
+        opt("gemini", "Gemini API", "Google's cloud voices (Kore, Puck...) from your own GEMINI_API_KEY (env var or secrets.json). The text is sent to Google; its quota applies."),
       ],
     },
     {
@@ -389,7 +391,9 @@ export function guidance(a: Answers): string[] {
       out.push(
         a.voice_builtin === "local"
           ? "Local model: if it is not set up, the user must run `screenpilot voice-setup voicetut` in a terminal (about 10 GB). Do not run it yourself."
-          : "Edge voice (needs internet): pick one that matches the language, e.g. ar-EG-SalmaNeural or en-US-AndrewNeural.",
+          : a.voice_builtin === "elevenlabs" || a.voice_builtin === "gemini"
+            ? `Provider "${a.voice_builtin}": the user's own ${a.voice_builtin === "elevenlabs" ? "ELEVENLABS_API_KEY" : "GEMINI_API_KEY"} must be set (env var or secrets.json; doctor shows it). Never ask for the key in chat or store it yourself. List voices with the voices tool.`
+            : "Edge voice (needs internet): pick one that matches the language, e.g. ar-EG-SalmaNeural or en-US-AndrewNeural.",
       );
       break;
     case "own":

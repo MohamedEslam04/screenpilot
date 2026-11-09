@@ -12,7 +12,7 @@
 
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { APP, APP_TITLE, OUTPUT_ENV } from "../src/brand.js";
 import { APP_ITEMS, tarBin } from "../src/update/index.js";
@@ -26,6 +26,8 @@ const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { ve
 const platform =
   process.env.PACKAGE_AS ?? (process.platform === "win32" ? "windows" : process.platform === "darwin" ? "macos" : process.platform);
 const ffmpegDir = argValue("--ffmpeg-dir");
+// The built dashboard program (dashboard/target/release/screenpilot-dashboard[.exe]); it goes in the package as dashboard/.
+const dashboardBin = argValue("--dashboard-bin");
 const out = join(root, "release");
 // The archive's top folder is the stage folder itself.
 const stage = join(out, `stage-${platform}`, APP_TITLE);
@@ -105,6 +107,16 @@ async function main(): Promise<void> {
     log(`bundled ffmpeg from ${ffmpegDir}`);
   } else {
     log("no --ffmpeg-dir: the package will use ffmpeg from PATH");
+  }
+
+  if (dashboardBin) {
+    mkdirSync(join(stage, "dashboard"), { recursive: true });
+    const dest = join(stage, "dashboard", `screenpilot-dashboard${exe}`);
+    copyFileSync(dashboardBin, dest);
+    chmodSync(dest, 0o755);
+    log(`bundled the dashboard from ${dashboardBin}`);
+  } else {
+    log("no --dashboard-bin: the package has no dashboard");
   }
 
   // Native modules built with MSVC need the VC++ runtime: ship it app-local (Windows only; see scripts/vcruntime.ts).
@@ -229,8 +241,16 @@ async function packMcpb(name: string, os: "win32" | "darwin", videos: string, to
   };
   writeFileSync(join(stage, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
   const file = join(out, `${APP_TITLE}-${pkg.version}-${name}.mcpb`);
-  await sh("npx", ["--yes", "@anthropic-ai/mcpb@2.1.2", "validate", join(stage, "manifest.json")]);
-  await sh("npx", ["--yes", "@anthropic-ai/mcpb@2.1.2", "pack", stage, file]);
+  // The extension is only the MCP server for Claude Desktop: the dashboard (about 14 MB) stays in the zip and installer.
+  const aside = join(dirname(stage), "dashboard-aside");
+  const hasDashboard = existsSync(join(stage, "dashboard"));
+  if (hasDashboard) renameSync(join(stage, "dashboard"), aside);
+  try {
+    await sh("npx", ["--yes", "@anthropic-ai/mcpb@2.1.2", "validate", join(stage, "manifest.json")]);
+    await sh("npx", ["--yes", "@anthropic-ai/mcpb@2.1.2", "pack", stage, file]);
+  } finally {
+    if (hasDashboard) renameSync(aside, join(stage, "dashboard"));
+  }
   log(`→ ${file}`);
   rmSync(join(stage, "manifest.json"));
 }

@@ -1,0 +1,1835 @@
+// ScreenPilot dashboard window. Logic lives in Rust (app.rs, model.rs); this file is only the look.
+// Software renderer, embedded fonts (fonts/OFL.txt), no images except the selected video's thumbnail.
+
+import { ListView, ScrollView, Palette } from "std-widgets.slint";
+import "../fonts/NotoSans-Regular.ttf";
+import "../fonts/NotoSans-Bold.ttf";
+import "../fonts/NotoSansArabic.ttf";
+
+// ---------------------------------------------------------------------------------------------
+// Data passed from Rust
+// ---------------------------------------------------------------------------------------------
+
+export struct RowData {
+    idx: int,
+    kind: int, // 0 record, 1 take, 2 render, 3 sequence, 4 other
+    failed: bool,
+    title: string,
+    title-rtl: bool,
+    sub: string,
+    error: string,
+    error-rtl: bool,
+    quality: string,
+    when: string,
+    aria: string,
+}
+
+export struct KvData {
+    key: string,
+    value: string,
+    mono: bool,
+}
+
+export struct NarData {
+    clock: string,
+    text: string,
+    rtl: bool,
+}
+
+export struct JobData {
+    id: string,
+    title: string,
+    title-rtl: bool,
+    kind: string,
+    quality: string,
+    path-line: string,
+    label: string,
+    count: string,
+    progress: float, // 0..1, or -1 while the steps are unknown
+    elapsed: string,
+}
+
+export struct ProviderData {
+    id: string,
+    label: string,
+    status: string,
+    note: string,
+    key-state: int, // 0 not needed, 1 missing, 2 environment, 3 saved
+    env-note: bool,
+    can-edit: bool,
+    can-remove: bool,
+    cli-line: string,
+}
+
+export struct SpeedData {
+    quality: string,
+    ratio: string,
+    detail: string,
+    fraction: float,
+}
+
+// ---------------------------------------------------------------------------------------------
+// Theme: follows the system colour scheme, the toggle forces one.
+// ---------------------------------------------------------------------------------------------
+
+export global Theme {
+    out property <bool> dark: Palette.color-scheme == ColorScheme.dark;
+    out property <color> bg: dark ? #101213 : #f1f3f2;
+    out property <color> surface: dark ? #181b1c : #ffffff;
+    out property <color> raised: dark ? #1f2325 : #f4f6f5;
+    out property <color> ink: dark ? #e8ebea : #15191b;
+    out property <color> ink2: dark ? #9ba5a9 : #566066;
+    out property <color> line: dark ? #2b3133 : #dde1df;
+    out property <color> accent: dark ? #4cc2bd : #0a6c6c;
+    out property <color> accent-ink: dark ? #062321 : #ffffff;
+    out property <color> accent-soft: dark ? #163332 : #dff0ee;
+    out property <color> ok: dark ? #5cc98a : #1f7a46;
+    out property <color> bad: dark ? #ff8a80 : #b3261e;
+    out property <color> bad-soft: dark ? #3a1f1d : #fbe6e4;
+    out property <color> k-record: dark ? #ff8a73 : #c2432f;
+    out property <color> k-take: dark ? #e4ae4a : #a46a00;
+    out property <color> k-render: dark ? #4cc2bd : #0a6c6c;
+    out property <color> k-sequence: dark ? #b4a0f2 : #6a4fb3;
+    out property <length> row-h: 56px;
+    out property <length> narrow-below: 860px;
+    public pure function kind-color(kind: int) -> color {
+        kind == 0 ? k-record : kind == 1 ? k-take : kind == 2 ? k-render : kind == 3 ? k-sequence : ink2
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Small components
+// ---------------------------------------------------------------------------------------------
+
+// A wrapped text whose row height follows the width the layout gives it (a plain wrapped Text
+// inside a layout reports the height of one line).
+component WrapText inherits Rectangle {
+    in property <string> text;
+    in property <TextWrap> wrap: word-wrap;
+    in property <length> font-size: 13px;
+    in property <int> font-weight: 400;
+    in property <brush> tint: Theme.ink;
+    in property <TextHorizontalAlignment> horizontal-alignment: left;
+    in property <TextVerticalAlignment> vertical-alignment: top;
+    min-height: t.preferred-height;
+    preferred-height: t.preferred-height;
+    t := Text {
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        wrap: root.wrap;
+        font-size: root.font-size;
+        font-weight: root.font-weight;
+        color: root.tint;
+        horizontal-alignment: root.horizontal-alignment;
+        vertical-alignment: root.vertical-alignment;
+    }
+}
+
+component Btn inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary;
+    in property <bool> danger;
+    in property <bool> enabled: true;
+    callback clicked();
+    preferred-width: lbl.preferred-width + 28px;
+    min-width: self.preferred-width;
+    height: 32px;
+    border-radius: 8px;
+    border-width: root.primary && !fs.has-focus ? 0px : fs.has-focus ? 2px : 1px;
+    border-color: fs.has-focus ? Theme.accent : root.danger ? Theme.bad : Theme.line;
+    background: !root.enabled ? Theme.raised : root.primary ? (ta.has-hover ? Theme.accent.darker(0.1) : Theme.accent) : (ta.has-hover ? Theme.raised : Theme.surface);
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-enabled: root.enabled;
+    accessible-action-default => {
+        root.clicked();
+    }
+    fs := FocusScope {
+        enabled: root.enabled;
+        key-pressed(e) => {
+            if (e.text == Key.Return || e.text == " ") {
+                root.clicked();
+                return accept;
+            }
+            reject
+        }
+        lbl := Text {
+            width: parent.width;
+            height: parent.height;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            text: root.text;
+            font-size: 13px;
+            font-weight: 600;
+            color: !root.enabled ? Theme.ink2 : root.primary ? Theme.accent-ink : root.danger ? Theme.bad : Theme.ink;
+        }
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => {
+            fs.focus();
+            root.clicked();
+        }
+    }
+}
+
+component Chip inherits Rectangle {
+    in property <string> text;
+    in property <bool> on;
+    callback toggled();
+    preferred-width: lbl.preferred-width + 24px;
+    min-width: self.preferred-width;
+    height: 28px;
+    border-radius: 14px;
+    border-width: fs.has-focus ? 2px : 1px;
+    border-color: fs.has-focus || root.on ? Theme.accent : Theme.line;
+    background: root.on ? Theme.accent-soft : ta.has-hover ? Theme.raised : Theme.surface;
+    accessible-role: checkbox;
+    accessible-label: root.text;
+    accessible-checked: root.on;
+    accessible-action-default => {
+        root.toggled();
+    }
+    fs := FocusScope {
+        key-pressed(e) => {
+            if (e.text == Key.Return || e.text == " ") {
+                root.toggled();
+                return accept;
+            }
+            reject
+        }
+        lbl := Text {
+            width: parent.width;
+            height: parent.height;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            text: root.text;
+            font-size: 13px;
+            color: root.on ? Theme.ink : Theme.ink2;
+        }
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            fs.focus();
+            root.toggled();
+        }
+    }
+}
+
+component Field inherits Rectangle {
+    in property <string> placeholder;
+    in property <bool> password;
+    in property <string> label;
+    in-out property <string> text <=> ti.text;
+    // Set by the window ("/" shortcut): focus the input once, then reset.
+    in-out property <bool> focus-pending;
+    callback edited(string);
+    callback accepted(string);
+    init => {
+        if (root.focus-pending) {
+            ti.focus();
+            root.focus-pending = false;
+        }
+    }
+    changed focus-pending => {
+        if (root.focus-pending) {
+            ti.focus();
+            root.focus-pending = false;
+        }
+    }
+    public function clear() {
+        ti.text = "";
+    }
+    height: 34px;
+    border-radius: 8px;
+    background: Theme.surface;
+    border-width: ti.has-focus ? 2px : 1px;
+    border-color: ti.has-focus ? Theme.accent : Theme.line;
+    accessible-role: text-input;
+    accessible-label: root.label;
+    Rectangle {
+        x: 10px;
+        width: parent.width - 20px;
+        clip: true;
+        ph := Text {
+            visible: ti.text == "";
+            width: parent.width;
+            height: parent.height;
+            vertical-alignment: center;
+            text: root.placeholder;
+            font-size: 14px;
+            color: Theme.ink2;
+        }
+        ti := TextInput {
+            width: parent.width;
+            height: parent.height;
+            vertical-alignment: center;
+            single-line: true;
+            input-type: root.password ? InputType.password : InputType.text;
+            font-size: 14px;
+            color: Theme.ink;
+            selection-background-color: Theme.accent;
+            selection-foreground-color: Theme.accent-ink;
+            edited => {
+                root.edited(self.text);
+            }
+            accepted => {
+                root.accepted(self.text);
+            }
+        }
+    }
+}
+
+// Read-only text the user can select with the mouse and copy with Ctrl+C (Slint has no clipboard API).
+component SelectText inherits Rectangle {
+    in property <string> text;
+    in property <string> label;
+    public function select-all() {
+        ti.focus();
+        ti.select-all();
+    }
+    background: Theme.raised;
+    border-radius: 8px;
+    border-width: ti.has-focus ? 2px : 1px;
+    border-color: ti.has-focus ? Theme.accent : Theme.line;
+    accessible-role: text-input;
+    accessible-label: root.label;
+    accessible-value: root.text;
+    accessible-read-only: true;
+    HorizontalLayout {
+        padding: 10px;
+        ti := TextInput {
+            read-only: true;
+            wrap: char-wrap;
+            text: root.text;
+            font-size: 12.5px;
+            color: Theme.ink;
+            selection-background-color: Theme.accent;
+            selection-foreground-color: Theme.accent-ink;
+        }
+    }
+}
+
+// A tinted box around a wrapped message.
+component NoteBox inherits Rectangle {
+    in property <string> message;
+    in property <brush> fill;
+    in property <brush> tint: Theme.ink;
+    in property <TextHorizontalAlignment> horizontal-alignment: left;
+    in property <string> label;
+    background: root.fill;
+    border-radius: 8px;
+    accessible-role: text;
+    accessible-label: root.label;
+    HorizontalLayout {
+        padding: 12px;
+        WrapText {
+            text: root.message;
+            tint: root.tint;
+            horizontal-alignment: root.horizontal-alignment;
+        }
+    }
+}
+
+component KindIcon inherits Rectangle {
+    in property <int> kind;
+    in property <color> tint;
+    width: 20px;
+    height: 20px;
+    if root.kind == 0: Rectangle {
+        border-width: 2px;
+        border-radius: 10px;
+        border-color: root.tint;
+        Rectangle {
+            width: 8px;
+            height: 8px;
+            x: (parent.width - 8px) / 2;
+            y: (parent.height - 8px) / 2;
+            border-radius: 4px;
+            background: root.tint;
+        }
+    }
+    if root.kind == 1: Path {
+        width: parent.width;
+        height: parent.height;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        commands: "M6 3 L18 11 L12.5 12.5 L15 19 L12.5 20 L10 13.5 L6 17 Z";
+        fill: root.tint;
+    }
+    if root.kind == 2: Rectangle {
+        border-width: 2px;
+        border-radius: 3px;
+        border-color: root.tint;
+        y: 3px;
+        height: parent.height - 6px;
+        Path {
+            width: parent.width;
+            height: parent.height;
+            viewbox-width: 16;
+            viewbox-height: 12;
+            commands: "M6.5 3 L6.5 9 L11.5 6 Z";
+            fill: root.tint;
+        }
+    }
+    if root.kind == 3: Rectangle {
+        Rectangle {
+            x: 6px;
+            y: 2px;
+            width: 14px;
+            height: 10px;
+            border-width: 2px;
+            border-radius: 3px;
+            border-color: root.tint;
+        }
+        Rectangle {
+            x: 1px;
+            y: 8px;
+            width: 14px;
+            height: 10px;
+            border-width: 2px;
+            border-radius: 3px;
+            border-color: root.tint;
+            background: Theme.surface;
+        }
+    }
+    if root.kind > 3: Rectangle {
+        border-width: 2px;
+        border-radius: 10px;
+        border-color: root.tint;
+    }
+}
+
+component QualityChip inherits Rectangle {
+    in property <string> text;
+    border-width: 1px;
+    border-color: Theme.line;
+    border-radius: 4px;
+    preferred-width: t.preferred-width + 12px;
+    min-width: self.preferred-width;
+    t := Text {
+        text: root.text;
+        font-size: 11.5px;
+        color: Theme.ink2;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+component Card inherits Rectangle {
+    background: Theme.surface;
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: Theme.line;
+}
+
+component TabBtn inherits Rectangle {
+    in property <string> text;
+    in property <bool> selected;
+    in property <int> badge;
+    callback clicked();
+    preferred-width: row.preferred-width;
+    min-width: self.preferred-width;
+    accessible-role: tab;
+    accessible-label: root.text + (root.badge > 0 ? ", " + root.badge + " running" : "");
+    accessible-action-default => {
+        root.clicked();
+    }
+    background: ta.has-hover && !root.selected ? Theme.raised : transparent;
+    row := HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        spacing: 6px;
+        alignment: center;
+        Text {
+            text: root.text;
+            font-size: 14px;
+            font-weight: 600;
+            vertical-alignment: center;
+            color: root.selected ? Theme.ink : Theme.ink2;
+        }
+        if root.badge > 0: Rectangle {
+            width: max(18px, bt.preferred-width + 10px);
+            height: 18px;
+            y: (parent.height - 18px) / 2;
+            border-radius: 9px;
+            background: Theme.k-record;
+            bt := Text {
+                text: root.badge;
+                font-size: 11px;
+                font-weight: 700;
+                color: #ffffff;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+    if root.selected: Rectangle {
+        x: 10px;
+        y: parent.height - 2px;
+        width: parent.width - 20px;
+        height: 2px;
+        background: Theme.accent;
+    }
+    fs := FocusScope {
+        key-pressed(e) => {
+            if (e.text == Key.Return || e.text == " ") {
+                root.clicked();
+                return accept;
+            }
+            reject
+        }
+    }
+    if fs.has-focus: Rectangle {
+        border-width: 2px;
+        border-color: Theme.accent;
+        border-radius: 6px;
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            fs.focus();
+            root.clicked();
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Library
+// ---------------------------------------------------------------------------------------------
+
+component LibRow inherits Rectangle {
+    in property <RowData> d;
+    in property <bool> current;
+    in property <bool> selected;
+    in property <int> position;
+    in property <int> total;
+    callback clicked();
+    height: Theme.row-h;
+    background: root.selected ? Theme.accent-soft : (ta.has-hover || root.current) ? Theme.raised : transparent;
+    accessible-role: list-item;
+    accessible-label: root.d.aria;
+    accessible-item-index: root.position;
+    accessible-item-count: root.total;
+    accessible-item-selected: root.selected;
+    accessible-action-default => {
+        root.clicked();
+    }
+    Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        background: Theme.line;
+    }
+    if root.current: Rectangle {
+        x: 0px;
+        width: 3px;
+        background: Theme.accent;
+    }
+    HorizontalLayout {
+        padding-left: 16px;
+        padding-right: 16px;
+        spacing: 12px;
+        Rectangle {
+            width: 24px;
+            KindIcon {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                kind: root.d.kind;
+                tint: root.d.failed ? Theme.bad : Theme.kind-color(root.d.kind);
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Text {
+                min-width: 0px;
+                text: root.d.title;
+                font-size: 14px;
+                font-weight: 700;
+                color: Theme.ink;
+                overflow: elide;
+                horizontal-alignment: root.d.title-rtl ? right : left;
+            }
+            HorizontalLayout {
+                spacing: 8px;
+                height: 18px;
+                if root.d.quality != "": QualityChip {
+                    text: root.d.quality;
+                    height: 18px;
+                }
+                Text {
+                    min-width: root.d.failed ? self.preferred-width : 0px;
+                    horizontal-stretch: root.d.failed ? 0 : 1;
+                    text: root.d.sub;
+                    font-size: 12.5px;
+                    font-weight: root.d.failed ? 700 : 400;
+                    color: root.d.failed ? Theme.bad : Theme.ink2;
+                    overflow: elide;
+                    vertical-alignment: center;
+                }
+                if root.d.failed: Text {
+                    min-width: 0px;
+                    horizontal-stretch: 1;
+                    text: root.d.error;
+                    font-size: 12.5px;
+                    color: Theme.bad;
+                    overflow: elide;
+                    vertical-alignment: center;
+                    horizontal-alignment: root.d.error-rtl ? right : left;
+                }
+            }
+        }
+        Text {
+            text: root.d.when;
+            font-size: 12px;
+            color: Theme.ink2;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+        }
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+component Section inherits VerticalLayout {
+    in property <string> title;
+    spacing: 6px;
+    Text {
+        text: root.title;
+        font-size: 14px;
+        font-weight: 700;
+        color: Theme.ink;
+    }
+    @children
+}
+
+component DetailPanel inherits Rectangle {
+    in property <bool> narrow;
+    in property <string> title;
+    in property <bool> title-rtl;
+    in property <string> error;
+    in property <bool> error-rtl;
+    in property <string> project-error;
+    in property <bool> loading;
+    in property <[KvData]> kv;
+    in property <[NarData]> narration;
+    in property <[NarData]> parts;
+    in property <[KvData]> files;
+    in property <image> thumb;
+    in property <bool> has-thumb;
+    in property <bool> has-output;
+    in property <bool> can-render;
+    in property <string> command;
+    in-out property <bool> confirm-delivery;
+    callback close();
+    callback open-video();
+    callback show-folder();
+    callback render(string);
+    background: Theme.surface;
+    accessible-role: groupbox;
+    accessible-label: "Details of " + root.title;
+
+    Timer {
+        interval: 4s;
+        running: root.confirm-delivery;
+        triggered => {
+            root.confirm-delivery = false;
+        }
+    }
+
+    VerticalLayout {
+        HorizontalLayout {
+            padding: 12px;
+            padding-left: 16px;
+            spacing: 12px;
+            Text {
+                min-width: 0px;
+                horizontal-stretch: 1;
+                text: root.title;
+                font-size: 17px;
+                font-weight: 700;
+                color: Theme.ink;
+                overflow: elide;
+                vertical-alignment: center;
+                horizontal-alignment: root.title-rtl ? right : left;
+                accessible-role: text;
+            }
+            Btn {
+                text: root.narrow ? "Back" : "Close";
+                clicked => {
+                    root.close();
+                }
+            }
+        }
+        Rectangle {
+            height: 1px;
+            background: Theme.line;
+        }
+        ScrollView {
+            VerticalLayout {
+                padding: 16px;
+                spacing: 14px;
+                alignment: start;
+                if root.error != "": NoteBox {
+                    message: root.error;
+                    fill: Theme.bad-soft;
+                    tint: Theme.bad;
+                    horizontal-alignment: root.error-rtl ? right : left;
+                    label: "Error: " + root.error;
+                }
+                if root.project-error != "": WrapText {
+                    text: root.project-error;
+                    wrap: word-wrap;
+                    font-size: 13px;
+                    tint: Theme.bad;
+                }
+                if root.loading: Text {
+                    text: "Loading details";
+                    font-size: 13px;
+                    color: Theme.ink2;
+                }
+                if root.has-thumb: Rectangle {
+                    height: 180px;
+                    background: Theme.raised;
+                    border-radius: 8px;
+                    clip: true;
+                    Image {
+                        width: parent.width;
+                        height: parent.height;
+                        source: root.thumb;
+                        image-fit: contain;
+                        accessible-role: image;
+                        accessible-label: "Video thumbnail";
+                    }
+                }
+                VerticalLayout {
+                    spacing: 6px;
+                    for item in root.kv: HorizontalLayout {
+                        spacing: 12px;
+                        Text {
+                            width: 96px;
+                            text: item.key;
+                            font-size: 12.5px;
+                            color: Theme.ink2;
+                            vertical-alignment: top;
+                            overflow: elide;
+                        }
+                        WrapText {
+                            min-width: 0px;
+                            horizontal-stretch: 1;
+                            text: item.value;
+                            wrap: item.mono ? char-wrap : word-wrap;
+                            font-size: item.mono ? 12px : 13px;
+                            tint: Theme.ink;
+                            vertical-alignment: top;
+                        }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 8px;
+                    HorizontalLayout {
+                        spacing: 8px;
+                        alignment: start;
+                        if root.has-output: Btn {
+                            text: "Open video";
+                            clicked => {
+                                root.open-video();
+                            }
+                        }
+                        Btn {
+                            text: "Show in folder";
+                            clicked => {
+                                root.show-folder();
+                            }
+                        }
+                    }
+                    if root.can-render: HorizontalLayout {
+                        spacing: 8px;
+                        alignment: start;
+                        Btn {
+                            text: "Render draft";
+                            clicked => {
+                                root.render("draft");
+                            }
+                        }
+                        Btn {
+                            primary: true;
+                            text: root.confirm-delivery ? "Confirm delivery render" : "Render delivery";
+                            clicked => {
+                                if (root.confirm-delivery) {
+                                    root.confirm-delivery = false;
+                                    root.render("delivery");
+                                } else {
+                                    root.confirm-delivery = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                Section {
+                    title: "Command";
+                    cmd := SelectText {
+                        text: root.command;
+                        label: "Command to run this in a terminal";
+                    }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        alignment: start;
+                        Btn {
+                            text: "Select all";
+                            clicked => {
+                                cmd.select-all();
+                            }
+                        }
+                        Text {
+                            text: "Select and copy (Ctrl+C)";
+                            font-size: 12px;
+                            color: Theme.ink2;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+                if root.narration.length > 0: Section {
+                    title: "Narration";
+                    for line in root.narration: HorizontalLayout {
+                        spacing: 10px;
+                        Text {
+                            width: 40px;
+                            text: line.clock;
+                            font-size: 12px;
+                            color: Theme.ink2;
+                            vertical-alignment: top;
+                        }
+                        WrapText {
+                            min-width: 0px;
+                            horizontal-stretch: 1;
+                            text: line.text;
+                            wrap: word-wrap;
+                            font-size: 13px;
+                            tint: Theme.ink;
+                            horizontal-alignment: line.rtl ? right : left;
+                        }
+                    }
+                }
+                if root.parts.length > 0: Section {
+                    title: "Parts";
+                    for part in root.parts: HorizontalLayout {
+                        spacing: 10px;
+                        Text {
+                            width: 64px;
+                            text: part.clock;
+                            font-size: 12px;
+                            color: Theme.ink2;
+                            vertical-alignment: top;
+                        }
+                        WrapText {
+                            min-width: 0px;
+                            horizontal-stretch: 1;
+                            text: part.text;
+                            wrap: char-wrap;
+                            font-size: 12px;
+                            tint: Theme.ink;
+                        }
+                    }
+                }
+                if root.files.length > 0: Section {
+                    title: root.files.length == 1 ? "1 file" : root.files.length + " files";
+                    for f in root.files: HorizontalLayout {
+                        spacing: 10px;
+                        Text {
+                            min-width: 0px;
+                            horizontal-stretch: 1;
+                            text: f.key;
+                            overflow: elide;
+                            font-size: 12px;
+                            color: Theme.ink;
+                        }
+                        Text {
+                            text: f.value;
+                            font-size: 12px;
+                            color: Theme.ink2;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+component Chips inherits HorizontalLayout {
+    in property <[bool]> kinds;
+    in property <bool> failed;
+    callback toggle-kind(int);
+    callback toggle-failed();
+    spacing: 6px;
+    alignment: start;
+    Chip {
+        text: "Records";
+        on: root.kinds[0];
+        toggled => {
+            root.toggle-kind(0);
+        }
+    }
+    Chip {
+        text: "Takes";
+        on: root.kinds[1];
+        toggled => {
+            root.toggle-kind(1);
+        }
+    }
+    Chip {
+        text: "Renders";
+        on: root.kinds[2];
+        toggled => {
+            root.toggle-kind(2);
+        }
+    }
+    Chip {
+        text: "Sequences";
+        on: root.kinds[3];
+        toggled => {
+            root.toggle-kind(3);
+        }
+    }
+    Chip {
+        text: "Failed";
+        on: root.failed;
+        toggled => {
+            root.toggle-failed();
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Live, Voices, Stats
+// ---------------------------------------------------------------------------------------------
+
+component JobCard inherits Card {
+    in property <JobData> d;
+    height: 112px;
+    accessible-role: groupbox;
+    accessible-label: root.d.title + ", " + root.d.label + ", " + root.d.elapsed;
+    VerticalLayout {
+        padding: 14px;
+        spacing: 8px;
+        HorizontalLayout {
+            spacing: 8px;
+            Text {
+                text: root.d.kind;
+                font-size: 12px;
+                font-weight: 700;
+                color: root.d.kind == "sequence" ? Theme.k-sequence : Theme.k-render;
+                vertical-alignment: center;
+            }
+            Text {
+                min-width: 0px;
+                horizontal-stretch: 1;
+                text: root.d.title;
+                font-size: 14px;
+                font-weight: 700;
+                color: Theme.ink;
+                overflow: elide;
+                vertical-alignment: center;
+                horizontal-alignment: root.d.title-rtl ? right : left;
+            }
+            if root.d.quality != "": QualityChip {
+                text: root.d.quality;
+                height: 18px;
+            }
+            Text {
+                text: root.d.elapsed;
+                font-size: 13px;
+                color: Theme.ink2;
+                vertical-alignment: center;
+            }
+        }
+        Rectangle {
+            height: 6px;
+            border-radius: 3px;
+            background: Theme.line;
+            accessible-role: progress-indicator;
+            accessible-label: "Render progress";
+            accessible-value: root.d.progress < 0 ? "starting" : round(root.d.progress * 100) + "%";
+            if root.d.progress >= 0: Rectangle {
+                x: 0px;
+                width: parent.width * clamp(root.d.progress, 0, 1);
+                border-radius: 3px;
+                background: Theme.accent;
+            }
+        }
+        HorizontalLayout {
+            Text {
+                text: root.d.label;
+                font-size: 13px;
+                color: Theme.ink;
+                overflow: elide;
+            }
+            Text {
+                text: root.d.count;
+                font-size: 12.5px;
+                color: Theme.ink2;
+                horizontal-alignment: right;
+            }
+        }
+        Text {
+            text: root.d.path-line;
+            font-size: 11.5px;
+            color: Theme.ink2;
+            overflow: elide;
+        }
+    }
+}
+
+component ProviderCard inherits Card {
+    in property <ProviderData> d;
+    in property <string> env-text;
+    in property <string> cli-text;
+    callback save(string, string);
+    callback remove(string);
+    col := VerticalLayout {
+        padding: 14px;
+        spacing: 10px;
+        HorizontalLayout {
+            spacing: 10px;
+            Text {
+                text: root.d.label;
+                font-size: 15px;
+                font-weight: 700;
+                color: Theme.ink;
+                vertical-alignment: center;
+            }
+            Text {
+                text: root.d.id;
+                font-size: 12px;
+                color: Theme.ink2;
+                vertical-alignment: center;
+            }
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+            Rectangle {
+                height: 22px;
+                preferred-width: st.preferred-width + 20px;
+                min-width: self.preferred-width;
+                border-radius: 11px;
+                background: root.d.key-state >= 2 ? Theme.accent-soft : Theme.raised;
+                border-width: 1px;
+                border-color: root.d.key-state >= 2 ? Theme.ok : Theme.line;
+                st := Text {
+                    text: root.d.status;
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: root.d.key-state >= 2 ? Theme.ok : Theme.ink2;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+        WrapText {
+            text: root.d.note;
+            wrap: word-wrap;
+            font-size: 13px;
+            tint: Theme.ink2;
+        }
+        if root.d.env-note: WrapText {
+            text: root.env-text;
+            wrap: word-wrap;
+            font-size: 13px;
+            tint: Theme.ink2;
+        }
+        if root.d.can-edit: HorizontalLayout {
+            spacing: 8px;
+            key := Field {
+                horizontal-stretch: 1;
+                min-width: 120px;
+                password: true;
+                placeholder: "Paste API key";
+                label: root.d.label + " API key";
+                accepted(t) => {
+                    root.save(root.d.id, t);
+                    self.clear();
+                }
+            }
+            Btn {
+                primary: true;
+                text: "Save key";
+                enabled: key.text != "";
+                clicked => {
+                    root.save(root.d.id, key.text);
+                    key.clear();
+                }
+            }
+            if root.d.can-remove: Btn {
+                danger: true;
+                text: "Remove key";
+                clicked => {
+                    root.remove(root.d.id);
+                }
+            }
+        }
+        if root.d.cli-line != "": VerticalLayout {
+            spacing: 6px;
+            WrapText {
+                text: root.cli-text;
+                wrap: word-wrap;
+                font-size: 12.5px;
+                tint: Theme.ink2;
+            }
+            HorizontalLayout {
+                spacing: 8px;
+                cli := SelectText {
+                    horizontal-stretch: 1;
+                    text: root.d.cli-line;
+                    label: "Terminal command";
+                }
+                Btn {
+                    text: "Select";
+                    y: 0px;
+                    clicked => {
+                        cli.select-all();
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The window
+// ---------------------------------------------------------------------------------------------
+
+export component MainWindow inherits Window {
+    // The ScreenPilot logo in the title bar, task bar and Alt+Tab (the Dock icon on macOS comes from the app bundle).
+    icon: @image-url("../assets/icon.png");
+    title: "ScreenPilot";
+    min-width: 440px;
+    min-height: 360px;
+    max-width: 16384px;
+    max-height: 16384px;
+    preferred-width: 1100px;
+    preferred-height: 720px;
+    background: Theme.bg;
+    default-font-family: "Noto Sans";
+    default-font-size: 14px;
+
+    // --- state shared with Rust ---
+    in-out property <int> tab: 0; // 0 library, 1 live, 2 voices, 3 stats
+    in property <int> live-count;
+    in property <string> env-key-note;
+    in property <string> cli-key-note;
+    in property <string> privacy-note;
+    in property <string> no-speed-note;
+
+    // library
+    in property <[RowData]> rows;
+    in property <[bool]> kinds: [false, false, false, false];
+    in property <bool> failed-only;
+    in property <string> count-text;
+    in property <string> empty-title;
+    in property <string> empty-hint;
+    in property <bool> can-load-more;
+    in property <bool> history-loading;
+    in-out property <int> current: -1; // keyboard cursor, a position in `rows`
+    in-out property <int> selected: -1; // open row (position), -1 for none
+    in-out property <string> search-text;
+    in-out property <bool> focus-search;
+
+    // detail
+    in property <bool> detail-open;
+    in property <string> detail-title;
+    in property <bool> detail-title-rtl;
+    in property <string> detail-error;
+    in property <bool> detail-error-rtl;
+    in property <string> detail-project-error;
+    in property <bool> detail-loading;
+    in property <[KvData]> detail-kv;
+    in property <[NarData]> detail-narration;
+    in property <[NarData]> detail-parts;
+    in property <[KvData]> detail-files;
+    in property <image> detail-thumb;
+    in property <bool> detail-has-thumb;
+    in property <bool> detail-has-output;
+    in property <bool> detail-can-render;
+    in property <string> detail-command;
+    in-out property <bool> confirm-delivery;
+
+    // live / voices / stats
+    in property <[JobData]> jobs;
+    in property <[ProviderData]> providers;
+    in property <string> providers-error;
+    in property <string> history-count;
+    in property <[SpeedData]> speed;
+    in property <string> cache-text;
+    in property <bool> cache-busy;
+
+    // toast
+    in property <string> toast-text;
+    in property <bool> toast-visible;
+
+    // --- callbacks to Rust ---
+    callback show-tab(int);
+    callback select(int);
+    callback close-detail();
+    callback open-video();
+    callback show-folder();
+    callback render(string);
+    callback load-more();
+    callback search-edited(string);
+    callback toggle-kind(int);
+    callback toggle-failed();
+    callback save-key(string, string);
+    callback remove-key(string);
+    callback calc-cache();
+
+    // Set from the window width by a change handler (a binding to `width` would loop through the
+    // window's own layout constraints).
+    in-out property <bool> narrow: false;
+    changed width => {
+        root.narrow = root.width < Theme.narrow-below;
+    }
+    init => {
+        root.narrow = root.width < Theme.narrow-below;
+    }
+    property <bool> list-hidden: root.narrow && root.detail-open;
+
+    // Scroll the library so row `i` is visible (keyboard cursor, tests).
+    public function scroll-library-to(i: int) {
+        if (i * Theme.row-h < -lv.content-y) {
+            lv.content-y = -i * Theme.row-h;
+        } else if ((i + 1) * Theme.row-h > -lv.content-y + lv.visible-height) {
+            lv.content-y = -((i + 1) * Theme.row-h - lv.visible-height);
+        }
+    }
+    public function focus-library() {
+        root-fs.focus();
+    }
+    function move-to(i: int) {
+        if (root.rows.length == 0) {
+            return;
+        }
+        root.current = max(0, min(root.rows.length - 1, i));
+        root.scroll-library-to(root.current);
+    }
+    public function set-dark(dark: bool) {
+        Palette.color-scheme = dark ? ColorScheme.dark : ColorScheme.light;
+    }
+    function toggle-theme() {
+        Palette.color-scheme = Theme.dark ? ColorScheme.light : ColorScheme.dark;
+    }
+
+    forward-focus: root-fs;
+    root-fs := FocusScope {
+        width: root.width;
+        height: root.height;
+        key-pressed(e) => {
+            if (e.text == "/" && !e.modifiers.control && !e.modifiers.meta) {
+                root.show-tab(0);
+                root.focus-search = true;
+                return accept;
+            }
+            if (e.text == Key.Escape) {
+                if (root.search-text != "") {
+                    root.search-text = "";
+                    root.search-edited("");
+                } else if (root.detail-open) {
+                    root.close-detail();
+                }
+                root-fs.focus();
+                return accept;
+            }
+            reject
+        }
+
+        VerticalLayout {
+            // header
+            Rectangle {
+                height: 48px;
+                background: Theme.surface;
+                HorizontalLayout {
+                    padding-left: 16px;
+                    padding-right: 12px;
+                    spacing: 8px;
+                    HorizontalLayout {
+                        spacing: 8px;
+                        // The ScreenPilot logo (the same image as the application icon).
+                        Rectangle {
+                            width: 24px;
+                            Image {
+                                source: @image-url("../assets/icon.png");
+                                width: 24px;
+                                height: 24px;
+                                y: (parent.height - 24px) / 2;
+                                image-fit: contain;
+                            }
+                        }
+                        if !root.narrow: Text {
+                            text: "ScreenPilot";
+                            font-size: 15px;
+                            font-weight: 700;
+                            color: Theme.ink;
+                            vertical-alignment: center;
+                        }
+                    }
+                    HorizontalLayout {
+                        spacing: 2px;
+                        horizontal-stretch: 1;
+                        alignment: start;
+                        TabBtn {
+                            text: "Library";
+                            selected: root.tab == 0;
+                            clicked => {
+                                root.show-tab(0);
+                            }
+                        }
+                        TabBtn {
+                            text: "Live";
+                            selected: root.tab == 1;
+                            badge: root.live-count;
+                            clicked => {
+                                root.show-tab(1);
+                            }
+                        }
+                        TabBtn {
+                            text: "Voices";
+                            selected: root.tab == 2;
+                            clicked => {
+                                root.show-tab(2);
+                            }
+                        }
+                        TabBtn {
+                            text: "Stats";
+                            selected: root.tab == 3;
+                            clicked => {
+                                root.show-tab(3);
+                            }
+                        }
+                    }
+                    Rectangle {
+                        width: root.narrow ? 64px : 84px;
+                        Btn {
+                            width: parent.width;
+                            y: (parent.height - self.height) / 2;
+                            text: Theme.dark ? "Light" : "Dark";
+                            clicked => {
+                                root.toggle-theme();
+                            }
+                        }
+                    }
+                }
+                Rectangle {
+                    y: parent.height - 1px;
+                    height: 1px;
+                    background: Theme.line;
+                }
+            }
+
+            // ---------------- Library ----------------
+            // Always instantiated (hidden on other tabs) so the window can scroll and focus it.
+            Rectangle {
+                clip: true;
+                visible: root.tab == 0;
+                min-height: 0px;
+                max-height: root.tab == 0 ? 100000px : 0px;
+                vertical-stretch: root.tab == 0 ? 1 : 0;
+                HorizontalLayout {
+                Rectangle {
+                    clip: true;
+                    horizontal-stretch: 1;
+                    min-width: 0px;
+                    visible: !root.list-hidden;
+                    max-width: root.list-hidden ? 0px : 100000px;
+                    VerticalLayout {
+                        // toolbar
+                        VerticalLayout {
+                            padding: 10px;
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            spacing: 8px;
+                            HorizontalLayout {
+                                spacing: 12px;
+                                search := Field {
+                                    horizontal-stretch: 1;
+                                    min-width: 160px;
+                                    placeholder: "Search loaded rows ( / )";
+                                    label: "Search loaded rows";
+                                    text <=> root.search-text;
+                                    focus-pending <=> root.focus-search;
+                                    edited(t) => {
+                                        root.search-edited(t);
+                                    }
+                                }
+                                if !root.narrow: Chips {
+                                    kinds: root.kinds;
+                                    failed: root.failed-only;
+                                    toggle-kind(i) => {
+                                        root.toggle-kind(i);
+                                    }
+                                    toggle-failed => {
+                                        root.toggle-failed();
+                                    }
+                                }
+                            }
+                            if root.narrow: Chips {
+                                kinds: root.kinds;
+                                failed: root.failed-only;
+                                toggle-kind(i) => {
+                                    root.toggle-kind(i);
+                                }
+                                toggle-failed => {
+                                    root.toggle-failed();
+                                }
+                            }
+                        }
+                        // list
+                        Rectangle {
+                            vertical-stretch: 1;
+                            background: Theme.surface;
+                            Rectangle {
+                                y: 0px;
+                                height: 1px;
+                                background: Theme.line;
+                            }
+                            list-fs := FocusScope {
+                                key-pressed(e) => {
+                                    if (e.text == Key.DownArrow) {
+                                        root.move-to(root.current + 1);
+                                    } else if (e.text == Key.UpArrow) {
+                                        root.move-to(root.current - 1);
+                                    } else if (e.text == Key.PageDown) {
+                                        root.move-to(root.current + max(1, round(lv.visible-height / Theme.row-h) - 1));
+                                    } else if (e.text == Key.PageUp) {
+                                        root.move-to(root.current - max(1, round(lv.visible-height / Theme.row-h) - 1));
+                                    } else if (e.text == Key.Home) {
+                                        root.move-to(0);
+                                    } else if (e.text == Key.End) {
+                                        root.move-to(root.rows.length - 1);
+                                    } else if (e.text == Key.Return || e.text == " ") {
+                                        if (root.current >= 0) {
+                                            root.select(root.current);
+                                        }
+                                    } else {
+                                        return reject;
+                                    }
+                                    accept
+                                }
+                                lv := ListView {
+                                    accessible-role: list;
+                                    accessible-label: "History";
+                                    for r[i] in root.rows: LibRow {
+                                        d: r;
+                                        position: i;
+                                        total: root.rows.length;
+                                        current: i == root.current && list-fs.has-focus;
+                                        selected: i == root.selected;
+                                        clicked => {
+                                            root.current = i;
+                                            list-fs.focus();
+                                            root.select(i);
+                                        }
+                                    }
+                                    changed content-y => {
+                                        if (root.can-load-more && !root.history-loading && self.content-height > self.visible-height && -self.content-y + self.visible-height > self.content-height - 600px) {
+                                            root.load-more();
+                                        }
+                                    }
+                                }
+                            }
+                            if root.empty-title != "": VerticalLayout {
+                                alignment: start;
+                                padding-top: 72px;
+                                padding-left: 16px;
+                                padding-right: 16px;
+                                spacing: 4px;
+                                Text {
+                                    text: root.empty-title;
+                                    font-size: 15px;
+                                    font-weight: 700;
+                                    color: Theme.ink;
+                                    horizontal-alignment: center;
+                                }
+                                WrapText {
+                                    text: root.empty-hint;
+                                    font-size: 13px;
+                                    tint: Theme.ink2;
+                                    wrap: word-wrap;
+                                    horizontal-alignment: center;
+                                }
+                            }
+                        }
+                        // footer
+                        Rectangle {
+                            height: 34px;
+                            background: Theme.bg;
+                            HorizontalLayout {
+                                padding-left: 16px;
+                                padding-right: 16px;
+                                spacing: 12px;
+                                Text {
+                                    text: root.count-text;
+                                    font-size: 12px;
+                                    color: Theme.ink2;
+                                    vertical-alignment: center;
+                                    accessible-role: text;
+                                }
+                                Rectangle {
+                                    horizontal-stretch: 1;
+                                }
+                                if root.history-loading: Text {
+                                    text: "Loading";
+                                    font-size: 12px;
+                                    color: Theme.ink2;
+                                    vertical-alignment: center;
+                                }
+                                if root.can-load-more && !root.history-loading: Rectangle {
+                                    width: older.preferred-width + 8px;
+                                    older := Text {
+                                        text: "Load older";
+                                        font-size: 12.5px;
+                                        font-weight: 600;
+                                        color: Theme.accent;
+                                        vertical-alignment: center;
+                                        horizontal-alignment: center;
+                                        accessible-role: button;
+                                        accessible-label: "Load older rows";
+                                        accessible-action-default => {
+                                            root.load-more();
+                                        }
+                                    }
+                                    TouchArea {
+                                        mouse-cursor: pointer;
+                                        clicked => {
+                                            root.load-more();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if root.detail-open: Rectangle {
+                    min-width: root.narrow ? 0px : 440px;
+                    max-width: root.narrow ? 100000px : 440px;
+                    horizontal-stretch: root.narrow ? 1 : 0;
+                    Rectangle {
+                        x: 0px;
+                        width: 1px;
+                        background: Theme.line;
+                    }
+                    DetailPanel {
+                        x: root.narrow ? 0px : 1px;
+                        width: parent.width - self.x;
+                        narrow: root.narrow;
+                        title: root.detail-title;
+                        title-rtl: root.detail-title-rtl;
+                        error: root.detail-error;
+                        error-rtl: root.detail-error-rtl;
+                        project-error: root.detail-project-error;
+                        loading: root.detail-loading;
+                        kv: root.detail-kv;
+                        narration: root.detail-narration;
+                        parts: root.detail-parts;
+                        files: root.detail-files;
+                        thumb: root.detail-thumb;
+                        has-thumb: root.detail-has-thumb;
+                        has-output: root.detail-has-output;
+                        can-render: root.detail-can-render;
+                        command: root.detail-command;
+                        confirm-delivery <=> root.confirm-delivery;
+                        close => {
+                            root.close-detail();
+                            list-fs.focus();
+                        }
+                        open-video => {
+                            root.open-video();
+                        }
+                        show-folder => {
+                            root.show-folder();
+                        }
+                        render(q) => {
+                            root.render(q);
+                        }
+                    }
+                }
+            }
+            }
+
+            // ---------------- Live ----------------
+            if root.tab == 1: VerticalLayout {
+                padding: 20px;
+                padding-left: 16px;
+                padding-right: 16px;
+                spacing: 8px;
+                Text {
+                    text: "Live";
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: Theme.ink;
+                }
+                WrapText {
+                    text: "Renders running right now. This page updates when a render moves to its next step.";
+                    font-size: 13px;
+                    tint: Theme.ink2;
+                    wrap: word-wrap;
+                }
+                if root.jobs.length == 0: Card {
+                    height: 76px;
+                    VerticalLayout {
+                        padding: 14px;
+                        spacing: 4px;
+                        Text {
+                            text: "Nothing is rendering";
+                            font-size: 14px;
+                            font-weight: 700;
+                            color: Theme.ink;
+                        }
+                        WrapText {
+                            text: "Start a render from a storyboard in the Library and it shows up here.";
+                            font-size: 13px;
+                            tint: Theme.ink2;
+                            wrap: word-wrap;
+                        }
+                    }
+                }
+                if root.jobs.length > 0: ListView {
+                    vertical-stretch: 1;
+                    accessible-role: list;
+                    accessible-label: "Running renders";
+                    for j in root.jobs: Rectangle {
+                        height: 124px;
+                        JobCard {
+                            y: 0px;
+                            height: 112px;
+                            d: j;
+                        }
+                    }
+                }
+                if root.jobs.length == 0: Rectangle {
+                    vertical-stretch: 1;
+                }
+            }
+
+            // ---------------- Voices ----------------
+            if root.tab == 2: ScrollView {
+                VerticalLayout {
+                    padding: 20px;
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    spacing: 12px;
+                    alignment: start;
+                    Text {
+                        text: "Voices";
+                        font-size: 18px;
+                        font-weight: 700;
+                        color: Theme.ink;
+                    }
+                    WrapText {
+                        text: "Choose where narration audio comes from. Keys are stored by the ScreenPilot CLI, never by this window.";
+                        font-size: 13px;
+                        tint: Theme.ink2;
+                        wrap: word-wrap;
+                    }
+                    NoteBox {
+                        message: "Privacy. " + root.privacy-note;
+                        fill: Theme.accent-soft;
+                        label: "Privacy. " + root.privacy-note;
+                    }
+                    if root.providers-error != "": WrapText {
+                        text: root.providers-error;
+                        tint: Theme.bad;
+                        wrap: word-wrap;
+                    }
+                    for p in root.providers: ProviderCard {
+                        d: p;
+                        env-text: root.env-key-note;
+                        cli-text: root.cli-key-note;
+                        save(id, key) => {
+                            root.save-key(id, key);
+                        }
+                        remove(id) => {
+                            root.remove-key(id);
+                        }
+                    }
+                }
+            }
+
+            // ---------------- Stats ----------------
+            if root.tab == 3: ScrollView {
+                VerticalLayout {
+                    padding: 20px;
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    spacing: 12px;
+                    alignment: start;
+                    Text {
+                        text: "Stats";
+                        font-size: 18px;
+                        font-weight: 700;
+                        color: Theme.ink;
+                    }
+                    Card {
+                        hc := VerticalLayout {
+                            padding: 14px;
+                            spacing: 4px;
+                            Text {
+                                text: "History";
+                                font-size: 14px;
+                                font-weight: 700;
+                                color: Theme.ink;
+                            }
+                            Text {
+                                text: root.history-count;
+                                font-size: 28px;
+                                font-weight: 700;
+                                color: Theme.ink;
+                            }
+                            WrapText {
+                                text: "Events recorded: recordings, takes, renders and sequences.";
+                                font-size: 13px;
+                                tint: Theme.ink2;
+                                wrap: word-wrap;
+                            }
+                        }
+                    }
+                    Card {
+                        sc := VerticalLayout {
+                            padding: 14px;
+                            spacing: 8px;
+                            Text {
+                                text: "Render speed";
+                                font-size: 14px;
+                                font-weight: 700;
+                                color: Theme.ink;
+                            }
+                            Text {
+                                text: "Video seconds produced per wall-clock second, from your finished renders. Above 1\u{d7} is faster than real time.";
+                                font-size: 13px;
+                                color: Theme.ink2;
+                                wrap: word-wrap;
+                            }
+                            if root.speed.length == 0: WrapText {
+                                text: root.no-speed-note;
+                                font-size: 13px;
+                                tint: Theme.ink2;
+                                wrap: word-wrap;
+                            }
+                            for s in root.speed: HorizontalLayout {
+                                spacing: 12px;
+                                height: 40px;
+                                Text {
+                                    width: 70px;
+                                    text: s.quality;
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                    color: Theme.ink;
+                                    vertical-alignment: center;
+                                }
+                                Rectangle {
+                                    horizontal-stretch: 1;
+                                    min-width: 40px;
+                                    Rectangle {
+                                        height: 10px;
+                                        border-radius: 5px;
+                                        background: Theme.line;
+                                        Rectangle {
+                                            x: 0px;
+                                            width: parent.width * clamp(s.fraction, 0, 1);
+                                            border-radius: 5px;
+                                            background: Theme.accent;
+                                        }
+                                    }
+                                }
+                                VerticalLayout {
+                                    width: 180px;
+                                    alignment: center;
+                                    Text {
+                                        text: s.ratio;
+                                        font-size: 14px;
+                                        font-weight: 700;
+                                        color: Theme.ink;
+                                    }
+                                    Text {
+                                        text: s.detail;
+                                        font-size: 11.5px;
+                                        color: Theme.ink2;
+                                        overflow: elide;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Card {
+                        cc := VerticalLayout {
+                            padding: 14px;
+                            spacing: 8px;
+                            Text {
+                                text: "Render cache";
+                                font-size: 14px;
+                                font-weight: 700;
+                                color: Theme.ink;
+                            }
+                            Text {
+                                text: root.cache-text;
+                                font-size: 28px;
+                                font-weight: 700;
+                                color: Theme.ink;
+                            }
+                            HorizontalLayout {
+                                alignment: start;
+                                Btn {
+                                    text: root.cache-text == "" ? "Calculate" : "Recalculate";
+                                    enabled: !root.cache-busy;
+                                    clicked => {
+                                        root.calc-cache();
+                                    }
+                                }
+                            }
+                            WrapText {
+                                text: "Cached frames and chunks that make repeat renders faster. Measuring can take a while on a large cache.";
+                                font-size: 13px;
+                                tint: Theme.ink2;
+                                wrap: word-wrap;
+                            }
+                        }
+                    }
+                    Text {
+                        text: "Built with Slint (royalty-free licence, https://slint.dev/terms-and-conditions#royalty-free). Fonts: Noto Sans and Noto Sans Arabic, SIL Open Font License 1.1.";
+                        font-size: 11.5px;
+                        color: Theme.ink2;
+                        wrap: word-wrap;
+                        accessible-role: text;
+                    }
+                }
+            }
+        }
+    }
+
+    if root.toast-visible: Rectangle {
+        x: (root.width - self.width) / 2;
+        y: root.height - self.height - 44px;
+        width: min(root.width - 32px, tt.preferred-width + 32px);
+        height: 38px;
+        border-radius: 8px;
+        background: Theme.ink;
+        accessible-role: text;
+        accessible-label: root.toast-text;
+        tt := Text {
+            width: parent.width - 24px;
+            x: 12px;
+            height: parent.height;
+            text: root.toast-text;
+            font-size: 13px;
+            color: Theme.surface;
+            overflow: elide;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}

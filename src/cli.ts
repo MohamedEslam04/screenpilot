@@ -32,14 +32,19 @@ import { renderSequence, validateSequence } from "./sequence/index.js";
 import { sequenceJsonSchema } from "./sequence/schema.js";
 import { probeVideo } from "./util/media.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
+import { removeSecret, type SecretName, secretSource, secretsFile, setSecret } from "./voice/secrets.js";
 import { exportScript, importAudio } from "./voice/import.js";
 import { detectBriefEnv } from "./brief/detect.js";
 import { applyUpdate, checkForUpdate, sourceFrom, updateCommand } from "./update/index.js";
 import { buildBrief, recommendedAnswers, summaryLines } from "./brief/questions.js";
-import { APP, APP_TITLE, VERSION } from "./brand.js";
+import { APP, APP_TITLE, sessionsRoot, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { getDesktop } from "./platform/index.js";
 import { hookPinned } from "./record/input/hook.js";
+import { DASHBOARD_BIN_ENV, dashboardBin, dashboardHome, launchDashboard } from "./dashboard/launch.js";
+import { importLibrary } from "./history/import.js";
+import { readHistory } from "./history/index.js";
+import { listJobs } from "./history/jobs.js";
 
 useBundledTools(import.meta.url);
 const log = (msg: string) => process.stderr.write(`${APP}: ${msg}\n`);
@@ -58,6 +63,12 @@ async function withDriver(fn: (d: Driver) => Promise<void>): Promise<void> {
 async function withDriverScreens<T>(fn: (screens: ScreenInfo[]) => Promise<T>): Promise<T> {
   return fn(await (await getDesktop()).screens());
 }
+
+const secretNameFor = (provider: string): SecretName => {
+  if (provider === "elevenlabs") return "ELEVENLABS_API_KEY";
+  if (provider === "gemini") return "GEMINI_API_KEY";
+  throw new Error(`Unknown provider "${provider}" (want elevenlabs or gemini)`);
+};
 
 const parseMap = (s: string) =>
   Object.fromEntries(
@@ -318,12 +329,12 @@ program
   .description("Write a starter storyboard.json for a recording or session")
   .argument("<target>", "Session directory or raw recording (mp4, mkv, webm, mov)")
   .option("-o, --out <file>", "Storyboard path (default: storyboard.json in the session / next to the video)")
-  .option("--voice <name>", "Default voice: an Edge voice, a local model (voicetut:Sarah, namaa) or a command voice name", "en-US-AndrewNeural")
-  .option("--provider <id>", "Voice provider: edge | local | command", "edge")
+  .option("--voice <name>", "Default voice: an Edge voice, a local model (voicetut:Sarah, namaa) a command voice name, an ElevenLabs voice or a Gemini voice (Kore)", "en-US-AndrewNeural")
+  .option("--provider <id>", "Voice provider: edge | local | command | elevenlabs | gemini", "edge")
   .option("--suggest", "Pre-fill segments, zooms and camera views from `analyze`")
   .option("--frame <how>", "Camera for suggested views: window | screen | all", "window")
   .option("-f, --force", "Overwrite an existing storyboard")
-  .action(async (target: string, o: { out?: string; voice: string; provider: "edge" | "local" | "command"; suggest?: boolean; force?: boolean; frame: "window" | "screen" | "all" }) => {
+  .action(async (target: string, o: { out?: string; voice: string; provider: "edge" | "local" | "command" | "elevenlabs" | "gemini"; suggest?: boolean; force?: boolean; frame: "window" | "screen" | "all" }) => {
     print(await initStoryboard(target, o));
   });
 
@@ -386,7 +397,7 @@ program
   .command("voices")
   .description("List available voices")
   .option("--lang <prefix>", "Filter by locale prefix, e.g. ar or en-US")
-  .option("--provider <id>", "Voice provider: edge | local | command", "edge")
+  .option("--provider <id>", "Voice provider: edge | local | command | elevenlabs | gemini", "edge")
   .action(async (o: { lang?: string; provider: string }) => {
     const provider = getProvider(o.provider);
     try {
@@ -394,6 +405,49 @@ program
     } finally {
       await provider.close?.();
     }
+  });
+
+program
+  .command("dashboard")
+  .description("Open the dashboard: your recordings, renders, running jobs and voices in one local window (a separate download)")
+  .action(() => {
+    const bin = dashboardBin();
+    if (!bin) {
+      throw new Error(
+        `The dashboard is not installed. It is a separate program, built from the repository for now (see https://mohamedeslam04.github.io/screenpilot/guide/dashboard.html): put the built screenpilot-dashboard in ${dashboardHome()}, or set ${DASHBOARD_BIN_ENV} to its path.`,
+      );
+    }
+    launchDashboard(bin);
+    log(`started ${bin}`);
+  });
+
+const secret = program.command("secret").description("API keys for the cloud voices (ElevenLabs, Gemini), kept in secrets.json (mode 0600) in the config folder");
+secret
+  .command("set")
+  .description("Store a key. It is read from stdin, never from an argument, so it stays out of shell history and process lists")
+  .argument("<provider>", "elevenlabs | gemini")
+  .action(async (provider: string) => {
+    const name = secretNameFor(provider);
+    if (process.stdin.isTTY) log(`paste the ${provider} key, then press Enter`);
+    const chunks: Buffer[] = [];
+    for await (const c of process.stdin) chunks.push(c as Buffer);
+    const key = Buffer.concat(chunks).toString("utf8").trim();
+    if (!key) throw new Error("No key on stdin");
+    setSecret(name, key);
+    print({ provider, stored: true, file: secretsFile() });
+  });
+secret
+  .command("status")
+  .description("Which keys are set and where they come from (env or file). Never prints a key")
+  .action(() => {
+    print(Object.fromEntries(["elevenlabs", "gemini"].map((p) => [p, secretSource(secretNameFor(p))])));
+  });
+secret
+  .command("remove")
+  .description("Delete a stored key (an environment variable stays)")
+  .argument("<provider>", "elevenlabs | gemini")
+  .action((provider: string) => {
+    print({ provider, removed: removeSecret(secretNameFor(provider)) });
   });
 
 program
@@ -560,6 +614,27 @@ program
     print(r);
     log(r.summary);
     process.exit(0);
+  });
+
+program
+  .command("history")
+  .description("What ScreenPilot recorded and rendered, newest first (JSON). --live lists the renders running now")
+  .option("--limit <n>", "How many events", "50")
+  .option("--before <iso>", "Only events older than this time (the `at` of the last one of the previous page)")
+  .option("--live", "List the renders running now instead")
+  .action(async (o: { limit: string; before?: string; live?: boolean }) => {
+    print(o.live ? listJobs() : await readHistory({ limit: Number(o.limit), before: o.before }));
+  });
+
+const library = program.command("library").description("The history of your work");
+library
+  .command("import")
+  .description("Add recordings and finished renders made before the history existed (two folder levels deep under each root)")
+  .option("--root <dir...>", "Folders to look in (default: the sessions folder)")
+  .action(async (o: { root?: string[] }) => {
+    const r = await importLibrary(o.root?.length ? o.root : [sessionsRoot()]);
+    print(r);
+    log(`${r.added} added, ${r.total} in the history`);
   });
 
 program

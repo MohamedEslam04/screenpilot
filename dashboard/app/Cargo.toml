@@ -1,0 +1,36 @@
+[package]
+name = "screenpilot-dashboard"
+description = "ScreenPilot local desktop dashboard (native Slint window, software renderer)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+build = "build.rs"
+
+[lib]
+name = "screenpilot_dashboard"
+path = "src/lib.rs"
+
+[[bin]]
+name = "screenpilot-dashboard"
+path = "src/bin/main.rs"
+
+[dependencies]
+screenpilot-dashboard-core = { path = "../core" }
+serde_json = "1"
+# Software renderer only (no GL): a small, quick window. Fonts are embedded (see fonts/).
+slint = { version = "1.18", default-features = false, features = ["std", "compat-1-2", "backend-winit", "renderer-software", "accessibility"] }
+# Watches <cache>/jobs/ while the window is shown (no polling loop).
+notify = "8"
+# Thumbnails are JPGs made by ffmpeg; decoded on a worker thread.
+jpeg-decoder = { version = "0.3", default-features = false }
+
+[build-dependencies]
+slint-build = "1.18"
+
+# Windows: put the logo inside the .exe (Explorer, the task bar and the Start Menu shortcut show it).
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
+[dev-dependencies]
+# Headless screenshots (examples/screenshot.rs).
+png = "0.17"
