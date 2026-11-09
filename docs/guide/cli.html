@@ -359,7 +359,7 @@ screenpilot secret status</code></pre>
 <p>These commands join several storyboards, each with its own recording, into one video. The common use is to insert a new feature clip into the middle of an existing demo without re-recording it. <a href="../guide/sequence.html">Combine recordings</a> explains the file format, ranges and transitions with a worked example.</p>
 
 <h3 id="sequence">sequence<a class="a" href="#sequence" aria-label="Link to this section">#</a></h3>
-<p><code>screenpilot sequence &lt;sequence.json&gt;</code> renders every part and joins them into one MP4. Unchanged parts are reused from the previous run. It prints the output path, the duration, how the parts were joined, each part and the <code>timeline</code> file of the joined video. The video is written as <code>&lt;name&gt;.partial.mp4</code> and renamed when complete.</p>
+<p><code>screenpilot sequence &lt;sequence.json&gt;</code> (or <code>screenpilot sequence --joins ...</code>, see below) renders every part and joins them into one MP4. Unchanged parts are reused from the previous run. It prints the output path, the duration, how the parts were joined, each part and the <code>timeline</code> file of the joined video. The video is written as <code>&lt;name&gt;.partial.mp4</code> and renamed when complete.</p>
 <table>
 <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
 <tbody>
@@ -376,7 +376,10 @@ screenpilot secret status</code></pre>
 <tr><td><code>--subtitle-lang &lt;list&gt;</code>, <code>--subtitle-chars &lt;n&gt;</code></td><td>One caption file per language, as on <a href="../guide/cli.html#render">render</a>. A translation file is <code>{"&lt;chapter&gt;": ["line", ...]}</code> or <code>{"&lt;id&gt;": "line"}</code>, where the chapter is the part's storyboard folder name.</td></tr>
 <tr><td><code>--dry-run</code></td><td>Print the lines, characters and estimated USD the voices would cost, part by part, then stop: no request, no file, no build folder.</td></tr>
 <tr><td><code>--min-free-mem &lt;MB&gt;</code>, <code>--mem-timeout &lt;s&gt;</code></td><td>The memory guard before each part or chunk. See <a href="../guide/long-renders.html#memory">Long renders</a>.</td></tr>
-<tr><td><code>--build-dir &lt;dir&gt;</code></td><td>Where the parts are built. Default <code>&lt;sequence&gt;.build</code>.</td></tr>
+<tr><td><code>--build-dir &lt;dir&gt;</code></td><td>Where the parts are built. Default <code>&lt;sequence&gt;.build</code> (with <code>--joins</code>: <code>&lt;out-dir&gt;/joins.build</code>).</td></tr>
+<tr><td><code>--joins &lt;list&gt;</code></td><td>Several joined videos in one call, instead of a <code>sequence.json</code>: <code>setup=g1.json+g2.json,operations=g3.json,full=setup+operations</code>. Each entry is a name, then sequence files (groups) or names of other entries, joined with <code>+</code>. Every group is rendered once and reused by each video that has it. Writes <code>&lt;out-dir&gt;/&lt;name&gt;.mp4</code> and <code>&lt;name&gt;.timeline.json</code> (and caption files with <code>--subtitles</code> or <code>--subtitle-lang</code>). <code>-o</code> is refused. See <a href="../guide/sequence.html#joins">Several videos from the same groups</a>.</td></tr>
+<tr><td><code>--join-transition &lt;type[:s]&gt;</code></td><td>With <code>--joins</code>: how each group enters from the one before it: <code>cut</code> (default), <code>crossfade</code>, <code>fade-black</code>, <code>wipe-left</code>, <code>wipe-right</code>, <code>slide-left</code> or <code>slide-right</code>. The seconds default to 0.5, at most half of either group. Example: <code>fade-black:0.6</code>.</td></tr>
+<tr><td><code>--out-dir &lt;dir&gt;</code></td><td>With <code>--joins</code>: the folder of the joined videos. Default: the folder that holds all the groups. <code>screenpilot pause</code> and <code>resume</code> take <code>&lt;out-dir&gt;/joins</code> for this render.</td></tr>
 </tbody>
 </table>
 

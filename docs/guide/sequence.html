@@ -155,6 +155,24 @@ screenpilot sequence sequence.json -q delivery -o demo-with-feature.mp4</code></
 <p>Each part is rendered like a storyboard, so a part of 5 minutes or more is split into cached chunks like any other render (see <a href="../guide/cli.html#long-renders">Long renders</a>). <code>sequence</code> has no <code>--no-chunks</code> or <code>--chunk-seconds</code>. To keep a long video fast to edit, split it into parts: only the parts you changed render again.</p>
 <div class="note">Review with <code>-q draft</code> first, then look at frames with <code>screenpilot check</code> around each join. Use <code>-q delivery</code> only for the final file.</div>
 
+<h2 id="joins">Several videos from the same groups<a class="a" href="#joins" aria-label="Link to this section">#</a></h2>
+<p>Say you need three videos: a setup video, an operations video, and a full video that plays both. Rendering three sequences would render the shared parts three times. <code>--joins</code> renders each group once and joins them into every video you name. A <strong>group</strong> is a sequence file (<code>g1.json</code>, <code>g2.json</code>, <code>g3.json</code>, each written as in <a href="../guide/sequence.html#sequence-file">The sequence file</a>).</p>
+<pre><code class="language-sh">screenpilot sequence \
+  --joins setup=g1.json+g2.json,operations=g3.json,full=setup+operations \
+  --join-transition fade-black:0.6 \
+  --out-dir videos -q draft</code></pre>
+<p>This writes three videos: <code>videos/setup.mp4</code> (g1, then g2), <code>videos/operations.mp4</code> (g3) and <code>videos/full.mp4</code> (g1, g2, g3). Each is made like this.</p>
+<ul>
+<li><strong>The list.</strong> <code>name=a+b</code> names a video and lists what it plays, in order, joined with <code>+</code>. Each item is a sequence file (relative to the current folder) or the name of another video in the list, which stands for its groups. A name may use letters, digits, <code>-</code> and <code>_</code>. A name that includes itself, directly or not, fails with the chain.</li>
+<li><strong>Each group renders once.</strong> A group that several videos use is rendered by the first one and reused by the rest. Run the command again after an edit and only the groups you changed render again.</li>
+<li><strong>The transition.</strong> <code>--join-transition type[:seconds]</code> sets how each group enters from the one before it: <code>cut</code> (default), <code>crossfade</code>, <code>fade-black</code>, <code>wipe-left</code>, <code>wipe-right</code>, <code>slide-left</code> or <code>slide-right</code>. The seconds default to 0.5 and are limited to half of either group. Every join in every video uses it.</li>
+<li><strong>Where the files go.</strong> <code>--out-dir</code> is the folder of the videos. It defaults to the deepest folder that holds all the groups. A video is <code>&lt;out-dir&gt;/&lt;name&gt;.mp4</code>; with <code>--variant</code> or <code>--style</code> it is <code>&lt;name&gt;.&lt;variant&gt;.mp4</code>, <code>&lt;name&gt;.&lt;style&gt;.mp4</code> or both. The groups are built in <code>&lt;out-dir&gt;/joins.build</code>.</li>
+<li><strong>Timeline and captions.</strong> Each video has its own <code>&lt;name&gt;.timeline.json</code>. <code>--subtitles</code> and <code>--subtitle-lang</code> write caption files for each video from it.</li>
+<li><strong>The command line.</strong> With <code>--joins</code> you give no <code>sequence.json</code>, and <code>-o, --output</code> is refused, because there is more than one video. <code>--join-transition</code> and <code>--out-dir</code> only go with <code>--joins</code>. The other flags (<code>-q</code>, <code>--style</code>, <code>--variant</code>, <code>--workers</code>, <code>--dry-run</code> and the rest) work as on a single sequence.</li>
+</ul>
+<p>Over MCP, <code>sequence_render</code> takes <code>joins</code> (an object <code>{name: [files or names]}</code>), <code>join</code> (<code>{transition, dur}</code>) and <code>out_dir</code> instead of <code>sequence</code>. See <a href="../guide/tools.html#sequence">MCP tools</a>.</p>
+<div class="note">To pause a joins render, give <code>pause</code> and <code>resume</code> the path <code>&lt;out-dir&gt;/joins</code>. No file has that name: it only identifies the render. See <a href="../guide/long-renders.html#pause-joins">Long renders</a>.</div>
+
 <h2 id="limits">Limits<a class="a" href="#limits" aria-label="Link to this section">#</a></h2>
 <ul>
 <li><code>sequence</code> has no <code>--from</code>, <code>--to</code> or <code>--formats</code>. To review one part quickly, render its storyboard with <code>screenpilot render --from --to</code>. For another size, set <code>output</code> in the sequence.</li>
@@ -162,7 +180,7 @@ screenpilot sequence sequence.json -q delivery -o demo-with-feature.mp4</code></
 <li>A storyboard that fails validation fails the sequence. The error names the part, for example <code>parts[1] (feature/feature.json)</code>.</li>
 </ul>
 <nav class="pager" aria-label="Pager"><a href="dashboard.html" rel="prev"><small>Previous</small>Dashboard</a><a href="subtitles.html" rel="next"><small>Next</small>Subtitles and timeline</a></nav></article>
-  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#insert-feature">Insert a feature clip into a demo</a><a href="#sequence-file">The sequence file</a><a href="#ranges">Source ranges: from and to</a><a href="#transitions">Transitions</a><a href="#rendering">Render a sequence</a><a href="#limits">Limits</a></aside>
+  <aside class="toc" aria-label="On this page"><h3>On this page</h3><a href="#insert-feature">Insert a feature clip into a demo</a><a href="#sequence-file">The sequence file</a><a href="#ranges">Source ranges: from and to</a><a href="#transitions">Transitions</a><a href="#rendering">Render a sequence</a><a href="#joins">Several videos from the same groups</a><a href="#limits">Limits</a></aside>
 </div></main>
 <footer class="foot"><div class="wrap">
   <div><a class="brand" href="../index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot is open source under the MIT license.</small><small>Product names belong to their owners. ScreenPilot is an independent project.</small></div>

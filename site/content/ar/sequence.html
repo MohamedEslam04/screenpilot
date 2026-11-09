@@ -129,6 +129,24 @@ screenpilot sequence sequence.json -q delivery -o demo-with-feature.mp4</code></
 <p>يُصيَّر كل جزء مثل storyboard، فالجزء الذي مدته 5 دقائق أو أكثر يُقسَّم إلى أجزاء مخزّنة مؤقتًا كأي تصيير آخر (انظر <a href="@guide/cli.html#long-renders">التصيير الطويل</a>). والأمر <code>sequence</code> ليس فيه <code>--no-chunks</code> ولا <code>--chunk-seconds</code>. ولتبقى تعديلات الفيديو الطويل سريعة، قسّمه إلى أجزاء: لا يُصيَّر من جديد إلا الأجزاء التي غيّرتها.</p>
 <div class="note">راجع أولًا بـ <code>-q draft</code>، ثم انظر إلى لقطات حول كل نقطة اتصال باستخدام <code>screenpilot check</code>. استخدم <code>-q delivery</code> للملف النهائي فقط.</div>
 
+<h2 id="joins">عدة فيديوهات من المجموعات نفسها</h2>
+<p>لنفترض أنك تحتاج ثلاثة فيديوهات: فيديو للإعداد، وفيديو للعمليات، وفيديو كامل يعرض الاثنين. تصيير ثلاثة sequences يصيّر الأجزاء المشتركة ثلاث مرات. الخيار <code>--joins</code> يصيّر كل مجموعة مرة واحدة ويجمعها في كل فيديو تسميه. <strong>المجموعة</strong> هي ملف sequence (<code>g1.json</code> و<code>g2.json</code> و<code>g3.json</code>، كل منها مكتوب كما في <a href="@guide/sequence.html#sequence-file">ملف الـ sequence</a>).</p>
+<pre><code class="language-sh">screenpilot sequence \
+  --joins setup=g1.json+g2.json,operations=g3.json,full=setup+operations \
+  --join-transition fade-black:0.6 \
+  --out-dir videos -q draft</code></pre>
+<p>يكتب هذا ثلاثة فيديوهات: <code>videos/setup.mp4</code> (g1 ثم g2) و<code>videos/operations.mp4</code> (g3) و<code>videos/full.mp4</code> (g1 ثم g2 ثم g3). وهذه تفاصيل كيفية صنعها.</p>
+<ul>
+<li><strong>القائمة.</strong> الصيغة <code>name=a+b</code> تسمّي فيديو وتسرد ما يعرضه بالترتيب، مفصولًا بعلامة <code>+</code>. كل عنصر هو ملف sequence (نسبةً إلى المجلد الحالي) أو اسم فيديو آخر في القائمة، فيقوم مقام مجموعاته. يجوز أن يتألف الاسم من حروف وأرقام و<code>-</code> و<code>_</code>. والاسم الذي يتضمن نفسه، مباشرةً أو لا، يفشل مع ذكر السلسلة.</li>
+<li><strong>كل مجموعة تُصيَّر مرة واحدة.</strong> المجموعة التي تستخدمها عدة فيديوهات يصيّرها أولها وتعيد الباقي استخدامها. شغّل الأمر ثانيةً بعد تعديل فلا يُصيَّر من جديد إلا ما غيّرته.</li>
+<li><strong>الانتقال.</strong> الخيار <code>--join-transition type[:seconds]</code> يحدد كيف تدخل كل مجموعة بعد التي قبلها: <code>cut</code> (الافتراضي) أو <code>crossfade</code> أو <code>fade-black</code> أو <code>wipe-left</code> أو <code>wipe-right</code> أو <code>slide-left</code> أو <code>slide-right</code>. الثواني الافتراضية 0.5 وبحد أقصى نصف أي من المجموعتين. ويُطبَّق على كل نقطة اتصال في كل فيديو.</li>
+<li><strong>أين تذهب الملفات.</strong> الخيار <code>--out-dir</code> هو مجلد الفيديوهات، وافتراضيه أعمق مجلد يضم كل المجموعات. الفيديو هو <code>&lt;out-dir&gt;/&lt;name&gt;.mp4</code>؛ ومع <code>--variant</code> أو <code>--style</code> يصبح <code>&lt;name&gt;.&lt;variant&gt;.mp4</code> أو <code>&lt;name&gt;.&lt;style&gt;.mp4</code> أو كليهما. وتُبنى المجموعات في <code>&lt;out-dir&gt;/joins.build</code>.</li>
+<li><strong>الـ timeline والترجمة.</strong> لكل فيديو ملف <code>&lt;name&gt;.timeline.json</code> خاص به. والخياران <code>--subtitles</code> و<code>--subtitle-lang</code> يكتبان ملفات ترجمة لكل فيديو منه.</li>
+<li><strong>سطر الأوامر.</strong> مع <code>--joins</code> لا تعطي ملف <code>sequence.json</code>، ويُرفض <code>-o, --output</code> لأن هناك أكثر من فيديو. والخياران <code>--join-transition</code> و<code>--out-dir</code> لا يعملان إلا مع <code>--joins</code>. أما بقية الخيارات (<code>-q</code> و<code>--style</code> و<code>--variant</code> و<code>--workers</code> و<code>--dry-run</code> وغيرها) فتعمل كما في sequence واحد.</li>
+</ul>
+<p>عبر MCP تقبل <code>sequence_render</code> الحقول <code>joins</code> (كائن <code>{name: [files or names]}</code>) و<code>join</code> (<code>{transition, dur}</code>) و<code>out_dir</code> بدل <code>sequence</code>. انظر <a href="@guide/tools.html#sequence">أدوات MCP</a>.</p>
+<div class="note">لإيقاف تصيير joins مؤقتًا، أعطِ <code>pause</code> و<code>resume</code> المسار <code>&lt;out-dir&gt;/joins</code>. لا يوجد ملف بهذا الاسم: هو مجرد معرّف للتصيير. انظر <a href="@guide/long-renders.html#pause-joins">التصيير الطويل</a>.</div>
+
 <h2 id="limits">الحدود</h2>
 <ul>
 <li>الأمر <code>sequence</code> ليس له <code>--from</code> ولا <code>--to</code> ولا <code>--formats</code>. لمراجعة جزء واحد بسرعة، صيّر storyboard الخاص به بـ <code>screenpilot render --from --to</code>. ولتغيير الحجم اضبط <code>output</code> في الـ sequence.</li>
