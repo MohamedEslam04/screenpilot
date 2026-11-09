@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { mkdtemp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -245,5 +246,39 @@ describe("dry run estimate", () => {
     expect(await listAll(root)).toEqual(before);
     expect(e).toMatchObject({ dryRun: true, lines: 2, chars: "First line here.".length + "Second line.".length });
     expect(e.parts).toHaveLength(2);
+  });
+});
+
+describe("the spend and --dry-run commands", () => {
+  const cli = (args: string[], cwd: string) =>
+    spawnSync(process.execPath, ["--import", import.meta.resolve("tsx"), join(process.cwd(), "src/cli.ts"), ...args], {
+      cwd,
+      encoding: "utf8",
+      env: { ...process.env, XDG_CONFIG_HOME: dir, [NO_SPEND_ENV]: "" },
+    });
+
+  it("spend --json totals the ledger since a day, and the plain output names the providers", async () => {
+    await mkdir(join(dir, "screenpilot"), { recursive: true });
+    const row = (t: string, chars: number) => JSON.stringify({ t, provider: "elevenlabs", model: "m", voice: "v", chars, audio_s: 1, credits: chars, usd: chars / 1000 });
+    await writeFile(spendFile(), `${row("2026-10-01T10:00:00Z", 100)}\n${row("2026-11-05T10:00:00Z", 200)}\n`);
+    const r = cli(["spend", "--since", "2026-11-01", "--json"], dir);
+    expect(r.status, r.stderr).toBe(0);
+    expect(JSON.parse(r.stdout)).toMatchObject({ requests: 1, chars: 200, usd: 0.2 });
+    const plain = cli(["spend"], dir);
+    expect(plain.stdout).toMatch(/elevenlabs\s+2 requests/);
+    expect(cli(["spend", "--since", "nonsense"], dir).status).not.toBe(0);
+  });
+
+  it("render --dry-run prints the estimate, sends nothing and leaves the folder as it was", async () => {
+    const root = await mkdtemp(join(tmpdir(), "sp-dry-cli-"));
+    makeVideo(join(root, "rec.mp4"), 2);
+    await writeFile(join(root, "s.json"), JSON.stringify({ source: "rec.mp4", voice: { provider: "elevenlabs", name: VOICE_ID }, narration: [{ at: 0.5, text: "Hello there" }] }));
+    const before = await listAll(root);
+    const r = cli(["render", "s.json", "--dry-run"], root);
+    expect(r.status, r.stderr).toBe(0);
+    expect(JSON.parse(r.stdout)).toMatchObject({ dryRun: true, lines: 1, chars: 11, provider: "elevenlabs" });
+    expect(r.stderr).toMatch(/nothing was sent or written/);
+    expect(await listAll(root)).toEqual(before);
+    expect(cli(["render", "s.json", "--dry"], root).status).toBe(0);
   });
 });
