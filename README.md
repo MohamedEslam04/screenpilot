@@ -37,6 +37,7 @@ Ask your AI app for a screen video. ScreenPilot records your screen (or uses you
 - **Tracked highlights:** a `highlight` step follows a page element and ends when it disappears.
 - **A second demo browser** and the `tile` step to place two browsers side by side.
 - **Paste typing:** `type` pastes text outside Latin-1 (Arabic) so letters are not dropped, and restores your clipboard.
+- **Several joined videos in one call:** `screenpilot sequence --joins setup=g1.json+g2.json,operations=g3.json,full=setup+operations --join-transition fade-black:0.6 [--out-dir dir]` (MCP `sequence_render` with `joins`, `join`, `out_dir`) renders every group once and writes each video as `<out-dir>/<name>.mp4` with its own `timeline.json` and caption files; pause and resume take `<out-dir>/joins`.
 - **Smaller changes:** command voices take `cacheFiles`, the render cache moved out of `/tmp` and is capped (4 GB), retakes into a used folder go to `<dir>-2`, `-3`, a storyboard `lint` field sets limits, `screenpilot qa` checks the pixels, and a sequence part can be another sequence or a finished video.
 
 ### 0.8.0 ([release notes](https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.8.0))
