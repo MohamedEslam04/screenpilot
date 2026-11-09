@@ -6,6 +6,8 @@ import { CACHE_DIR } from "../brand.js";
 import { recordEvent } from "../history/index.js";
 import { startJob } from "../history/jobs.js";
 import { renderStoryboard } from "../render/index.js";
+import { clearPause, type PausedInfo, pauseRequested, RenderPaused, resumeCommand, writePausedState } from "../render/pause.js";
+import { type MemGuardOptions, memGuardSettings, startRssSampler } from "../util/mem.js";
 import { assertTimelineFresh, joinTimelines, readTimeline, type Timeline, timelinePath, type TimelinePart, writeTimeline } from "../render/timeline.js";
 import { lintStoryboard, type LoadedStyle, loadStoryboard, StoryboardError } from "../storyboard/load.js";
 import { clipStoryboard } from "../storyboard/clip.js";
@@ -258,7 +260,7 @@ async function prepare(path: string, opts: { buildDir?: string; style?: LoadedSt
 
 const sizeOf = (v: { width: number; height: number; fps: number }): OutputSize => ({ width: v.width, height: v.height, fps: Math.round(v.fps) });
 
-export interface SequenceRenderOptions {
+export interface SequenceRenderOptions extends MemGuardOptions {
   /** A style file (see loadStyle) applied to every storyboard part; writes <sequence>.<style>.mp4. */
   style?: LoadedStyle;
   output?: string;
@@ -281,20 +283,55 @@ export interface SequenceResult {
   timeline: string;
   /** `storyboard` is the derived storyboard of a storyboard part, else the nested sequence or video file. `cached` is also true for a video used as is. */
   parts: { kind: PreparedPart["kind"]; storyboard: string; output: string; duration: number; cached: boolean; warnings: string[] }[];
+  /** Highest memory of the render's child processes (HyperFrames, Chrome, ffmpeg) in MB, sampled; undefined where it cannot be measured. */
+  peakRssMB?: number;
 }
 
-/** Render every part (reusing unchanged ones) and join them into one video. */
+/**
+ * Render every part (reusing unchanged ones) and join them into one video.
+ * A `.pause` dropped into the build folder while it runs (see requestPause) stops it
+ * before the next part or chunk it would render: it throws RenderPaused with which
+ * parts are done, after saving what resumePaused needs.
+ */
 export async function renderSequence(path: string, opts: SequenceRenderOptions = {}): Promise<SequenceResult> {
+  const since = Date.now();
+  memGuardSettings(opts); // bad values fail before any work
   const prepared = await prepareSequence(path, opts);
   const quality = opts.quality ?? "looks";
   const job = startJob({ kind: "sequence", path: prepared.path, quality });
   const started = performance.now();
   const wall = () => Math.round(((performance.now() - started) / 1000) * 1000) / 1000;
+  const sampler = startRssSampler();
   try {
-    const r = await renderPrepared(prepared, { ...opts, onProgress: (step) => job.update(step) });
+    const r = await renderPrepared(prepared, { ...opts, onProgress: (step) => job.update(step) }, () => pauseRequested(prepared.buildDir, since));
+    r.peakRssMB = await sampler.stop();
+    await clearPause(prepared.buildDir);
     await recordEvent({ kind: "sequence", status: "ok", path: prepared.path, output: r.output, durationSec: r.duration, quality, wallSeconds: wall() });
     return r;
   } catch (err) {
+    await sampler.stop();
+    if (err instanceof RenderPaused) {
+      const stateFile = await writePausedState({
+        version: 1,
+        kind: "sequence",
+        path: prepared.path,
+        buildDir: prepared.buildDir,
+        pausedAt: new Date().toISOString(),
+        options: {
+          output: sequenceOutput(prepared, opts),
+          buildDir: prepared.buildDir,
+          quality: opts.quality,
+          style: opts.style?.path,
+          workers: opts.workers,
+          pngFrames: opts.pngFrames,
+          timings: opts.timings,
+          minFreeMemMB: opts.minFreeMemMB,
+          memTimeoutS: opts.memTimeoutS,
+        },
+      });
+      opts.log?.(`paused: ${err.info.partsDone}/${err.info.partsTotal} parts done; carry on with: ${err.info.resume}`);
+      throw new RenderPaused({ ...err.info, stateFile });
+    }
     await recordEvent({ kind: "sequence", status: "failed", path: prepared.path, quality, wallSeconds: wall(), error: (err as Error).message.slice(0, 500) });
     throw err;
   } finally {
@@ -302,7 +339,30 @@ export async function renderSequence(path: string, opts: SequenceRenderOptions =
   }
 }
 
-async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOptions): Promise<SequenceResult> {
+/** Where the joined video goes: `output`, else `<sequence>[.<style>].mp4`. */
+const sequenceOutput = (prepared: PreparedSequence, opts: SequenceRenderOptions) =>
+  resolve(opts.output ?? `${prepared.path.slice(0, -extname(prepared.path).length)}${prepared.style ? `.${prepared.style}` : ""}.mp4`);
+
+/** The paused result of a sequence stopped before (or inside, between chunks of) part `index`. */
+function sequencePaused(prepared: PreparedSequence, index: number, inner?: PausedInfo): RenderPaused {
+  // Inside the part: chunks of a long storyboard, or parts of a nested sequence, already finished.
+  const chunks = inner?.chunks;
+  const inProgress = (chunks?.done ?? inner?.partsDone ?? 0) > 0;
+  return new RenderPaused({
+    paused: true,
+    kind: "sequence",
+    path: prepared.path,
+    buildDir: prepared.buildDir,
+    partsDone: index,
+    partsTotal: prepared.parts.length,
+    parts: prepared.parts.map((_, i) =>
+      i < index ? { part: i + 1, status: "done" } : i === index && inProgress ? { part: i + 1, status: "in progress", ...(chunks ? { chunks } : {}) } : { part: i + 1, status: "waiting" },
+    ),
+    resume: resumeCommand(prepared.path),
+  });
+}
+
+async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOptions, shouldPause: () => boolean = () => false): Promise<SequenceResult> {
   const log = opts.log ?? (() => {});
   const quality = opts.quality ?? "looks";
   const results: SequenceResult["parts"] = [];
@@ -323,25 +383,42 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
     opts.onProgress?.({ label: "part", index: part.index + 1, total: prepared.parts.length });
     if (cached) log(`${label}: unchanged, reusing ${part.output}`);
     else {
+      // A pause stops here, before any work on this part; finished parts are cached for resume.
+      if (shouldPause()) {
+        log(`${label}: pause requested, stopping before it`);
+        throw sequencePaused(prepared, part.index);
+      }
       log(`${label}: rendering`);
-      if (part.kind === "storyboard") {
-        const r = await renderStoryboard(part.storyboard, {
-          buildDir: join(part.dir, "build"),
-          cacheDir: part.cacheDir,
-          output: part.output,
-          quality,
-          pngFrames: opts.pngFrames,
-          workers: opts.workers,
-          timings: opts.timings,
-          log,
-          history: false,
-        });
-        warnings = r.warnings;
-      } else if (part.kind === "sequence") {
-        const r = await renderPrepared(part.sequence, { ...opts, output: part.output, buildDir: undefined, onProgress: undefined });
-        warnings = r.parts.flatMap((p) => p.warnings);
-      } else {
-        await trimVideo(part.file, part.output, { from: part.from, to: part.to }, quality);
+      try {
+        if (part.kind === "storyboard") {
+          const r = await renderStoryboard(part.storyboard, {
+            buildDir: join(part.dir, "build"),
+            cacheDir: part.cacheDir,
+            output: part.output,
+            quality,
+            pngFrames: opts.pngFrames,
+            workers: opts.workers,
+            timings: opts.timings,
+            log,
+            history: false,
+            // Long parts render in chunks: a pause stops between them, and each chunk waits for memory.
+            pauseCheck: shouldPause,
+            stepLabel: label,
+            minFreeMemMB: opts.minFreeMemMB,
+            memTimeoutS: opts.memTimeoutS,
+            memReader: opts.memReader,
+            memPollMs: opts.memPollMs,
+          });
+          warnings = r.warnings;
+        } else if (part.kind === "sequence") {
+          const r = await renderPrepared(part.sequence, { ...opts, output: part.output, buildDir: undefined, onProgress: undefined }, shouldPause);
+          warnings = r.parts.flatMap((p) => p.warnings);
+        } else {
+          await trimVideo(part.file, part.output, { from: part.from, to: part.to }, quality);
+        }
+      } catch (err) {
+        if (err instanceof RenderPaused) throw sequencePaused(prepared, part.index, err.info);
+        throw err;
       }
       await writeFile(keyFile, key);
     }
@@ -352,8 +429,7 @@ async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOp
     prepared.parts.map(async (p) => ({ ...(await probePart(p.output)), transition: p.transition })),
   );
   media.forEach((m, i) => (results[i]!.duration = m.duration));
-  const base = prepared.path.slice(0, -extname(prepared.path).length);
-  const output = resolve(opts.output ?? `${base}${prepared.style ? `.${prepared.style}` : ""}.mp4`);
+  const output = sequenceOutput(prepared, opts);
   await mkdir(dirname(output), { recursive: true });
   const joined = await makeTimer(opts.timings, log)("join", () =>
     concatParts(media, output, prepared.output, { workDir: prepared.buildDir, quality, log }),
