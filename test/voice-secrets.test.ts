@@ -95,6 +95,7 @@ describe("secret status and removal", () => {
     expect(removeSecret("GEMINI_API_KEY")).toBe(true);
     expect(removeSecret("GEMINI_API_KEY")).toBe(false);
     expect(JSON.parse(await readFile(secretsFile(), "utf8"))).toEqual({ ELEVENLABS_API_KEY: "e" });
-    expect((await stat(secretsFile())).mode & 0o777).toBe(0o600);
+    // Windows has no POSIX modes: there the file relies on the permissions of the user profile folder.
+    if (process.platform !== "win32") expect((await stat(secretsFile())).mode & 0o777).toBe(0o600);
   });
 });

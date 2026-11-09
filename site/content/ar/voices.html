@@ -38,7 +38,7 @@ summary: اختر صوت التعليق: Edge، أو أصوات سحابية ب�
 <tr><td><code>gemini</code></td><td><code>GEMINI_API_KEY</code></td></tr>
 </tbody>
 </table>
-<p>لتخزين المفتاح بدل تصديره، مرّره إلى <code>screenpilot secret set</code> عبر pipe. يُقرأ المفتاح من الإدخال القياسي (stdin) ولا يُقرأ أبدًا من وسيط في سطر الأوامر، فلا يظهر في سجل الـ shell ولا في قائمة العمليات. يُحفظ في الملف <code>secrets.json</code> داخل مجلد الإعداد، بصلاحية 0600 (أنت وحدك تقرؤه).</p>
+<p>لتخزين المفتاح بدل تصديره، مرّره إلى <code>screenpilot secret set</code> عبر pipe. يُقرأ المفتاح من الإدخال القياسي (stdin) ولا يُقرأ أبدًا من وسيط في سطر الأوامر، فلا يظهر في سجل الـ shell ولا في قائمة العمليات. يُحفظ في الملف <code>secrets.json</code> داخل مجلد الإعداد، بصلاحية 0600 على Linux وmacOS (أنت وحدك تقرؤه). لا توجد صلاحيات ملفات بهذا الشكل في Windows، فيعتمد الملف هناك على صلاحيات مجلد ملفك الشخصي فقط.</p>
 <pre><code class="language-sh">printf '%s' "$ELEVENLABS_API_KEY" | screenpilot secret set elevenlabs
 screenpilot secret status
 screenpilot secret remove elevenlabs</code></pre>

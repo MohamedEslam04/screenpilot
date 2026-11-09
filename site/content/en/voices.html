@@ -38,7 +38,7 @@ summary: Choose a narration voice: Edge, cloud voices with your own ElevenLabs o
 <tr><td><code>gemini</code></td><td><code>GEMINI_API_KEY</code></td></tr>
 </tbody>
 </table>
-<p>To store a key instead of exporting it, pipe it into <code>screenpilot secret set</code>. The key is read from standard input, never from an argument, so it stays out of your shell history and the process list. It is saved in <code>secrets.json</code> in the config folder, with file mode 0600 (only you can read it).</p>
+<p>To store a key instead of exporting it, pipe it into <code>screenpilot secret set</code>. The key is read from standard input, never from an argument, so it stays out of your shell history and the process list. It is saved in <code>secrets.json</code> in the config folder, with file mode 0600 on Linux and macOS (only you can read it). Windows has no file modes, so there the file is protected only by the permissions of your user profile folder.</p>
 <pre><code class="language-sh">printf '%s' "$ELEVENLABS_API_KEY" | screenpilot secret set elevenlabs
 screenpilot secret status
 screenpilot secret remove elevenlabs</code></pre>
