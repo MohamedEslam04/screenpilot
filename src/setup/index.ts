@@ -8,6 +8,7 @@ import { APP, APP_TITLE, OUTPUT_ENV } from "../brand.js";
 import { CLIENTS, type ClientSpec, claudeAllowRule, NEVER, type PathEnv, type ServerLaunch, stillValid } from "./clients.js";
 import { defaultOutputDir } from "./folders.js";
 import { type PrepareResult, prepareRenderer } from "./prepare.js";
+import { syncDesktopEntry } from "../dashboard/launch.js";
 
 // One-step install for people who never open a terminal: put the app in a
 // stable place and register its MCP server with every AI tool on this
@@ -119,6 +120,9 @@ export async function setup(opts: SetupOptions = {}): Promise<SetupReport> {
     rows.push(configure(spec, env, launch, !!opts.remove, !!opts.clients));
   }
   if (!opts.clients || opts.clients.includes("claude-code")) rows.push(claudeCode(launch, dir, !!opts.remove, !!opts.allowTools));
+  // The dashboard is installed separately; if it is there, put it in the application menu (Linux).
+  const entry = syncDesktopEntry(!!opts.remove);
+  if (entry) rows.push({ client: "Dashboard (application menu)", ...entry });
   const renderer = opts.remove || opts.skipPrepare ? undefined : await prepareRenderer(log);
   return { appDir: dir, outputDir, rows, renderer };
 }

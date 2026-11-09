@@ -41,6 +41,7 @@ import { APP, APP_TITLE, sessionsRoot, VERSION } from "./brand.js";
 import { useBundledTools } from "./bundle.js";
 import { getDesktop } from "./platform/index.js";
 import { hookPinned } from "./record/input/hook.js";
+import { DASHBOARD_BIN_ENV, dashboardBin, dashboardHome, launchDashboard } from "./dashboard/launch.js";
 import { importLibrary } from "./history/import.js";
 import { readHistory } from "./history/index.js";
 import { listJobs } from "./history/jobs.js";
@@ -404,6 +405,20 @@ program
     } finally {
       await provider.close?.();
     }
+  });
+
+program
+  .command("dashboard")
+  .description("Open the dashboard: your recordings, renders, running jobs and voices in one local window (a separate download)")
+  .action(() => {
+    const bin = dashboardBin();
+    if (!bin) {
+      throw new Error(
+        `The dashboard is not installed. It is a separate program: download it from https://github.com/MohamedEslam04/screenpilot/releases/latest and put it in ${dashboardHome()} (or set ${DASHBOARD_BIN_ENV} to its path).`,
+      );
+    }
+    launchDashboard(bin);
+    log(`started ${bin}`);
   });
 
 const secret = program.command("secret").description("API keys for the cloud voices (ElevenLabs, Gemini), kept in secrets.json (mode 0600) in the config folder");
