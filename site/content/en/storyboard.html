@@ -34,7 +34,7 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 <tr><td><code>narration</code></td><td><code>[]</code></td><td>Voiceover lines.</td></tr>
 <tr><td><code>intro</code>, <code>outro</code></td><td>none</td><td>Title cards before and after the video.</td></tr>
 <tr><td><code>cards</code></td><td><code>[]</code></td><td>Chapter cards in the middle of the video. See <a href="@guide/storyboard.html#chapter-cards">Chapter cards</a>.</td></tr>
-<tr><td><code>overlays</code></td><td><code>[]</code></td><td>Images, video and logos on top of the frame. See <a href="@guide/storyboard.html#overlays">Overlays</a>.</td></tr>
+<tr><td><code>overlays</code></td><td><code>[]</code></td><td>Images, video and logos on top of the frame, or cards drawn from data. See <a href="@guide/storyboard.html#overlays">Overlays</a> and <a href="@guide/storyboard.html#data-cards">Cards from data</a>.</td></tr>
 <tr><td><code>music</code></td><td>none</td><td>Background music, optionally ducked under the voice.</td></tr>
 <tr><td><code>audio</code></td><td>none</td><td>Loudness normalization and noise reduction. See <a href="@guide/storyboard.html#audio">Audio mix</a>.</td></tr>
 <tr><td><code>sfx</code>, <code>sounds</code>, <code>typing</code></td><td><code>[]</code>, none, <code>[]</code></td><td>Sound effects at chosen times, and automatic click, typing and card sounds. See <a href="@guide/storyboard.html#sound-effects">Sound effects</a>.</td></tr>
@@ -164,10 +164,11 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 ]</code></pre>
 
 <h2 id="narration">Narration</h2>
-<p>Each line is spoken by the storyboard's voice and mixed into the video. By default that is an Edge voice; see <a href="@guide/voices.html">Voices</a> for local models and your own programs. Narration never overlaps: when a line overruns its slot, the video freezes to make room.</p>
+<p>Each line is spoken by the storyboard's voice and mixed into the video. By default that is an Edge voice; see <a href="@guide/voices.html">Voices</a> for local models and your own programs. Narration never overlaps: when a line overruns its slot, the video freezes to make room. <a href="@guide/variants.html#slot-fit">Slot-fit</a> reports which lines do that and can speed them up slightly instead.</p>
 <table>
 <thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
 <tbody>
+<tr><td><code>id</code></td><td>its position, from 0</td><td>A short name for the line. It must be unique. It is used in <code>timeline.json</code>, by translation files for subtitles and by script variants, so a line keeps its identity when you insert another before it. See <a href="@guide/subtitles.html#ids">Subtitles and timeline</a>.</td></tr>
 <tr><td><code>at</code></td><td>required</td><td>Source time the line starts.</td></tr>
 <tr><td><code>text</code></td><td>required</td><td>What the voice says.</td></tr>
 <tr><td><code>voice</code></td><td><code>voice.name</code></td><td>Voice for this line only, for example <code>ar-EG-ShakirNeural</code>. It replaces <code>voice.name</code> and keeps <code>voice.provider</code>, so it must be a voice of the same provider. Use it to mix languages.</td></tr>
@@ -223,6 +224,48 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
   { "src": "assets/logo.png", "x": 0.88, "y": 0.04, "w": 0.08, "h": 0.08, "opacity": 0.8 },
   { "src": "assets/webcam.mp4", "at": 5, "dur": 12, "x": 0.72, "y": 0.66, "w": 0.24, "h": 0.28, "fit": "cover", "radius": 16, "shadow": true }
 ]</code></pre>
+
+<h2 id="data-cards">Cards from data</h2>
+<p>An overlay with <code>"kind": "card"</code> is drawn from JSON when the video renders, so changing its wording needs no image editor. Use it for a list of benefits, the steps of a flow, one big number or a quote. A card covers the whole output frame between <code>at</code> and <code>at + dur</code>. Both are source seconds, through cuts and speed like other overlays. The video keeps playing under it, unlike a <a href="@guide/storyboard.html#chapter-cards">chapter card</a>, which freezes the video.</p>
+<p>The theme gives the background, the colors (<code>accent</code>, <code>captionColor</code>, <code>captionBackground</code>) and the font.</p>
+<table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>kind</code></td><td>required</td><td><code>"card"</code>. Without <code>kind</code> an overlay is an image or video.</td></tr>
+<tr><td><code>template</code></td><td>required</td><td><code>list</code>, <code>flow</code>, <code>number</code> or <code>quote</code>.</td></tr>
+<tr><td><code>data</code></td><td>required</td><td>The content. Its fields depend on the template, see below. An unknown key fails validation and the error names it.</td></tr>
+<tr><td><code>at</code>, <code>dur</code></td><td>required</td><td>Source time it appears, and how long it stays.</td></tr>
+<tr><td><code>id</code></td><td>none</td><td>A name for the card. Keep it unique: a repeat gives a warning.</td></tr>
+<tr><td><code>lang</code></td><td>from the text</td><td>Language of the text, for example <code>ar</code>, <code>he</code> or <code>en</code>. It sets the direction.</td></tr>
+<tr><td><code>motion</code></td><td><code>fade</code></td><td>Entrance and exit. See <a href="@guide/storyboard.html#motion">Motion</a>. The items of a list and the steps of a flow also come in one after another.</td></tr>
+</tbody>
+</table>
+<table>
+<thead><tr><th>Template</th><th><code>data</code> fields</th></tr></thead>
+<tbody>
+<tr><td><code>list</code></td><td><code>kicker?</code> (a small line above the title), <code>title?</code>, <code>items</code> (1 to 12 of <code>{heading, text?}</code>), <code>footer?</code></td></tr>
+<tr><td><code>flow</code></td><td><code>kicker?</code>, <code>title?</code>, <code>steps</code> (2 to 8 of <code>{label, text?}</code>, joined by arrows: a row in a wide frame with up to 4 steps, otherwise a column), <code>footer?</code></td></tr>
+<tr><td><code>number</code></td><td><code>kicker?</code>, <code>value</code> (a string or a number, the big figure), <code>label?</code> (what it counts), <code>footer?</code></td></tr>
+<tr><td><code>quote</code></td><td><code>kicker?</code>, <code>text</code>, <code>author?</code>, <code>role?</code></td></tr>
+</tbody>
+</table>
+<pre><code class="language-json">"overlays": [
+  { "kind": "card", "id": "why", "template": "list", "at": 12, "dur": 6,
+    "data": { "kicker": "الفوائد", "title": "ليه تستخدم الأداة؟",
+      "items": [ { "heading": "سريع", "text": "فيديو جاهز في دقايق من غير مونتاج." },
+                 { "heading": "بالعربي", "text": "النص والصوت من اليمين للشمال." } ],
+      "footer": "جرّب دلوقتي" } },
+  { "kind": "card", "template": "flow", "at": 30, "dur": 5,
+    "data": { "steps": [ { "label": "Record" }, { "label": "Edit", "text": "Cuts and zooms" }, { "label": "Render" } ] } },
+  { "kind": "card", "template": "number", "at": 40, "dur": 4, "data": { "value": "98%", "label": "of lines fit their slot" } },
+  { "kind": "card", "template": "quote", "at": 50, "dur": 4, "data": { "text": "The fastest way to a demo.", "author": "A. User", "role": "Editor" } }
+]</code></pre>
+<ul>
+<li><strong>Right to left works by itself.</strong> The direction comes from the text: an explicit <code>lang</code>, else the script with more words (Arabic or Hebrew), else the voice's language for text with no letters. Never put direction marks in the text.</li>
+<li><strong>Long text fits.</strong> It wraps inside its box and the font shrinks, down to 40%, until the card fits. 16:9, 9:16 and 1:1 all work.</li>
+<li><strong>Not in the timeline.</strong> <code>timeline.json</code> lists narration lines and title cards only, so data cards do not appear in caption files.</li>
+<li><strong>Not variant-able yet.</strong> A <a href="@guide/variants.html">script variant</a> cannot change a card's text.</li>
+</ul>
 
 <h2 id="music">Music</h2>
 <table>
@@ -339,7 +382,7 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 <thead><tr><th>Object</th><th>Fields and defaults</th></tr></thead>
 <tbody>
 <tr><td><code>output</code></td><td><code>width</code> 1920, <code>height</code> 1080, <code>fps</code> 30 (1 to 120)</td></tr>
-<tr><td><code>voice</code></td><td><code>provider</code> <code>edge</code> (or <code>local</code> or <code>command</code>), <code>name</code> <code>en-US-AndrewNeural</code>, <code>rate</code> <code>+0%</code> (for example <code>+10%</code> or <code>-5%</code>), <code>subtitles</code> <code>true</code> (show narration lines as subtitles), <code>gap</code> 0.3 (minimum silence between lines; the video freezes to make room), <code>volume</code> 1 (0 to 4)</td></tr>
+<tr><td><code>voice</code></td><td><code>provider</code> <code>edge</code> (or <code>local</code>, <code>command</code>, <code>elevenlabs</code> or <code>gemini</code>), <code>name</code> <code>en-US-AndrewNeural</code>, <code>rate</code> <code>+0%</code> (for example <code>+10%</code> or <code>-5%</code>), <code>subtitles</code> <code>true</code> (show narration lines as subtitles), <code>gap</code> 0.3 (minimum silence between lines; the video freezes to make room), <code>volume</code> 1 (0 to 4), <code>fit</code> (<code>max</code>, <code>auto</code>: see <a href="@guide/variants.html#slot-fit">Slot-fit</a>)</td></tr>
 </tbody>
 </table>
 <table>
@@ -348,6 +391,7 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 <tr><td><code>edge</code> (default)</td><td>An Edge voice, for example <code>ar-EG-SalmaNeural</code>. Needs the internet.</td></tr>
 <tr><td><code>local</code></td><td>A model on this computer: <code>voicetut</code>, <code>voicetut:&lt;Voice&gt;</code> such as <code>voicetut:Sarah</code>, or <code>namaa</code>. <code>rate</code> becomes a speed factor for <code>voicetut</code>; <code>namaa</code> ignores it.</td></tr>
 <tr><td><code>command</code></td><td>The key of a voice you defined in <code>voices.json</code>.</td></tr>
+<tr><td><code>elevenlabs</code>, <code>gemini</code></td><td>A cloud voice: a voice id or name on your ElevenLabs account, or a prebuilt Gemini voice such as <code>Kore</code>. They need a key and cost money. See <a href="@guide/voices.html#cloud-voices">Voices</a>.</td></tr>
 </tbody>
 </table>
 <p>A narration line's own <code>voice</code> works inside the provider. For example, with <code>"provider": "local"</code>, one line can use <code>namaa</code> and another <code>voicetut:Sarah</code>. Setup, limits and examples are on <a href="@guide/voices.html">Voices</a>.</p>
@@ -405,6 +449,7 @@ summary: The storyboard.json format: segments, holds, zooms, captions, highlight
 <div class="note">Calm tutorials suit <code>fade</code> and <code>rise</code>. Energetic social clips suit <code>pop</code> or <code>words</code> with a bouncy ease. Titles suit <code>wipe</code> or <code>words</code>.</div>
 
 <h2 id="variants">Variants: the same video with another look</h2>
+<p>This section is about the <em>look</em>. To keep the look and change the <em>script</em> (another dialect or language), see <a href="@guide/variants.html">Script variants and slot-fit</a>.</p>
 <p>To get a dark version, a brand version or a version for another channel, do not edit the storyboard. Give <code>render</code> a style file:</p>
 <pre><code class="language-sh">screenpilot render storyboard.json --style dark.json
 screenpilot sequence sequence.json --style dark.json -q draft</code></pre>
@@ -485,6 +530,7 @@ screenpilot sequence sequence.json --style dark.json -q draft</code></pre>
 <tr><td>Segment speed</td><td>Above 8x. Cut it instead.</td></tr>
 <tr><td>Video length</td><td>Output over 90 seconds or under 15 seconds.</td></tr>
 <tr><td>Cards in cut regions</td><td>A chapter card whose <code>at</code> is cut away.</td></tr>
+<tr><td>Narration does not fit (<code>[narration-fit]</code>)</td><td>A line whose voice clip needs more than a 1.18x speed-up to fit its slot. It appears once the clips exist (in a render, and in <code>sequence-validate --fit</code>), not in <code>validate</code>. See <a href="@guide/variants.html#slot-fit">Slot-fit</a>.</td></tr>
 </tbody>
 </table>
 

@@ -1,0 +1,64 @@
+<!--
+title: نسخ النص وملاءمة الأسطر
+summary: اصنع التسجيل نفسه بنص أو صوت آخر (لهجة أو لغة) من ملف variants، وتحقق من أن كل سطر تعليق صوتي يتسع للوقت المتاح له.
+-->
+<p>أحيانًا يحتاج تسجيل واحد إلى عدة نصوص: نسخة سعودية وأخرى مصرية، أو إنجليزية وعربية، أو صياغة قصيرة وأخرى طويلة. الـ <strong>variant</strong> ملف صغير يعيد كتابة التعليق الصوتي (والصوت) في الـ storyboard دون أن يمس أي شيء آخر. وتغطي هذه الصفحة أيضًا <strong>slot-fit</strong>، الذي يخبرك متى يطول سطر عن الوقت المتاح له. أما لـ <em>مظهر</em> آخر (ألوان وخطوط) بدل نص آخر فانظر <a href="@guide/storyboard.html#variants">النسخ: الفيديو نفسه بمظهر آخر</a>.</p>
+
+<h2 id="variant-file">ملف الـ variant</h2>
+<p>ضع <code>variants/&lt;name&gt;.json</code> بجوار الـ storyboard:</p>
+<pre><code class="language-json">{
+  "voice": { "name": "ar-SA-HamedNeural" },
+  "narration": { "open": "هلا، نفتح الإعدادات.", "save": "ونحفظ." },
+  "overlays": { "0": { "src": "assets/logo-sa.png" } }
+}</code></pre>
+<table>
+<thead><tr><th>الحقل</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>voice</code></td><td>إعدادات الصوت المراد استبدالها (<code>provider</code> و<code>name</code> و<code>rate</code> و<code>gap</code> و<code>subtitles</code> و<code>volume</code> و<code>fit</code>). تُدمج مفتاحًا بمفتاح: ما تتركه يبقى كما في الـ storyboard.</td></tr>
+<tr><td><code>narration</code></td><td>النص الجديد. إما كائن <code>{ "&lt;line id&gt;": "text" }</code> يسمّي الأسطر التي يغيّرها فقط، وإما مصفوفة بنص كل سطر بالترتيب. معرّف السطر هو <code>id</code>، وإلا فموضعه بدءًا من 0.</td></tr>
+<tr><td><code>overlays</code></td><td>يستبدل ملف overlay، بمفتاح موضعه في <code>overlays</code> بدءًا من 0: <code>{ "0": { "src": "file" } }</code>. كل شيء آخر في الـ overlay يبقى.</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>الـ variant يعيد الكتابة فقط.</strong> الأسطر موقّتة على التسجيل، فلا يستطيع الـ variant إضافة سطر أو حذفه. إذا سمّى سطرًا غير موجود، أو كان في المصفوفة عدد أسطر مختلف عن الـ storyboard، يفشل التحميل ويعرض الخطأ العددين.</li>
+<li>أي مفتاح آخر في الملف خطأ. وكل حقل آخر في الـ storyboard يبقى كما هو تمامًا، والـ storyboard الذي يُصيَّر بلا variant لا يتغير.</li>
+<li>البطاقات المرسومة من بيانات لا يستطيع الـ variant تغييرها بعد.</li>
+<li>المسارات في الملف نسبية إلى الـ storyboard كما في كل مكان.</li>
+</ul>
+
+<h2 id="render-variant">تصيير variant</h2>
+<pre><code class="language-sh">screenpilot render storyboard.json --variant saudi
+screenpilot render storyboard.json --variant variants/saudi.json -q draft</code></pre>
+<p>الخيار <code>--variant</code> يقبل اسمًا (يُبحث عنه كـ <code>variants/&lt;name&gt;.json</code> بجوار الـ storyboard) أو مسار ملف (القيمة التي فيها مجلد أو <code>.json</code> تعامل كملف). وعبر MCP مرّر <code>variant</code> إلى <code>render</code>.</p>
+<ul>
+<li>الخرج هو <code>&lt;name&gt;.&lt;variant&gt;.mp4</code> ويُبنى في <code>&lt;name&gt;.&lt;variant&gt;.build</code>. ومع <code>--style</code> يكون <code>&lt;name&gt;.&lt;variant&gt;.&lt;style&gt;.mp4</code>؛ ثم تأتي الصيغة (<code>.9x16</code>) والنافذة (<code>.part-12-20</code>).</li>
+<li>كاش الصوت مشترك ومفتاحه النص والصوت. إذا صيّرت الـ variant A ثم B ثم A فإن A يُصيَّر من الكاش.</li>
+<li>الخيار <code>--dry-run</code> يقدّر كلفة نص الـ variant. انظر <a href="@guide/voices.html#cost">كم تكلّف الأصوات السحابية</a>.</li>
+</ul>
+
+<h2 id="sequence-variant">الـ variants في sequence</h2>
+<pre><code class="language-sh">screenpilot sequence all.json --variant saudi
+screenpilot sequence all.json --variant saudi --variant-dir shared-variants
+screenpilot sequence-validate all.json --variant saudi</code></pre>
+<p>يأخذ كل جزء storyboard ملف <code>&lt;part folder&gt;/variants/saudi.json</code> الخاص به. والجزء الذي لا ملف له يعود إلى <code>&lt;variant-dir&gt;/saudi.json</code>. والجزء الذي ليس له هذا ولا ذاك يُصيَّر كما كُتب، وتحذّر النتيجة من ذلك. والـ variant الذي لا يوجد في أي جزء يفشل. عبر MCP: <code>variant</code> و<code>variant_dir</code> في <code>sequence_render</code> و<code>sequence_validate</code>.</p>
+<ul>
+<li>الخرج هو <code>&lt;sequence&gt;.&lt;variant&gt;.mp4</code>.</li>
+<li>الجزء الذي له الـ variant يأخذ مجلدًا ومفتاح كاش خاصين به (الاسم وبصمة الملف). أما الأجزاء التي بلا variant، وأجزاء <code>{video}</code> الجاهزة، فتُشارَك بين الـ variants، فلا يصيّر الـ variant الثاني إلا الأجزاء المختلفة.</li>
+<li>الأمر <code>sequence-validate --variant</code> يفحص الـ sequence مع تطبيق الـ variant، فيظهر خطأ عدد الأسطر قبل التصيير.</li>
+</ul>
+
+<h2 id="slot-fit">Slot-fit: هل يتسع كل سطر لمكانه؟</h2>
+<p>الـ <strong>slot</strong> لسطر التعليق هو الزمن من <code>at</code> الخاص به إلى <code>at</code> السطر التالي، مطروحًا منه <code>voice.gap</code>. السطر الأخير لا slot له. عندما يكون مقطع الصوت أطول من الـ slot يجمّد التصيير الفيديو ليفسح مكانًا. هذا يعمل، لكن التجميد في منتصف حركة يبدو غريبًا. الـ slot-fit يخبرك أي الأسطر تسبب ذلك.</p>
+<p>بعد أن تصبح مقاطع الصوت موجودة، يعرضها التصيير في <code>fit</code>: عنصر <code>{id, raw, slot, needed}</code> لكل سطر مقطعه أطول من الـ slot. الحقل <code>raw</code> هو طول المقطع بالثواني، و<code>slot</code> هو المتاح بالثواني، و<code>needed</code> هو التسريع الذي يجعله يتسع (1.25 تعني أسرع بـ 25%). والسطر الذي يتجاوز الحد يعطي أيضًا تحذير <code>[narration-fit]</code>.</p>
+<table>
+<thead><tr><th>الخيار</th><th>مدخل MCP</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--fit-max &lt;x&gt;</code></td><td><code>fit_max</code></td><td>الحد الأقصى، كعامل تسريع. الافتراضي <code>voice.fit.max</code>، وإلا 1.18، وهو أسرع ما يبقى طبيعيًا.</td></tr>
+<tr><td><code>--fit</code></td><td><code>fit</code></td><td>يسرّع المقاطع المتجاوزة حتى الحد (ffmpeg <code>atempo</code>). يُخزَّن المقطع المسرَّع بجوار الأصلي (<code>&lt;clip&gt;.x1.180.mp3</code>) ويُصنع دائمًا من المقطع الأصلي، فلا يُمَطّ مرتين عند إعادة التصيير. ويمكن ضبطه أيضًا بـ <code>voice.fit.auto</code> في الـ storyboard.</td></tr>
+<tr><td><code>--strict-fit</code></td><td><code>strict_fit</code></td><td>يفشل بدل التجميد حين يحتاج سطر أكثر من الحد.</td></tr>
+</tbody>
+</table>
+<p>الخيارات تعمل في <code>render</code> و<code>sequence</code>. الصوت الجاهز (<code>narration[].audio</code>) يُبلَّغ عنه ولا يُمَطّ أبدًا. وإذا بقي سطر متجاوزًا بعد التسريع فالتحذير يقول ذلك، والحل نص أقصر.</p>
+<pre><code class="language-json">"voice": { "name": "en-US-AndrewNeural", "fit": { "max": 1.15, "auto": true } }</code></pre>
+<p>الأمر <code>screenpilot sequence-validate --fit</code> (في MCP: <code>sequence_validate</code> مع <code>fit: true</code> و<code>fit_max</code>) يفحص المقاطع الموجودة فعلًا في كاش الصوت دون صنع أي مقطع، ويعدّ الأسطر التي لا مقطع لها. أوقف التحذير بـ <code>lint.off: ["narration-fit"]</code>.</p>
+<div class="note">الـ variants والـ slot-fit يعملان معًا: الصياغة الأطول بلغة أخرى هي السبب المعتاد لأن يتوقف سطر عن الاتساع. صيّر الـ variant بـ <code>--fit</code> أو اقرأ قائمة <code>fit</code> واختصر النص.</div>

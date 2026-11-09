@@ -1,0 +1,41 @@
+<!--
+title: Long renders
+summary: Render a long video without blocking your machine: stop cleanly with abort, pause and resume at a part or chunk, the memory guard, and why the output file is always playable.
+-->
+<p>A render takes about as long as the video, and longer at <code>delivery</code>. This page is about living with that: stopping a render, pausing it when you need the computer, and keeping a render from running the machine out of memory. How chunks and caching speed up a re-render after an edit is on <a href="@guide/cli.html#long-renders">the command line page</a>.</p>
+
+<h2 id="partial-file">The output is written as a partial file</h2>
+<p>A render writes <code>&lt;name&gt;.partial.mp4</code> and renames it to <code>&lt;name&gt;.mp4</code> only when the video is complete. So a file with the final name is always playable, and a half-written file is never mistaken for a result. This applies to the joined video of a sequence too.</p>
+
+<h2 id="abort">Stop a render</h2>
+<p>Ctrl+C in the terminal, the <code>abort</code> tool, or cancelling the call in your AI app stops the render <strong>and everything it started</strong>: HyperFrames, Chrome and ffmpeg. They get a termination signal, and a kill after 5 seconds if they do not stop. On Windows the whole process tree is ended. The partial file is removed. Chunks and parts that already finished stay in the cache, so the next render carries on from them.</p>
+<p>Quitting the AI app, which closes the ScreenPilot server, stops its renders too.</p>
+
+<h2 id="pause">Pause and resume</h2>
+<p>If you need the machine in the middle of a render (a meeting, a game), pause it instead of stopping it. The render finishes the part in progress (for a part or video of 5 minutes or more: the chunk in progress), saves where it stopped, and exits cleanly. Nothing is lost.</p>
+<pre><code class="language-sh">screenpilot pause all.json     # the sequence or storyboard being rendered
+screenpilot pause              # no path: every render running now
+screenpilot resume all.json    # later: carries on with the same options</code></pre>
+<ul>
+<li><code>pause</code> drops a <code>.pause</code> file into the render's build folder. The render sees it at the next part or chunk boundary, writes <code>.paused.json</code> and stops. The render's own call (or command) then returns <code>{paused: true, partsDone, parts, resume}</code> and the command exits with code 0. <code>parts</code> lists each part as <code>done</code>, <code>in progress</code> or <code>waiting</code> (with chunk counts when it is chunked), and <code>resume</code> is the command to run.</li>
+<li><code>resume &lt;path&gt;</code> renders again with the options the render started with. Every finished part and chunk is a cache hit, so only the rest renders. You may change <code>--workers</code>, <code>--min-free-mem</code> and <code>--mem-timeout</code> for the rest.</li>
+<li>Both take <code>--build-dir &lt;dir&gt;</code> when the build folder is not the default one.</li>
+<li>A pause request that is older than the render's start is ignored, so an old <code>.pause</code> file cannot stop a new render.</li>
+</ul>
+<p>Over MCP, the <code>pause</code> tool takes <code>sequence</code> or <code>storyboard</code> (or neither, to pause every render running now) and <code>build_dir</code>. The <code>resume</code> tool takes <code>sequence</code> or <code>storyboard</code> plus <code>workers</code>, <code>min_free_mem</code> and <code>mem_timeout</code>. Without arguments, <code>resume</code> keeps its older job: carrying on after someone moved the mouse while the agent drove the desktop.</p>
+<div class="note">A pause stops at a boundary, not instantly. A single long part with no chunks finishes completely first. Parts, or chunks inside a video of 5 minutes or more, are what give a render its pause points.</div>
+
+<h2 id="memory">The memory guard</h2>
+<p>Each render worker is a headless Chrome, and several can run at once. Before it starts each part or chunk, a render waits until enough memory is free. If memory does not come back in time, it fails with the measured numbers, and the finished parts and chunks stay cached.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--min-free-mem &lt;MB&gt;</code></td><td>Memory that must be available before each part or chunk. Default 1500. <code>0</code> turns the guard off. <code>SCREENPILOT_MIN_FREE_MEM</code> sets the default; the flag wins.</td></tr>
+<tr><td><code>--mem-timeout &lt;s&gt;</code></td><td>The longest wait for that memory, then the render fails with the numbers. Default 300.</td></tr>
+</tbody>
+</table>
+<p>Both flags are on <code>render</code>, <code>sequence</code> and <code>resume</code>; over MCP they are <code>min_free_mem</code> and <code>mem_timeout</code>. On Linux the guard reads <code>MemAvailable</code>; on other systems it uses what the operating system reports as free.</p>
+<p>The result of a render has <code>peakRssMB</code>: the highest memory used by the render's child processes, sampled while it ran. It is useful for choosing <code>--workers</code>. It is not reported on Windows.</p>
+
+<h2 id="before-you-pay">Before a long render with a paid voice</h2>
+<p>A render with a cloud voice can cost money. Run it with <code>--dry-run</code> first to see the number: <a href="@guide/voices.html#cost">What cloud voices cost</a>.</p>

@@ -34,7 +34,7 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <tr><td><code>narration</code></td><td><code>[]</code></td><td>أسطر التعليق الصوتي.</td></tr>
 <tr><td><code>intro</code>, <code>outro</code></td><td>لا شيء</td><td>بطاقات العنوان قبل الفيديو وبعده.</td></tr>
 <tr><td><code>cards</code></td><td><code>[]</code></td><td>بطاقات فصول في منتصف الفيديو. انظر <a href="@guide/storyboard.html#chapter-cards">بطاقات الفصول</a>.</td></tr>
-<tr><td><code>overlays</code></td><td><code>[]</code></td><td>صور وفيديو وشعارات فوق الإطار. انظر <a href="@guide/storyboard.html#overlays">الـ overlays</a>.</td></tr>
+<tr><td><code>overlays</code></td><td><code>[]</code></td><td>صور وفيديو وشعارات فوق الإطار، أو بطاقات مرسومة من بيانات. انظر <a href="@guide/storyboard.html#overlays">الـ overlays</a> و<a href="@guide/storyboard.html#data-cards">بطاقات من بيانات</a>.</td></tr>
 <tr><td><code>music</code></td><td>لا شيء</td><td>موسيقى خلفية، ويمكن خفضها تحت الصوت.</td></tr>
 <tr><td><code>audio</code></td><td>لا شيء</td><td>ضبط علو الصوت وتقليل الضجيج. انظر <a href="@guide/storyboard.html#audio">مزج الصوت</a>.</td></tr>
 <tr><td><code>sfx</code> و<code>sounds</code> و<code>typing</code></td><td><code>[]</code> ولا شيء و<code>[]</code></td><td>مؤثرات صوتية في أوقات تختارها، وأصوات تلقائية للنقرات والكتابة والبطاقات. انظر <a href="@guide/storyboard.html#sound-effects">المؤثرات الصوتية</a>.</td></tr>
@@ -164,10 +164,11 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 ]</code></pre>
 
 <h2 id="narration">Narration</h2>
-<p>يقرأ كل سطر صوتُ الـ storyboard ويُمزج في الفيديو. الافتراضي صوت Edge؛ انظر <a href="@guide/voices.html">الأصوات</a> للنماذج المحلية ولبرامجك الخاصة. التعليق الصوتي لا يتداخل أبدًا: إذا تجاوز سطر مكانه، يتجمد الفيديو ليفسح له.</p>
+<p>يقرأ كل سطر صوتُ الـ storyboard ويُمزج في الفيديو. الافتراضي صوت Edge؛ انظر <a href="@guide/voices.html">الأصوات</a> للنماذج المحلية ولبرامجك الخاصة. التعليق الصوتي لا يتداخل أبدًا: إذا تجاوز سطر مكانه، يتجمد الفيديو ليفسح له. يخبرك <a href="@guide/variants.html#slot-fit">Slot-fit</a> أي الأسطر تفعل ذلك، ويستطيع تسريعها قليلًا بدل التجميد.</p>
 <table>
 <thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
 <tbody>
+<tr><td><code>id</code></td><td>موضعه بدءًا من 0</td><td>اسم قصير للسطر. يجب أن يكون فريدًا. يُستخدم في <code>timeline.json</code> وفي ملفات ترجمة الـ subtitles وفي variants النص، فيحتفظ السطر بهويته حين تُدخل سطرًا آخر قبله. انظر <a href="@guide/subtitles.html#ids">الترجمة والـ timeline</a>.</td></tr>
 <tr><td><code>at</code></td><td>مطلوب</td><td>زمن المصدر الذي يبدأ عنده السطر.</td></tr>
 <tr><td><code>text</code></td><td>مطلوب</td><td>ما يقوله الصوت.</td></tr>
 <tr><td><code>voice</code></td><td><code>voice.name</code></td><td>صوت لهذا السطر وحده، مثل <code>ar-EG-ShakirNeural</code>. يستبدل <code>voice.name</code> ويُبقي <code>voice.provider</code>، فيجب أن يكون صوتًا من المزوّد نفسه. استخدمه للمزج بين لغتين.</td></tr>
@@ -223,6 +224,48 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
   { "src": "assets/logo.png", "x": 0.88, "y": 0.04, "w": 0.08, "h": 0.08, "opacity": 0.8 },
   { "src": "assets/webcam.mp4", "at": 5, "dur": 12, "x": 0.72, "y": 0.66, "w": 0.24, "h": 0.28, "fit": "cover", "radius": 16, "shadow": true }
 ]</code></pre>
+
+<h2 id="data-cards">بطاقات من بيانات</h2>
+<p>الـ overlay الذي فيه <code>"kind": "card"</code> يُرسم من JSON عند تصيير الفيديو، فلا يحتاج تغيير صياغته إلى برنامج تعديل صور. استخدمه لقائمة فوائد، أو لخطوات مسار، أو لرقم كبير واحد، أو لاقتباس. تغطي البطاقة إطار الخرج كله بين <code>at</code> و<code>at + dur</code>. وكلاهما بثواني المصدر، يمر عبر القصّ والسرعة كبقية الـ overlays. يستمر الفيديو بالتشغيل تحتها، بخلاف <a href="@guide/storyboard.html#chapter-cards">بطاقة الفصل</a> التي تجمّد الفيديو.</p>
+<p>الـ theme يحدد الخلفية والألوان (<code>accent</code> و<code>captionColor</code> و<code>captionBackground</code>) والخط.</p>
+<table>
+<thead><tr><th>الحقل</th><th>الافتراضي</th><th>المعنى</th></tr></thead>
+<tbody>
+<tr><td><code>kind</code></td><td>مطلوب</td><td><code>"card"</code>. بلا <code>kind</code> يكون الـ overlay صورة أو فيديو.</td></tr>
+<tr><td><code>template</code></td><td>مطلوب</td><td><code>list</code> أو <code>flow</code> أو <code>number</code> أو <code>quote</code>.</td></tr>
+<tr><td><code>data</code></td><td>مطلوب</td><td>المحتوى. حقوله تتبع القالب، انظر أدناه. المفتاح غير المعروف يفشل في التحقق ويذكر الخطأ اسمه.</td></tr>
+<tr><td><code>at</code>, <code>dur</code></td><td>مطلوب</td><td>زمن المصدر الذي تظهر عنده، ومدة بقائها.</td></tr>
+<tr><td><code>id</code></td><td>لا شيء</td><td>اسم للبطاقة. أبقِه فريدًا: التكرار يعطي تحذيرًا.</td></tr>
+<tr><td><code>lang</code></td><td>من النص</td><td>لغة النص، مثل <code>ar</code> أو <code>he</code> أو <code>en</code>. تحدد الاتجاه.</td></tr>
+<tr><td><code>motion</code></td><td><code>fade</code></td><td>الدخول والخروج. انظر <a href="@guide/storyboard.html#motion">الحركة</a>. وعناصر القائمة وخطوات المسار تدخل أيضًا واحدًا بعد الآخر.</td></tr>
+</tbody>
+</table>
+<table>
+<thead><tr><th>القالب</th><th>حقول <code>data</code></th></tr></thead>
+<tbody>
+<tr><td><code>list</code></td><td><code>kicker?</code> (سطر صغير فوق العنوان)، <code>title?</code>، <code>items</code> (من 1 إلى 12 عنصرًا <code>{heading, text?}</code>)، <code>footer?</code></td></tr>
+<tr><td><code>flow</code></td><td><code>kicker?</code>، <code>title?</code>، <code>steps</code> (من 2 إلى 8 خطوات <code>{label, text?}</code> تصل بينها أسهم: صف واحد في إطار عريض حتى 4 خطوات، وإلا عمود)، <code>footer?</code></td></tr>
+<tr><td><code>number</code></td><td><code>kicker?</code>، <code>value</code> (نص أو رقم، وهو الرقم الكبير)، <code>label?</code> (ما الذي يعدّه)، <code>footer?</code></td></tr>
+<tr><td><code>quote</code></td><td><code>kicker?</code>، <code>text</code>، <code>author?</code>، <code>role?</code></td></tr>
+</tbody>
+</table>
+<pre><code class="language-json">"overlays": [
+  { "kind": "card", "id": "why", "template": "list", "at": 12, "dur": 6,
+    "data": { "kicker": "الفوائد", "title": "ليه تستخدم الأداة؟",
+      "items": [ { "heading": "سريع", "text": "فيديو جاهز في دقايق من غير مونتاج." },
+                 { "heading": "بالعربي", "text": "النص والصوت من اليمين للشمال." } ],
+      "footer": "جرّب دلوقتي" } },
+  { "kind": "card", "template": "flow", "at": 30, "dur": 5,
+    "data": { "steps": [ { "label": "Record" }, { "label": "Edit", "text": "Cuts and zooms" }, { "label": "Render" } ] } },
+  { "kind": "card", "template": "number", "at": 40, "dur": 4, "data": { "value": "98%", "label": "of lines fit their slot" } },
+  { "kind": "card", "template": "quote", "at": 50, "dur": 4, "data": { "text": "The fastest way to a demo.", "author": "A. User", "role": "Editor" } }
+]</code></pre>
+<ul>
+<li><strong>الكتابة من اليمين إلى اليسار تعمل تلقائيًا.</strong> الاتجاه يأتي من النص: <code>lang</code> صريح، وإلا الخط الذي فيه كلمات أكثر (العربية أو العبرية)، وإلا لغة الصوت للنص الذي لا حروف فيه. لا تضع علامات اتجاه في النص أبدًا.</li>
+<li><strong>النص الطويل يتسع.</strong> يلتف داخل صندوقه ويصغر الخط، حتى 40%، إلى أن تتسع البطاقة. وتعمل النسب 16:9 و9:16 و1:1 كلها.</li>
+<li><strong>ليست في الـ timeline.</strong> يسرد <code>timeline.json</code> أسطر التعليق وبطاقات العنوان فقط، فلا تظهر البطاقات المرسومة من بيانات في ملفات الترجمة.</li>
+<li><strong>لا يغيّرها الـ variant بعد.</strong> لا يستطيع <a href="@guide/variants.html">variant النص</a> تغيير نص بطاقة.</li>
+</ul>
 
 <h2 id="music">Music</h2>
 <table>
@@ -339,7 +382,7 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <thead><tr><th>الكائن</th><th>الحقول والقيم الافتراضية</th></tr></thead>
 <tbody>
 <tr><td><code>output</code></td><td><code>width</code> 1920 و<code>height</code> 1080 و<code>fps</code> 30 (من 1 إلى 120)</td></tr>
-<tr><td><code>voice</code></td><td><code>provider</code> <code>edge</code> (أو <code>local</code> أو <code>command</code>)، <code>name</code> <code>en-US-AndrewNeural</code>، <code>rate</code> <code>+0%</code> (مثل <code>+10%</code> أو <code>-5%</code>)، <code>subtitles</code> <code>true</code> (إظهار أسطر التعليق كترجمة)، <code>gap</code> 0.3 (أقل صمت بين الأسطر؛ يتجمد الفيديو ليفسح له)، <code>volume</code> 1 (من 0 إلى 4)</td></tr>
+<tr><td><code>voice</code></td><td><code>provider</code> <code>edge</code> (أو <code>local</code> أو <code>command</code> أو <code>elevenlabs</code> أو <code>gemini</code>)، <code>name</code> <code>en-US-AndrewNeural</code>، <code>rate</code> <code>+0%</code> (مثل <code>+10%</code> أو <code>-5%</code>)، <code>subtitles</code> <code>true</code> (إظهار أسطر التعليق كترجمة)، <code>gap</code> 0.3 (أقل صمت بين الأسطر؛ يتجمد الفيديو ليفسح له)، <code>volume</code> 1 (من 0 إلى 4)، <code>fit</code> (<code>max</code> و<code>auto</code>: انظر <a href="@guide/variants.html#slot-fit">Slot-fit</a>)</td></tr>
 </tbody>
 </table>
 <table>
@@ -348,6 +391,7 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <tr><td><code>edge</code> (افتراضي)</td><td>صوت Edge، مثل <code>ar-EG-SalmaNeural</code>. يحتاج إلى الإنترنت.</td></tr>
 <tr><td><code>local</code></td><td>نموذج على هذا الجهاز: <code>voicetut</code> أو <code>voicetut:&lt;Voice&gt;</code> مثل <code>voicetut:Sarah</code> أو <code>namaa</code>. الحقل <code>rate</code> يتحول إلى معامل سرعة في <code>voicetut</code>؛ أما <code>namaa</code> فيتجاهله.</td></tr>
 <tr><td><code>command</code></td><td>مفتاح صوت عرّفته في <code>voices.json</code>.</td></tr>
+<tr><td><code>elevenlabs</code>, <code>gemini</code></td><td>صوت سحابي: معرّف صوت أو اسمه في حسابك على ElevenLabs، أو صوت Gemini جاهز مثل <code>Kore</code>. يحتاجان مفتاحًا ويكلّفان مالًا. انظر <a href="@guide/voices.html#cloud-voices">الأصوات</a>.</td></tr>
 </tbody>
 </table>
 <p>الحقل <code>voice</code> الخاص بسطر التعليق يعمل داخل المزوّد نفسه. فمثلًا مع <code>"provider": "local"</code> يمكن لسطر أن يستخدم <code>namaa</code> ولآخر أن يستخدم <code>voicetut:Sarah</code>. الإعداد والحدود والأمثلة في <a href="@guide/voices.html">الأصوات</a>.</p>
@@ -405,6 +449,7 @@ summary: صيغة storyboard.json: segments وholds وzooms وcaptions وhighlig
 <div class="note">الشروحات الهادئة تناسبها <code>fade</code> و<code>rise</code>. مقاطع التواصل الاجتماعي النشطة يناسبها <code>pop</code> أو <code>words</code> مع ease مرتد. والعناوين يناسبها <code>wipe</code> أو <code>words</code>.</div>
 
 <h2 id="variants">النسخ: الفيديو نفسه بمظهر آخر</h2>
+<p>هذا القسم عن <em>المظهر</em>. وإن أردت إبقاء المظهر وتغيير <em>النص</em> (لهجة أو لغة أخرى) فانظر <a href="@guide/variants.html">نسخ النص وملاءمة الأسطر</a>.</p>
 <p>للحصول على نسخة داكنة أو نسخة بهوية علامة أو نسخة لقناة أخرى، لا تعدّل الـ storyboard. أعطِ <code>render</code> ملف style:</p>
 <pre><code class="language-sh">screenpilot render storyboard.json --style dark.json
 screenpilot sequence sequence.json --style dark.json -q draft</code></pre>
@@ -485,6 +530,7 @@ screenpilot sequence sequence.json --style dark.json -q draft</code></pre>
 <tr><td>سرعة segment</td><td>فوق 8x. اقصصه بدلًا من ذلك.</td></tr>
 <tr><td>طول الفيديو</td><td>خرج أطول من 90 ثانية أو أقصر من 15 ثانية.</td></tr>
 <tr><td>بطاقات في مناطق مقصوصة</td><td>بطاقة فصل يقع <code>at</code> الخاص بها في جزء مقصوص.</td></tr>
+<tr><td>التعليق لا يتسع (<code>[narration-fit]</code>)</td><td>سطر يحتاج مقطع صوته إلى تسريع أكبر من 1.18 مرة ليتسع لمكانه. يظهر بعد وجود المقاطع (في التصيير، وفي <code>sequence-validate --fit</code>)، لا في <code>validate</code>. انظر <a href="@guide/variants.html#slot-fit">Slot-fit</a>.</td></tr>
 </tbody>
 </table>
 

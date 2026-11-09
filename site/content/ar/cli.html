@@ -147,6 +147,17 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <pre><code class="language-sh">printf '%s' "$GEMINI_API_KEY" | screenpilot secret set gemini
 screenpilot secret status</code></pre>
 
+<h3 id="spend">spend</h3>
+<p>الأمر <code>screenpilot spend</code> يجمع ما كلّفته الأصوات السحابية حتى الآن، حسب المزوّد، من سجل الإنفاق (<code>spend.jsonl</code> في مجلد الإعدادات). لا يدخل السجل إلا الطلبات المحاسَبة: الإصابة في الكاش والطلب الفاشل والصوت المجاني لا تدخل. المفتاح والنص لا يُكتبان أبدًا. الأرقام تقديرات من سعرك لكل credit، لا فاتورة. تشرح <a href="@guide/voices.html#cost">كم تكلّف الأصوات السحابية</a> معنى الـ credit وكيف تضبط السعر.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--since &lt;date&gt;</code></td><td>الطلبات من هذا اليوم فصاعدًا (<code>2026-11-01</code>) أو من هذا الوقت (ISO) فقط.</td></tr>
+<tr><td><code>--json</code></td><td>يطبع المجاميع وكل الصفوف بصيغة JSON.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-sh">screenpilot spend --since 2026-11-01</code></pre>
+
 <h3 id="script">script</h3>
 <p><code>screenpilot script &lt;storyboard&gt;</code> يكتب التعليق الصوتي كسكريبت للصقه في موقع تحويل النص إلى كلام: النص، وتعليمات قصيرة، وجدول بالمتاح لكل سطر. الخرج الافتراضي <code>&lt;storyboard&gt;.script.md</code>، وتغيّره بـ <code>-o, --out</code>. <a href="@guide/voices.html#external-audio">صفحة الأصوات</a> تشرح الخطوات كاملة.</p>
 
@@ -166,7 +177,7 @@ screenpilot secret status</code></pre>
 <h2 id="render-and-check">التصيير والفحص</h2>
 
 <h3 id="render">render</h3>
-<p>الأمر <code>screenpilot render &lt;storyboard&gt;</code> يولّد الصوت ويقصّ الفيديو ويصيّر ملف MP4. يستغرق دقائق. يطبع مسار الملف والمدة وفترات التجميد التي أضافها (<code>autoHolds</code>) والتحذيرات. إذا كان سطر التعليق الصوتي أطول من مكانه، يجمّد التصيير الفيديو كي لا تتداخل الأسطر.</p>
+<p>الأمر <code>screenpilot render &lt;storyboard&gt;</code> يولّد الصوت ويقصّ الفيديو ويصيّر ملف MP4. يستغرق دقائق. يطبع مسار الملف والمدة وفترات التجميد التي أضافها (<code>autoHolds</code>) وأسطر التعليق التي تحتاج تسريعًا لتتسع (<code>fit</code>) وملف <code>timeline</code> والتحذيرات. إذا كان سطر التعليق الصوتي أطول من مكانه، يجمّد التصيير الفيديو كي لا تتداخل الأسطر. يُكتب الفيديو باسم <code>&lt;name&gt;.partial.mp4</code> ويُعاد تسميته عند اكتماله، ويُكتب <code>&lt;name&gt;.timeline.json</code> بجواره (انظر <a href="@guide/subtitles.html#timeline">الترجمة والـ timeline</a>).</p>
 <table>
 <thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
 <tbody>
@@ -178,9 +189,17 @@ screenpilot secret status</code></pre>
 <tr><td><code>--from &lt;s&gt;</code>, <code>--to &lt;s&gt;</code></td><td>يصيّر هذه النافذة فقط، بثواني <strong>الخرج</strong>. انظر <a href="@guide/cli.html#partial">التصيير الجزئي</a>.</td></tr>
 <tr><td><code>--formats &lt;list&gt;</code></td><td>يصيّر مرة لكل صيغة، مثل <code>16:9,9:16,1:1</code>. انظر <a href="@guide/cli.html#formats">عدة صيغ</a>.</td></tr>
 <tr><td><code>--style &lt;file&gt;</code></td><td>يصيّر بمظهر آخر: ملف style (<code>{ "theme": {...} }</code>) يُدمج فوق theme الـ storyboard. يكتب <code>&lt;storyboard&gt;.&lt;style&gt;.mp4</code> بمجلد بناء خاص به. انظر <a href="@guide/storyboard.html#variants">النسخ</a>.</td></tr>
+<tr><td><code>--variant &lt;file|name&gt;</code></td><td>يصيّر التسجيل نفسه بنص آخر: ملف variants يعيد كتابة نص التعليق أو الصوت أو ملفات overlay. الاسم يُبحث عنه كـ <code>variants/&lt;name&gt;.json</code> بجوار الـ storyboard. يكتب <code>&lt;storyboard&gt;.&lt;variant&gt;.mp4</code> بمجلد بناء خاص به. انظر <a href="@guide/variants.html">نسخ النص وملاءمة الأسطر</a>.</td></tr>
+<tr><td><code>--fit</code></td><td>يسرّع مقاطع التعليق التي تتجاوز مكانها حتى الحد الأقصى لتتسع. يُخزَّن المقطع المسرَّع ولا يُمَطّ مرتين.</td></tr>
+<tr><td><code>--strict-fit</code></td><td>يفشل عندما يحتاج مقطع تعليق أكثر من الحد الأقصى ليتسع، بدل تجميد الفيديو.</td></tr>
+<tr><td><code>--fit-max &lt;x&gt;</code></td><td>الحد الأقصى لـ <code>--fit</code> و<code>--strict-fit</code> كعامل تسريع. الافتراضي <code>voice.fit.max</code>، وإلا 1.18. انظر <a href="@guide/variants.html#slot-fit">Slot-fit</a>.</td></tr>
+<tr><td><code>--dry-run</code></td><td>يطبع عدد الأسطر والأحرف والكلفة التقديرية بالدولار التي سيكلّفها الصوت ثم يتوقف: بلا طلب ولا ملف ولا مدخل كاش. انظر <a href="@guide/voices.html#cost">كم تكلّف الأصوات السحابية</a>.</td></tr>
+<tr><td><code>--min-free-mem &lt;MB&gt;</code>, <code>--mem-timeout &lt;s&gt;</code></td><td>ينتظر قبل كل chunk حتى تتوفر هذه الذاكرة (الافتراضي 1500، والقيمة <code>0</code> توقف الحارس) لمدة هذا العدد من الثواني على الأكثر (الافتراضي 300)، ثم يفشل مع الأرقام. انظر <a href="@guide/long-renders.html#memory">حارس الذاكرة</a>.</td></tr>
 <tr><td><code>--no-chunks</code></td><td>يصيّر قطعة واحدة. افتراضيًا يُصيَّر الفيديو (أو نافذة <code>--from</code>/<code>--to</code>) الذي مدته 5 دقائق أو أكثر على شكل أجزاء مخزّنة مؤقتًا. انظر <a href="@guide/cli.html#long-renders">التصيير الطويل</a>.</td></tr>
 <tr><td><code>--chunk-seconds &lt;n&gt;</code></td><td>طول تلك الأجزاء بالثواني. الافتراضي 180 والحد الأدنى 10.</td></tr>
 <tr><td><code>--subtitles &lt;list&gt;</code></td><td>يكتب أيضًا ملفات ترجمة من التعليق الصوتي: <code>srt</code> أو <code>vtt</code> أو <code>srt,vtt</code>. انظر <a href="@guide/cli.html#extras">ملفات الترجمة والمخرجات الإضافية</a>.</td></tr>
+<tr><td><code>--subtitle-lang &lt;list&gt;</code></td><td>ملف ترجمة لكل لغة: <code>ar,en=en.json,es=es.json</code>. الرمز وحده يستخدم أسطر الفيديو نفسه، و<code>code=file</code> يستخدم ملف ترجمة. يكتب <code>&lt;video&gt;.&lt;code&gt;.srt</code> و<code>.vtt</code> بدل الملفين العاديين. انظر <a href="@guide/subtitles.html#at-render">الترجمة والـ timeline</a>.</td></tr>
+<tr><td><code>--subtitle-chars &lt;n&gt;</code></td><td>عدد الأحرف في سطر الترجمة مع <code>--subtitle-lang</code>. الافتراضي 42، وسطران كحد أقصى في الترجمة الواحدة.</td></tr>
 <tr><td><code>--also &lt;list&gt;</code></td><td>يصنع أيضًا ملف <code>gif</code> أو <code>webm</code> أو صورة <code>poster</code> بصيغة PNG من الفيديو النهائي (قائمة مفصولة بفواصل).</td></tr>
 <tr><td><code>--poster-at &lt;s&gt;</code></td><td>وقت إطار الـ poster بثواني الخرج. الافتراضي: ربع المدة.</td></tr>
 <tr><td><code>--build-dir &lt;dir&gt;</code></td><td>المجلد الذي يُكتب فيه مشروع HyperFrames. غير مسموح مع <code>--formats</code>.</td></tr>
@@ -226,6 +245,7 @@ screenpilot secret status</code></pre>
 </tbody>
 </table>
 <p>تُسرد الملفات تحت <code>files</code> في النتيجة. وهي تتبع <code>--from</code> و<code>--to</code> (الرندر الجزئي يكتب ترجمة تلك النافذة) و<code>--formats</code> (مجموعة لكل صيغة).</p>
+<p>لعدة لغات، ولفيديو مصيَّر سابقًا، ولمسارات الترجمة المنفصلة داخل الفيديو، انظر <a href="@guide/subtitles.html">الترجمة والـ timeline</a> و<a href="@guide/cli.html#subs">subs</a>.</p>
 
 <h3 id="quality">مستويات الجودة</h3>
 <table>
@@ -249,7 +269,10 @@ screenpilot secret status</code></pre>
 <li>التعديل الذي يزيح كل ما بعده بعدد صحيح من الثواني (hold لثانيتين أو card) تبقى معه الأجزاء اللاحقة. أما الإزاحة الكسرية، وهي ما يسببه معظم تغييرات طول التعليق الصوتي، فتُصيَّر الأجزاء اللاحقة من جديد.</li>
 <li>الجزء الفاشل يذكر مدى الخرج الخاص به. أعد التصيير فيكمل من الأجزاء التي انتهت.</li>
 <li>الخيار <code>--no-chunks</code> يصيّر قطعة واحدة. والخيار <code>--chunk-seconds &lt;n&gt;</code> يضبط طول الجزء.</li>
+<li><strong>الإيقاف آمن.</strong> الضغط على Ctrl+C (أو أداة <code>abort</code>) يوقف التصيير مع شجرة عملياته كلها، ويُكتب الفيديو باسم <code>&lt;name&gt;.partial.mp4</code> ولا يُعاد تسميته إلا عند اكتماله، فيكون أي ملف باسمه النهائي صالحًا للتشغيل دائمًا.</li>
+<li><strong>أوقف مؤقتًا حين تحتاج الجهاز.</strong> الأمر <a href="@guide/cli.html#pause">pause</a> يتوقف بعد الجزء أو الـ chunk الجاري، والأمر <a href="@guide/cli.html#resume">resume</a> يتابع من الكاش.</li>
 </ul>
+<p>صفحة <a href="@guide/long-renders.html">التصيير الطويل</a> فيها تفاصيل الإيقاف المؤقت والاستئناف وحارس الذاكرة.</p>
 <div class="note">الأجزاء تسرّع التصيير بعد تعديل صغير، لا التصيير الأول. ولدمج تسجيلات مختلفة تبقى الطريقة هي <a href="@guide/cli.html#sequence">sequence</a> من الأجزاء.</div>
 
 <h3 id="build">build</h3>
@@ -259,13 +282,50 @@ screenpilot secret status</code></pre>
 <p>الأمر <code>screenpilot preview &lt;storyboard&gt;</code> يبني الـ storyboard ويفتح HyperFrames Studio لتتنقل داخل الفيديو.</p>
 
 <h3 id="check">check</h3>
-<p>الأمر <code>screenpilot check &lt;video&gt;</code> يستخرج لقطات من فيديو مصيَّر لتراجع النتيجة. الأزمنة بثواني الخرج. يطبع المدة، وهل في الفيديو صوت، وملفات اللقطات.</p>
+<p>الأمر <code>screenpilot check &lt;video&gt;</code> يستخرج لقطات من فيديو مصيَّر لتراجع النتيجة. الأزمنة بثواني الخرج. يطبع المدة، وهل في الفيديو صوت، وملفات اللقطات. وعندما يوجد <code>&lt;video&gt;.timeline.json</code> يتحقق أيضًا من أن زمن ترجمة كل سطر تعليق يقع على الصوت، ويسرد تحت <code>sync</code> الأسطر التي يزيد الفرق فيها على 0.4 ثانية. انظر <a href="@guide/subtitles.html#sync-check">الترجمة والـ timeline</a>.</p>
 <table>
 <thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
 <tbody>
 <tr><td><code>--at &lt;times&gt;</code></td><td>ثوانٍ مفصولة بفواصل، بزمن الخرج.</td></tr>
 <tr><td><code>--every &lt;n&gt;</code></td><td>لقطات موزعة بالتساوي. الافتراضي 8.</td></tr>
 <tr><td><code>-o, --out &lt;dir&gt;</code></td><td>مجلد الإخراج. الافتراضي <code>&lt;video&gt;.check</code> بجوار الفيديو.</td></tr>
+<tr><td><code>--no-sync</code></td><td>يتخطى فحص تزامن الترجمة.</td></tr>
+</tbody>
+</table>
+
+<h3 id="subs">subs</h3>
+<p>الأمر <code>screenpilot subs &lt;video&gt;</code> يكتب ملفات ترجمة لفيديو مصيَّر سابقًا، من <code>&lt;video&gt;.timeline.json</code> الخاص به. لا يصيّر شيئًا. يطبع الملفات والـ timeline والمدة والتحذيرات.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--lang &lt;list&gt;</code></td><td>اللغات: <code>ar,en=en.json,es=es.json</code>. الرمز وحده يستخدم أسطر الفيديو نفسه، و<code>code=file</code> يستخدم ملف ترجمة. يكتب <code>&lt;video&gt;.&lt;code&gt;.srt|vtt</code>. بدونه يُكتب ملفان عاديان <code>&lt;video&gt;.srt|vtt</code>.</td></tr>
+<tr><td><code>--formats &lt;list&gt;</code></td><td><code>srt</code> أو <code>vtt</code> أو <code>srt,vtt</code>. الافتراضي <code>srt,vtt</code>.</td></tr>
+<tr><td><code>--chars &lt;n&gt;</code></td><td>عدد الأحرف في سطر الترجمة. الافتراضي 42، وسطران كحد أقصى في الترجمة الواحدة.</td></tr>
+<tr><td><code>--join &lt;list&gt;</code></td><td>لفيديو جُمع خارج ScreenPilot: ملفات timeline أجزائه بالترتيب، بدل <code>&lt;video&gt;.timeline.json</code>.</td></tr>
+<tr><td><code>--transition &lt;s&gt;</code>, <code>--transition-type &lt;type&gt;</code></td><td>مع <code>--join</code>: تراكب الانتقال الذي جُمع به الفيديو (الافتراضي 0، أي قطع مباشر) ونوعه (الافتراضي <code>crossfade</code>).</td></tr>
+<tr><td><code>--mux</code></td><td>يضيف الملفات أيضًا إلى الفيديو كمسارات ترجمة منفصلة مع بيانات اللغة، في <code>&lt;video&gt;.subs.&lt;ext&gt;</code>. لا يُعاد ترميز شيء والأصل لا يُمَس.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-sh">screenpilot subs demo.mp4 --lang ar,en=en.json --mux</code></pre>
+<p>تشرح صفحة <a href="@guide/subtitles.html">الترجمة والـ timeline</a> ملفات الترجمة وقواعد تقسيمها.</p>
+
+<h3 id="pause">pause</h3>
+<p>الأمر <code>screenpilot pause [path]</code> يوقف مؤقتًا <code>render</code> أو <code>sequence</code> جاريًا. ينهي الجزء الجاري (أو الـ chunk، للجزء أو الفيديو الذي مدته 5 دقائق أو أكثر)، ويحفظ موضع توقفه، ويخرج برمز 0. وبلا مسار يوقف كل تصيير جارٍ الآن. يطبع التصيير الموقوف <code>paused: true</code> وأي الأجزاء <code>done</code> أو <code>in progress</code> أو <code>waiting</code> وأمر المتابعة.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--build-dir &lt;dir&gt;</code></td><td>مجلد بناء التصيير، حين لا يكون هو الافتراضي.</td></tr>
+</tbody>
+</table>
+
+<h3 id="resume">resume</h3>
+<p>الأمر <code>screenpilot resume &lt;path&gt;</code> يتابع render أو sequence موقوفًا مؤقتًا بالخيارات التي بدأ بها. يُعاد استخدام كل جزء وكل chunk انتهى.</p>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--build-dir &lt;dir&gt;</code></td><td>مجلد البناء، حين لا يكون هو الافتراضي.</td></tr>
+<tr><td><code>--workers &lt;n&gt;</code></td><td>يغيّر عدد المصيّرات المتوازية للباقي: <code>auto</code> أو <code>max</code> أو رقم.</td></tr>
+<tr><td><code>--min-free-mem &lt;MB&gt;</code>, <code>--mem-timeout &lt;s&gt;</code></td><td>يغيّر حارس الذاكرة للباقي.</td></tr>
 </tbody>
 </table>
 
@@ -273,7 +333,7 @@ screenpilot secret status</code></pre>
 <p>تجمع هذه الأوامر عدة storyboards، لكل منها تسجيله، في فيديو واحد. الاستخدام الشائع هو إدخال مقطع ميزة جديدة في منتصف عرض موجود دون إعادة تسجيله. صفحة <a href="@guide/sequence.html">دمج التسجيلات</a> تشرح صيغة الملف والمدى والانتقالات بمثال كامل.</p>
 
 <h3 id="sequence">sequence</h3>
-<p>الأمر <code>screenpilot sequence &lt;sequence.json&gt;</code> يصيّر كل جزء ثم يجمعها في ملف MP4 واحد. الأجزاء التي لم تتغير يُعاد استخدامها من التشغيل السابق. يطبع مسار الملف والمدة وطريقة جمع الأجزاء وكل جزء.</p>
+<p>الأمر <code>screenpilot sequence &lt;sequence.json&gt;</code> يصيّر كل جزء ثم يجمعها في ملف MP4 واحد. الأجزاء التي لم تتغير يُعاد استخدامها من التشغيل السابق. يطبع مسار الملف والمدة وطريقة جمع الأجزاء وكل جزء وملف <code>timeline</code> للفيديو المجموع. يُكتب الفيديو باسم <code>&lt;name&gt;.partial.mp4</code> ويُعاد تسميته عند اكتماله.</p>
 <table>
 <thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
 <tbody>
@@ -283,12 +343,19 @@ screenpilot secret status</code></pre>
 <tr><td><code>--workers &lt;n&gt;</code></td><td>عدد المصيّرات المتوازية، وكل واحد منها متصفح Chrome بلا واجهة: <code>auto</code> (الافتراضي: نصف أنوية المعالج، بحد أقصى حسب الذاكرة الفارغة، من 1 إلى 6) أو <code>max</code> (كل الأنوية عدا اثنتين، بحد أقصى حسب الذاكرة الفارغة) أو رقم. الخيار <code>max</code> أسرع لكنه يجعل سطح المكتب بطيئًا، فاستخدمه حين تكون بعيدًا عن الجهاز. المتغير <code>SCREENPILOT_WORKERS</code> يضبط الافتراضي، وللخيار الأولوية عليه. انظر <a href="@guide/cli.html#long-renders">التصيير الطويل</a>.</td></tr>
 <tr><td><code>--timings</code></td><td>يسجّل مدة كل مرحلة (الفحص والصوت والقص والتصيير والدمج) ويعرض توقيتات HyperFrames.</td></tr>
 <tr><td><code>--style &lt;file&gt;</code></td><td>يصيّر الـ sequence نفسه بمظهر آخر: ملف style (<code>{ "theme": {...} }</code>) يُدمج فوق theme كل جزء من أجزاء الـ storyboard. يكتب <code>&lt;sequence&gt;.&lt;style&gt;.mp4</code> بمجلد بناء خاص به. انظر <a href="@guide/sequence.html#styles">التصيير بمظهر آخر</a>.</td></tr>
+<tr><td><code>--variant &lt;name&gt;</code></td><td>يصيّر الـ sequence نفسه بنص آخر: يأخذ كل جزء <code>&lt;its folder&gt;/variants/&lt;name&gt;.json</code>. والجزء الذي لا ملف له يُصيَّر كما كُتب مع تحذير. يكتب <code>&lt;sequence&gt;.&lt;variant&gt;.mp4</code>. انظر <a href="@guide/variants.html#sequence-variant">نسخ النص</a>.</td></tr>
+<tr><td><code>--variant-dir &lt;dir&gt;</code></td><td>مجلد فيه variants باسم <code>&lt;name&gt;.json</code> للأجزاء التي ليس لها variant خاص بها.</td></tr>
+<tr><td><code>--fit</code>, <code>--strict-fit</code>, <code>--fit-max &lt;x&gt;</code></td><td>ملاءمة أسطر التعليق لأماكنها، لكل جزء. كما في <a href="@guide/cli.html#render">render</a>.</td></tr>
+<tr><td><code>--subtitles &lt;list&gt;</code></td><td>يكتب أيضًا ملفات ترجمة للفيديو المجموع من الـ timeline الخاص به: <code>srt</code> أو <code>vtt</code> أو <code>srt,vtt</code>.</td></tr>
+<tr><td><code>--subtitle-lang &lt;list&gt;</code>, <code>--subtitle-chars &lt;n&gt;</code></td><td>ملف ترجمة لكل لغة، كما في <a href="@guide/cli.html#render">render</a>. ملف الترجمة <code>{"&lt;chapter&gt;": ["line", ...]}</code> أو <code>{"&lt;id&gt;": "line"}</code>، والفصل هو اسم مجلد storyboard الجزء.</td></tr>
+<tr><td><code>--dry-run</code></td><td>يطبع عدد الأسطر والأحرف والكلفة التقديرية بالدولار التي ستكلّفها الأصوات، جزءًا جزءًا، ثم يتوقف: بلا طلب ولا ملف ولا مجلد بناء.</td></tr>
+<tr><td><code>--min-free-mem &lt;MB&gt;</code>, <code>--mem-timeout &lt;s&gt;</code></td><td>حارس الذاكرة قبل كل جزء أو chunk. انظر <a href="@guide/long-renders.html#memory">التصيير الطويل</a>.</td></tr>
 <tr><td><code>--build-dir &lt;dir&gt;</code></td><td>المجلد الذي تُبنى فيه الأجزاء. الافتراضي <code>&lt;sequence&gt;.build</code>.</td></tr>
 </tbody>
 </table>
 
 <h3 id="sequence-validate">sequence-validate</h3>
-<p>الأمر <code>screenpilot sequence-validate &lt;sequence.json&gt;</code> يفحص الـ sequence وكل storyboard يستخدمه. إما يفشل ويعرض مشكلات الـ schema (وكل مشكلة تذكر الجزء، مثل <code>parts[1] (feature.json)</code>)، وإما يطبع <code>valid: true</code> مع تحذيرات كل جزء.</p>
+<p>الأمر <code>screenpilot sequence-validate &lt;sequence.json&gt;</code> يفحص الـ sequence وكل storyboard يستخدمه. إما يفشل ويعرض مشكلات الـ schema (وكل مشكلة تذكر الجزء، مثل <code>parts[1] (feature.json)</code>)، وإما يطبع <code>valid: true</code> مع تحذيرات كل جزء. الخيار <code>--variant &lt;name&gt;</code> مع <code>--variant-dir &lt;dir&gt;</code> يفحصه مع تطبيق variant على كل جزء. والخيار <code>--fit</code> يفحص أيضًا أن أسطر التعليق تتسع لأماكنها من المقاطع الموجودة فعلًا في كاش الصوت (لا يُصنع شيء، والأسطر التي لا مقطع لها تُعدّ غير مفحوصة)؛ و<code>--fit-max &lt;x&gt;</code> يضبط الحد الأقصى.</p>
 
 <h3 id="sequence-schema">sequence-schema</h3>
 <p>الأمر <code>screenpilot sequence-schema</code> يطبع JSON Schema الخاص بـ <code>sequence.json</code>.</p>

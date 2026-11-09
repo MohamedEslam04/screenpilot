@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-copy="نسخ" data-copied="تم النسخ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>الترجمة والـ timeline · ScreenPilot</title>
+<meta name="description" content="اكتب ملفات ترجمة بعدة لغات من ملف timeline الخاص بفيديو مصيَّر دون تصيير جديد، وأضفها كمسارات منفصلة، وتحقق من أن الترجمة تقع على الصوت.">
+<link rel="canonical" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/subtitles.html">
+<link rel="alternate" hreflang="en" href="https://mohamedeslam04.github.io/screenpilot/guide/subtitles.html">
+<link rel="alternate" hreflang="ar" href="https://mohamedeslam04.github.io/screenpilot/ar/guide/subtitles.html">
+<link rel="alternate" hreflang="x-default" href="https://mohamedeslam04.github.io/screenpilot/guide/subtitles.html">
+<meta property="og:type" content="article"><meta property="og:title" content="الترجمة والـ timeline · ScreenPilot"><meta property="og:description" content="اكتب ملفات ترجمة بعدة لغات من ملف timeline الخاص بفيديو مصيَّر دون تصيير جديد، وأضفها كمسارات منفصلة، وتحقق من أن الترجمة تقع على الصوت.">
+<meta property="og:url" content="https://mohamedeslam04.github.io/screenpilot/ar/guide/subtitles.html"><meta property="og:image" content="https://mohamedeslam04.github.io/screenpilot/assets/og.png"><meta property="og:site_name" content="ScreenPilot"><meta property="og:locale" content="ar">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b132b">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../../assets/site.css">
+<script>try{var t=localStorage.getItem("sp-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">انتقل إلى المحتوى</a>
+<header class="top"><div class="wrap">
+  <a class="brand" href="../../ar/index.html" aria-label="ScreenPilot"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a>
+  <nav class="nav" aria-label="Main"><a href="../../ar/guide/index.html" aria-current=page>التوثيق</a><a href="../../ar/guide/install.html" class="hide-s">التثبيت</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../../guide/subtitles.html" lang="en" hreflang="en">English</a><button class="theme" type="button" aria-label="تبديل المظهر"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
+</div></header>
+<main id="main"><div class="wrap docs">
+  <nav class="side" aria-label="التوثيق"><details open><summary>التوثيق</summary><h3>البداية</h3><a href="getting-started.html">البداية</a><a href="install.html">تثبيت ScreenPilot</a><h3>الاستخدام</h3><a href="cli.html">سطر الأوامر</a><a href="tools.html">أدوات MCP</a><a href="storyboard.html">مرجع الـ storyboard</a><a href="voices.html">الأصوات</a><a href="dashboard.html">لوحة التحكم</a><a href="sequence.html">دمج التسجيلات</a><a href="subtitles.html" aria-current=page>الترجمة والـ timeline</a><a href="variants.html">نسخ النص وملاءمة الأسطر</a><a href="long-renders.html">التصيير الطويل</a><a href="agent-drive.html">دع الوكيل ينفّذ العرض بنفسه</a><h3>المراجع</h3><a href="safety.html">الأمان والخصوصية</a><a href="platforms.html">المنصات</a><a href="faq.html">الأسئلة الشائعة وحل المشكلات</a></details></nav>
+  <article class="doc"><h1>الترجمة والـ timeline</h1><p class="summary">اكتب ملفات ترجمة بعدة لغات من ملف timeline الخاص بفيديو مصيَّر دون تصيير جديد، وأضفها كمسارات منفصلة، وتحقق من أن الترجمة تقع على الصوت.</p><p>منصات مثل YouTube وLinkedIn وVimeo تقبل ملفات الترجمة، والفيديو الموجّه لعدة دول يحتاج ملفًا لكل لغة. يصنع ScreenPilot هذه الملفات من <strong>ملف timeline</strong> الذي يكتبه كل تصيير، فلا تحتاج لغة جديدة إلى تصيير جديد. وهو لا يترجم شيئًا: أنت (أو تطبيقك الذكي) تكتب الترجمات، وScreenPilot يضعها في أوقاتها الصحيحة.</p>
+
+<h2 id="timeline">ملف الـ timeline<a class="a" href="#timeline" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>كل <code>render</code> وكل <code>sequence</code> يكتب <code>&lt;video&gt;.timeline.json</code> بجوار الفيديو. يسرد متى يظهر كل سطر تعليق صوتي وكل بطاقة عنوان، بثواني <strong>الخرج</strong>.</p>
+<pre><code class="language-json">{
+  "version": 1,
+  "duration": 74.2,
+  "items": [
+    { "kind": "narration", "id": "open", "start": 1.2, "end": 4.9, "text": "We open the settings." },
+    { "kind": "card", "start": 12, "end": 14.5, "text": "Step two\nThe settings page" }
+  ]
+}</code></pre>
+<ul>
+<li>قيمة <code>kind</code> هي <code>narration</code> (سطر منطوق) أو <code>card</code> (بطاقة المقدمة أو بطاقة فصل؛ و<code>text</code> هو عنوانها ثم عنوانها الفرعي في سطر ثانٍ) أو <code>outro</code>. أما البطاقات المرسومة من بيانات (<a href="../../ar/guide/storyboard.html#data-cards">بطاقات من بيانات</a>) فلا تُسرد.</li>
+<li>الحقل <code>id</code> لعنصر التعليق هو <code>id</code> السطر في الـ storyboard. وإن لم يكن للسطر <code>id</code> فهو موضعه بدءًا من 0.</li>
+<li>الـ <code>sequence</code> يكتب timeline واحدًا للفيديو المجموع. ويحتفظ كل جزء بـ timeline خاص به بجوار <code>part.mp4</code>، فتُحسب الأجزاء المعاد استخدامها من الكاش أيضًا. وفي الـ sequence يحمل العنصر أيضًا <code>part</code> (رقم الجزء) و<code>chapter</code> (اسم مجلد storyboard الجزء).</li>
+<li>تذكر نتيجة التصيير أو الـ sequence الملف تحت <code>timeline</code>.</li>
+</ul>
+<div class="warn">إذا اختلفت مدة الـ timeline عن مدة فيديوه بأكثر من 0.25 ثانية فهو قديم، مثلًا بعد أن قصصت الفيديو يدويًا. كل أمر يقرؤه يتوقف بخطأ يذكر اسم الملف.</div>
+
+<h2 id="ids">سمِّ أسطر التعليق الصوتي<a class="a" href="#ids" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>تُطابَق الترجمة مع السطر عبر <code>id</code> الخاص به. أعطِ كل سطر تعليق <code>id</code> قصيرًا وفريدًا. الأسطر التي بلا <code>id</code> تُطابَق بموضعها بدءًا من 0، وهذا ينكسر عندما تُدخل سطرًا في الوسط.</p>
+<pre><code class="language-json">"narration": [
+  { "id": "open", "at": 1, "text": "We open the settings." },
+  { "id": "save", "at": 6, "text": "Then we save." }
+]</code></pre>
+<p>تكرار الـ <code>id</code> يجعل المطابقة ملتبسة، فأبقِ القيم فريدة.</p>
+
+<h2 id="translations">ملفات الترجمة<a class="a" href="#translations" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>ملف الترجمة JSON عادي تكتبه أنت. لـ storyboard واحد يربط الـ id (أو الموضع) بالسطر المترجم:</p>
+<pre><code class="language-json">{ "open": "Abrimos los ajustes.", "save": "Guardamos." }</code></pre>
+<p>أما للـ sequence فالمفاتيح هي الفصول، أي أسماء مجلدات storyboards الأجزاء. يحمل الفصل إما مصفوفة فيها سطر واحد بالضبط لكل سطر تعليق في ذلك الفصل، وإما كائنًا مفتاحه الـ id:</p>
+<pre><code class="language-json">{ "setup": ["Abrimos los ajustes.", "Guardamos."], "ops": { "done": "Listo." } }</code></pre>
+<ul>
+<li>السطر الذي لا ترجمة له خطأ يذكر الـ id الخاص به.</li>
+<li>مصفوفة بعدد أسطر خاطئ خطأ يذكر الفصل والعددين.</li>
+<li>مفتاح لا يطابق شيئًا مجرد تحذير.</li>
+</ul>
+<p>تُقرأ مسارات ملفات الترجمة من المجلد الذي تشغّل فيه الأمر.</p>
+
+<h2 id="at-render">ملفات الترجمة وقت التصيير<a class="a" href="#at-render" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>أضف <code>--subtitle-lang</code> إلى <code>render</code> أو <code>sequence</code>. يقبل قائمة مفصولة بفواصل. الرمز وحده (<code>ar</code>) يستخدم أسطر الفيديو نفسه. و<code>code=file</code> (مثل <code>en=en.json</code>) يستخدم ملف ترجمة.</p>
+<pre><code class="language-sh">screenpilot render demo.json --subtitle-lang ar,en=en.json,es=es.json
+screenpilot sequence all.json -q delivery --subtitle-lang ar,en=en.json,es=es.json --subtitles srt,vtt</code></pre>
+<ul>
+<li>الملفات هي <code>&lt;video&gt;.&lt;code&gt;.srt</code> و<code>&lt;video&gt;.&lt;code&gt;.vtt</code>، مثل <code>all.ar.srt</code>. الخيار <code>--subtitles</code> يختار الصيغ (<code>srt</code> أو <code>vtt</code> أو كلتاهما). ومع <code>--subtitle-lang</code> بلا <code>--subtitles</code> تُكتب الصيغتان.</li>
+<li>الخيار <code>--subtitle-chars &lt;n&gt;</code> يضبط عدد الأحرف في سطر الترجمة. الافتراضي 42.</li>
+<li>بلا <code>--subtitle-lang</code> يكتب <code>render --subtitles</code> الملفين العاديين <code>&lt;video&gt;.srt</code> و<code>.vtt</code> تمامًا كما كان.</li>
+<li>عبر MCP تقبل الأداتان <code>render</code> و<code>sequence_render</code> الحقول <code>languages</code> (مثل <code>{"ar": "auto", "en": "en.json"}</code> حيث <code>auto</code> تعني أسطر الفيديو نفسه) و<code>subtitles</code> و<code>subtitle_chars</code>.</li>
+</ul>
+<p>تُقرأ ملفات الترجمة وتُفحص قبل بدء التصيير، فيظهر الخطأ المطبعي في ثوانٍ لا بعد تصيير طويل.</p>
+
+<h2 id="subs-command">ترجمة لفيديو مصيَّر سابقًا<a class="a" href="#subs-command" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>الأمر <code>screenpilot subs &lt;video&gt;</code> يقرأ <code>&lt;video&gt;.timeline.json</code> ويكتب ملفات الترجمة. لا يصيّر شيئًا، فإضافة لغة لاحقًا تستغرق ثانية.</p>
+<pre><code class="language-sh">screenpilot subs demo.mp4 --lang ar,en=en.json --formats srt,vtt</code></pre>
+<table>
+<thead><tr><th>الخيار</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>--lang &lt;list&gt;</code></td><td>اللغات، كما في <code>--subtitle-lang</code>. بدونه يُكتب ملفان عاديان <code>&lt;video&gt;.srt</code> و<code>.vtt</code>.</td></tr>
+<tr><td><code>--formats &lt;list&gt;</code></td><td><code>srt</code> أو <code>vtt</code> أو <code>srt,vtt</code>. الافتراضي <code>srt,vtt</code>.</td></tr>
+<tr><td><code>--chars &lt;n&gt;</code></td><td>عدد الأحرف في سطر الترجمة. الافتراضي 42.</td></tr>
+<tr><td><code>--join &lt;list&gt;</code></td><td>لفيديو جمعته خارج ScreenPilot: ملفات timeline أجزائه بالترتيب (<code>a.timeline.json,b.timeline.json</code>) بدل <code>&lt;video&gt;.timeline.json</code>.</td></tr>
+<tr><td><code>--transition &lt;s&gt;</code></td><td>مع <code>--join</code>: عدد الثواني التي يتراكب فيها كل جزء مع السابق. الافتراضي 0، أي قطع مباشر.</td></tr>
+<tr><td><code>--transition-type &lt;type&gt;</code></td><td>مع <code>--join</code> و<code>--transition</code>: <code>crossfade</code> (الافتراضي) أو <code>fade-black</code> أو <code>wipe-left</code> وهكذا. التراكب واحد في كلها.</td></tr>
+<tr><td><code>--mux</code></td><td>يضيف الملفات أيضًا إلى الفيديو كمسارات منفصلة. انظر أدناه.</td></tr>
+</tbody>
+</table>
+<p>أداة MCP هي <code>subs</code> (المدخلات <code>video</code> و<code>languages</code> و<code>formats</code> و<code>subtitle_chars</code> و<code>join</code> و<code>transition</code> و<code>transition_type</code> و<code>mux</code>). مع <code>--join</code> تُركَّب الأجزاء بالحساب نفسه الذي يستخدمه <code>sequence</code>: تراكب الانتقال لا يتجاوز نصف طول أي من الجزأين.</p>
+
+<h2 id="mux">مسارات ترجمة منفصلة داخل الفيديو<a class="a" href="#mux" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>الخيار <code>--mux</code> (في MCP: <code>mux: true</code>) يضيف ملفات الترجمة إلى نسخة من الفيديو مع تحديد اللغة لكل مسار، فيعرض المشغّل قائمة لغات. النسخة هي <code>&lt;video&gt;.subs.mp4</code> (بامتداد الفيديو نفسه). لا يُعاد ترميز شيء، وملفك الأصلي لا يُمَس. صيغة المسار <code>mov_text</code> لملفات mp4 وmov، و<code>webvtt</code> لملفات mkv وwebm.</p>
+<pre><code class="language-sh">screenpilot subs all.mp4 --lang ar,en=en.json,es=es.json --mux
+# يكتب all.ar.srt وall.en.srt وall.es.srt (و.vtt) وall.subs.mp4 بثلاثة مسارات لغات</code></pre>
+
+<h2 id="cue-rules">كيف تُقسَّم الترجمات<a class="a" href="#cue-rules" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>كل ملفات الترجمة تتبع مجموعة قواعد واحدة:</p>
+<ul>
+<li>سطران كحد أقصى في كل ترجمة، نحو 42 حرفًا في السطر. يكسر السطر عند المسافات فقط، فتبقى الكلمة الطويلة كاملة.</li>
+<li>سطر التعليق الأطول يصبح عدة ترجمات.</li>
+<li>لا تتداخل ترجمة مع التالية، وتدوم كل واحدة 0.7 ثانية على الأقل متى وُجد متسع.</li>
+<li>النص من اليمين إلى اليسار (العربية والعبرية) لا يُعاد ترتيبه ولا تُضاف إليه علامات اتجاه.</li>
+</ul>
+
+<h2 id="sync-check">تحقق من أن الترجمة تقع على الصوت<a class="a" href="#sync-check" aria-label="رابط إلى هذا القسم">#</a></h2>
+<p>عندما يوجد <code>&lt;video&gt;.timeline.json</code> فإن <code>screenpilot check &lt;video&gt;</code> (في MCP: <code>check_output</code>) يقارن أيضًا زمن كل سطر تعليق بأول صوت بعده. ويحذّر من كل سطر يزيد الفرق فيه على 0.4 ثانية. الخيار <code>--no-sync</code> (في MCP: <code>sync: false</code>) يتخطى الفحص.</p>
+<div class="note">الموسيقى الخلفية تجعل الفيديو غير صامت أبدًا، فلا يستطيع الفحص رؤية مشكلة في فيديو فيه موسيقى.</div>
+<p>مثال كامل، من sequence بفصلين إلى ثلاث لغات:</p>
+<pre><code class="language-sh">screenpilot sequence all.json -q delivery --subtitle-lang ar,en=en.json,es=es.json --subtitles srt,vtt
+screenpilot check all.mp4 --every 8
+screenpilot subs all.mp4 --lang ar,en=en.json,es=es.json --mux</code></pre>
+<nav class="pager" aria-label="Pager"><a href="sequence.html" rel="prev"><small>السابق</small>دمج التسجيلات</a><a href="variants.html" rel="next"><small>التالي</small>نسخ النص وملاءمة الأسطر</a></nav></article>
+  <aside class="toc" aria-label="في هذه الصفحة"><h3>في هذه الصفحة</h3><a href="#timeline">ملف الـ timeline</a><a href="#ids">سمِّ أسطر التعليق الصوتي</a><a href="#translations">ملفات الترجمة</a><a href="#at-render">ملفات الترجمة وقت التصيير</a><a href="#subs-command">ترجمة لفيديو مصيَّر سابقًا</a><a href="#mux">مسارات ترجمة منفصلة داخل الفيديو</a><a href="#cue-rules">كيف تُقسَّم الترجمات</a><a href="#sync-check">تحقق من أن الترجمة تقع على الصوت</a></aside>
+</div></main>
+<footer class="foot"><div class="wrap">
+  <div><a class="brand" href="../../ar/index.html"><svg viewBox="24 12 92 104" aria-hidden="true"><path d="M44 32L44 96L96 64Z" class="m-fill" fill-opacity=".14"/><path d="M44 32L44 96L96 64ZM44 32L62 64L44 96M62 64L96 64" fill="none" class="m-line" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="32" r="8" class="m-node"/><circle cx="44" cy="96" r="8" class="m-node"/><circle cx="96" cy="64" r="8" class="m-node"/><circle cx="62" cy="64" r="6" class="m-core"/></svg><span>ScreenPilot</span></a><small>ScreenPilot مفتوح المصدر برخصة MIT.</small><small>أسماء المنتجات ملك لأصحابها. ScreenPilot مشروع مستقل.</small></div>
+  <div><h3>تعلّم</h3><ul><li><a href="../../ar/guide/getting-started.html">البداية</a></li><li><a href="../../ar/guide/tools.html">أدوات MCP</a></li><li><a href="../../ar/guide/storyboard.html">مرجع الـ storyboard</a></li><li><a href="../../ar/guide/faq.html">الأسئلة الشائعة وحل المشكلات</a></li></ul></div>
+  <div><h3>المشروع</h3><ul><li><a href="https://github.com/MohamedEslam04/screenpilot">GitHub</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/releases">الإصدارات</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/issues">أبلغ عن مشكلة</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/CONTRIBUTING.md">المساهمة</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/SECURITY.md">الأمان</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/LICENSE">الرخصة</a></li><li><a href="https://github.com/MohamedEslam04/screenpilot/blob/main/THIRD_PARTY_NOTICES.md">إشعارات الأطراف الثالثة</a></li></ul></div>
+</div></footer>
+<script src="../../assets/app.js" defer></script>
+</body></html>

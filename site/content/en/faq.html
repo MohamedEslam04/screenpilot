@@ -101,6 +101,18 @@ summary: Short answers to common questions about ScreenPilot, plus fixes for the
 </ul>
 <p>To keep long videos quick to iterate on, use <code>-q draft</code> with <code>--from</code> and <code>--to</code>, and <code>--workers max</code> when you are away from the computer. See <a href="@guide/cli.html#long-renders">Long renders</a>.</p>
 
+<h3 id="subtitles-languages">How do I get subtitles in several languages?</h3>
+<p>Every render writes a timeline file next to the video. Write one JSON file per language that maps each narration line's <code>id</code> to the translated line, then ask for the files: <code>screenpilot subs demo.mp4 --lang ar,en=en.json,es=es.json</code>. No new render is needed. ScreenPilot does not translate for you. See <a href="@guide/subtitles.html">Subtitles and timeline</a>.</p>
+
+<h3 id="another-script">How do I make the same video with another script or dialect?</h3>
+<p>Write a variants file, <code>variants/saudi.json</code>, with the new narration text and voice, and render with <code>--variant saudi</code>. The recording, the cuts and the look stay the same, and voice clips are cached, so going back and forth is cheap. See <a href="@guide/variants.html">Script variants and slot-fit</a>.</p>
+
+<h3 id="pause-render">I need my computer in the middle of a long render</h3>
+<p>Pause it: <code>screenpilot pause</code>, or ask your AI app to pause the render. It finishes the part or chunk in progress and stops, and <code>screenpilot resume</code> carries on later from everything that finished. Ctrl+C stops it for good, with no half-written file left under the final name. See <a href="@guide/long-renders.html">Long renders</a>.</p>
+
+<h3 id="voice-cost">How much will a cloud voice cost?</h3>
+<p>Ask for an estimate first: <code>screenpilot render storyboard.json --dry-run</code> prints the lines, the characters and the estimated USD, and sends nothing. <code>screenpilot spend</code> totals what you have used so far. Both are estimates from a price per credit that you can set. See <a href="@guide/voices.html#cost">What cloud voices cost</a>.</p>
+
 <h3 id="vertical">How do I get a vertical or square version?</h3>
 <p>Render with <code>--formats</code>, for example <code>screenpilot render storyboard.json --formats 16:9,9:16,1:1</code>. You get one file per format from the same edit. A portrait cut of a landscape recording crops views that frame a window, so look at a draft first. See <a href="@guide/cli.html#formats">Several formats</a>.</p>
 

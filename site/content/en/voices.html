@@ -76,6 +76,30 @@ screenpilot secret remove elevenlabs</code></pre>
 <li>A request that fails because the network dropped, the service is busy (429) or has an error (5xx) is tried again, up to 3 tries in total. Any other error stops at once and the message names the service.</li>
 </ul>
 
+<h2 id="cost">What cloud voices cost</h2>
+<p>ElevenLabs and Gemini charge for what they speak. ScreenPilot keeps a ledger of what you used, and can tell you the price of a render before it makes any request.</p>
+
+<h3 id="cost-dry-run">Estimate before you render</h3>
+<p>Add <code>--dry-run</code> to <code>render</code> or <code>sequence</code> (MCP <code>dryRun: true</code>). It prints how many lines the voice would send, how many characters that is and the estimated USD, then stops. It sends nothing and writes nothing: no cache entry and no build folder.</p>
+<pre><code class="language-sh">screenpilot render storyboard.json --dry-run
+screenpilot sequence all.json --variant saudi --dry-run</code></pre>
+<ul>
+<li>Lines already in the voice cache, and lines that have ready-made <code>audio</code>, are free and are counted as cached.</li>
+<li>With <code>--variant</code>, it prices the variant's text. For a sequence it reports part by part.</li>
+<li>Edge, local and command voices cost nothing, so the estimate is 0.</li>
+</ul>
+<div class="note">Run the dry run before the first render with a paid voice, and read the number before you go on.</div>
+
+<h3 id="cost-ledger">The spend ledger</h3>
+<p>Every billed request adds one row to <code>spend.jsonl</code> in the config folder: <code>{t, provider, model, voice, chars, audio_s, credits, usd}</code>. A cache hit, a failed request and a free voice add nothing. The key and the text are never written. <code>screenpilot spend</code> totals the ledger by provider; <code>--since 2026-11-01</code> limits it to a date and <code>--json</code> prints the rows. The MCP <code>voices</code> tool returns the running total as a second block.</p>
+<pre><code class="language-sh">screenpilot spend
+screenpilot spend --since 2026-11-01 --json</code></pre>
+
+<h3 id="cost-price">Set your price</h3>
+<p>The cost is an estimate, not an invoice. A <strong>credit</strong> is one character for ElevenLabs and one audio token for Gemini (25 tokens per second of speech). ScreenPilot multiplies credits by a price per credit. The defaults are 0.0003 USD for ElevenLabs and 0.00001 USD for Gemini. Your plan may differ, so set your own in <code>voices.json</code>:</p>
+<pre><code class="language-json">{ "spend": { "usdPerCredit": { "elevenlabs": 0.00022, "gemini": 0.00001 } } }</code></pre>
+<p>ElevenLabs Flash and Turbo models use half a credit per character, so halve the price for them. <code>SCREENPILOT_NO_SPEND=1</code> stops writing the default ledger.</p>
+
 <h2 id="local-models">Local models</h2>
 <p>Local voices are speech models that run on your own computer. They are free and need no internet after setup. Install one with <code>screenpilot voice-setup</code>, then use it in a storyboard.</p>
 

@@ -26,9 +26,10 @@ summary: ما الذي يستطيع الوكيل لمسه عندما يتحكم 
 <h2 id="abort">الإيقاف بـ abort</h2>
 <p>يعمل <code>abort</code> دائماً، على كل أسطح المكتب.</p>
 <ul>
-  <li><strong>من تطبيق الذكاء الاصطناعي:</strong> الأداة <code>abort</code> توقف <code>perform</code> الجاري وتغلق المشغّل المباشر. لكن الوكيل هو من يجب أن يستدعيها، فإذا أردت إيقافه فوراً فأوقفه أيضاً من تطبيق الذكاء الاصطناعي نفسه.</li>
-  <li><strong>من سطر الأوامر:</strong> اضغط Ctrl+C أثناء تشغيل <code>screenpilot perform</code>.</li>
-  <li><strong>إغلاق تطبيق الذكاء الاصطناعي</strong> يغلق خادم ScreenPilot، فيوقف أي take جارٍ ويحرّر الماوس.</li>
+  <li><strong>من تطبيق الذكاء الاصطناعي:</strong> الأداة <code>abort</code> توقف <code>perform</code> الجاري وتغلق المشغّل المباشر، وتوقف أي تصيير جارٍ مع شجرة عملياته كلها (HyperFrames وChrome وffmpeg). يُحذف الفيديو نصف المكتوب، وتبقى الـ chunks والأجزاء المنتهية في الكاش. لكن الوكيل هو من يجب أن يستدعيها، فإذا أردت إيقافه فوراً فأوقفه أيضاً من تطبيق الذكاء الاصطناعي نفسه.</li>
+  <li><strong>من سطر الأوامر:</strong> اضغط Ctrl+C أثناء تشغيل <code>screenpilot perform</code> أو أي تصيير.</li>
+  <li><strong>لتحرير الجهاز دون خسارة العمل:</strong> الأمر <code>screenpilot pause</code> (أو أداة <code>pause</code>) يترك التصيير ينهي جزءه أو chunk ثم يتوقف؛ والأمر <code>resume</code> يتابع. انظر <a href="@guide/long-renders.html">التصيير الطويل</a>.</li>
+  <li><strong>إغلاق تطبيق الذكاء الاصطناعي</strong> يغلق خادم ScreenPilot، فيوقف أي take جارٍ ويوقف تصييراته ويحرّر الماوس.</li>
 </ul>
 <p>بعد <code>abort</code> تفتح أداة التحكم التالية مشغّلاً جديداً. و<code>abort</code> لا يتراجع عن أي شيء فعله الوكيل بالفعل.</p>
 
