@@ -27,7 +27,7 @@
   <nav class="nav" aria-label="Main"><a href="../guide/index.html" aria-current=page>Docs</a><a href="../guide/install.html" class="hide-s">Install</a><a class="gh hide-s" href="https://github.com/MohamedEslam04/screenpilot" rel="noopener"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a><a class="lang" href="../ar/guide/cli.html" lang="ar" hreflang="ar">العربية</a><button class="theme" type="button" aria-label="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
 </div></header>
 <main id="main"><div class="wrap docs">
-  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html" aria-current=page>Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="voices.html">Voices</a><a href="dashboard.html">Dashboard</a><a href="sequence.html">Combine recordings</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
+  <nav class="side" aria-label="Documentation"><details open><summary>Documentation</summary><h3>Start</h3><a href="getting-started.html">Getting started</a><a href="install.html">Install ScreenPilot</a><h3>Use it</h3><a href="cli.html" aria-current=page>Command line</a><a href="tools.html">MCP tools</a><a href="storyboard.html">Storyboard reference</a><a href="voices.html">Voices</a><a href="dashboard.html">Dashboard</a><a href="sequence.html">Combine recordings</a><a href="subtitles.html">Subtitles and timeline</a><a href="variants.html">Script variants and slot-fit</a><a href="long-renders.html">Long renders</a><a href="agent-drive.html">Let the agent drive</a><h3>Reference</h3><a href="safety.html">Safety and privacy</a><a href="platforms.html">Platforms</a><a href="faq.html">FAQ and troubleshooting</a></details></nav>
   <article class="doc"><h1>Command line</h1><p class="summary">Every screenpilot command and its useful flags, grouped by job: record, edit, render, combine recordings, drive the desktop and set up, with the full workflow in one block.</p><p>The command line does the same steps as the MCP tools. Run it as <code>screenpilot</code>, or as <code>node dist/cli.js</code> from a source checkout. Most people never need it, because their AI app calls the <a href="../guide/tools.html">tools</a> for them. Use the CLI to script a render, to check a machine, or to repair a setup.</p>
 <p>Run <code>screenpilot --help</code> for the list of commands and <code>screenpilot &lt;command&gt; --help</code> for the flags of one command. Commands print their result as JSON on stdout and progress messages on stderr.</p>
 
@@ -173,6 +173,17 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <pre><code class="language-sh">printf '%s' "$GEMINI_API_KEY" | screenpilot secret set gemini
 screenpilot secret status</code></pre>
 
+<h3 id="spend">spend<a class="a" href="#spend" aria-label="Link to this section">#</a></h3>
+<p><code>screenpilot spend</code> totals what the cloud voices have cost so far, by provider, from the spend ledger (<code>spend.jsonl</code> in the config folder). Only billed requests are in it: a cache hit, a failed request and a free voice are not. The key and the text are never written. The figures are estimates from your price per credit, not an invoice. <a href="../guide/voices.html#cost">What cloud voices cost</a> explains credits and how to set the price.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--since &lt;date&gt;</code></td><td>Only requests from this day on (<code>2026-11-01</code>) or time (ISO).</td></tr>
+<tr><td><code>--json</code></td><td>Print the totals and every row as JSON.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-sh">screenpilot spend --since 2026-11-01</code></pre>
+
 <h3 id="script">script<a class="a" href="#script" aria-label="Link to this section">#</a></h3>
 <p><code>screenpilot script &lt;storyboard&gt;</code> writes the narration as a script to paste into a text-to-speech website: the text, a short prompt, and a table of the room each line has. Default output <code>&lt;storyboard&gt;.script.md</code>; change it with <code>-o, --out</code>. <a href="../guide/voices.html#external-audio">Voices</a> shows the whole flow.</p>
 
@@ -192,7 +203,7 @@ screenpilot secret status</code></pre>
 <h2 id="render-and-check">Render and check<a class="a" href="#render-and-check" aria-label="Link to this section">#</a></h2>
 
 <h3 id="render">render<a class="a" href="#render" aria-label="Link to this section">#</a></h3>
-<p><code>screenpilot render &lt;storyboard&gt;</code> makes the voice, cuts the video and renders an MP4. It takes minutes. It prints the output path, the duration, the freezes it added (<code>autoHolds</code>) and warnings. When a narration line is longer than its slot, the render freezes the video so lines never overlap.</p>
+<p><code>screenpilot render &lt;storyboard&gt;</code> makes the voice, cuts the video and renders an MP4. It takes minutes. It prints the output path, the duration, the freezes it added (<code>autoHolds</code>), the narration lines that need a speed-up to fit (<code>fit</code>), the <code>timeline</code> file and warnings. When a narration line is longer than its slot, the render freezes the video so lines never overlap. The video is written as <code>&lt;name&gt;.partial.mp4</code> and renamed when it is complete, and <code>&lt;name&gt;.timeline.json</code> is written next to it (see <a href="../guide/subtitles.html#timeline">Subtitles and timeline</a>).</p>
 <table>
 <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
 <tbody>
@@ -204,9 +215,17 @@ screenpilot secret status</code></pre>
 <tr><td><code>--from &lt;s&gt;</code>, <code>--to &lt;s&gt;</code></td><td>Render only this window, in <strong>output</strong> seconds. See <a href="../guide/cli.html#partial">Partial renders</a>.</td></tr>
 <tr><td><code>--formats &lt;list&gt;</code></td><td>Render once per format, for example <code>16:9,9:16,1:1</code>. See <a href="../guide/cli.html#formats">Several formats</a>.</td></tr>
 <tr><td><code>--style &lt;file&gt;</code></td><td>Render with another look: a style file (<code>{ "theme": {...} }</code>) merged over the storyboard's theme. Writes <code>&lt;storyboard&gt;.&lt;style&gt;.mp4</code> with its own build folder. See <a href="../guide/storyboard.html#variants">Variants</a>.</td></tr>
+<tr><td><code>--variant &lt;file|name&gt;</code></td><td>Render the same recording with another script: a variants file that rewrites narration text, the voice or overlay files. A name is looked up as <code>variants/&lt;name&gt;.json</code> next to the storyboard. Writes <code>&lt;storyboard&gt;.&lt;variant&gt;.mp4</code> with its own build folder. See <a href="../guide/variants.html">Script variants and slot-fit</a>.</td></tr>
+<tr><td><code>--fit</code></td><td>Speed up narration clips that overrun their slot, up to the cap, so they fit. The sped-up clip is cached and never stretched twice.</td></tr>
+<tr><td><code>--strict-fit</code></td><td>Fail when a narration clip needs more than the cap to fit its slot, instead of freezing the video.</td></tr>
+<tr><td><code>--fit-max &lt;x&gt;</code></td><td>The cap of <code>--fit</code> and <code>--strict-fit</code>, as a speed-up factor. Default <code>voice.fit.max</code>, else 1.18. See <a href="../guide/variants.html#slot-fit">Slot-fit</a>.</td></tr>
+<tr><td><code>--dry-run</code></td><td>Print the lines, characters and estimated USD the voice would cost, then stop: no request, no file, no cache entry. See <a href="../guide/voices.html#cost">What cloud voices cost</a>.</td></tr>
+<tr><td><code>--min-free-mem &lt;MB&gt;</code>, <code>--mem-timeout &lt;s&gt;</code></td><td>Wait before each chunk until this much memory is available (default 1500, <code>0</code> turns it off), for at most this many seconds (default 300), then fail with the numbers. See <a href="../guide/long-renders.html#memory">The memory guard</a>.</td></tr>
 <tr><td><code>--no-chunks</code></td><td>Render in one piece. By default a video (or <code>--from</code>/<code>--to</code> window) of 5 minutes or more renders in cached chunks. See <a href="../guide/cli.html#long-renders">Long renders</a>.</td></tr>
 <tr><td><code>--chunk-seconds &lt;n&gt;</code></td><td>Length of those chunks in seconds. Default 180, at least 10.</td></tr>
 <tr><td><code>--subtitles &lt;list&gt;</code></td><td>Also write subtitle files from the narration: <code>srt</code>, <code>vtt</code> or <code>srt,vtt</code>. See <a href="../guide/cli.html#extras">Subtitle files and extra outputs</a>.</td></tr>
+<tr><td><code>--subtitle-lang &lt;list&gt;</code></td><td>One caption file per language: <code>ar,en=en.json,es=es.json</code>. A plain code uses the video's own lines, <code>code=file</code> a translation file. Writes <code>&lt;video&gt;.&lt;code&gt;.srt</code> and <code>.vtt</code> instead of the plain files. See <a href="../guide/subtitles.html#at-render">Subtitles and timeline</a>.</td></tr>
+<tr><td><code>--subtitle-chars &lt;n&gt;</code></td><td>Characters per caption line for <code>--subtitle-lang</code>. Default 42, at most 2 lines per caption.</td></tr>
 <tr><td><code>--also &lt;list&gt;</code></td><td>Also make a <code>gif</code>, a <code>webm</code> or a <code>poster</code> PNG from the finished video (a comma list).</td></tr>
 <tr><td><code>--poster-at &lt;s&gt;</code></td><td>Time of the poster frame, in output seconds. Default: a quarter of the way in.</td></tr>
 <tr><td><code>--build-dir &lt;dir&gt;</code></td><td>Where the HyperFrames project is written. Not allowed with <code>--formats</code>.</td></tr>
@@ -252,6 +271,7 @@ screenpilot secret status</code></pre>
 </tbody>
 </table>
 <p>The files are listed under <code>files</code> in the result. They follow <code>--from</code>/<code>--to</code> (a partial render writes the subtitles of that window) and <code>--formats</code> (one set per format).</p>
+<p>For several languages, for a video that is already rendered, and for soft subtitle tracks, see <a href="../guide/subtitles.html">Subtitles and timeline</a> and <a href="../guide/cli.html#subs">subs</a>.</p>
 
 <h3 id="quality">Quality levels<a class="a" href="#quality" aria-label="Link to this section">#</a></h3>
 <table>
@@ -275,7 +295,10 @@ screenpilot secret status</code></pre>
 <li>An edit that moves everything after it by whole seconds (a 2 second hold, a card) keeps the later chunks. A fractional shift, which is what most narration-length changes cause, renders them again.</li>
 <li>A failed chunk names its output range. Run the render again and it resumes from the chunks that finished.</li>
 <li><code>--no-chunks</code> renders in one piece. <code>--chunk-seconds &lt;n&gt;</code> sets the chunk length.</li>
+<li><strong>Stopping is safe.</strong> Ctrl+C (or the <code>abort</code> tool) stops the render with its whole process tree, and the video is written as <code>&lt;name&gt;.partial.mp4</code> and renamed only when complete, so a file with the final name is always playable.</li>
+<li><strong>Pause when you need the machine.</strong> <a href="../guide/cli.html#pause">pause</a> stops after the part or chunk in progress and <a href="../guide/cli.html#resume">resume</a> carries on from the cache.</li>
 </ul>
+<p>The <a href="../guide/long-renders.html">Long renders</a> page has the details of pausing, resuming and the memory guard.</p>
 <div class="note">Chunks speed up the render after a small edit, not the first render. To combine different recordings, a <a href="../guide/cli.html#sequence">sequence</a> of parts is still the way.</div>
 
 <h3 id="build">build<a class="a" href="#build" aria-label="Link to this section">#</a></h3>
@@ -285,13 +308,50 @@ screenpilot secret status</code></pre>
 <p><code>screenpilot preview &lt;storyboard&gt;</code> builds the storyboard and opens HyperFrames Studio, where you can scrub through the video.</p>
 
 <h3 id="check">check<a class="a" href="#check" aria-label="Link to this section">#</a></h3>
-<p><code>screenpilot check &lt;video&gt;</code> pulls frames from a rendered video so you can review the result. Times are output seconds. It prints the duration, whether the video has audio, and the frame files.</p>
+<p><code>screenpilot check &lt;video&gt;</code> pulls frames from a rendered video so you can review the result. Times are output seconds. It prints the duration, whether the video has audio, and the frame files. When <code>&lt;video&gt;.timeline.json</code> exists, it also checks that each narration line's caption time lands on the sound, and lists the lines that are more than 0.4 seconds off under <code>sync</code>. See <a href="../guide/subtitles.html#sync-check">Subtitles and timeline</a>.</p>
 <table>
 <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
 <tbody>
 <tr><td><code>--at &lt;times&gt;</code></td><td>Comma-separated output seconds.</td></tr>
 <tr><td><code>--every &lt;n&gt;</code></td><td>Evenly spaced frames. Default 8.</td></tr>
 <tr><td><code>-o, --out &lt;dir&gt;</code></td><td>Output folder. Default <code>&lt;video&gt;.check</code> next to the video.</td></tr>
+<tr><td><code>--no-sync</code></td><td>Skip the subtitle sync check.</td></tr>
+</tbody>
+</table>
+
+<h3 id="subs">subs<a class="a" href="#subs" aria-label="Link to this section">#</a></h3>
+<p><code>screenpilot subs &lt;video&gt;</code> writes caption files for a video that is already rendered, from its <code>&lt;video&gt;.timeline.json</code>. It renders nothing. It prints the files, the timeline, the duration and warnings.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--lang &lt;list&gt;</code></td><td>Languages: <code>ar,en=en.json,es=es.json</code>. A plain code uses the video's own lines, <code>code=file</code> a translation file. Writes <code>&lt;video&gt;.&lt;code&gt;.srt|vtt</code>. Without it, one plain <code>&lt;video&gt;.srt|vtt</code>.</td></tr>
+<tr><td><code>--formats &lt;list&gt;</code></td><td><code>srt</code>, <code>vtt</code> or <code>srt,vtt</code>. Default <code>srt,vtt</code>.</td></tr>
+<tr><td><code>--chars &lt;n&gt;</code></td><td>Characters per caption line. Default 42, at most 2 lines per caption.</td></tr>
+<tr><td><code>--join &lt;list&gt;</code></td><td>For a video joined outside ScreenPilot: the timelines of its parts, in order, instead of <code>&lt;video&gt;.timeline.json</code>.</td></tr>
+<tr><td><code>--transition &lt;s&gt;</code>, <code>--transition-type &lt;type&gt;</code></td><td>With <code>--join</code>: the overlap of the transition the video was joined with (default 0, cuts) and its type (default <code>crossfade</code>).</td></tr>
+<tr><td><code>--mux</code></td><td>Also add the files to the video as soft subtitle tracks with language metadata, into <code>&lt;video&gt;.subs.&lt;ext&gt;</code>. Nothing is re-encoded and the original is untouched.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-sh">screenpilot subs demo.mp4 --lang ar,en=en.json --mux</code></pre>
+<p><a href="../guide/subtitles.html">Subtitles and timeline</a> explains the translation files and the caption rules.</p>
+
+<h3 id="pause">pause<a class="a" href="#pause" aria-label="Link to this section">#</a></h3>
+<p><code>screenpilot pause [path]</code> pauses a running <code>render</code> or <code>sequence</code>. It finishes the part in progress (the chunk, for a part or video of 5 minutes or more), saves where it stopped and exits with code 0. Without a path, it pauses every render running now. The paused render prints <code>paused: true</code>, which parts are <code>done</code>, <code>in progress</code> or <code>waiting</code>, and the command to resume.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--build-dir &lt;dir&gt;</code></td><td>The render's build folder, when it is not the default one.</td></tr>
+</tbody>
+</table>
+
+<h3 id="resume">resume<a class="a" href="#resume" aria-label="Link to this section">#</a></h3>
+<p><code>screenpilot resume &lt;path&gt;</code> carries on a paused render or sequence with the options it was started with. Every finished part and chunk is reused.</p>
+<table>
+<thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--build-dir &lt;dir&gt;</code></td><td>The build folder, when it is not the default one.</td></tr>
+<tr><td><code>--workers &lt;n&gt;</code></td><td>Change the parallel renderers for the rest: <code>auto</code>, <code>max</code> or a number.</td></tr>
+<tr><td><code>--min-free-mem &lt;MB&gt;</code>, <code>--mem-timeout &lt;s&gt;</code></td><td>Change the memory guard for the rest.</td></tr>
 </tbody>
 </table>
 
@@ -299,7 +359,7 @@ screenpilot secret status</code></pre>
 <p>These commands join several storyboards, each with its own recording, into one video. The common use is to insert a new feature clip into the middle of an existing demo without re-recording it. <a href="../guide/sequence.html">Combine recordings</a> explains the file format, ranges and transitions with a worked example.</p>
 
 <h3 id="sequence">sequence<a class="a" href="#sequence" aria-label="Link to this section">#</a></h3>
-<p><code>screenpilot sequence &lt;sequence.json&gt;</code> renders every part and joins them into one MP4. Unchanged parts are reused from the previous run. It prints the output path, the duration, how the parts were joined and each part.</p>
+<p><code>screenpilot sequence &lt;sequence.json&gt;</code> renders every part and joins them into one MP4. Unchanged parts are reused from the previous run. It prints the output path, the duration, how the parts were joined, each part and the <code>timeline</code> file of the joined video. The video is written as <code>&lt;name&gt;.partial.mp4</code> and renamed when complete.</p>
 <table>
 <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
 <tbody>
@@ -309,12 +369,19 @@ screenpilot secret status</code></pre>
 <tr><td><code>--workers &lt;n&gt;</code></td><td>Parallel renderers, each a headless Chrome: <code>auto</code> (default: half your CPU cores, limited by free memory, 1 to 6), <code>max</code> (all cores but two, limited by free memory) or a number. <code>max</code> is faster but makes the desktop sluggish, so use it when you are away. <code>SCREENPILOT_WORKERS</code> sets the default; the flag wins. See <a href="../guide/cli.html#long-renders">Long renders</a>.</td></tr>
 <tr><td><code>--timings</code></td><td>Log how long each stage takes (probe, voice, cut, render, join) and show HyperFrames phase timings.</td></tr>
 <tr><td><code>--style &lt;file&gt;</code></td><td>Render the same sequence with another look: a style file (<code>{ "theme": {...} }</code>) merged over the theme of every storyboard part. Writes <code>&lt;sequence&gt;.&lt;style&gt;.mp4</code> with its own build folder. See <a href="../guide/sequence.html#styles">Render with another look</a>.</td></tr>
+<tr><td><code>--variant &lt;name&gt;</code></td><td>Render the same sequence with another script: each part takes <code>&lt;its folder&gt;/variants/&lt;name&gt;.json</code>. A part without one renders as written, with a warning. Writes <code>&lt;sequence&gt;.&lt;variant&gt;.mp4</code>. See <a href="../guide/variants.html#sequence-variant">Script variants</a>.</td></tr>
+<tr><td><code>--variant-dir &lt;dir&gt;</code></td><td>A folder with <code>&lt;name&gt;.json</code> variants for the parts that have none of their own.</td></tr>
+<tr><td><code>--fit</code>, <code>--strict-fit</code>, <code>--fit-max &lt;x&gt;</code></td><td>Slot-fit of narration lines, per part. Same as on <a href="../guide/cli.html#render">render</a>.</td></tr>
+<tr><td><code>--subtitles &lt;list&gt;</code></td><td>Also write caption files for the joined video from its timeline: <code>srt</code>, <code>vtt</code> or <code>srt,vtt</code>.</td></tr>
+<tr><td><code>--subtitle-lang &lt;list&gt;</code>, <code>--subtitle-chars &lt;n&gt;</code></td><td>One caption file per language, as on <a href="../guide/cli.html#render">render</a>. A translation file is <code>{"&lt;chapter&gt;": ["line", ...]}</code> or <code>{"&lt;id&gt;": "line"}</code>, where the chapter is the part's storyboard folder name.</td></tr>
+<tr><td><code>--dry-run</code></td><td>Print the lines, characters and estimated USD the voices would cost, part by part, then stop: no request, no file, no build folder.</td></tr>
+<tr><td><code>--min-free-mem &lt;MB&gt;</code>, <code>--mem-timeout &lt;s&gt;</code></td><td>The memory guard before each part or chunk. See <a href="../guide/long-renders.html#memory">Long renders</a>.</td></tr>
 <tr><td><code>--build-dir &lt;dir&gt;</code></td><td>Where the parts are built. Default <code>&lt;sequence&gt;.build</code>.</td></tr>
 </tbody>
 </table>
 
 <h3 id="sequence-validate">sequence-validate<a class="a" href="#sequence-validate" aria-label="Link to this section">#</a></h3>
-<p><code>screenpilot sequence-validate &lt;sequence.json&gt;</code> checks the sequence and every storyboard it uses. It fails with the schema issues (each names the part, for example <code>parts[1] (feature.json)</code>), or prints <code>valid: true</code> with the warnings of every part.</p>
+<p><code>screenpilot sequence-validate &lt;sequence.json&gt;</code> checks the sequence and every storyboard it uses. It fails with the schema issues (each names the part, for example <code>parts[1] (feature.json)</code>), or prints <code>valid: true</code> with the warnings of every part. <code>--variant &lt;name&gt;</code> and <code>--variant-dir &lt;dir&gt;</code> check it with a variant applied to each part. <code>--fit</code> also checks that narration lines fit their slots, using the clips already in the voice cache (nothing is synthesized, and lines without a clip are counted as unchecked); <code>--fit-max &lt;x&gt;</code> sets the cap.</p>
 
 <h3 id="sequence-schema">sequence-schema<a class="a" href="#sequence-schema" aria-label="Link to this section">#</a></h3>
 <p><code>screenpilot sequence-schema</code> prints the JSON Schema of <code>sequence.json</code>.</p>

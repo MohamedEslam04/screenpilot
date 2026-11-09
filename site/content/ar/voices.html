@@ -76,6 +76,30 @@ screenpilot secret remove elevenlabs</code></pre>
 <li>الطلب الذي يفشل بسبب انقطاع الشبكة، أو انشغال الخدمة (429)، أو خطأ منها (5xx) يُعاد حتى 3 محاولات في المجموع. أي خطأ آخر يتوقف فورًا وتذكر الرسالة اسم الخدمة.</li>
 </ul>
 
+<h2 id="cost">كم تكلّف الأصوات السحابية</h2>
+<p>تحاسب ElevenLabs وGemini على ما تنطقانه. يحتفظ ScreenPilot بسجل لما استخدمته، ويستطيع أن يخبرك بسعر التصيير قبل أن يرسل أي طلب.</p>
+
+<h3 id="cost-dry-run">قدّر قبل أن تصيّر</h3>
+<p>أضف <code>--dry-run</code> إلى <code>render</code> أو <code>sequence</code> (في MCP: <code>dryRun: true</code>). يطبع كم سطرًا سيرسله الصوت، وكم حرفًا هذا، والكلفة التقديرية بالدولار، ثم يتوقف. لا يرسل شيئًا ولا يكتب شيئًا: لا مدخل كاش ولا مجلد بناء.</p>
+<pre><code class="language-sh">screenpilot render storyboard.json --dry-run
+screenpilot sequence all.json --variant saudi --dry-run</code></pre>
+<ul>
+<li>الأسطر الموجودة في كاش الصوت، والأسطر التي لها <code>audio</code> جاهز، مجانية وتُعدّ كمخزّنة.</li>
+<li>مع <code>--variant</code> يقدّر كلفة نص الـ variant. وللـ sequence يعرض النتيجة جزءًا جزءًا.</li>
+<li>أصوات Edge والمحلية والـ command لا تكلّف شيئًا، فالتقدير 0.</li>
+</ul>
+<div class="note">شغّل التقدير قبل أول تصيير بصوت مدفوع، واقرأ الرقم قبل أن تتابع.</div>
+
+<h3 id="cost-ledger">سجل الإنفاق</h3>
+<p>كل طلب محاسَب يضيف صفًا واحدًا إلى <code>spend.jsonl</code> في مجلد الإعدادات: <code>{t, provider, model, voice, chars, audio_s, credits, usd}</code>. الإصابة في الكاش والطلب الفاشل والصوت المجاني لا تضيف شيئًا. المفتاح والنص لا يُكتبان أبدًا. الأمر <code>screenpilot spend</code> يجمع السجل حسب المزوّد؛ والخيار <code>--since 2026-11-01</code> يحدّه بتاريخ، و<code>--json</code> يطبع الصفوف. وأداة MCP <code>voices</code> تعيد المجموع الجاري ككتلة ثانية.</p>
+<pre><code class="language-sh">screenpilot spend
+screenpilot spend --since 2026-11-01 --json</code></pre>
+
+<h3 id="cost-price">اضبط السعر</h3>
+<p>الكلفة تقدير لا فاتورة. الـ <strong>credit</strong> حرف واحد في ElevenLabs، وaudio token واحد في Gemini (25 token لكل ثانية كلام). يضرب ScreenPilot الـ credits في سعر لكل credit. الافتراضيان 0.0003 دولار لـ ElevenLabs و0.00001 دولار لـ Gemini. قد تختلف خطتك، فاضبط سعرك في <code>voices.json</code>:</p>
+<pre><code class="language-json">{ "spend": { "usdPerCredit": { "elevenlabs": 0.00022, "gemini": 0.00001 } } }</code></pre>
+<p>نماذج ElevenLabs من نوع Flash وTurbo تستهلك نصف credit للحرف، فاقسم السعر على اثنين لها. والمتغير <code>SCREENPILOT_NO_SPEND=1</code> يوقف كتابة السجل الافتراضي.</p>
+
 <h2 id="local-models">النماذج المحلية</h2>
 <p>الأصوات المحلية نماذج كلام تعمل على جهازك. هي مجانية ولا تحتاج إنترنت بعد الإعداد. ثبّت نموذجًا بالأمر <code>screenpilot voice-setup</code>، ثم استخدمه في الـ storyboard.</p>
 

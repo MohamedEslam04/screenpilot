@@ -101,6 +101,18 @@ summary: إجابات قصيرة عن أكثر أسئلة ScreenPilot شيوعا
 </ul>
 <p>لتبقى مراجعة الفيديوهات الطويلة سريعة، استخدم <code>-q draft</code> مع <code>--from</code> و<code>--to</code>، واستخدم <code>--workers max</code> حين تكون بعيدًا عن الجهاز. انظر <a href="@guide/cli.html#long-renders">التصيير الطويل</a>.</p>
 
+<h3 id="subtitles-languages">كيف أحصل على ترجمة بعدة لغات؟</h3>
+<p>كل تصيير يكتب ملف timeline بجوار الفيديو. اكتب ملف JSON لكل لغة يربط <code>id</code> كل سطر تعليق بالسطر المترجم، ثم اطلب الملفات: <code>screenpilot subs demo.mp4 --lang ar,en=en.json,es=es.json</code>. لا حاجة إلى تصيير جديد. وScreenPilot لا يترجم عنك. انظر <a href="@guide/subtitles.html">الترجمة والـ timeline</a>.</p>
+
+<h3 id="another-script">كيف أصنع الفيديو نفسه بنص أو لهجة أخرى؟</h3>
+<p>اكتب ملف variants، مثل <code>variants/saudi.json</code>، فيه نص التعليق والصوت الجديدين، وصيّر بـ <code>--variant saudi</code>. يبقى التسجيل والقصّ والمظهر كما هي، ومقاطع الصوت مخزّنة مؤقتًا، فالتبديل ذهابًا وإيابًا رخيص. انظر <a href="@guide/variants.html">نسخ النص وملاءمة الأسطر</a>.</p>
+
+<h3 id="pause-render">أحتاج جهازي في منتصف تصيير طويل</h3>
+<p>أوقفه مؤقتًا: <code>screenpilot pause</code>، أو اطلب من تطبيقك الذكي إيقاف التصيير مؤقتًا. ينهي الجزء أو الـ chunk الجاري ويتوقف، والأمر <code>screenpilot resume</code> يتابع لاحقًا من كل ما انتهى. أما Ctrl+C فيوقفه نهائيًا، ولا يبقى ملف نصف مكتوب باسمه النهائي. انظر <a href="@guide/long-renders.html">التصيير الطويل</a>.</p>
+
+<h3 id="voice-cost">كم سيكلّف الصوت السحابي؟</h3>
+<p>اطلب تقديرًا أولًا: الأمر <code>screenpilot render storyboard.json --dry-run</code> يطبع الأسطر والأحرف والكلفة التقديرية بالدولار، ولا يرسل شيئًا. والأمر <code>screenpilot spend</code> يجمع ما استخدمته حتى الآن. كلاهما تقدير من سعر لكل credit تستطيع ضبطه. انظر <a href="@guide/voices.html#cost">كم تكلّف الأصوات السحابية</a>.</p>
+
 <h3 id="vertical">كيف أحصل على نسخة طولية أو مربعة؟</h3>
 <p>صيّر بالخيار <code>--formats</code>، مثل <code>screenpilot render storyboard.json --formats 16:9,9:16,1:1</code>. تحصل على ملف لكل صيغة من التعديل نفسه. النسخة الطولية من تسجيل عرضي تقصّ الـ views التي تؤطر نافذة، فانظر إلى مسودة أولًا. انظر <a href="@guide/cli.html#formats">عدة صيغ</a>.</p>
 
