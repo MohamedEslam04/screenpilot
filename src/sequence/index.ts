@@ -6,7 +6,7 @@ import { CACHE_DIR } from "../brand.js";
 import { recordEvent } from "../history/index.js";
 import { startJob } from "../history/jobs.js";
 import { type FitOptions, renderStoryboard } from "../render/index.js";
-import { clearPause, type PausedInfo, pauseRequested, RenderPaused, resumeCommand, writePausedState } from "../render/pause.js";
+import { clearPause, type PausedInfo, pauseRequested, RenderPaused, resumeCommand, type ResumeOptions, writePausedState } from "../render/pause.js";
 import { type MemGuardOptions, memGuardSettings, startRssSampler } from "../util/mem.js";
 import { checkTranslations, type SubtitleLanguage, writeTimelineSubtitles } from "../render/subtitle-langs.js";
 import type { CueRules, SubtitleFormat } from "../render/subtitles.js";
@@ -379,12 +379,7 @@ async function renderSequenceTracked(path: string, opts: SequenceRenderOptions):
   const sampler = startRssSampler();
   try {
     const r = await renderPrepared(prepared, { ...opts, onProgress: (step) => job.update(step) }, () => pauseRequested(prepared.buildDir, since));
-    if (opts.subtitles?.length || opts.subtitleLanguages?.length) {
-      const subs = await writeTimelineSubtitles(await readTimeline(r.timeline), r.output, { languages: opts.subtitleLanguages ?? [], formats: opts.subtitles?.length ? opts.subtitles : ["srt", "vtt"], rules: opts.subtitleRules });
-      for (const f of subs.files) (opts.log ?? (() => {}))(`wrote ${f}`);
-      r.files = subs.files;
-      r.warnings = subs.warnings;
-    }
+    await writeJoinedSubtitles(r, opts);
     r.peakRssMB = await sampler.stop();
     await clearPause(prepared.buildDir);
     await recordEvent({ kind: "sequence", status: "ok", path: prepared.path, output: r.output, durationSec: r.duration, quality, wallSeconds: wall() });
@@ -398,23 +393,7 @@ async function renderSequenceTracked(path: string, opts: SequenceRenderOptions):
         path: prepared.path,
         buildDir: prepared.buildDir,
         pausedAt: new Date().toISOString(),
-        options: {
-          output: sequenceOutput(prepared, opts),
-          buildDir: prepared.buildDir,
-          quality: opts.quality,
-          style: opts.style?.path,
-          variant: opts.variant,
-          variantDir: opts.variantDir,
-          fit: opts.fit,
-          workers: opts.workers,
-          pngFrames: opts.pngFrames,
-          timings: opts.timings,
-          subtitles: opts.subtitles,
-          subtitleLanguages: opts.subtitleLanguages,
-          subtitleRules: opts.subtitleRules,
-          minFreeMemMB: opts.minFreeMemMB,
-          memTimeoutS: opts.memTimeoutS,
-        },
+        options: { ...sequenceResumeOptions(opts), output: sequenceOutput(prepared, opts), buildDir: prepared.buildDir },
       });
       opts.log?.(`paused: ${err.info.partsDone}/${err.info.partsTotal} parts done; carry on with: ${err.info.resume}`);
       throw new RenderPaused({ ...err.info, stateFile });
@@ -424,6 +403,32 @@ async function renderSequenceTracked(path: string, opts: SequenceRenderOptions):
   } finally {
     job.end();
   }
+}
+
+/** The options of a sequence render that `resume` needs to render it again the same way (JSON: a style by its file). */
+export const sequenceResumeOptions = (opts: SequenceRenderOptions): ResumeOptions => ({
+  quality: opts.quality,
+  style: opts.style?.path,
+  variant: opts.variant,
+  variantDir: opts.variantDir,
+  fit: opts.fit,
+  workers: opts.workers,
+  pngFrames: opts.pngFrames,
+  timings: opts.timings,
+  subtitles: opts.subtitles,
+  subtitleLanguages: opts.subtitleLanguages,
+  subtitleRules: opts.subtitleRules,
+  minFreeMemMB: opts.minFreeMemMB,
+  memTimeoutS: opts.memTimeoutS,
+});
+
+/** Caption files for a joined video from its timeline, when asked for (`subtitles` / `subtitleLanguages`). */
+export async function writeJoinedSubtitles(r: SequenceResult, opts: SequenceRenderOptions): Promise<void> {
+  if (!opts.subtitles?.length && !opts.subtitleLanguages?.length) return;
+  const subs = await writeTimelineSubtitles(await readTimeline(r.timeline), r.output, { languages: opts.subtitleLanguages ?? [], formats: opts.subtitles?.length ? opts.subtitles : ["srt", "vtt"], rules: opts.subtitleRules });
+  for (const f of subs.files) (opts.log ?? (() => {}))(`wrote ${f}`);
+  r.files = subs.files;
+  r.warnings = subs.warnings;
 }
 
 /** Where the joined video goes: `output`, else `<sequence>[.<variant>][.<style>].mp4`. */
@@ -449,7 +454,8 @@ function sequencePaused(prepared: PreparedSequence, index: number, inner?: Pause
   });
 }
 
-async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOptions, shouldPause: () => boolean = () => false): Promise<SequenceResult> {
+/** Render the parts of a prepared sequence (reusing those whose part.key matches) and join them into `sequenceOutput` with its timeline.json. `sequence --joins` calls it once per joined video. */
+export async function renderPrepared(prepared: PreparedSequence, opts: SequenceRenderOptions, shouldPause: () => boolean = () => false): Promise<SequenceResult> {
   const log = opts.log ?? (() => {});
   const quality = opts.quality ?? "looks";
   const results: SequenceResult["parts"] = [];
