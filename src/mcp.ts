@@ -41,6 +41,7 @@ import { type PerformResult, performTake, resolveTarget, TakeError } from "./tak
 import { A11yQuerySchema, TargetSchema, takeJsonSchema } from "./take/schema.js";
 import { probeVideo } from "./util/media.js";
 import { estimateStoryboard } from "./voice/estimate.js";
+import { abortAll } from "./util/proc.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
 import { readSpend, summarizeSpend } from "./voice/spend.js";
 import { exportScript, importAudio } from "./voice/import.js";
@@ -75,12 +76,12 @@ const image = async (file: string): Promise<Content> => ({
   mimeType: "image/jpeg",
 });
 
-/** Wrap a handler so thrown errors become tool errors instead of protocol errors. */
+/** Wrap a handler so thrown errors become tool errors instead of protocol errors. `extra.signal` fires when the client cancels the call. */
 const safe =
-  <A>(fn: (args: A) => Promise<Result>) =>
-  async (args: A): Promise<Result> => {
+  <A>(fn: (args: A, extra?: { signal?: AbortSignal }) => Promise<Result>) =>
+  async (args: A, extra?: { signal?: AbortSignal }): Promise<Result> => {
     try {
-      return await fn(args);
+      return await fn(args, extra);
     } catch (err) {
       log(err instanceof Error ? (err.stack ?? err.message) : String(err));
       return fail(err);
@@ -153,7 +154,7 @@ const INSTRUCTIONS = `${APP_TITLE} makes screen videos. FIRST, for every new vid
 Design every video for its purpose; there is no house style. Before rendering, decide who it's for and where it will be shown, then set the storyboard to match: output size (1920x1080 for YouTube/README/slides, 1080x1920 for Reels/TikTok/Shorts, 1080x1080 for feeds), theme (background, padding, radius, accent, font, caption colors), theme.fonts (any Google Fonts), theme.css (your own CSS for captions, cards, highlights; storyboard_schema lists the classes) and text motion (theme.motion.captions / .cards, or motion per caption: in/out presets fade, rise, drop, slide-left, slide-right, pop, zoom, blur, wipe, words, lines, none; duration, any GSAP ease, stagger). Match the product's brand when you can see it (colors and type from its site or app). Pace and wording follow the audience: short punchy captions for social, calm explanatory ones for tutorials, bilingual lines ("English\nعربي") when asked. Defaults are only a fallback.
 Choose the shot the same way: which monitors to record (record_start screens / take "screens": one, several or "all") and what the camera shows: "window" follows the app in use (clean product demos), "screen" the whole monitor (OS-level how-tos, context matters), "all" every monitor side by side (work that spans screens, e.g. code on one and the app on the other). Switch per moment with view steps / storyboard views, and zoom only where detail matters.
 Editing: segments take speedTo (ramp the speed) and transition {type: crossfade|fade-black|fade-white|wipe-left|wipe-right|slide-left|slide-right, dur} (blends in, overlapping the previous segment, so the video gets dur shorter); theme.grade {brightness, contrast, saturation, gamma} grades the recording. Annotations: annotations [{type: arrow|box|blur, at, dur, ...}] draw on the recording (0..1 of the recording, they follow zooms); blur with mode solid hides secrets completely. Sound: sfx [{at, src}] plays a sound at a source time and sounds {clicks, typing, cards, volume} adds them automatically from the recorded clicks (needs events), the typing [{at, dur, text?}] spans (keys are never recorded; a performed take marks its own) and the title cards; src is a file or builtin:click|key|whoosh|pop|ding. music takes fadeIn/fadeOut, loop, offset and from/to; audio {loudness: {}} normalizes the final video to -16 LUFS and audio {denoise: true} cleans the recording's sound.
-To put another recording in the middle of a video without re-recording the rest: write a sequence.json {parts: [{storyboard, from?, to?, transition?}]} (sequence_schema, sequence_validate, sequence_render). Each part is a full storyboard; from/to are source seconds of that storyboard, so the same demo twice ({to: 42}, the feature, {from: 42}) inserts the feature at second 42. Give the storyboards a shared "extends" base so theme, voice and size match. Storyboards also take cards (chapter cards), overlays (logo/image/video), music.duck and segment volume/mute; render takes from/to (output seconds, review one window fast) and formats (e.g. ["16:9","9:16"]).
+To put another recording in the middle of a video without re-recording the rest: write a sequence.json {parts: [{storyboard, from?, to?, transition?}]} (sequence_schema, sequence_validate, sequence_render). Each part is a full storyboard; from/to are source seconds of that storyboard, so the same demo twice ({to: 42}, the feature, {from: 42}) inserts the feature at second 42. Give the storyboards a shared "extends" base so theme, voice and size match. Storyboards also take cards (chapter cards), overlays (logo/image/video), music.duck and segment volume/mute; render takes from/to (output seconds, review one window fast) and formats (e.g. ["16:9","9:16"]). A render's mp4 appears only when complete (<name>.partial.mp4 until then), and abort stops a running render with its whole process tree (HyperFrames, Chrome, ffmpeg).
 Before the delivery render run storyboard_qa: it flags highlights that frame an empty area and views that show the desktop.
 Long renders: a full render takes about as long as the video (more at delivery). For a long video iterate with quality "draft" and from/to, use workers "max" when the user is away from the desktop. A render of 5 minutes or more is split into cached chunks at quiet points automatically, so after an edit only the chunks it touched render again (chunks: false turns it off). When a render is expected to take 2 minutes or more the log starts with "estimated ~<time>" (from past renders).
 Rules: storyboard times are SOURCE seconds and positions are 0..1 of the recording; take targets are {screen,x,y} 0..1 per monitor, {web: selector} in the demo browser, {a11y: {role, name}} for a control in a native app (a11y_tree lists them; Linux AT-SPI, Qt apps must be launched with QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1), or {window: match, x, y}. Keep narration lines short; the render freezes video so lines never overlap. Use voices like en-US-AndrewNeural or ar-EG-SalmaNeural (voices tool). Free offline voices: voice.provider "local" with name voicetut:Sarah (Egyptian Arabic and English) or namaa (Egyptian Arabic); voices with provider "local" lists what is installed. If none is installed and the user wants one, tell them to run "screenpilot voice-setup voicetut" in a terminal (about 10 GB; do not start it yourself). Command voices (any program) are defined by the user in voices.json; you cannot add them in a storyboard. Cloud voices: provider "elevenlabs" (name = a voice id or the name of a voice on the user's account) and provider "gemini" (name like Kore) need the user's own key in ELEVENLABS_API_KEY / GEMINI_API_KEY or in secrets.json in the config folder (doctor shows whether it is set); never ask for the key in chat or write it anywhere yourself, and say the text is sent to that service. Paid voices cost money: before the first render with one, call render (or sequence_render) with dryRun: true to get the lines, characters and estimated USD with nothing sent, tell the user the estimate, and render only after they agree; every billed request is added to a spend ledger and the voices tool shows the running total. For a better voice than the built-in ones, the user can make the audio on a web text-to-speech site: script_export writes the script to paste, the user generates ONE audio file (blank line between lines) and gives it back, then audio_import cuts it per line and sets narration[].audio; render as usual. Warn that free plans have limits and may forbid commercial use. The camera frames the window in use by default. You can run the whole loop yourself: drive live, write the take, perform, render, check_output. If a person is present, ask them not to touch the mouse while you drive; moving it stops the action with a message, and resume carries on from where the pointer is. For unattended runs start the server with SCREENPILOT_INTERRUPT=off. Run doctor first on a new machine.`;
@@ -503,7 +504,7 @@ server.registerTool(
       'Pass subtitles (["srt","vtt"]) to also write caption files from the narration next to the video, and also (["gif","webm","poster"]) for an animated GIF, a WebM or a poster PNG made from the finished video (poster_at sets its time). The result lists them under files. ' +
       "A video (or from/to window) of 5 minutes or more renders in chunks of about 3 minutes cut where nothing is moving or speaking, each cached: after an edit only the chunks it touched render again, then all are joined. chunks: false renders in one piece; chunk_seconds sets the chunk length. " +
       "dryRun=true sends nothing and writes nothing: it returns the lines, characters and estimated USD the voice would cost (cached lines are free), so check it before the first render with a paid voice. " +
-      "Slow (minutes). Follow with check_output to review the result.",
+      "Slow (minutes). The video is written as <name>.partial.mp4 and renamed when complete, so the output file only appears finished; abort (or cancelling this call) kills the whole render (HyperFrames, Chrome, ffmpeg) and removes the partial file. Follow with check_output to review the result.",
     inputSchema: {
       storyboard: z.string().describe("Path to storyboard.json"),
       output: z.string().optional().describe("Output mp4. Default: <storyboard>.mp4"),
@@ -521,7 +522,7 @@ server.registerTool(
       dryRun: z.boolean().optional().describe("Only estimate the voice cost (lines, characters, USD): no request, no file, no cache entry"),
     },
   },
-  safe(async ({ storyboard, output, quality, from, to, formats, subtitles, also, poster_at, style, workers, chunks, chunk_seconds, dryRun }) => {
+  safe(async ({ storyboard, output, quality, from, to, formats, subtitles, also, poster_at, style, workers, chunks, chunk_seconds, dryRun }, ctx) => {
     if (dryRun) return text(await estimateStoryboard(storyboard, { style: style ? await loadStyle(style) : undefined }));
     requireBrief("render");
     const window = parseWindow(from, to);
@@ -533,6 +534,7 @@ server.registerTool(
       workers: parseWorkers(workers),
       chunks,
       chunkSeconds: chunk_seconds,
+      signal: ctx?.signal,
     };
     if (formats?.length) {
       const rs = await renderFormats(storyboard, parseFormats(formats.join(",")), { output, quality, window, log, ...extra });
@@ -576,7 +578,7 @@ server.registerTool(
       "with the intro of the first part and the outro of the last, then joined into one MP4. " +
       "Pass style (a style file, JSON with only a theme) to render the same sequence with another look: its theme is merged over every storyboard part (not over finished video parts), the file is named <sequence>.<style>.mp4 and each style keeps its own build folder and cache. " +
       "dryRun=true sends nothing and writes nothing (no build folder): it returns the lines, characters and estimated USD the voices would cost, part by part. " +
-      "Slow (minutes). Follow with check_output.",
+      "Slow (minutes). The video only appears once complete (written as <name>.partial.mp4, then renamed); abort (or cancelling this call) kills the whole render tree. Follow with check_output.",
     inputSchema: {
       sequence: z.string().describe("Path to sequence.json"),
       output: z.string().optional().describe("Output mp4. Default: <sequence>.mp4"),
@@ -586,10 +588,10 @@ server.registerTool(
       dryRun: z.boolean().optional().describe("Only estimate the voice cost (lines, characters, USD) part by part: no request, no file, no build folder"),
     },
   },
-  safe(async ({ sequence, output, quality, style, workers, dryRun }) => {
+  safe(async ({ sequence, output, quality, style, workers, dryRun }, ctx) => {
     if (dryRun) return text(await estimateSequence(sequence, { style: style ? await loadStyle(style) : undefined }));
     requireBrief("sequence_render");
-    return text(await renderSequence(sequence, { output, quality, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(workers), log }));
+    return text(await renderSequence(sequence, { output, quality, style: style ? await loadStyle(style) : undefined, workers: parseWorkers(workers), log, signal: ctx?.signal }));
   }),
 );
 
@@ -995,7 +997,7 @@ server.registerTool(
 server.registerTool(
   "abort",
   {
-    description: "Stop whatever the agent is driving right now: the live driver and a running perform. Safe to call any time. It closes the driver; the next drive tool reopens it. To carry on after the pointer was moved by someone else, use resume instead.",
+    description: "Stop whatever the agent is driving right now: the live driver, a running perform, and any running render or sequence_render (its whole process tree: HyperFrames, Chrome and ffmpeg get SIGTERM, then SIGKILL after 5 s; on Windows taskkill /T /F; the partial video is removed, finished chunks and parts stay cached for the next render). Safe to call any time. It closes the driver; the next drive tool reopens it. To carry on after the pointer was moved by someone else, use resume instead.",
   },
   safe(async () => {
     const stopped: string[] = [];
@@ -1008,6 +1010,7 @@ server.registerTool(
       stopped.push("driver");
       await closeDriver(); // abort is sticky; the next drive tool reopens a fresh driver
     }
+    if ((await abortAll("stopped by the abort tool")) > 0) stopped.push("render");
     return text({ aborted: stopped });
   }),
 );
@@ -1033,6 +1036,7 @@ async function shutdown(): Promise<never> {
   }
   performing?.abort();
   await closeDriver();
+  await abortAll("the client closed"); // renders run in their own process groups: take them along
   process.exit(0);
 }
 process.on("SIGINT", () => void shutdown());
