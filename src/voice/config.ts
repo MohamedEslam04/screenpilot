@@ -23,6 +23,17 @@ const CommandVoiceSchema = z
   })
   .strict();
 
+// Settings of a cloud provider. Like commands, they live in the user's own file and never in a
+// storyboard, so a shared project cannot send the API key to another host.
+const ProviderSettingsSchema = z
+  .object({
+    baseUrl: z
+      .string()
+      .optional()
+      .describe("Where the API lives: a web address (https, with or without the /v1 part) or, for elevenlabs, a region name: us | eu | in | sg. For accounts with data residency or a company gateway"),
+  })
+  .strict();
+
 const VoiceConfigSchema = z
   .object({
     commands: z.record(z.string(), CommandVoiceSchema).prefault({}),
@@ -30,6 +41,13 @@ const VoiceConfigSchema = z
       .object({
         python: z.string().optional().describe("Python that has the local voice models installed"),
         env: z.record(z.string(), z.string()).optional().describe("Environment for the model process, e.g. HF_HOME for the weights folder"),
+      })
+      .strict()
+      .prefault({}),
+    providers: z
+      .object({
+        elevenlabs: ProviderSettingsSchema.optional(),
+        gemini: ProviderSettingsSchema.optional(),
       })
       .strict()
       .prefault({}),
