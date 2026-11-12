@@ -43,6 +43,7 @@ import { probeVideo } from "./util/media.js";
 import { describeEstimate, estimateStoryboard } from "./voice/estimate.js";
 import { getProvider, voiceMatchesLang } from "./voice/index.js";
 import { formatSpend, parseSince, readSpend, summarizeSpend } from "./voice/spend.js";
+import { type CloudProvider, clearEndpoint, ENDPOINTS, resolveEndpoint, setEndpoint } from "./voice/endpoint.js";
 import { removeSecret, type SecretName, secretSource, secretsFile, setSecret } from "./voice/secrets.js";
 import { exportScript, importAudio } from "./voice/import.js";
 import { detectBriefEnv } from "./brief/detect.js";
@@ -463,6 +464,47 @@ secret
   .argument("<provider>", "elevenlabs | gemini")
   .action((provider: string) => {
     print({ provider, removed: removeSecret(secretNameFor(provider)) });
+  });
+
+const endpoint = program
+  .command("endpoint")
+  .description("Where a cloud voice talks to: the default host, a data-residency region (ElevenLabs us | eu | in | sg) or a company gateway. Kept in voices.json (never in a storyboard); the env vars ELEVENLABS_BASE_URL and GEMINI_BASE_URL win");
+const cloudProvider = (provider: string): CloudProvider => {
+  if (provider === "elevenlabs" || provider === "gemini") return provider;
+  throw new Error(`Unknown provider "${provider}" (want elevenlabs or gemini)`);
+};
+endpoint
+  .command("set")
+  .description("Save the address, e.g. `endpoint set elevenlabs eu` or `endpoint set gemini https://gateway.example.com/gemini`")
+  .argument("<provider>", "elevenlabs | gemini")
+  .argument("<url>", "https address (with or without /v1) or, for elevenlabs, a region: us | eu | in | sg")
+  .action(async (provider: string, url: string) => {
+    const r = await setEndpoint(cloudProvider(provider), url);
+    print({ provider, baseUrl: r.url, file: r.file, note: `run "${APP} doctor" to check that the key is accepted there` });
+  });
+endpoint
+  .command("status")
+  .description("The address each cloud voice uses now and where it comes from (env, file or default)")
+  .action(() => {
+    print(
+      Object.fromEntries(
+        (Object.keys(ENDPOINTS) as CloudProvider[]).map((p) => {
+          try {
+            const { url, source } = resolveEndpoint(p);
+            return [p, { baseUrl: url, source }];
+          } catch (err) {
+            return [p, { error: (err as Error).message }];
+          }
+        }),
+      ),
+    );
+  });
+endpoint
+  .command("clear")
+  .description("Go back to the default host (an environment variable stays)")
+  .argument("<provider>", "elevenlabs | gemini")
+  .action(async (provider: string) => {
+    print({ provider, cleared: await clearEndpoint(cloudProvider(provider)) });
   });
 
 program

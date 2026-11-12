@@ -189,4 +189,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 7b14746 ("Merge pull request #13 from MohamedEslam04/feat/project-output", 2026-11-09).
+Docs synced to commit fd048cd ("fix(voice): ignore unknown settings in voices.json with a warning instead of refusing the file", 2026-11-12).

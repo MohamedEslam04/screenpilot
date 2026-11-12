@@ -173,6 +173,19 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <pre><code class="language-sh">printf '%s' "$GEMINI_API_KEY" | screenpilot secret set gemini
 screenpilot secret status</code></pre>
 
+<h3 id="endpoint">endpoint<a class="a" href="#endpoint" aria-label="Link to this section">#</a></h3>
+<p><code>screenpilot endpoint</code> sets which host a cloud voice talks to: the default host, a data-residency region (ElevenLabs <code>us</code>, <code>eu</code>, <code>in</code>, <code>sg</code>) or a company gateway. It is saved in <code>voices.json</code>, never in a storyboard. The environment variables <code>ELEVENLABS_BASE_URL</code> and <code>GEMINI_BASE_URL</code> win over the file. <a href="../guide/voices.html#cloud-region">Voices</a> explains when you need it.</p>
+<table>
+<thead><tr><th>Command</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>endpoint set &lt;provider&gt; &lt;url|region&gt;</code></td><td>Checks and saves the address (with or without <code>/v1</code>; <code>https</code> only, <code>http</code> for localhost).</td></tr>
+<tr><td><code>endpoint status</code></td><td>Prints, for each provider, the address in use and its source: <code>env</code>, <code>file</code> or <code>default</code>.</td></tr>
+<tr><td><code>endpoint clear &lt;provider&gt;</code></td><td>Goes back to the default host. An environment variable stays.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-sh">screenpilot endpoint set elevenlabs eu
+screenpilot doctor</code></pre>
+
 <h3 id="spend">spend<a class="a" href="#spend" aria-label="Link to this section">#</a></h3>
 <p><code>screenpilot spend</code> totals what the cloud voices have cost so far, by provider, from the spend ledger (<code>spend.jsonl</code> in the config folder). Only billed requests are in it: a cache hit, a failed request and a free voice are not. The key and the text are never written. The figures are estimates from your price per credit, not an invoice. <a href="../guide/voices.html#cost">What cloud voices cost</a> explains credits and how to set the price.</p>
 <table>

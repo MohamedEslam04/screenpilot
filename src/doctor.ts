@@ -18,6 +18,8 @@ import { ObsRecorder, resolveObsConfig } from "./record/obs.js";
 import { installHint } from "./util/distro.js";
 import { run } from "./util/exec.js";
 import { loadVoiceConfig } from "./voice/config.js";
+import { checkElevenLabs } from "./voice/elevenlabs.js";
+import { checkGemini } from "./voice/gemini.js";
 import { getProvider } from "./voice/index.js";
 import { defaultLaunch, LOCAL_PYTHON_ENV, LocalWorker } from "./voice/local.js";
 import { findSecret, secretsFile } from "./voice/secrets.js";
@@ -288,9 +290,13 @@ export async function doctor(opts: { input?: boolean } = {}): Promise<DoctorRepo
     const voices = await withTimeout(getProvider("edge").listVoices(), 10_000, "Edge TTS");
     return { ok: voices.length > 0, detail: `${voices.length} voices` };
   });
-  // Optional cloud voices: only whether a key is stored, never a request (and never the key itself).
-  for (const [label, name] of [["elevenlabs voice", "ELEVENLABS_API_KEY"], ["gemini voice", "GEMINI_API_KEY"]] as const) {
-    await add(label, async () => (findSecret(name) ? { ok: true, detail: `${name} is set` } : skip(`optional, ${name} not set (env var or ${secretsFile()})`)));
+  // Optional cloud voices: with a key, one cheap request to the host in use (no credits, the key only goes in a header),
+  // so a key made for another region or a wrong base URL shows here and not in the middle of a render.
+  for (const [label, name, check] of [
+    ["elevenlabs voice", "ELEVENLABS_API_KEY", checkElevenLabs],
+    ["gemini voice", "GEMINI_API_KEY", checkGemini],
+  ] as const) {
+    await add(label, async () => (findSecret(name) ? withTimeout(check(), 12_000, label) : skip(`optional, ${name} not set (env var or ${secretsFile()})`)));
   }
   await add("local voice", async () => {
     if (!process.env[LOCAL_PYTHON_ENV] && !loadVoiceConfig().local.python) return skip(`optional, not set up: run "${APP} voice-setup voicetut"`);

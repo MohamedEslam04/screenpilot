@@ -47,7 +47,22 @@ screenpilot secret remove elevenlabs</code></pre>
 <li>الأمر <code>secret remove</code> يحذف المفتاح المخزَّن. ولا يستطيع إلغاء متغير بيئة.</li>
 <li>إذا نفّذت <code>secret set</code> في طرفية بدون pipe فإنه يطلب منك لصق المفتاح ثم الضغط على Enter.</li>
 </ul>
-<p>لا يُكتب المفتاح في سجل ولا في مفتاح cache ولا في رسالة خطأ. في <code>screenpilot doctor</code> سطران هما "elevenlabs voice" و"gemini voice". كل سطر يقول فقط هل المفتاح مضبوط. يُتخطّى السطر إذا لم يُضبط مفتاح لأن المزوّدين اختياريان، ولا يرسل أي طلب.</p>
+<p>لا يُكتب المفتاح في سجل ولا في مفتاح cache ولا في رسالة خطأ. في <code>screenpilot doctor</code> سطران هما "elevenlabs voice" و"gemini voice". يُتخطّى السطر إذا لم يُضبط مفتاح لأن المزوّدين اختياريان. إذا وُجد مفتاح يرسل <code>doctor</code> طلبًا واحدًا خفيفًا إلى الـ host المستخدم (لا يستهلك أي رصيد، والمفتاح يُرسل في header فقط)، فيظهر هنا أن المفتاح لمنطقة أخرى بدل أن يظهر في منتصف الـ render.</p>
+
+<h3 id="cloud-region">المنطقة والـ base URL (data residency والـ gateways)</h3>
+<p>المفتاح يخص host واحدًا. حساب ElevenLabs الذي يستخدم data residency (أوروبا أو الهند أو سنغافورة) له host خاص بالـ API، والـ host الافتراضي <code>api.elevenlabs.io</code> يرفض مفاتيحه برد <code>401 invalid_api_key</code>. وقد تضع الشركة أيضًا gateway أمام المزوّد. أخبر ScreenPilot أي host يستخدم:</p>
+<pre><code class="language-sh">screenpilot endpoint set elevenlabs eu        # us | eu | in | sg أو عنوان https كامل
+screenpilot endpoint set gemini https://gateway.example.com/gemini
+screenpilot endpoint status                   # الـ host المستخدم ومن أين جاء
+screenpilot endpoint clear elevenlabs         # الرجوع إلى الـ host الافتراضي
+screenpilot doctor                            # يفحص المفتاح على ذلك الـ host</code></pre>
+<ul>
+<li>يُحفظ العنوان في <code>voices.json</code> (<code>"providers": {"elevenlabs": {"baseUrl": "..."}}</code>). متغيرا البيئة <code>ELEVENLABS_BASE_URL</code> و<code>GEMINI_BASE_URL</code> لهما الأولوية على الملف. وفي تبويب Voices في الـ dashboard الحقل نفسه.</li>
+<li>لا يُقرأ العنوان من الـ storyboard أبدًا، فلا يستطيع مشروع مشترك أن يرسل مفتاحك إلى host آخر.</li>
+<li>اكتبه مع نسخة الـ API (<code>/v1</code>) أو بدونها، والشرطة المائلة في آخره تُهمل. يجب أن يبدأ بـ <code>https://</code> (يُسمح بـ <code>http://</code> مع <code>localhost</code> فقط) وألا يحتوي على اسم مستخدم أو كلمة مرور.</li>
+<li>أسماء المناطق: <code>us</code> = <code>api.us.elevenlabs.io</code>، <code>eu</code> = <code>api.eu.residency.elevenlabs.io</code>، <code>in</code> = <code>api.in.residency.elevenlabs.io</code>، <code>sg</code> = <code>api.sg.residency.elevenlabs.io</code>.</li>
+<li>المقاطع المصنوعة عبر host آخر تُخزَّن منفصلة، أما المقاطع المصنوعة عبر الـ host الافتراضي فتبقى صالحة.</li>
+</ul>
 
 <h3 id="cloud-elevenlabs">ElevenLabs</h3>
 <pre><code class="language-json">"voice": { "provider": "elevenlabs", "name": "Your Voice Name", "rate": "+0%" }</code></pre>
@@ -284,13 +299,16 @@ screenpilot doctor</code></pre>
 <tbody>
 <tr><td>لا يوجد محرك صوت محلي مُعَدّ، وتطلب الرسالة تنفيذ <code>voice-setup</code>.</td><td>نفّذ <code>screenpilot voice-setup voicetut</code>. أو اضبط <code>SCREENPILOT_LOCAL_PYTHON</code> على Python مثبّت فيه نموذج.</td></tr>
 <tr><td>نفدت ذاكرة كرت الشاشة، وتقترح الرسالة <code>SCREENPILOT_LOCAL_DEVICE=cpu</code>.</td><td>اضبط <code>SCREENPILOT_LOCAL_DEVICE=cpu</code>. سيكون أبطأ. أو استخدم <code>voicetut</code> فهو يحتاج ذاكرة كرت أقل من <code>namaa</code>.</td></tr>
+<tr><td>سطر على stderr: <code>ignoring unknown setting "..." (written by a newer version?)</code>.</td><td>في <code>voices.json</code> إعداد لا تعرفه هذه النسخة، مثلًا أضافته نسخة أحدث من ScreenPilot. يُتجاهل ويستمر كل شيء آخر في العمل. حدّث ScreenPilot لاستخدامه. أما الخطأ الحقيقي (نوع خاطئ، أمر فارغ) فيتوقف مع المسار والمشكلة.</td></tr>
 <tr><td>صوت محلي غير معروف، مع قائمة بالنماذج الصالحة.</td><td>استخدم <code>voicetut</code> أو <code>voicetut:&lt;Voice&gt;</code> أو <code>namaa</code>. اعرض المثبّت بالأمر <code>screenpilot voices --provider local</code>.</td></tr>
 <tr><td>انتهى أمر صوت <code>command</code> دون أن يكتب صوتًا، وتذكر الرسالة <code>voices.json</code>.</td><td>تأكد أن البرنامج يكتب الصوت في <code>{out}</code> وأن <code>ext</code> يطابق الملف الذي يكتبه. شغّل البرنامج بيدك بمسار حقيقي.</td></tr>
 <tr><td>توقف محرك الصوت، متبوعًا بآخر أسطر طبعها.</td><td>اقرأ تلك الأسطر: هي ما طبعه المحرك قبل أن يتوقف. نفّذ <code>screenpilot doctor</code> واقرأ فحص "local voice".</td></tr>
 <tr><td>يقول <code>voice-setup</code> إنه يحتاج <code>uv</code>.</td><td>ثبّت <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> ثم أعد تنفيذ الأمر.</td></tr>
 <tr><td>يقول <code>voice-setup</code> إن مساحة القرص غير كافية.</td><td>حرّر مساحة، أو مرّر <code>--dir</code> لاستخدام قرص آخر.</td></tr>
 <tr><td><code>ELEVENLABS_API_KEY</code> أو <code>GEMINI_API_KEY</code> غير مضبوط.</td><td>صدّر المتغير، أو نفّذ <code>screenpilot secret set elevenlabs</code> أو <code>screenpilot secret set gemini</code> والصق المفتاح. تحقق بالأمر <code>screenpilot secret status</code>.</td></tr>
-<tr><td>صوت سحابي أجاب بالرمز 401 أو 403.</td><td>المفتاح خاطئ أو لا يملك صلاحية. اضبطه من جديد. متغير البيئة له الأولوية على المفتاح المخزَّن، فتحقق من <code>secret status</code>.</td></tr>
+<tr><td>ElevenLabs أجاب 401 <code>invalid_api_key</code> وقال إن المفتاح لـ data residency stack.</td><td>المفتاح يخص منطقة. نفّذ <code>screenpilot endpoint set elevenlabs eu</code> (أو <code>in</code> أو <code>sg</code>) ثم <code>screenpilot doctor</code>. راجع <a href="#cloud-region">المنطقة والـ base URL</a>.</td></tr>
+<tr><td>صوت سحابي أجاب بالرمز 401 أو 403.</td><td>المفتاح خاطئ أو لا يملك صلاحية. اضبطه من جديد. متغير البيئة له الأولوية على المفتاح المخزَّن، فتحقق من <code>secret status</code>. وإذا كنت تستخدم gateway أو منطقة أخرى فتحقق من الـ base URL (<code>screenpilot endpoint status</code>).</td></tr>
+<tr><td>صوت سحابي يقول إن الرد ليس صوتًا (أو ليس JSON) مع content type مثل <code>text/html</code>.</td><td>الـ base URL يشير إلى صفحة ويب أو شاشة دخول وليس إلى الـ API. تحقق من <code>screenpilot endpoint status</code>.</td></tr>
 <tr><td>صوت سحابي أجاب بالرمز 429.</td><td>وصلت إلى حد خطتك. يحاول ScreenPilot ثلاث مرات ثم يتوقف. انتظر، أو غيّر الخطة أو المزوّد. الأسطر التي اكتملت مخزَّنة.</td></tr>
 <tr><td>ElevenLabs لا يملك صوتًا بهذا الاسم في هذا الحساب.</td><td>استخدم معرّف صوت، أو أحد الأسماء التي تعرضها الرسالة. نفّذ <code>screenpilot voices --provider elevenlabs</code>.</td></tr>
 </tbody>

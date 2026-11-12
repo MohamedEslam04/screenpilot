@@ -23,6 +23,17 @@ const CommandVoiceSchema = z
   })
   .strict();
 
+// Settings of a cloud provider. Like commands, they live in the user's own file and never in a
+// storyboard, so a shared project cannot send the API key to another host.
+const ProviderSettingsSchema = z
+  .object({
+    baseUrl: z
+      .string()
+      .optional()
+      .describe("Where the API lives: a web address (https, with or without the /v1 part) or, for elevenlabs, a region name: us | eu | in | sg. For accounts with data residency or a company gateway"),
+  })
+  .strict();
+
 const VoiceConfigSchema = z
   .object({
     commands: z.record(z.string(), CommandVoiceSchema).prefault({}),
@@ -30,6 +41,13 @@ const VoiceConfigSchema = z
       .object({
         python: z.string().optional().describe("Python that has the local voice models installed"),
         env: z.record(z.string(), z.string()).optional().describe("Environment for the model process, e.g. HF_HOME for the weights folder"),
+      })
+      .strict()
+      .prefault({}),
+    providers: z
+      .object({
+        elevenlabs: ProviderSettingsSchema.optional(),
+        gemini: ProviderSettingsSchema.optional(),
       })
       .strict()
       .prefault({}),
@@ -52,6 +70,26 @@ export function voicesFile(): string {
   return process.env[VOICES_FILE_ENV] || join(configDir(), "voices.json");
 }
 
+const warned = new Set<string>();
+
+/** Forget which unknown settings were already reported (tests). */
+export function resetVoiceConfigWarnings(): void {
+  warned.clear();
+}
+
+/** Remove `key` from the object at `path` inside `root` (a no-op when the path is gone). */
+function dropKey(root: unknown, path: PropertyKey[], key: string): void {
+  let node = root as Record<PropertyKey, unknown> | undefined;
+  for (const part of path) node = node?.[part] as Record<PropertyKey, unknown> | undefined;
+  if (node && typeof node === "object") delete node[key];
+}
+
+/**
+ * Read voices.json. A key this version does not know is ignored with one line on stderr instead of
+ * refusing the whole file: a newer version (or a copy of the file from one) may have added it, and
+ * older versions must not lose every voice because of it. A real mistake (wrong type, empty command)
+ * still fails with the path and the problem.
+ */
 export function loadVoiceConfig(): VoiceConfig {
   const file = voicesFile();
   if (!existsSync(file)) return VoiceConfigSchema.parse({});
@@ -61,7 +99,25 @@ export function loadVoiceConfig(): VoiceConfig {
   } catch (err) {
     throw new Error(`${file} is not valid JSON: ${(err as Error).message}`);
   }
-  const r = VoiceConfigSchema.safeParse(raw);
+  let r = VoiceConfigSchema.safeParse(raw);
+  if (!r.success) {
+    const unknown = r.error.issues.filter((i) => i.code === "unrecognized_keys");
+    const real = r.error.issues.filter((i) => i.code !== "unrecognized_keys");
+    if (real.length) throw new Error(`Invalid ${file}:\n${real.map((i) => `  - ${i.path.join(".")}: ${i.message}`).join("\n")}`);
+    const ignored: string[] = [];
+    for (const issue of unknown) {
+      for (const key of (issue as unknown as { keys: string[] }).keys) {
+        dropKey(raw, issue.path, key);
+        ignored.push([...issue.path, key].join("."));
+      }
+    }
+    const note = `${APP}: ${file}: ignoring unknown setting${ignored.length > 1 ? "s" : ""} ${ignored.map((k) => `"${k}"`).join(", ")} (written by a newer version? update ${APP} to use ${ignored.length > 1 ? "them" : "it"})\n`;
+    if (!warned.has(note)) {
+      warned.add(note);
+      process.stderr.write(note);
+    }
+    r = VoiceConfigSchema.safeParse(raw);
+  }
   if (!r.success) throw new Error(`Invalid ${file}:\n${r.error.issues.map((i) => `  - ${i.path.join(".")}: ${i.message}`).join("\n")}`);
   return r.data;
 }
