@@ -12,6 +12,15 @@ Ask your AI app for a screen video. ScreenPilot records your screen (or uses you
 
 ## What's new
 
+### 0.12.0 ([release notes](https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.12.0))
+
+- **Cloud voices for accounts with data residency, and company gateways:** a key belongs to one host, and an ElevenLabs account on the EU, India or Singapore stack was refused (`401 invalid_api_key`) by the default host. Set the host with `screenpilot endpoint set elevenlabs eu` (`us`, `eu`, `in`, `sg` or a full https address; the same for `gemini`), `screenpilot endpoint status` to see it, `endpoint clear` to undo it, or the env vars `ELEVENLABS_BASE_URL` / `GEMINI_BASE_URL`. It is read from `voices.json` and never from a storyboard, so a shared project cannot send your key elsewhere. The dashboard Voices tab has the same field. `screenpilot doctor` now checks each key against the host in use (one cheap request, no credits).
+- **Clearer cloud voice errors:** the 401 error says when the key belongs to another region and how to fix it, credits used up and 402 / 422 are explained, a gateway or login page answering 200 is no longer saved as audio, `Retry-After` is honoured, and a gateway echoing your key in an error page is scrubbed.
+- **`voices.json` from a newer version no longer breaks an older one:** a setting this version does not know is ignored with one line on stderr instead of refusing the whole file. This protects releases from now on; 0.11.1 and older still refuse the new `providers` setting, so do not save a base URL with them.
+- **Annotations are never silently dropped:** an annotation that starts in footage you cut (or runs across a cut) used to vanish, so a solid blur over a secret could disappear. It now shows over every kept part of its time range, and `validate` / `qa` warn with `[annotation-outside]` (an error for a solid blur that is never drawn).
+- **Fewer false `TARGET_COVERED` in takes:** a wrapper around the target and an overlay that is fading out no longer fail the step (a closing overlay is waited for up to 1.5 s). A timeout is now the `TIMEOUT` code without terminal escape codes, and `perform` on the command line prints the code, `delivery` and `retry` like the MCP tool.
+- **`run` with `wait: true` returns when the program exits:** it used to hang (and lose the take) when the program left a background child holding its output, as `wl-copy` does.
+
 ### 0.11.1 ([release notes](https://github.com/MohamedEslam04/screenpilot/releases/tag/v0.11.1))
 
 - **Dashboard fix:** saving a voice key (and every other dashboard action that runs the CLI) failed with `exec: node: not found` when the dashboard was started from the application menu, because a menu has no shell PATH. The dashboard now uses the Node that ships in the package.
@@ -189,4 +198,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit fd048cd ("fix(voice): ignore unknown settings in voices.json with a warning instead of refusing the file", 2026-11-12).
+Docs synced to commit ebf31cd ("Merge branch 'fix/run-wait'", 2026-11-12).
