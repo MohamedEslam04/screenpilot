@@ -254,3 +254,40 @@ describe("lintStoryboard cards", () => {
     expect(lintStoryboard(sb([{ at: 5, title: "Step" }]), 40).filter((w) => w.startsWith("cards["))).toEqual([]);
   });
 });
+
+describe("[annotation-outside]", () => {
+  const blur = (at: number, dur: number, mode: "blur" | "solid" = "solid") => ({ type: "blur" as const, mode, at, dur, x: 0.1, y: 0.1, w: 0.2, h: 0.1 });
+  const lint = (sb: Partial<StoryboardInput>, duration = 60) => lintStoryboard(StoryboardSchema.parse({ source: "r.mp4", ...sb }), duration).filter((w) => w.startsWith("[annotation-outside]"));
+
+  it("is quiet when the annotation lies in kept footage", () => {
+    expect(lint({ segments: [{ in: 5, out: 30 }], annotations: [blur(6, 10)] })).toEqual([]);
+    expect(lint({ annotations: [blur(0, 10)] })).toEqual([]);
+  });
+
+  it("is an ERROR for a solid blur completely in cut footage", () => {
+    const w = lint({ segments: [{ in: 10, out: 30 }], annotations: [blur(1, 5)] });
+    expect(w).toHaveLength(1);
+    expect(w[0]).toMatch(/ERROR.*annotations\[0\].*solid blur.*completely in cut footage/);
+  });
+
+  it("warns for any other annotation completely in cut footage", () => {
+    const w = lint({ segments: [{ in: 10, out: 30 }], annotations: [{ type: "box", at: 1, dur: 2, x: 0.1, y: 0.1, w: 0.2, h: 0.1 }] });
+    expect(w).toHaveLength(1);
+    expect(w[0]).toMatch(/annotations\[0\].*box.*completely in cut footage/);
+    expect(w[0]).not.toMatch(/ERROR/);
+  });
+
+  it("warns when part of the range is cut (a start before segments[0].in, a cut gap) and says what is shown", () => {
+    expect(lint({ segments: [{ in: 6, out: 30 }], annotations: [blur(0, 10)] })[0]).toMatch(/annotations\[0\].*partly in cut footage.*6\.0s-10\.0s/);
+    const gap = lint({ segments: [{ in: 0, out: 5 }, { in: 8, out: 30 }], annotations: [blur(4, 6, "blur")] });
+    expect(gap[0]).toMatch(/partly in cut footage.*4\.0s-5\.0s, 8\.0s-10\.0s/);
+  });
+
+  it("warns when the range runs past the end of the source", () => {
+    expect(lint({ annotations: [blur(58, 5)] }, 60)[0]).toMatch(/partly in cut footage.*58\.0s-60\.0s/);
+  });
+
+  it("can be turned off with lint.off", () => {
+    expect(lint({ segments: [{ in: 10, out: 30 }], annotations: [blur(1, 5)], lint: { off: ["annotation-outside"] } })).toEqual([]);
+  });
+});

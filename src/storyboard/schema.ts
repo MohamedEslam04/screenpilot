@@ -392,7 +392,7 @@ export const SoundsSchema = z
   .describe("Automatic sound effects from recorded events and cards");
 
 /** Ids of the style-lint rules; every lint warning starts with `[id]`. */
-export const LINT_RULES = ["narration-length", "narration-speed", "caption-length", "duration", "zoom-scale", "stack", "transition", "narration-fit"] as const;
+export const LINT_RULES = ["narration-length", "narration-speed", "caption-length", "duration", "zoom-scale", "stack", "transition", "narration-fit", "annotation-outside"] as const;
 
 export const LintSchema = z
   .object({
@@ -436,7 +436,7 @@ export const StoryboardSchema = z.object({
   annotations: z
     .array(AnnotationSchema)
     .default([])
-    .describe("Arrows, boxes and blur/solid redaction on the recording (0..1 of the recording, so they follow zooms); use blur type solid for anything secret"),
+    .describe("Arrows, boxes and blur/solid redaction on the recording (0..1 of the recording, so they follow zooms); use blur type solid for anything secret. Shown over every kept part of [at, at+dur); validate warns [annotation-outside] when part or all of it is in cut footage"),
   narration: z.array(NarrationSchema).default([]),
   intro: CardSchema.optional(),
   outro: CardSchema.optional(),

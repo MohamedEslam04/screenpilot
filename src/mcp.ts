@@ -402,7 +402,7 @@ server.registerTool(
   {
     description:
       "Check the storyboard against the actual pixels of the source video (needs ffmpeg): [empty-highlight] a highlight frames a flat area (element gone or hidden), " +
-      "[view-outside-window] a view shows more than 8% outside the active window (the desktop is visible). Returns warnings. Run after storyboard_validate and before the delivery render.",
+      "[view-outside-window] a view shows more than 8% outside the active window (the desktop is visible), [annotation-outside] an annotation lies partly or wholly in cut footage (a solid blur wholly cut is an ERROR). Returns warnings. Run after storyboard_validate and before the delivery render.",
     inputSchema: { path: z.string().describe("Path to storyboard.json") },
   },
   safe(async ({ path }) => {

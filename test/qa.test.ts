@@ -56,6 +56,19 @@ describe("qaStoryboard", () => {
     expect(warnings.some((w) => /^\[view-outside-window\] views\[0\] \(0\.5s\) shows 16% outside/.test(w))).toBe(true);
   });
 
+  it.skipIf(!hasFfmpeg)("flags an annotation in cut footage, a solid blur as an ERROR", async () => {
+    const sb = await fixture("testsrc=s=320x180:r=10:d=4", {
+      segments: [{ in: 2, out: 4 }],
+      annotations: [
+        { type: "blur", mode: "solid", at: 0, dur: 1.5, x: 0.1, y: 0.1, w: 0.3, h: 0.1 },
+        { type: "box", at: 1, dur: 2, x: 0.1, y: 0.1, w: 0.3, h: 0.1 },
+      ],
+    });
+    const warnings = await qaStoryboard(sb);
+    expect(warnings.some((w) => /^\[annotation-outside\] ERROR: annotations\[0\] is a solid blur/.test(w))).toBe(true);
+    expect(warnings.some((w) => /^\[annotation-outside\] annotations\[1\] box .*partly in cut footage/.test(w))).toBe(true);
+  });
+
   it.skipIf(!hasFfmpeg)("is quiet without windows.jsonl and with a textured highlight", async () => {
     const sb = await fixture("testsrc=s=320x180:r=10:d=2", {
       highlights: [{ at: 0.2, dur: 1, x: 0.1, y: 0.1, w: 0.6, h: 0.6 }],

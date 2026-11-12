@@ -2,11 +2,13 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { run } from "../util/exec.js";
+import { probeVideo } from "../util/media.js";
+import { lintAnnotationRanges } from "./lint.js";
 import { loadStoryboard } from "./load.js";
 
 // Checks that need the pixels, run on the raw recording: highlights that frame
 // a flat area (the element is gone or hidden) and views that show the desktop
-// next to the app. Warnings only, like lint; slower, so a separate command.
+// next to the app, and annotations that lie in cut footage. Warnings only, like lint; slower, so a separate command.
 
 interface Rect {
   x: number;
@@ -69,6 +71,9 @@ export async function qaStoryboard(path: string): Promise<string[]> {
   const source = resolve(baseDir, sb.source);
   if (!existsSync(source)) return [`source not found: ${source}`];
   const warnings: string[] = [];
+
+  // Not about pixels, but never silent: an annotation (a solid blur above all) lying in cut footage.
+  warnings.push(...lintAnnotationRanges(sb, (await probeVideo(source)).duration));
 
   for (const [i, h] of sb.highlights.entries()) {
     const stats = await cropStats(source, h.at + Math.min(h.dur / 2, 1), h);
