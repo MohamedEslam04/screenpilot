@@ -349,9 +349,15 @@ export class DemoBrowser {
     const win = await this.window();
     return this.withPage(async (page) => {
       const el = page.locator(selector).first();
-      await el.waitFor({ state: "visible", timeout: timeoutMs });
-      await el.scrollIntoViewIfNeeded();
-      let box = await el.boundingBox();
+      let box: { x: number; y: number; width: number; height: number } | null;
+      // Waiting for the element and scrolling to it send no input, so a timeout here is safe to retry.
+      try {
+        await el.waitFor({ state: "visible", timeout: timeoutMs });
+        await el.scrollIntoViewIfNeeded({ timeout: timeoutMs });
+        box = await el.boundingBox();
+      } catch (err) {
+        throw asTimeoutError(err, selector, timeoutMs, "to be visible") ?? err;
+      }
       if (!box) throw new Error(`"${selector}" has no box on screen`);
       if (!opts.force) {
         const centre = (b: { x: number; y: number; width: number; height: number }) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
@@ -362,8 +368,13 @@ export class DemoBrowser {
           box = (await el.boundingBox()) ?? box;
           cover = await findCover(el, centre(box));
         }
+        if (cover.covered && cover.hit?.closing) {
+          // A dialog overlay that is fading out (Radix data-state="closed") unmounts by itself.
+          cover = await waitOutClosing(el, cover);
+          box = (await el.boundingBox()) ?? box;
+        }
         if (cover.covered) {
-          throw new TargetError("TARGET_COVERED", `"${selector}" is covered by ${describeCover(cover.hit)}. Scroll it clear or close what covers it, then try again.`);
+          throw new TargetError("TARGET_COVERED", coverMessage(selector, cover.hit), cover.hit ? [describeCover(cover.hit)] : []);
         }
       }
       const m = await metrics(page);
@@ -392,7 +403,11 @@ export class DemoBrowser {
 
   /** `waitForWeb` in this browser. */
   async waitFor(selector: string, timeoutMs = 30_000): Promise<void> {
-    await this.withPage((p) => p.locator(selector).first().waitFor({ state: "visible", timeout: timeoutMs }));
+    try {
+      await this.withPage((p) => p.locator(selector).first().waitFor({ state: "visible", timeout: timeoutMs }));
+    } catch (err) {
+      throw asTimeoutError(err, selector, timeoutMs, "to be visible") ?? err;
+    }
   }
 }
 
@@ -483,9 +498,52 @@ export interface CoverHit {
   id: string;
   cls: string;
   text: string;
+  /** It, or something around it, is `data-state="closed"`: an overlay (Radix, shadcn) that is animating out and will unmount. */
+  closing?: boolean;
 }
 
-/** `div#toolbar.sticky "Filters"`: enough for an agent to find what sits on top. No hit means the point is outside the page. */
+const ANSI = /\u001b\[[0-9;]*[A-Za-z]/g;
+export const stripAnsi = (s: string): string => s.replace(ANSI, "");
+
+/**
+ * A Playwright timeout as a TIMEOUT target error: the selector and the wait, plus the last line of
+ * Playwright's call log when it says why (e.g. "locator resolved to hidden <div>"), without the
+ * escape codes. Undefined for any other error. Only for waits that send no input.
+ */
+export function asTimeoutError(err: unknown, selector: string, timeoutMs: number, what: string): TargetError | undefined {
+  if (!(err instanceof Error) || err.name !== "TimeoutError") return undefined;
+  const last = stripAnsi(err.message)
+    .split("\n")
+    .map((l) => l.replace(/^\s*-\s*/, "").trim())
+    .filter((l) => /^(locator resolved|element is|waiting for .* to be)/i.test(l))
+    .at(-1);
+  const secs = Math.round(timeoutMs / 100) / 10;
+  return new TargetError("TIMEOUT", `Timed out after ${secs} s waiting for "${selector}" ${what}${last ? ` (${last})` : ""}.`);
+}
+
+/** The TARGET_COVERED message: what sits on top, or that the element is out of the visible page. */
+export function coverMessage(selector: string, hit: CoverHit | null): string {
+  if (!hit) {
+    return `"${selector}" is outside the visible page: its centre is off the viewport even after scrolling it into view. Scroll its container or resize the window so it shows, then try again.`;
+  }
+  return `"${selector}" is covered by ${describeCover(hit)}. Scroll it clear or close what covers it, then try again.`;
+}
+
+const COVER_GRACE_MS = 1500;
+
+/** Re-check a cover that is fading out until it is gone or the grace time (1.5 s) passes; returns the last check. */
+async function waitOutClosing(el: Locator, cover: { covered: boolean; hit: CoverHit | null }): Promise<{ covered: boolean; hit: CoverHit | null }> {
+  const until = Date.now() + COVER_GRACE_MS;
+  while (cover.covered && cover.hit?.closing && Date.now() < until) {
+    await sleep(100);
+    const box = await el.boundingBox();
+    if (!box) break;
+    cover = await findCover(el, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+  }
+  return cover;
+}
+
+/** `div#toolbar.sticky "Filters"`: enough for an agent to find what sits on top. No hit means the point is outside the page (see `coverMessage`). */
 export function describeCover(hit: CoverHit | null): string {
   if (!hit) return "nothing (outside the page)";
   const cls = hit.cls
@@ -498,8 +556,9 @@ export function describeCover(hit: CoverHit | null): string {
 }
 
 /**
- * Whether something other than the element (or one of its children) is on top at `at` (CSS px of
- * the viewport, e.g. the centre of its box). A real pointer click lands on whatever is on top, so
+ * Whether something other than the element is on top at `at` (CSS px of
+ * the viewport, e.g. the centre of its box). The element itself, its children and the elements
+ * around it (a wrapper that takes the click for it) are not covers. A real pointer click lands on whatever is on top, so
  * a sticky header, a scroll box that clips the element or a modal makes the click go elsewhere.
  * `hit` is what is on top; null when the point is outside the page.
  */
@@ -515,7 +574,7 @@ export async function findCover(el: Locator, at: { x: number; y: number }): Prom
       }
       const root = node.getRootNode() as Document | ShadowRoot;
       const hit = root.elementFromPoint(x, y);
-      if (hit && (hit === node || node.contains(hit))) return { covered: false, hit: null };
+      if (hit && (hit === node || node.contains(hit) || hit.contains(node))) return { covered: false, hit: null };
       return {
         covered: true,
         hit: hit && {
@@ -523,6 +582,7 @@ export async function findCover(el: Locator, at: { x: number; y: number }): Prom
           id: hit.id,
           cls: typeof hit.className === "string" ? hit.className : "",
           text: (hit.textContent ?? "").slice(0, 80),
+          ...(hit.closest('[data-state="closed"]') ? { closing: true } : {}),
         },
       };
     },
