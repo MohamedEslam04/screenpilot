@@ -189,4 +189,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit bf2d6ed ("feat(voice): base URL and region for ElevenLabs and Gemini, clear errors, endpoint command, doctor probe", 2026-11-12).
+Docs synced to commit fd048cd ("fix(voice): ignore unknown settings in voices.json with a warning instead of refusing the file", 2026-11-12).
