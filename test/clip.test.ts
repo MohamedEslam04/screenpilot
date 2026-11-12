@@ -80,6 +80,15 @@ describe("clipStoryboard annotations", () => {
       ["box", 45, 2],
     ]);
   });
+
+  it("keeps even a very short rest of a blur on either side of the cut (it may hide a secret)", () => {
+    const secret = StoryboardSchema.parse({
+      source: "rec.mp4",
+      annotations: [{ type: "blur", mode: "solid", at: 41.8, dur: 0.5, x: 0.1, y: 0.1, w: 0.2, h: 0.1 }],
+    });
+    expect(clipStoryboard(secret, { to: 42 }, 60).annotations.map((a) => [a.at, a.dur])).toEqual([[41.8, 0.2]]);
+    expect(clipStoryboard(secret, { from: 42 }, 60).annotations.map((a) => [a.at, a.dur])).toEqual([[42, 0.3]]);
+  });
 });
 
 describe("clipStoryboard", () => {

@@ -23,8 +23,9 @@ function killTree(pid: number | undefined, fallback: () => void): void {
 
 /**
  * Launch a program without a shell. `wait: false` starts it detached and returns
- * at once; `wait: true` resolves on a clean exit, rejects on a non-zero exit
- * (with the end of stderr) and kills the process group when it overruns.
+ * at once; `wait: true` resolves when the program exits cleanly (not when its pipes
+ * close: a background child may hold them), rejects on a non-zero exit (with the end
+ * of stderr) and kills the process group when it overruns.
  */
 export function runCommand(args: string[], o: RunOptions): Promise<void> {
   const [cmd, ...rest] = args;
@@ -50,13 +51,21 @@ export function runCommand(args: string[], o: RunOptions): Promise<void> {
       stderr = (stderr + b.toString()).slice(-2000);
     });
     child.on("error", (e) => settle(() => reject(new Error(`${cmd} failed to start: ${e.message}`))));
-    child.on("close", (code, signal) =>
-      settle(() => {
-        if (code === 0) return resolvePromise();
-        const tail = stderr.trim().slice(-300);
-        reject(new Error(`${cmd} exited with ${code ?? signal}${tail ? `: ${tail}` : ""}`));
-      }),
-    );
+    // Resolve on "exit", not "close": "close" waits for stderr to end, and a background
+    // child the program left running (wl-copy forks one) keeps that pipe open for as long
+    // as it lives. After the exit, give the already-written output a moment to arrive.
+    child.on("exit", (code, signal) => {
+      setTimeout(() => {
+        child.stderr?.destroy();
+        settle(() => {
+          if (code === 0) return resolvePromise();
+          // A failed program: stop whatever it left behind too.
+          killTree(child.pid, () => undefined);
+          const tail = stderr.trim().slice(-300);
+          reject(new Error(`${cmd} exited with ${code ?? signal}${tail ? `: ${tail}` : ""}`));
+        });
+      }, DRAIN_MS);
+    });
 
     const timer = setTimeout(() => {
       killTree(child.pid, () => child.kill("SIGKILL"));
@@ -64,5 +73,8 @@ export function runCommand(args: string[], o: RunOptions): Promise<void> {
     }, o.timeoutMs);
   });
 }
+
+/** How long output already written by an exited program may still take to arrive. */
+const DRAIN_MS = 200;
 
 const round = (n: number) => Math.round(n * 10) / 10;

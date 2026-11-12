@@ -173,6 +173,19 @@ screenpilot voices --provider edge --lang ar</code></pre>
 <pre><code class="language-sh">printf '%s' "$GEMINI_API_KEY" | screenpilot secret set gemini
 screenpilot secret status</code></pre>
 
+<h3 id="endpoint">endpoint<a class="a" href="#endpoint" aria-label="رابط إلى هذا القسم">#</a></h3>
+<p>الأمر <code>screenpilot endpoint</code> يحدد أي host يتحدث إليه الصوت السحابي: الـ host الافتراضي، أو منطقة data residency (في ElevenLabs: <code>us</code> و<code>eu</code> و<code>in</code> و<code>sg</code>)، أو gateway خاص بالشركة. يُحفظ في <code>voices.json</code> ولا يُحفظ أبدًا في storyboard. متغيرا البيئة <code>ELEVENLABS_BASE_URL</code> و<code>GEMINI_BASE_URL</code> لهما الأولوية على الملف. متى تحتاجه مشروح في <a href="../../ar/guide/voices.html#cloud-region">الأصوات</a>.</p>
+<table>
+<thead><tr><th>الأمر</th><th>وظيفته</th></tr></thead>
+<tbody>
+<tr><td><code>endpoint set &lt;provider&gt; &lt;url|region&gt;</code></td><td>يتحقق من العنوان ثم يحفظه (مع <code>/v1</code> أو بدونه؛ <code>https</code> فقط، و<code>http</code> مع localhost).</td></tr>
+<tr><td><code>endpoint status</code></td><td>يطبع لكل مزوّد العنوان المستخدم ومصدره: <code>env</code> أو <code>file</code> أو <code>default</code>.</td></tr>
+<tr><td><code>endpoint clear &lt;provider&gt;</code></td><td>يرجع إلى الـ host الافتراضي. يبقى متغير البيئة كما هو.</td></tr>
+</tbody>
+</table>
+<pre><code class="language-sh">screenpilot endpoint set elevenlabs eu
+screenpilot doctor</code></pre>
+
 <h3 id="spend">spend<a class="a" href="#spend" aria-label="رابط إلى هذا القسم">#</a></h3>
 <p>الأمر <code>screenpilot spend</code> يجمع ما كلّفته الأصوات السحابية حتى الآن، حسب المزوّد، من سجل الإنفاق (<code>spend.jsonl</code> في مجلد الإعدادات). لا يدخل السجل إلا الطلبات المحاسَبة: الإصابة في الكاش والطلب الفاشل والصوت المجاني لا تدخل. المفتاح والنص لا يُكتبان أبدًا. الأرقام تقديرات من سعرك لكل credit، لا فاتورة. تشرح <a href="../../ar/guide/voices.html#cost">كم تكلّف الأصوات السحابية</a> معنى الـ credit وكيف تضبط السعر.</p>
 <table>

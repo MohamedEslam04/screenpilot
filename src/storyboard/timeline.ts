@@ -142,6 +142,36 @@ export class Timeline {
     return { start, end };
   }
 
+  /**
+   * Everything of source span [at, at+dur) that is shown, as output spans: each kept
+   * piece clipped to the span and mapped with its own speed, a freeze whose frame lies
+   * in the span included. Touching spans are joined, so a cut in the middle gives one
+   * span unless something else is shown between the parts. Empty when all of it was cut.
+   * Unlike mapSpan this does not need `at` to be kept and never stretches over a cut.
+   */
+  mapRanges(at: number, dur: number): { start: number; end: number }[] {
+    const stop = at + dur;
+    const found: { start: number; end: number }[] = [];
+    for (const p of this.pieces) {
+      if (p.kind === "hold") {
+        if (p.at >= at - EPS && p.at < stop - EPS) found.push({ start: this.offset + p.outStart, end: this.offset + p.outEnd });
+        continue;
+      }
+      const s = Math.max(at, p.in);
+      const e = Math.min(stop, p.out);
+      if (e - s <= EPS) continue;
+      found.push({ start: this.offset + p.outStart + (s - p.in) / p.speed, end: this.offset + p.outStart + (e - p.in) / p.speed });
+    }
+    found.sort((a, b) => a.start - b.start);
+    const out: { start: number; end: number }[] = [];
+    for (const r of found) {
+      const last = out.at(-1);
+      if (last && r.start <= last.end + EPS) last.end = Math.max(last.end, r.end);
+      else out.push({ ...r });
+    }
+    return out;
+  }
+
   /** Index of the segment whose range contains source time t (inclusive end). */
   static segmentIndexOf(segments: Segment[], t: number): number {
     return segments.findIndex((s) => t >= s.in - EPS && t <= s.out + EPS);

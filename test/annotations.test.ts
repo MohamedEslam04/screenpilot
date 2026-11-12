@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderHtml } from "../src/render/html.js";
+import { planChunks } from "../src/render/chunks.js";
 import { buildPlan } from "../src/render/plan.js";
 import { pressFor, typingPresses } from "../src/render/typing.js";
 import { windowPlan } from "../src/render/window.js";
@@ -238,5 +239,99 @@ describe("lint for annotations", () => {
 
   it("is quiet for sensible annotations", () => {
     expect(lintStyle(sbOf({ annotations: [arrow, box, blur], typing: [{ at: 1, dur: 2, text: "hi", keycaps: true }] }))).toEqual([]);
+  });
+});
+
+// Privacy: a blur that hides a secret must show for every part of its range that lies in kept footage.
+describe("annotations that overlap cuts, speed changes and long ranges", () => {
+  const secret = { type: "blur", mode: "solid", x: 0.1, y: 0.1, w: 0.3, h: 0.05 };
+  const seg = (inn: number, out: number, speed = 1, extra: Record<string, unknown> = {}) => ({ in: inn, out, speed, ...extra });
+  function plan(segments: ReturnType<typeof seg>[], annotations: object[], extra: Record<string, unknown> = {}, sourceDuration = 600) {
+    const sb = sbOf({ segments, annotations, ...extra });
+    const timeline = buildTimeline({ segments: sb.segments, holds: sb.holds, sourceDuration, offset: sb.intro?.dur ?? 0 });
+    return buildPlan({ sb, timeline, editedSrc: "e.mp4", editedHasAudio: false, source: { width: 1920, height: 1080 }, narration: [], clicks: [] });
+  }
+  const spans = (p: ReturnType<typeof plan>) => p.annotations.map((a) => [a.start, a.end]);
+
+  it("(a) keeps an annotation longer than 8 s for its whole range", () => {
+    const p = plan([seg(0, 40)], [{ ...secret, at: 2, dur: 12 }]);
+    expect(spans(p)).toEqual([[2, 14]]);
+  });
+
+  it("(b) shows the part of an annotation that starts before segments[0].in but runs into kept footage", () => {
+    const p = plan([seg(6, 30)], [{ ...secret, at: 0, dur: 10 }]);
+    expect(spans(p)).toEqual([[0, 4]]);
+  });
+
+  it("(c) shows the kept part of an annotation that starts inside a cut gap", () => {
+    const p = plan([seg(0, 5), seg(8, 20)], [{ ...secret, at: 6, dur: 4 }]);
+    // source 8..10 is output 5..7
+    expect(spans(p)).toEqual([[5, 7]]);
+  });
+
+  it("(c) ends an annotation where the footage ends when its end falls in a cut gap", () => {
+    const p = plan([seg(0, 10), seg(15, 25)], [{ ...secret, at: 5, dur: 8 }]);
+    // source 5..10 is output 5..10; 10..13 is cut. Not 5..13 (that would hide the footage after the cut).
+    expect(spans(p)).toEqual([[5, 10]]);
+  });
+
+  it("(c) splits an annotation in several pieces when a hold falls in the middle of a cut", () => {
+    const p = plan([seg(0, 4), seg(8, 12)], [{ ...secret, at: 2, dur: 8 }], { holds: [{ at: 3, dur: 2 }] });
+    // source 2..3 -> output 2..3, hold 3..5, source 3..4 -> 5..6, cut, source 8..10 -> 6..8: one contiguous piece 2..8
+    expect(spans(p)).toEqual([[2, 8]]);
+  });
+
+  it("(d) maps through a speed change", () => {
+    const p = plan([seg(0, 10), seg(10, 20, 2)], [{ ...secret, at: 8, dur: 6 }], { zooms: [{ at: 9, dur: 3, x: 0.5, y: 0.5, scale: 2 }] });
+    // source 8..10 at 1x = 2 s, source 10..14 at 2x = 2 s
+    expect(spans(p)).toEqual([[8, 12]]);
+  });
+
+  it("(d) maps through a speed ramp", () => {
+    const p = plan([seg(0, 10, 1, { speedTo: 4 })], [{ ...secret, at: 0, dur: 10 }]);
+    expect(p.annotations).toHaveLength(1);
+    expect(p.annotations[0]!.start).toBe(0);
+    expect(p.annotations[0]!.end).toBeCloseTo(p.video.duration, 2);
+  });
+
+  it("(d) keeps a blur over a hold (the frozen frame still shows the secret)", () => {
+    const p = plan([seg(0, 10)], [{ ...secret, at: 2, dur: 4 }], { holds: [{ at: 4, dur: 3 }] });
+    expect(spans(p)).toEqual([[2, 9]]);
+  });
+
+  it("drops an annotation that is entirely in cut footage", () => {
+    expect(plan([seg(10, 20)], [{ ...secret, at: 1, dur: 5 }]).annotations).toEqual([]);
+  });
+
+  it("adds the intro offset", () => {
+    const p = plan([seg(6, 30)], [{ ...secret, at: 0, dur: 10 }], { intro: { title: "Hi", dur: 2 } });
+    expect(spans(p)).toEqual([[2, 6]]);
+  });
+
+  it("(e) a partial render keeps the part of the blur inside the window", () => {
+    const full = plan([seg(0, 5), seg(8, 40)], [{ ...secret, at: 6, dur: 20 }]);
+    expect(spans(full)).toEqual([[5, 23]]);
+    const w = windowPlan(full, { from: 10, to: 15 });
+    expect(w.annotations.map((a) => [a.start, a.end])).toEqual([[0, 5]]);
+    const head = windowPlan(full, { from: 2, to: 8 });
+    expect(head.annotations.map((a) => [a.start, a.end])).toEqual([[3, 6]]);
+  });
+
+  it("(e) every chunk of a 6 minute render shows the blur wherever the full video does", () => {
+    const full = plan([seg(20, 200), seg(230, 400)], [{ ...secret, at: 5, dur: 300 }, { ...secret, at: 150, dur: 100 }], {}, 600);
+    expect(full.duration).toBeGreaterThanOrEqual(300);
+    const chunks = planChunks(full, { target: 100, min: 30 });
+    expect(chunks.length).toBeGreaterThan(1);
+    const at = (items: { start: number; end: number }[], t: number) => items.some((a) => a.start <= t && t < a.end);
+    for (const c of chunks) {
+      const win = windowPlan(full, { from: c.start, to: c.end });
+      for (let t = c.start + 0.25; t < c.end; t += 0.5) {
+        expect(at(win.annotations, t - c.start), `t=${t}`).toBe(at(full.annotations, t));
+      }
+    }
+    // blur 1 is source 5..305: kept 20..200 and 230..305 = output 0..255 (the cut collapses); blur 2 ends inside it
+    expect(at(full.annotations, 0)).toBe(true);
+    expect(at(full.annotations, 254)).toBe(true);
+    expect(at(full.annotations, 256)).toBe(false);
   });
 });
