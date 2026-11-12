@@ -59,6 +59,14 @@ export struct ProviderData {
     can-edit: bool,
     can-remove: bool,
     cli-line: string,
+    has-endpoint: bool,
+    endpoint-url: string,
+    endpoint-source: string,
+    endpoint-error: string,
+    endpoint-env: bool, // from an environment variable: read-only
+    endpoint-can-reset: bool,
+    endpoint-regions: bool,
+    endpoint-default: string,
 }
 
 export struct SpeedData {
@@ -992,8 +1000,12 @@ component ProviderCard inherits Card {
     in property <ProviderData> d;
     in property <string> env-text;
     in property <string> cli-text;
+    in property <string> url-env-text;
+    in property <string> url-help;
     callback save(string, string);
     callback remove(string);
+    callback save-url(string, string);
+    callback reset-url(string);
     col := VerticalLayout {
         padding: 14px;
         spacing: 10px;
@@ -1075,6 +1087,124 @@ component ProviderCard inherits Card {
                 }
             }
         }
+        if root.d.has-endpoint: VerticalLayout {
+            spacing: 6px;
+            HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: "Base URL";
+                    font-size: 13px;
+                    font-weight: 700;
+                    color: Theme.ink;
+                    vertical-alignment: center;
+                }
+                Text {
+                    horizontal-stretch: 1;
+                    min-width: 0px;
+                    text: root.d.endpoint-source;
+                    font-size: 12.5px;
+                    color: Theme.ink2;
+                    overflow: elide;
+                    vertical-alignment: center;
+                }
+            }
+            if root.d.endpoint-error != "": WrapText {
+                text: root.d.endpoint-error;
+                wrap: word-wrap;
+                font-size: 12.5px;
+                tint: Theme.bad;
+            }
+            if root.d.endpoint-env: VerticalLayout {
+                spacing: 6px;
+                if root.d.endpoint-url != "": SelectText {
+                    text: root.d.endpoint-url;
+                    label: root.d.label + " base URL (set by an environment variable)";
+                }
+                WrapText {
+                    text: root.url-env-text;
+                    wrap: word-wrap;
+                    font-size: 12.5px;
+                    tint: Theme.ink2;
+                }
+            }
+            if !root.d.endpoint-env: VerticalLayout {
+                spacing: 6px;
+                WrapText {
+                    text: root.url-help;
+                    wrap: word-wrap;
+                    font-size: 12.5px;
+                    tint: Theme.ink2;
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    url := Field {
+                        horizontal-stretch: 1;
+                        min-width: 120px;
+                        text: root.d.endpoint-url;
+                        placeholder: "https://... or a region name";
+                        label: root.d.label + " base URL";
+                        accepted(t) => {
+                            root.save-url(root.d.id, t);
+                        }
+                    }
+                    Btn {
+                        primary: true;
+                        text: "Save";
+                        enabled: url.text != "";
+                        clicked => {
+                            root.save-url(root.d.id, url.text);
+                        }
+                    }
+                    if root.d.endpoint-can-reset: Btn {
+                        danger: true;
+                        text: "Reset";
+                        clicked => {
+                            root.reset-url(root.d.id);
+                        }
+                    }
+                }
+                if root.d.endpoint-regions: HorizontalLayout {
+                    spacing: 6px;
+                    alignment: start;
+                    Text {
+                        text: "Region";
+                        font-size: 12.5px;
+                        color: Theme.ink2;
+                        vertical-alignment: center;
+                    }
+                    Btn {
+                        text: "Default";
+                        clicked => {
+                            url.text = root.d.endpoint-default;
+                        }
+                    }
+                    Btn {
+                        text: "US";
+                        clicked => {
+                            url.text = "us";
+                        }
+                    }
+                    Btn {
+                        text: "EU";
+                        clicked => {
+                            url.text = "eu";
+                        }
+                    }
+                    Btn {
+                        text: "India";
+                        clicked => {
+                            url.text = "in";
+                        }
+                    }
+                    Btn {
+                        text: "Singapore";
+                        clicked => {
+                            url.text = "sg";
+                        }
+                    }
+                }
+            }
+        }
         if root.d.cli-line != "": VerticalLayout {
             spacing: 6px;
             WrapText {
@@ -1124,6 +1254,8 @@ export component MainWindow inherits Window {
     in-out property <int> tab: 0; // 0 library, 1 live, 2 voices, 3 stats
     in property <int> live-count;
     in property <string> env-key-note;
+    in property <string> env-url-note;
+    in property <string> url-help;
     in property <string> cli-key-note;
     in property <string> privacy-note;
     in property <string> no-speed-note;
@@ -1187,6 +1319,8 @@ export component MainWindow inherits Window {
     callback toggle-failed();
     callback save-key(string, string);
     callback remove-key(string);
+    callback save-endpoint(string, string);
+    callback reset-endpoint(string);
     callback calc-cache();
 
     // Set from the window width by a change handler (a binding to `width` would loop through the
@@ -1655,6 +1789,14 @@ export component MainWindow inherits Window {
                         }
                         remove(id) => {
                             root.remove-key(id);
+                        }
+                        url-env-text: root.env-url-note;
+                        url-help: root.url-help;
+                        save-url(id, url) => {
+                            root.save-endpoint(id, url);
+                        }
+                        reset-url(id) => {
+                            root.reset-endpoint(id);
                         }
                     }
                 }

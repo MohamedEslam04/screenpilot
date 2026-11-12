@@ -4,7 +4,9 @@
 
 use crate::paths::Paths;
 use crate::proc::{run_capture, short_stderr, spawn_detached};
-use crate::providers::{merge_providers, ProviderInfo, SECRET_PROVIDERS, VOICE_PROVIDERS};
+use crate::providers::{
+    merge_providers, ProviderInfo, ENDPOINT_PROVIDERS, SECRET_PROVIDERS, VOICE_PROVIDERS,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::ffi::OsString;
@@ -17,6 +19,7 @@ pub const QUALITIES: [&str; 3] = ["draft", "looks", "delivery"];
 /// Voice lists can come from the network (Edge, ElevenLabs).
 const VOICES_TIMEOUT: Duration = Duration::from_secs(60);
 const SECRET_TIMEOUT: Duration = Duration::from_secs(30);
+const ENDPOINT_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// How to start the CLI: a program and the arguments that come before the subcommand.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -104,6 +107,32 @@ pub fn check_secret_provider(provider: &str) -> Result<(), String> {
     }
 }
 
+pub fn check_endpoint_provider(provider: &str) -> Result<(), String> {
+    if ENDPOINT_PROVIDERS.contains(&provider) {
+        Ok(())
+    } else {
+        Err(format!(
+            "provider \"{provider}\" has no base URL (want elevenlabs or gemini)"
+        ))
+    }
+}
+
+/// The text of the Base URL field (an address or a region name), trimmed. The CLI does the real
+/// check of the address; this only rejects what must never reach it as an argument.
+pub fn check_endpoint_value(value: &str) -> Result<String, String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err("the address is empty".to_string());
+    }
+    if value.chars().any(char::is_control) {
+        return Err("the address must be a single line".to_string());
+    }
+    if value.starts_with('-') {
+        return Err("the address must not start with \"-\"".to_string());
+    }
+    Ok(value.to_string())
+}
+
 /// `render <storyboard> -q <quality>`. The storyboard must be an existing `.json` file; it is made
 /// absolute so the CLI finds it from any working folder.
 pub fn render_args(storyboard: &str, quality: &str) -> Result<Vec<OsString>, String> {
@@ -135,6 +164,27 @@ pub fn secret_args(action: &str, provider: Option<&str>) -> Result<Vec<OsString>
         let p = provider.ok_or("a provider is required")?;
         check_secret_provider(p)?;
         args.push(p.into());
+    }
+    Ok(args)
+}
+
+/// `endpoint set <provider> <url-or-region>`, `endpoint status` or `endpoint clear <provider>`.
+pub fn endpoint_args(
+    action: &str,
+    provider: Option<&str>,
+    value: Option<&str>,
+) -> Result<Vec<OsString>, String> {
+    if !["set", "status", "clear"].contains(&action) {
+        return Err(format!("unknown endpoint action \"{action}\""));
+    }
+    let mut args = os(&["endpoint", action]);
+    if action != "status" {
+        let p = provider.ok_or("a provider is required")?;
+        check_endpoint_provider(p)?;
+        args.push(p.into());
+    }
+    if action == "set" {
+        args.push(check_endpoint_value(value.ok_or("an address is required")?)?.into());
     }
     Ok(args)
 }
@@ -232,14 +282,53 @@ pub fn remove_secret(cli: &Cli, provider: &str) -> Result<bool, String> {
         .unwrap_or(false))
 }
 
-/// The providers with where their keys come from. A CLI that cannot run just shows no keys.
-pub fn providers(cli: &Cli) -> Vec<ProviderInfo> {
-    let status = secret_args("status", None)
+/// Save the base URL of a provider (an address or a region name). The CLI checks it; the new
+/// address comes back normalized. The dashboard never contacts the address itself.
+pub fn set_endpoint(cli: &Cli, provider: &str, value: &str) -> Result<String, String> {
+    let args = endpoint_args("set", Some(provider), Some(value))?;
+    let out = run_capture(&mut cli.command(&args), None, ENDPOINT_TIMEOUT)?;
+    if !out.status.success() {
+        return Err(format!(
+            "screenpilot endpoint set failed: {}",
+            short_stderr(&out.stderr, None, 300)
+        ));
+    }
+    Ok(parse_json(&out.stdout)
+        .and_then(|j| j.get("baseUrl").and_then(Value::as_str).map(str::to_string))
+        .unwrap_or_else(|| value.trim().to_string()))
+}
+
+/// Go back to the default address; true when there was a saved one.
+pub fn clear_endpoint(cli: &Cli, provider: &str) -> Result<bool, String> {
+    let args = endpoint_args("clear", Some(provider), None)?;
+    let out = run_capture(&mut cli.command(&args), None, ENDPOINT_TIMEOUT)?;
+    if !out.status.success() {
+        return Err(format!(
+            "screenpilot endpoint clear failed: {}",
+            short_stderr(&out.stderr, None, 300)
+        ));
+    }
+    let json = parse_json(&out.stdout).ok_or("screenpilot endpoint clear printed no JSON")?;
+    Ok(json
+        .get("cleared")
+        .and_then(Value::as_bool)
+        .unwrap_or(false))
+}
+
+/// The JSON a read-only CLI command prints, or None when it cannot run or fails.
+fn read_status(cli: &Cli, args: Result<Vec<OsString>, String>, timeout: Duration) -> Option<Value> {
+    run_capture(&mut cli.command(&args.ok()?), None, timeout)
         .ok()
-        .and_then(|args| run_capture(&mut cli.command(&args), None, SECRET_TIMEOUT).ok())
         .filter(|out| out.status.success())
-        .and_then(|out| parse_json(&out.stdout));
-    merge_providers(status.as_ref())
+        .and_then(|out| parse_json(&out.stdout))
+}
+
+/// The providers with where their keys come from and their base URLs. A CLI that cannot run just
+/// shows no keys; one without `endpoint` (older) shows no base URLs.
+pub fn providers(cli: &Cli) -> Vec<ProviderInfo> {
+    let status = read_status(cli, secret_args("status", None), SECRET_TIMEOUT);
+    let endpoints = read_status(cli, endpoint_args("status", None, None), ENDPOINT_TIMEOUT);
+    merge_providers(status.as_ref(), endpoints.as_ref())
 }
 
 /// The CLI prints one JSON document; tolerate a line of log text before it.
@@ -405,6 +494,74 @@ mod tests {
     }
 
     #[test]
+    fn endpoint_args_validate_the_provider_and_the_address() {
+        let s = |v: &[&str]| v.iter().map(OsString::from).collect::<Vec<_>>();
+        assert_eq!(
+            endpoint_args("set", Some("elevenlabs"), Some(" eu ")).unwrap(),
+            s(&["endpoint", "set", "elevenlabs", "eu"])
+        );
+        assert_eq!(
+            endpoint_args(
+                "set",
+                Some("gemini"),
+                Some("https://gw.example.com/a b; rm -rf $HOME")
+            )
+            .unwrap(),
+            s(&[
+                "endpoint",
+                "set",
+                "gemini",
+                "https://gw.example.com/a b; rm -rf $HOME"
+            ]),
+            "the address stays one argument"
+        );
+        assert_eq!(
+            endpoint_args("clear", Some("gemini"), None).unwrap(),
+            s(&["endpoint", "clear", "gemini"])
+        );
+        assert_eq!(
+            endpoint_args("status", None, None).unwrap(),
+            s(&["endpoint", "status"])
+        );
+        // clear and status never carry an address.
+        assert_eq!(
+            endpoint_args("clear", Some("gemini"), Some("x")).unwrap(),
+            s(&["endpoint", "clear", "gemini"])
+        );
+
+        assert!(endpoint_args("set", Some("edge"), Some("eu")).is_err());
+        assert!(endpoint_args("set", Some("gemini; id"), Some("eu")).is_err());
+        assert!(endpoint_args("set", None, Some("eu")).is_err());
+        assert!(endpoint_args("set", Some("gemini"), None).is_err());
+        assert!(endpoint_args("clear", None, None).is_err());
+        assert!(endpoint_args("dump", Some("gemini"), None).is_err());
+    }
+
+    #[test]
+    fn an_empty_or_odd_address_is_rejected() {
+        for bad in [
+            "",
+            "   ",
+            "\t\n",
+            "a\nb",
+            "https://x\u{0}y",
+            "--help",
+            " -x",
+        ] {
+            assert!(check_endpoint_value(bad).is_err(), "{bad:?}");
+            assert!(
+                endpoint_args("set", Some("gemini"), Some(bad)).is_err(),
+                "{bad:?}"
+            );
+        }
+        assert_eq!(check_endpoint_value("  us  ").unwrap(), "us");
+        assert_eq!(
+            check_endpoint_value("http://localhost:8080/v1").unwrap(),
+            "http://localhost:8080/v1"
+        );
+    }
+
+    #[test]
     fn parses_json_with_log_noise() {
         assert_eq!(parse_json(b"[1,2]\n").unwrap(), serde_json::json!([1, 2]));
         assert_eq!(
@@ -496,6 +653,74 @@ esac"#,
             let list = providers(&cli);
             assert_eq!(list[3].key.as_deref(), Some("file"));
             assert_eq!(list[4].key, None);
+        }
+
+        #[test]
+        fn endpoint_set_clear_and_status_read_the_cli_json() {
+            let _serial = crate::testutil::serial();
+            let d = TempDir::new();
+            let cli = fake(
+                &d,
+                r#"printf '%s\n' "$@" >> "$(dirname "$0")/args.txt"
+case "$2" in
+  set) echo '{"provider":"elevenlabs","baseUrl":"https://api.eu.residency.elevenlabs.io","file":"/x"}';;
+  clear) echo '{"provider":"gemini","cleared":true}';;
+  status) echo '{"elevenlabs":{"baseUrl":"https://api.elevenlabs.io","source":"env"},"gemini":{"error":"Bad gemini base URL from providers.gemini.baseUrl in v.json: x"}}';;
+  *) echo '{"removed":false}';;
+esac"#,
+            );
+            assert_eq!(
+                set_endpoint(&cli, "elevenlabs", " eu ").unwrap(),
+                "https://api.eu.residency.elevenlabs.io"
+            );
+            assert!(clear_endpoint(&cli, "gemini").unwrap());
+            let list = providers(&cli);
+            let eleven = list[3].endpoint.as_ref().unwrap();
+            assert_eq!(
+                (eleven.base_url.as_str(), eleven.source.as_str()),
+                ("https://api.elevenlabs.io", "env")
+            );
+            assert!(list[4].endpoint.as_ref().unwrap().error.is_some());
+            assert_eq!(
+                std::fs::read_to_string(d.join("args.txt")).unwrap(),
+                "endpoint\nset\nelevenlabs\neu\nendpoint\nclear\ngemini\nsecret\nstatus\nendpoint\nstatus\n"
+            );
+        }
+
+        #[test]
+        fn endpoint_errors_come_from_stderr_and_bad_input_runs_nothing() {
+            let _serial = crate::testutil::serial();
+            let d = TempDir::new();
+            let cli = fake(
+                &d,
+                "echo 'Bad gemini base URL: not a web address' >&2; exit 1",
+            );
+            let err = set_endpoint(&cli, "gemini", "nope").unwrap_err();
+            assert!(err.contains("not a web address"), "{err}");
+            assert!(clear_endpoint(&cli, "gemini").is_err());
+
+            let d = TempDir::new();
+            let cli = fake(&d, "touch \"$(dirname \"$0\")/ran\"");
+            assert!(set_endpoint(&cli, "gemini", "  ").is_err());
+            assert!(set_endpoint(&cli, "edge", "eu").is_err());
+            assert!(clear_endpoint(&cli, "edge").is_err());
+            assert!(!d.join("ran").exists());
+        }
+
+        #[test]
+        fn an_older_cli_without_endpoint_shows_no_base_url() {
+            let _serial = crate::testutil::serial();
+            let d = TempDir::new();
+            let cli = fake(
+                &d,
+                r#"case "$1" in
+  secret) echo '{"elevenlabs":"file","gemini":null}';;
+  *) echo "error: unknown command 'endpoint'" >&2; exit 1;;
+esac"#,
+            );
+            let list = providers(&cli);
+            assert_eq!(list[3].key.as_deref(), Some("file"));
+            assert!(list.iter().all(|p| p.endpoint.is_none()));
         }
 
         #[test]
