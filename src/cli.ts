@@ -228,7 +228,7 @@ program
       process.exit(0); // the CDP connection to the demo browser would keep us alive
     } catch (err) {
       if (err instanceof TakeError) {
-        print({ failedStep: err.index + 1, step: err.step, error: err.cause.message, partial: err.partial });
+        print({ failedStep: err.index + 1, step: err.step, error: err.cause.message, ...(err.info ?? {}), partial: err.partial });
         process.exit(1);
       }
       throw err;
