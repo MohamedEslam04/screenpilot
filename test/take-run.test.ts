@@ -44,6 +44,63 @@ describe("runCommand", () => {
     expect(alive).toBe(false);
   });
 
+  describe("a background child that keeps the pipes open (wl-copy)", () => {
+    // The program exits 0 at once, but leaves a detached grandchild holding its stdout/stderr.
+    const spawnLinger = (tail: string) =>
+      "const c=require('child_process').spawn(process.execPath,['-e','setTimeout(()=>{},30000)']," +
+      "{detached:true,stdio:'inherit'});c.unref();" +
+      "require('fs').writeFileSync(process.argv[1], String(c.pid));" +
+      tail;
+    const pidFile = `${tmpdir()}/screenpilot-run-linger-${process.pid}.pid`;
+    const killGrandchild = async () => {
+      const { readFileSync, rmSync } = await import("node:fs");
+      try {
+        process.kill(Number(readFileSync(pidFile, "utf8")), "SIGKILL");
+      } catch {
+        /* already gone */
+      }
+      rmSync(pidFile, { force: true });
+    };
+    const isAlive = async () => {
+      const { readFileSync } = await import("node:fs");
+      try {
+        process.kill(Number(readFileSync(pidFile, "utf8")), 0);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    it("returns when the program exits, not when its pipes close, and leaves the grandchild alone", async () => {
+      try {
+        const t0 = Date.now();
+        await expect(runCommand(["node", "-e", spawnLinger("process.exit(0)"), pidFile], base)).resolves.toBeUndefined();
+        expect(Date.now() - t0).toBeLessThan(2500);
+        expect(await isAlive()).toBe(true);
+      } finally {
+        await killGrandchild();
+      }
+    });
+
+    it("still fails with the exit code and stderr when the program fails", async () => {
+      try {
+        const t0 = Date.now();
+        await expect(
+          runCommand(["node", "-e", spawnLinger("console.error('copy failed');process.exit(2)"), pidFile], base),
+        ).rejects.toThrow(/exited with 2: copy failed/);
+        expect(Date.now() - t0).toBeLessThan(2500);
+      } finally {
+        await killGrandchild();
+      }
+    });
+  });
+
+  it("keeps the output written just before the program exits", async () => {
+    await expect(
+      runCommand(["node", "-e", "process.stderr.write('last words');process.exit(4)"], base),
+    ).rejects.toThrow(/exited with 4: last words/);
+  });
+
   it("resolves on a clean exit", async () => {
     await expect(runCommand(["node", "-e", ""], base)).resolves.toBeUndefined();
   });
