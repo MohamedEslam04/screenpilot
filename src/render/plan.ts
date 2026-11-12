@@ -379,13 +379,15 @@ export function buildPlan(input: PlanInput): RenderPlan {
 
   const annotations: AnnotationItem[] = [];
   for (const a of sb.annotations) {
-    const m = tl.mapSpan(a.at, a.dur);
-    if (!m) continue;
-    const span = { start: m.start, end: m.end };
-    if (a.type === "arrow") annotations.push({ ...span, kind: "arrow", from: a.from, to: a.to, label: a.label, color: a.color ?? sb.theme.accent, width: a.width });
-    else if (a.type === "box") {
-      annotations.push({ ...span, kind: "box", x: a.x, y: a.y, w: a.w, h: a.h, shape: a.shape, label: a.label, color: a.color ?? sb.theme.accent, motion: a.motion });
-    } else annotations.push({ ...span, kind: "blur", x: a.x, y: a.y, w: a.w, h: a.h, mode: a.mode, strength: a.strength, color: a.color ?? "#0b0b0b" });
+    // Every kept part of [at, at+dur): an annotation that starts in cut footage, or runs across a cut, still shows over what is left
+    // (a blur that hides a secret must never vanish because of where it starts). A cut in the middle can leave several pieces.
+    for (const m of tl.mapRanges(a.at, a.dur)) {
+      const span = { start: m.start, end: m.end };
+      if (a.type === "arrow") annotations.push({ ...span, kind: "arrow", from: a.from, to: a.to, label: a.label, color: a.color ?? sb.theme.accent, width: a.width });
+      else if (a.type === "box") {
+        annotations.push({ ...span, kind: "box", x: a.x, y: a.y, w: a.w, h: a.h, shape: a.shape, label: a.label, color: a.color ?? sb.theme.accent, motion: a.motion });
+      } else annotations.push({ ...span, kind: "blur", x: a.x, y: a.y, w: a.w, h: a.h, mode: a.mode, strength: a.strength, color: a.color ?? "#0b0b0b" });
+    }
   }
 
   const keys: KeysItem[] = [];

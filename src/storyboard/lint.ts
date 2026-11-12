@@ -1,5 +1,5 @@
 import type { LINT_RULES, Storyboard } from "./schema.js";
-import type { Timeline } from "./timeline.js";
+import { normalizeSegments, type Timeline } from "./timeline.js";
 
 // Style checks from the AGENTS.md rules. Pure, and warnings only: they help an
 // agent notice a storyboard that will look or sound off, never block a render.
@@ -134,6 +134,39 @@ export function lintStyle(sb: Storyboard): string[] {
 
 function near(ta: number, a: { x: number; y: number }, tb: number, b: { x: number; y: number }): boolean {
   return Math.abs(ta - tb) <= STACK_WINDOW && Math.hypot(a.x - b.x, a.y - b.y) <= STACK_RADIUS;
+}
+
+/**
+ * Annotations whose source range [at, at+dur) is not wholly in kept footage: completely cut (never drawn) or partly cut
+ * (drawn only over the kept part). Never silent, because a blur that hides a secret is the reason to look. Needs the
+ * source length to know where the last segment ends.
+ */
+export function lintAnnotationRanges(sb: Storyboard, sourceDuration: number): string[] {
+  const off = sb.lint?.off?.includes("annotation-outside");
+  if (off) return [];
+  const kept: { in: number; out: number }[] = [];
+  for (const s of normalizeSegments(sb.segments, sourceDuration).sort((a, b) => a.in - b.in)) {
+    const last = kept.at(-1);
+    if (last && s.in <= last.out) last.out = Math.max(last.out, s.out);
+    else kept.push({ in: s.in, out: s.out });
+  }
+  const out: string[] = [];
+  sb.annotations.forEach((a, i) => {
+    const end = a.at + a.dur;
+    const shown = kept.map((k) => ({ in: Math.max(k.in, a.at), out: Math.min(k.out, end) })).filter((r) => r.out - r.in > 0.05);
+    const covered = shown.reduce((sum, r) => sum + (r.out - r.in), 0);
+    const name = a.type === "blur" && a.mode === "solid" ? "solid blur" : a.type;
+    const range = `${fix(a.at)}s-${fix(end)}s`;
+    if (shown.length === 0) {
+      const effect = a.type === "blur" && a.mode === "solid" ? `ERROR: annotations[${i}] is a ${name} (${range}) completely in cut footage, so it is never drawn; if it hides a secret, move it onto footage that is kept` : `annotations[${i}] ${name} (${range}) is completely in cut footage and will not be drawn`;
+      out.push(`[annotation-outside] ${effect}`);
+    } else if (covered < a.dur - 0.05) {
+      out.push(
+        `[annotation-outside] annotations[${i}] ${name} (${range}) is partly in cut footage; it is drawn only over the kept part (${shown.map((r) => `${fix(r.in)}s-${fix(r.out)}s`).join(", ")})`,
+      );
+    }
+  });
+  return out;
 }
 
 /** Checks that need the built timeline (narration freezes included). */

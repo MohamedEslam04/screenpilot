@@ -9,7 +9,8 @@ import { normalizeSegments, speedAt } from "./timeline.js";
 //   Narration that started before `from` is dropped (a line can't resume mid-word).
 // - zooms, captions, highlights and annotations are cut to the range: one that started
 //   before `from` and still runs then is re-timed to start at `from`, one that
-//   runs past `to` ends there. If less than MIN_SPAN of it is left, it is dropped.
+//   runs past `to` ends there. If less than MIN_SPAN of it is left, it is dropped
+//   (annotations are the exception: any rest is kept, a blur may hide a secret).
 // - sfx and typing spans are kept like holds (by their `at`): a typing span is
 //   never cut short, because its presses are spread over its whole text.
 // - A segment with `speedTo` (a speed ramp) keeps its curve when cut: each piece
@@ -42,12 +43,12 @@ export function clipStoryboard(sb: Storyboard, range: { from?: number; to?: numb
 
   const toEnd = to >= end - EPS;
   const inRange = (t: number) => t >= from - EPS && (t < to - EPS || (toEnd && t <= to + EPS));
-  const clipSpan = <T extends { at: number; dur: number }>(items: T[]): T[] =>
+  const clipSpan = <T extends { at: number; dur: number }>(items: T[], min = MIN_SPAN): T[] =>
     items.flatMap((item) => {
       const start = Math.max(item.at, from);
       if (!inRange(start)) return [];
       const stop = toEnd ? item.at + item.dur : Math.min(item.at + item.dur, to);
-      return stop - start >= MIN_SPAN - EPS ? [{ ...item, at: start, dur: round(stop - start) }] : [];
+      return stop - start >= min - EPS ? [{ ...item, at: start, dur: round(stop - start) }] : [];
     });
 
   const overlays = sb.overlays.flatMap((o) => {
@@ -72,7 +73,8 @@ export function clipStoryboard(sb: Storyboard, range: { from?: number; to?: numb
     zooms: clipSpan(sb.zooms),
     captions: clipSpan(sb.captions),
     highlights: clipSpan(sb.highlights),
-    annotations: clipSpan(sb.annotations),
+    // Any rest is kept, however short: a blur that hides a secret must not show for the last fraction of a second.
+    annotations: clipSpan(sb.annotations, 0.001),
     // A line keeps the id it would have had in the whole storyboard (its position), so translations still match the slice.
     narration: sb.narration.flatMap((n, i) => (inRange(n.at) ? [{ ...n, id: n.id ?? String(i) }] : [])),
     sfx: sb.sfx.filter((x) => inRange(x.at)),

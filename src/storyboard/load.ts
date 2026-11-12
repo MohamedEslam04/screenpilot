@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { StoryboardError } from "./errors.js";
 import { deepMerge, isObject, type Json } from "./json.js";
-import { lintStyle } from "./lint.js";
+import { lintAnnotationRanges, lintStyle } from "./lint.js";
 import { INHERITED_KEYS, isBuiltinSfx, type Storyboard, StoryboardSchema, StyleSchema } from "./schema.js";
 import { normalizeSegments, Timeline } from "./timeline.js";
 import { applyVariant, type LoadedVariant } from "./variant.js";
@@ -41,6 +41,7 @@ export function lintStoryboard(sb: Storyboard, sourceDuration?: number): string[
     sb.cards.forEach((c, i) => {
       if (Timeline.segmentIndexOf(kept, c.at) < 0) warnings.push(`cards[${i}] at ${c.at}s is in a cut region and will be dropped`);
     });
+    warnings.push(...lintAnnotationRanges(sb, sourceDuration));
   }
   const ids = new Map<string, number>();
   sb.narration.forEach((n, i) => {
