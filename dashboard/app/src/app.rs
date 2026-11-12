@@ -49,7 +49,7 @@ enum Msg {
     Stats(Stats),
     Cache(u64),
     Toast(String),
-    /// A key was saved or removed: show the message and the providers as they are now.
+    /// A key or base URL was saved or removed: show the message and the providers as they are now.
     KeyDone {
         toast: String,
         providers: Option<Vec<ProviderInfo>>,
@@ -233,6 +233,14 @@ fn provider_data(p: &ProviderView) -> ProviderData {
         can_edit: p.can_edit,
         can_remove: p.can_remove,
         cli_line: shared(&p.cli_line),
+        has_endpoint: p.has_endpoint,
+        endpoint_url: shared(&p.endpoint_url),
+        endpoint_source: shared(&p.endpoint_source),
+        endpoint_error: shared(&p.endpoint_error),
+        endpoint_env: p.endpoint_env,
+        endpoint_can_reset: p.endpoint_can_reset,
+        endpoint_regions: p.endpoint_regions,
+        endpoint_default: shared(&p.endpoint_default),
     }
 }
 
@@ -261,6 +269,8 @@ impl App {
         win.set_kinds(ModelRc::new(VecModel::from(vec![false; 4])));
         win.set_env_key_note(shared(model::ENV_KEY_NOTE));
         win.set_cli_key_note(shared(model::CLI_KEY_NOTE));
+        win.set_env_url_note(shared(model::ENV_URL_NOTE));
+        win.set_url_help(shared(model::URL_HELP));
         win.set_privacy_note(shared(model::PRIVACY_NOTE));
         win.set_no_speed_note(shared(model::NO_SPEED_NOTE));
 
@@ -323,6 +333,9 @@ impl App {
         on!(on_save_key, |app, id, key| app
             .save_key(id.as_str(), key.as_str()));
         on!(on_remove_key, |app, id| app.remove_key(id.as_str()));
+        on!(on_save_endpoint, |app, id, url| app
+            .save_endpoint(id.as_str(), url.as_str()));
+        on!(on_reset_endpoint, |app, id| app.reset_endpoint(id.as_str()));
         on!(on_calc_cache, |app| app.calc_cache());
     }
 
@@ -851,6 +864,32 @@ impl App {
         self.spawn(move || match sp::cli::remove_secret(&cli, &id) {
             Ok(_) => Msg::KeyDone {
                 toast: format!("{} key removed", label_of(&id)),
+                providers: Some(sp::cli::providers(&cli)),
+            },
+            Err(e) => Msg::Toast(e),
+        });
+    }
+
+    fn save_endpoint(&self, id: &str, url: &str) {
+        let url = match sp::cli::check_endpoint_value(url) {
+            Ok(url) => url,
+            Err(e) => return self.toast(&e),
+        };
+        let (cli, id) = (self.cli.clone(), id.to_string());
+        self.spawn(move || match sp::cli::set_endpoint(&cli, &id, &url) {
+            Ok(saved) => Msg::KeyDone {
+                toast: format!("{} base URL saved: {saved}", label_of(&id)),
+                providers: Some(sp::cli::providers(&cli)),
+            },
+            Err(e) => Msg::Toast(e),
+        });
+    }
+
+    fn reset_endpoint(&self, id: &str) {
+        let (cli, id) = (self.cli.clone(), id.to_string());
+        self.spawn(move || match sp::cli::clear_endpoint(&cli, &id) {
+            Ok(_) => Msg::KeyDone {
+                toast: format!("{} base URL reset to the default", label_of(&id)),
                 providers: Some(sp::cli::providers(&cli)),
             },
             Err(e) => Msg::Toast(e),

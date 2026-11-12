@@ -4,7 +4,7 @@
 
 use screenpilot_dashboard_core::jobs::{parse_iso_secs, JobInfo, Step};
 use screenpilot_dashboard_core::project::Project;
-use screenpilot_dashboard_core::providers::ProviderInfo;
+use screenpilot_dashboard_core::providers::{default_base_url, ProviderInfo};
 use screenpilot_dashboard_core::stats::SpeedStat;
 use serde_json::Value;
 
@@ -856,6 +856,22 @@ pub struct ProviderView {
     pub can_remove: bool,
     /// `screenpilot secret set gemini`, empty when no key is needed.
     pub cli_line: String,
+    /// The Base URL section shows (the provider has one and the CLI could tell).
+    pub has_endpoint: bool,
+    /// The address in use, empty when the saved or env value is invalid.
+    pub endpoint_url: String,
+    /// `Default address`, `Saved in voices.json`, `Set by environment variable GEMINI_BASE_URL`.
+    pub endpoint_source: String,
+    /// Why the saved or env value is invalid, empty otherwise.
+    pub endpoint_error: String,
+    /// The address comes from the environment: read-only here.
+    pub endpoint_env: bool,
+    /// A saved address exists, so Reset has something to remove.
+    pub endpoint_can_reset: bool,
+    /// ElevenLabs has data-residency regions to pick from.
+    pub endpoint_regions: bool,
+    /// What the Default choice puts in the field.
+    pub endpoint_default: String,
 }
 
 fn service_note(id: &str) -> &'static str {
@@ -871,9 +887,46 @@ fn service_note(id: &str) -> &'static str {
 
 pub const ENV_KEY_NOTE: &str = "The key comes from an environment variable, so the dashboard cannot change or remove it. Unset the variable to manage a key here.";
 pub const CLI_KEY_NOTE: &str = "Or set it from a terminal. The command reads the key from standard input, so it never appears in your shell history:";
+pub const ENV_URL_NOTE: &str = "The address comes from an environment variable, so the dashboard cannot change or reset it. Unset the variable to manage it here.";
+pub const URL_HELP: &str = "Where this voice connects. Change it only for data residency (ElevenLabs US, EU, India, Singapore) or a company gateway. Type an address or a region name.";
 pub const PRIVACY_NOTE: &str = "Online voices (Edge, ElevenLabs, Gemini) receive the narration text of every line they speak. Free plans can forbid commercial use, so check the terms before you publish a video made with them.";
 
+fn endpoint_fields(p: &ProviderInfo) -> (bool, String, String, String, bool, bool) {
+    let Some(e) = &p.endpoint else {
+        return (
+            false,
+            String::new(),
+            String::new(),
+            String::new(),
+            false,
+            false,
+        );
+    };
+    let env = e.source == "env";
+    let source = match (e.error.is_some(), e.source.as_str()) {
+        (true, "env") => format!("Invalid value in {}", env_var_of(p.id)),
+        (true, _) => "Invalid saved address".to_string(),
+        (false, "env") => format!("Set by environment variable {}", env_var_of(p.id)),
+        (false, "file") => "Saved in voices.json".to_string(),
+        (false, _) => "Default address".to_string(),
+    };
+    (
+        true,
+        e.base_url.clone(),
+        source,
+        e.error.clone().unwrap_or_default(),
+        env,
+        e.source == "file",
+    )
+}
+
+fn env_var_of(id: &str) -> String {
+    format!("{}_BASE_URL", id.to_uppercase())
+}
+
 pub fn provider_view(p: &ProviderInfo) -> ProviderView {
+    let (has_endpoint, endpoint_url, endpoint_source, endpoint_error, endpoint_env, can_reset) =
+        endpoint_fields(p);
     let key = match (p.needs_key, p.key.as_deref()) {
         (false, _) => KeyState::NotNeeded,
         (true, Some("env")) => KeyState::Env,
@@ -901,6 +954,14 @@ pub fn provider_view(p: &ProviderInfo) -> ProviderView {
         } else {
             String::new()
         },
+        has_endpoint,
+        endpoint_url,
+        endpoint_source,
+        endpoint_error,
+        endpoint_env,
+        endpoint_can_reset: can_reset,
+        endpoint_regions: has_endpoint && p.id == "elevenlabs",
+        endpoint_default: default_base_url(p.id).to_string(),
     }
 }
 
@@ -1406,7 +1467,80 @@ mod tests {
             label: "L",
             needs_key: needs,
             key: key.map(str::to_string),
+            endpoint: None,
         }
+    }
+
+    fn with_endpoint(
+        id: &'static str,
+        source: &str,
+        url: &str,
+        error: Option<&str>,
+    ) -> ProviderInfo {
+        ProviderInfo {
+            endpoint: Some(screenpilot_dashboard_core::providers::EndpointInfo {
+                base_url: url.into(),
+                source: source.into(),
+                error: error.map(str::to_string),
+            }),
+            ..info(id, true, None)
+        }
+    }
+
+    #[test]
+    fn base_url_states() {
+        let none = provider_view(&info("gemini", true, None));
+        assert!(!none.has_endpoint && !none.endpoint_regions);
+
+        let def = provider_view(&with_endpoint(
+            "elevenlabs",
+            "default",
+            "https://api.elevenlabs.io",
+            None,
+        ));
+        assert!(def.has_endpoint && def.endpoint_regions && !def.endpoint_env);
+        assert_eq!(def.endpoint_source, "Default address");
+        assert_eq!(def.endpoint_url, "https://api.elevenlabs.io");
+        assert!(!def.endpoint_can_reset);
+        assert_eq!(def.endpoint_default, "https://api.elevenlabs.io");
+
+        let file = provider_view(&with_endpoint(
+            "gemini",
+            "file",
+            "https://gw.example.com",
+            None,
+        ));
+        assert_eq!(file.endpoint_source, "Saved in voices.json");
+        assert!(file.endpoint_can_reset && !file.endpoint_regions);
+
+        let env = provider_view(&with_endpoint(
+            "gemini",
+            "env",
+            "https://gw.example.com",
+            None,
+        ));
+        assert_eq!(
+            env.endpoint_source,
+            "Set by environment variable GEMINI_BASE_URL"
+        );
+        assert!(env.endpoint_env && !env.endpoint_can_reset);
+
+        let bad = provider_view(&with_endpoint(
+            "elevenlabs",
+            "file",
+            "",
+            Some("Bad elevenlabs base URL: x"),
+        ));
+        assert_eq!(bad.endpoint_source, "Invalid saved address");
+        assert_eq!(bad.endpoint_error, "Bad elevenlabs base URL: x");
+        assert!(bad.endpoint_can_reset && !bad.endpoint_env);
+
+        let bad_env = provider_view(&with_endpoint("elevenlabs", "env", "", Some("x")));
+        assert_eq!(
+            bad_env.endpoint_source,
+            "Invalid value in ELEVENLABS_BASE_URL"
+        );
+        assert!(bad_env.endpoint_env && !bad_env.endpoint_can_reset);
     }
 
     #[test]

@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 pub struct Fixture {
     pub root: PathBuf,
     pub paths: Paths,
-    /// A stand-in CLI: `secret status` prints `<root>/bin/status.json`.
+    /// A stand-in CLI: `endpoint status` prints a saved ElevenLabs address and a Gemini one from the environment; `secret status` prints `<root>/bin/status.json`.
     pub cli: Cli,
 }
 
@@ -224,7 +224,7 @@ pub fn write(root: &Path, n: usize, now: i64, key_status: &str) -> std::io::Resu
     let script = bin.join("screenpilot");
     fs::write(
         &script,
-        "#!/bin/sh\ncase \"$1 $2\" in\n  \"secret status\") cat \"$(dirname \"$0\")/status.json\";;\n  \"secret set\") cat >/dev/null;;\n  \"secret remove\") echo '{\"removed\":true}';;\n  *) echo '[]';;\nesac\n",
+        "#!/bin/sh\ncase \"$1 $2\" in\n  \"secret status\") cat \"$(dirname \"$0\")/status.json\";;\n  \"secret set\") cat >/dev/null;;\n  \"secret remove\") echo '{\"removed\":true}';;\n  \"endpoint status\") echo '{\"elevenlabs\":{\"baseUrl\":\"https://api.eu.residency.elevenlabs.io\",\"source\":\"file\"},\"gemini\":{\"baseUrl\":\"https://gw.example.com\",\"source\":\"env\"}}';;\n  *) echo '[]';;\nesac\n",
     )?;
     #[cfg(unix)]
     {

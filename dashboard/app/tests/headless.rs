@@ -92,6 +92,15 @@ fn window_follows_the_history_filters_and_tabs() {
     let gemini = w.get_providers().row_data(4).unwrap();
     assert_eq!(gemini.key_state, 1);
     assert!(gemini.can_edit && !gemini.can_remove);
+    // Base URLs from the stand-in `endpoint status`: a saved ElevenLabs one, a read-only Gemini one.
+    assert!(eleven.has_endpoint && eleven.endpoint_regions && eleven.endpoint_can_reset);
+    assert_eq!(
+        eleven.endpoint_url.as_str(),
+        "https://api.eu.residency.elevenlabs.io"
+    );
+    assert_eq!(eleven.endpoint_source.as_str(), "Saved in voices.json");
+    assert!(gemini.has_endpoint && gemini.endpoint_env && !gemini.endpoint_can_reset);
+    assert!(!w.get_providers().row_data(0).unwrap().has_endpoint);
     w.invoke_show_tab(3);
     assert_eq!(w.get_history_count().as_str(), "120");
     assert_eq!(w.get_speed().row_count(), 3);
