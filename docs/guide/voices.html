@@ -73,7 +73,22 @@ screenpilot secret remove elevenlabs</code></pre>
 <li><code>secret remove</code> deletes the stored key. It cannot unset an environment variable.</li>
 <li>If you run <code>secret set</code> in a terminal without piping, it asks you to paste the key and press Enter.</li>
 </ul>
-<p>A key is never written to a log, a cache key or an error message. <code>screenpilot doctor</code> has an "elevenlabs voice" and a "gemini voice" line. Each only says whether a key is set. It is skipped when no key is set, because the providers are optional, and it makes no request.</p>
+<p>A key is never written to a log, a cache key or an error message. <code>screenpilot doctor</code> has an "elevenlabs voice" and a "gemini voice" line. It is skipped when no key is set, because the providers are optional. With a key, it makes one cheap request to the host in use (it costs no credits and sends the key only as a header), so a key made for another region shows up there and not in the middle of a render.</p>
+
+<h3 id="cloud-region">Region and base URL (data residency, gateways)<a class="a" href="#cloud-region" aria-label="Link to this section">#</a></h3>
+<p>A key belongs to one host. An ElevenLabs account with data residency (EU, India or Singapore) has its own API host, and the default host <code>api.elevenlabs.io</code> refuses its keys with <code>401 invalid_api_key</code>. A company may also put a gateway in front of a provider. Tell ScreenPilot which host to use:</p>
+<pre><code class="language-sh">screenpilot endpoint set elevenlabs eu        # us | eu | in | sg, or a full https address
+screenpilot endpoint set gemini https://gateway.example.com/gemini
+screenpilot endpoint status                   # the host in use and where it comes from
+screenpilot endpoint clear elevenlabs         # back to the default host
+screenpilot doctor                            # checks the key against that host</code></pre>
+<ul>
+<li>The address is saved in <code>voices.json</code> (<code>"providers": {"elevenlabs": {"baseUrl": "..."}}</code>). The environment variables <code>ELEVENLABS_BASE_URL</code> and <code>GEMINI_BASE_URL</code> win over the file. The dashboard Voices tab has the same field.</li>
+<li>It is never read from a storyboard, so a shared project cannot send your key to another host.</li>
+<li>Write it with or without the API version (<code>/v1</code>); a trailing slash is ignored. It must start with <code>https://</code> (<code>http://</code> is allowed only for <code>localhost</code>) and must not contain a user name or password.</li>
+<li>Region names: <code>us</code> = <code>api.us.elevenlabs.io</code>, <code>eu</code> = <code>api.eu.residency.elevenlabs.io</code>, <code>in</code> = <code>api.in.residency.elevenlabs.io</code>, <code>sg</code> = <code>api.sg.residency.elevenlabs.io</code>.</li>
+<li>Clips made through another host are cached separately. Clips made through the default host stay valid.</li>
+</ul>
 
 <h3 id="cloud-elevenlabs">ElevenLabs<a class="a" href="#cloud-elevenlabs" aria-label="Link to this section">#</a></h3>
 <pre><code class="language-json">"voice": { "provider": "elevenlabs", "name": "Your Voice Name", "rate": "+0%" }</code></pre>
@@ -316,7 +331,9 @@ screenpilot doctor</code></pre>
 <tr><td><code>voice-setup</code> says it needs <code>uv</code>.</td><td>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> and run the command again.</td></tr>
 <tr><td><code>voice-setup</code> says there is not enough disk space.</td><td>Free space, or pass <code>--dir</code> to use another drive.</td></tr>
 <tr><td><code>ELEVENLABS_API_KEY</code> or <code>GEMINI_API_KEY</code> is not set.</td><td>Export the variable, or run <code>screenpilot secret set elevenlabs</code> or <code>screenpilot secret set gemini</code> and paste the key. Check with <code>screenpilot secret status</code>.</td></tr>
-<tr><td>A cloud voice answered 401 or 403.</td><td>The key is wrong or has no access. Set it again. An environment variable wins over a stored key, so check <code>secret status</code>.</td></tr>
+<tr><td>ElevenLabs answered 401 <code>invalid_api_key</code> and says the key is for a data residency stack.</td><td>The key belongs to a region. Run <code>screenpilot endpoint set elevenlabs eu</code> (or <code>in</code>, <code>sg</code>), then <code>screenpilot doctor</code>. See <a href="#cloud-region">Region and base URL</a>.</td></tr>
+<tr><td>A cloud voice answered 401 or 403.</td><td>The key is wrong or has no access. Set it again. An environment variable wins over a stored key, so check <code>secret status</code>. If you use a gateway or another region, check the base URL (<code>screenpilot endpoint status</code>).</td></tr>
+<tr><td>A cloud voice says the reply is not audio (or not JSON), with a content type such as <code>text/html</code>.</td><td>The base URL points at a web page or login screen, not at the API. Check <code>screenpilot endpoint status</code>.</td></tr>
 <tr><td>A cloud voice answered 429.</td><td>You hit the limit of your plan. ScreenPilot tries 3 times, then stops. Wait, or change plan or provider. Lines already made are cached.</td></tr>
 <tr><td>ElevenLabs has no voice with that name on this account.</td><td>Use a voice id, or one of the names the message lists. Run <code>screenpilot voices --provider elevenlabs</code>.</td></tr>
 </tbody>

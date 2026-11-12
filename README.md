@@ -189,4 +189,4 @@ It prints a standard `mcpServers` entry (command, arguments, environment) that m
 
 ---
 
-Docs synced to commit 7b14746 ("Merge pull request #13 from MohamedEslam04/feat/project-output", 2026-11-09).
+Docs synced to commit bf2d6ed ("feat(voice): base URL and region for ElevenLabs and Gemini, clear errors, endpoint command, doctor probe", 2026-11-12).
